@@ -27,18 +27,28 @@ Every term is returned separately in `info["reward_terms"]`.
 | Term | Value | Purpose | Exploit risk |
 |---|---|---|---|
 | progress | `20 · (d_prev − d)` | Dense guidance | Telescopes to `20 · (d_start − d_end)`, so oscillating earns nothing |
-| success | `+5` once | Reward finishing | Only paid for a physical success held through the dwell |
+| hold | `0.5 · max(0, 1 − d / 0.02)` per step | Reward staying on target, more for being closer to its centre | Only paid inside the tolerance ball; reaching sooner earns more hold steps, so speed still pays |
+| success | `0` (v2); at most once per episode | Optional one-time bonus | Cannot repeat in non-terminating episodes |
 | action | `−0.005 · ‖a‖²` | Smooth, economical motion | If too large, standing still becomes optimal |
 | contact | `−0.1` per step in contact | Avoid self and floor collisions | None obvious |
 | joint_limit | `−0.01` per joint target at a bound | Avoid jamming into the stops | None obvious |
 | non_finite | `−10`, then terminate | Numerical blow-up guard | Should never trigger |
 
-Scale check: an efficient reach of 0.36 m earns about `+7 + 5 − 1.4 ≈ +11`. Standing still earns about 0, and a random policy about −2.7 (measured below). Success clearly dominates the do-nothing optimum.
+Scale check (v2): reaching 0.36 m in about 1.5 s and holding near the centre for the remaining ~8.5 s earns about `+7` progress plus up to `+85` hold, minus about 1.4 for actions. Standing still earns about 0, and a random policy about −2.7 (measured with v1's terms below; the extra hold term is 0 for random). Reaching and holding dominates everything else.
 
 ## Termination
 
-- **Success** (`terminated`): TCP within 0.02 m of the target for 5 consecutive policy steps (0.25 s). `info["is_success"]` is set, which SB3 uses for success-rate logging.
+- **Success** (`info["is_success"]`, which SB3 uses for success-rate logging): TCP within 0.02 m of the target for 5 consecutive policy steps (0.25 s). In v2 this does **not** end the episode (`success.terminate: false`).
 - **Time limit** (`truncated`): 200 policy steps (10 s). This is reported as truncation, not termination, so value targets bootstrap through timeouts instead of treating them as terminal states.
+
+## Task versions
+
+| Version | Success ends episode | Reward on reaching | Config |
+|---|---|---|---|
+| v1 | yes | one-time `+5` | `configs/reach_v1.yaml` |
+| **v2 (current)** | no, full 10 s | `hold` per step inside tolerance | `configs/reach.yaml` |
+
+**Why v1 was replaced:** the first PPO run (200k steps, seed 0) reached all 200 held-out targets as fast as IK (median 1.73 s), but held only 14.5 % of them and ended a median 38 mm away. Because training episodes terminated on success, the policy never experienced post-success states, and drifting away after the dwell cost nothing. It learned exactly the v1 reward: pass through the target for 0.25 s. The evaluation protocol caught this because it keeps running after success and measures holding. The observation and action schemas are unchanged between v1 and v2.
 - **Non-finite state** (`terminated`): with `info["failure"] = "non_finite"`.
 
 ## Random-policy sanity baseline
