@@ -63,6 +63,44 @@ SB3's `check_env` passes with no warnings.
 
 Across six bang-bang action patterns probed during development: maximum penetration was 4.7 mm and maximum joint-limit overshoot 3.9 mrad (MuJoCo uses soft constraints), with no instability. Contacts observed included hand and fingers against the floor, and hand–link1, link0–link7 and link1–link5 self-collisions.
 
+## Baselines (`polypanda.control.classical_baseline`)
+
+Both baselines use SB3's `predict(obs) -> (action, state)` signature and act through the same 7-D joint-increment adapter, at the same 20 Hz rate and with the same limits, as learned policies.
+
+**`RandomPolicy`:** uniform actions in [-1, 1]. This is the floor.
+
+**`JacobianIKPolicy`:** a damped-least-squares Cartesian controller on the TCP position:
+
+```
+dq = Jᵀ (J Jᵀ + λ² I)⁻¹ (k · e),   e = target − TCP,   k = 0.2,   λ = 0.05
+```
+
+`dq` is then scaled as a whole so that no joint exceeds `max_delta`, which keeps the direction, and sent as `a = dq / max_delta`. Because the adapter integrates actions into `q_cmd`, this is an **integral** controller in Cartesian space. It drives the steady-state error to zero and cancels the servos' gravity sag, which commanding an IK solution directly would leave as a few millimetres of error.
+
+**Information asymmetry (stated for fair comparison).** The IK controller reads only the reach observation: `q` and `target − TCP`. In addition, it has an **exact copy of the kinematic model**, which it uses to compute the Jacobian `J(q)`. That is privileged structural knowledge a learned policy has to discover from data. It has no knowledge of dynamics, gravity or collisions, and it does not avoid obstacles or joint limits.
+
+### Gain tuning
+
+Tuned on targets from seeds 1000–1049, which are kept separate from the held-out evaluation set. Episodes were also run past success, ignoring termination, to measure how well each gain holds.
+
+| Gain k | Success (50) | Median steps to < 2 cm | Median steps to < 5 mm | Distance when success declared (median) | Error after 10 s |
+|---:|---:|---:|---:|---:|---:|
+| 0.10 | 50 | 30 | 40 | n/a | < 0.001 mm |
+| **0.20** | **50** | **24** | **27** | **2.6 mm** | **< 0.001 mm** |
+| 0.35 | 50 | 24 | 25 | 4.4 mm | < 0.001 mm |
+| 0.50 | 50 | 24 | 25 | 6.0 mm | < 0.001 mm |
+| 1.00 | 50 | 24 | 25 | 6.1 mm | < 0.001 mm |
+
+Far from the target every gain saturates the 0.3 rad/s speed limit, so time-to-2 cm is set by the speed limit, not by the gain. Gains of 0.35 and above reach 5 mm sooner but overshoot because of the ~2-step servo lag. 0.2 approaches cleanly with almost no time cost, so it is the default. No contacts or joint-limit hits occurred on any tuning episode.
+
+![IK vs random distance over time](figures/baseline_distance.png)
+
+*Solid lines: IK. Dashed lines: random policy on the same targets. IK is within 2 cm in 0.55–1.6 s and holds at under 0.001 mm. Random motion drifts. (`uv run python scripts/plot_baselines.py`)*
+
+### Implication for RL
+
+Free-space reaching is easy for a model-based controller: 50/50 successes in about 1.2 s with zero steady-state error. A learned reach policy is not expected to *beat* IK on this task. The useful comparison is how close a policy gets using only observations, measured by success rate, time to success, precision while holding, and smoothness. RL's advantages should become visible in later skills, where contact and grasp dynamics do not have a clean analytical controller.
+
 ## Throughput (`scripts/benchmark_env.py`)
 
 Random actions, 4 s windows, 8-core / 16-thread laptop under WSL2. These are single measurements, roughly ±10 %.

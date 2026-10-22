@@ -21,6 +21,11 @@ from polypanda.simulation.panda import ARM_JOINTS, PandaIndices, reset_to_home, 
 OBS_SCHEMA = "reach-v1-27d"
 OBS_LAYOUT = (("q", 7), ("dq", 7), ("q_cmd", 7), ("tcp", 3), ("target_error", 3))
 OBS_DIM = sum(n for _, n in OBS_LAYOUT)
+OBS_SLICES = {
+    name: slice(start, start + n)
+    for (name, n), start in zip(
+        OBS_LAYOUT, np.cumsum([0] + [n for _, n in OBS_LAYOUT[:-1]]), strict=True)
+}
 
 
 @dataclass(frozen=True)
