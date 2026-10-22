@@ -20,6 +20,7 @@ episode:
 success:
   tolerance: 0.02       # m
   dwell_steps: 5        # 0.25 s held within tolerance
+  terminate: true       # end the episode on success (evaluation sets false to measure holding)
 
 reward:
   progress: 20.0        # per metre of distance reduced

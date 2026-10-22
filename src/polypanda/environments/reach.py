@@ -46,6 +46,7 @@ class EpisodeConfig:
 class SuccessConfig:
     tolerance: float = 0.02  # m
     dwell_steps: int = 5     # consecutive policy steps within tolerance
+    terminate: bool = True   # False keeps the episode running to measure holding (evaluation)
 
 
 @dataclass(frozen=True)
@@ -143,7 +144,7 @@ class ReachEnv(gym.Env):
             "joint_limit": -cfg.reward.joint_limit * joints_at_limit,
         }
         self._distance = distance
-        terminated = success
+        terminated = success and cfg.success.terminate
         truncated = not terminated and self._steps >= cfg.episode.horizon
         info = {
             "distance": distance,
