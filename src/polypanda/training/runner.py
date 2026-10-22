@@ -82,6 +82,7 @@ def train(cfg: TrainConfig, env_config: ReachConfig, run_dir: Path) -> Path:
     eval_env = VecNormalize(_vec_env(env_config, 1, cfg.eval_seed, "dummy"),
                             norm_obs=cfg.normalize_obs, norm_reward=False, training=False)
     model = build_model(cfg, env, str(run_dir / "tb"))
+    git = _git_state()  # recorded before training, so later edits cannot mislabel the run
 
     per_env = lambda steps: max(1, steps // cfg.n_envs)  # noqa: E731  callbacks count env.step calls
     callbacks = CallbackList([
@@ -122,7 +123,7 @@ def train(cfg: TrainConfig, env_config: ReachConfig, run_dir: Path) -> Path:
         "wall_clock_s": round(wall, 1),
         "steps_per_s": round(model.num_timesteps / wall, 1),
         "package_lock_hash": _lock_hash(),
-        "git": _git_state(),
+        "git": git,
         "created_utc": datetime.now(UTC).isoformat(timespec="seconds"),
     }
     (run_dir / "metadata.yaml").write_text(yaml.safe_dump(metadata, sort_keys=False))

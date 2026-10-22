@@ -92,6 +92,11 @@ class ReachEnv(gym.Env):
         self._dwell = 0
         self._steps = 0
 
+    @property
+    def elapsed_steps(self) -> int:
+        """Policy steps taken since the last reset."""
+        return self._steps
+
     def reset(self, *, seed: int | None = None, options: dict | None = None):
         super().reset(seed=seed)
         options = options or {}
