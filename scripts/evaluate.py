@@ -3,7 +3,8 @@
 Usage:
   uv run python scripts/evaluate.py --policy ik
   uv run python scripts/evaluate.py --policy random
-  uv run python scripts/evaluate.py --policy ppo:path/to/model.zip --name reach_ppo_seed42
+  uv run python scripts/evaluate.py --policy run:runs/<run_dir>          # best model
+  uv run python scripts/evaluate.py --policy run:runs/<run_dir>@final
 
 Writes results/reach/<name>.json (summary + provenance) and <name>_episodes.csv.
 """
@@ -25,6 +26,7 @@ import torch
 from polypanda.control.classical_baseline import JacobianIKPolicy, RandomPolicy
 from polypanda.evaluation.reach import EpisodeResult, evaluate
 from polypanda.evaluation.sets import ReachEvalSet
+from polypanda.policies.loader import load_run
 
 
 def load_policy(spec: str):
@@ -33,12 +35,19 @@ def load_policy(spec: str):
     if spec == "ik":
         policy = JacobianIKPolicy()
         return policy, f"Jacobian DLS IK, gain {policy.gain}, damping {policy.damping}"
-    algo, _, path = spec.partition(":")
+    kind, _, path = spec.partition(":")
+    if kind == "run" and path:
+        run_dir, _, which = path.partition("@")
+        policy = load_run(run_dir, which or "best")
+        meta = policy.metadata
+        return policy, (f"{meta['algorithm']} {policy.which} model from {run_dir} "
+                        f"(seed {meta['seed']}, {meta['total_timesteps']:,} steps)")
     algos = {"ppo": stable_baselines3.PPO, "sac": stable_baselines3.SAC,
              "td3": stable_baselines3.TD3}
-    if algo not in algos or not path:
-        raise SystemExit(f"unknown policy spec {spec!r}; use random, ik or ppo|sac|td3:PATH")
-    return algos[algo].load(path, device="cpu"), f"{algo.upper()} checkpoint {path}"
+    if kind not in algos or not path:
+        raise SystemExit(f"unknown policy spec {spec!r}; use random, ik, run:DIR[@best|final] "
+                         "or ppo|sac|td3:PATH (no normalization)")
+    return algos[kind].load(path, device="cpu"), f"{kind.upper()} checkpoint {path}"
 
 
 def git_state() -> dict:
@@ -58,7 +67,12 @@ def main() -> None:
 
     eval_set = ReachEvalSet.load(args.set)
     policy, description = load_policy(args.policy)
-    name = args.name or f"{args.policy.split(':')[0]}_{eval_set.name}"
+    if args.name:
+        name = args.name
+    elif args.policy.startswith("run:"):
+        name = f"{policy.metadata['policy_id']}_{policy.which}_{eval_set.name}"
+    else:
+        name = f"{args.policy.split(':')[0]}_{eval_set.name}"
 
     summary, episodes = evaluate(policy, eval_set)
     record = {

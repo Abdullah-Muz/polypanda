@@ -19,6 +19,7 @@ import numpy as np
 from polypanda.simulation.panda import PandaIndices
 
 ACTION_DIM = 7
+ACTION_SCHEMA = "joint-increment-v1-7d"
 
 
 class JointDeltaActionAdapter:

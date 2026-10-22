@@ -1,0 +1,28 @@
+# PPO on ReachEnv. Keys map to polypanda.training.config.TrainConfig; unknown keys are rejected.
+# Starting hypotheses (common MuJoCo continuous-control defaults), to be tuned with evidence.
+
+algorithm: ppo
+env_config: configs/reach.yaml
+seed: 0
+n_envs: 8                 # SubprocVecEnv workers; see docs/reach_task.md throughput table
+vec_env: subproc
+total_timesteps: 1000000
+normalize_obs: true       # running mean/std, saved with every checkpoint
+normalize_reward: true
+eval_freq: 20000          # validation every 20k transitions
+eval_episodes: 50
+eval_seed: 100000         # validation targets: separate stream from training and the test set
+checkpoint_freq: 100000
+
+ppo:
+  learning_rate: 0.0003
+  n_steps: 512            # x 8 envs = 4096 transitions per update
+  batch_size: 256
+  n_epochs: 10
+  gamma: 0.99             # ~100-step (5 s) effective horizon; reaches take ~30 steps
+  gae_lambda: 0.95
+  clip_range: 0.2
+  ent_coef: 0.0
+  vf_coef: 0.5
+  max_grad_norm: 0.5
+  net_arch: [128, 128]    # separate policy and value MLPs
