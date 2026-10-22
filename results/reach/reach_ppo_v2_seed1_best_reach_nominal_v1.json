@@ -1,0 +1,129 @@
+{
+  "name": "reach_ppo_v2_seed1_best_reach_nominal_v1",
+  "policy": "PPO best model from runs/reach_ppo_v2_seed1 (seed 1, 200,704 steps)",
+  "eval_set": {
+    "name": "reach_nominal_v1",
+    "n": 200,
+    "digest": "5b4bf7e75eec"
+  },
+  "created_utc": "2026-10-22T04:35:08+00:00",
+  "git": {
+    "commit": "da4f5e092814b4fa930af6f7b7f79f2925f1931a",
+    "dirty": false
+  },
+  "versions": {
+    "python": "3.12.3",
+    "mujoco": "3.16.0",
+    "stable_baselines3": "2.9.0",
+    "torch": "2.14.1+cpu",
+    "numpy": "2.5.4"
+  },
+  "summary": {
+    "episodes": 200,
+    "success_rate": 1.0,
+    "success_ci95": [
+      0.9811539940816791,
+      1.0
+    ],
+    "time_to_success_s": {
+      "median": 1.6500000000000001,
+      "p90": 2.3000000000000003
+    },
+    "distance_at_success_mm": {
+      "median": 9.112087627514143
+    },
+    "final_distance_mm": {
+      "median": 1.74735778261737,
+      "p95": 3.6988064330216885,
+      "max": 6.970127821582954
+    },
+    "held_rate_given_success": 1.0,
+    "path_ratio_median": 1.068169256077623,
+    "action_jerk_median": 0.04423740319693538,
+    "contact_episode_rate": 0.0,
+    "limit_episode_rate": 0.0,
+    "return_to_success": {
+      "mean": 7.055794883228937,
+      "std": 2.093920655001427
+    },
+    "by_region": {
+      "far-high": {
+        "n": 71,
+        "success_rate": 1.0,
+        "success_ci95": [
+          0.9486702582520953,
+          1.0
+        ]
+      },
+      "far-low": {
+        "n": 26,
+        "success_rate": 1.0,
+        "success_ci95": [
+          0.8712669561953784,
+          1.0
+        ]
+      },
+      "near-high": {
+        "n": 68,
+        "success_rate": 1.0,
+        "success_ci95": [
+          0.9465268034119508,
+          1.0
+        ]
+      },
+      "near-low": {
+        "n": 35,
+        "success_rate": 1.0,
+        "success_ci95": [
+          0.9010957324106112,
+          1.0
+        ]
+      }
+    },
+    "failures": {},
+    "inference_latency_us": {
+      "median": 441.12699998777316,
+      "p99": 1814.5374699975064
+    },
+    "eval_config": {
+      "action": {
+        "max_delta": 0.015,
+        "n_substeps": 25,
+        "max_lead": null
+      },
+      "workspace": {
+        "low": [
+          0.25,
+          -0.45,
+          0.1
+        ],
+        "high": [
+          0.75,
+          0.45,
+          0.65
+        ],
+        "joint_margin": 0.1,
+        "max_tries": 10000
+      },
+      "episode": {
+        "horizon": 200,
+        "min_start_distance": 0.1,
+        "start_joint_noise": 0.0
+      },
+      "success": {
+        "tolerance": 0.02,
+        "dwell_steps": 5,
+        "terminate": false
+      },
+      "reward": {
+        "progress": 20.0,
+        "hold": 0.5,
+        "success_bonus": 0.0,
+        "action": 0.005,
+        "contact": 0.1,
+        "joint_limit": 0.01,
+        "non_finite": 10.0
+      }
+    }
+  }
+}
