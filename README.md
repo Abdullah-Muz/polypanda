@@ -2,7 +2,7 @@
 
 Hierarchical reinforcement learning for Franka Panda manipulation: modular PPO/SAC skills, MuJoCo environments, a rule-based task supervisor, and reproducible robotics-control benchmarks.
 
-> **Status: pre-implementation.** This repository was just created. Nothing below is implemented yet; the roadmap describes planned work and will be updated as each milestone is actually completed and tested.
+> **Status: early development.** Milestone 1 (reproducible simulator foundation) is complete. No RL policies have been trained yet. The roadmap is updated only when a milestone is actually completed and tested.
 
 ## Overview
 
@@ -38,7 +38,7 @@ uv run python -m mujoco.viewer --mjcf=external/mujoco_menagerie/franka_emika_pan
 
 | Milestone | Scope | Status |
 |---|---|---|
-| 1 | Reproducible environment, pinned Panda model, headless simulation, tests | In progress |
+| 1 | Reproducible environment, pinned Panda model, headless simulation, tests | Done ([details](docs/environment.md)) |
 | 2 | Custom reaching environment and classical IK baseline | Planned |
 | 3 | PPO and SAC reaching policies with benchmark | Planned |
 | 4 | Grasp and transport skills | Planned |
