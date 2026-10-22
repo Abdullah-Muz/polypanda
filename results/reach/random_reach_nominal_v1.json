@@ -1,0 +1,130 @@
+{
+  "name": "random_reach_nominal_v1",
+  "policy": "uniform random actions, seed 0",
+  "eval_set": {
+    "name": "reach_nominal_v1",
+    "n": 200,
+    "digest": "5b4bf7e75eec"
+  },
+  "created_utc": "2026-10-22T03:52:10+00:00",
+  "git": {
+    "commit": "774d38d9d46bb7c03d1d683f626b54cdf46d6adf",
+    "dirty": false
+  },
+  "versions": {
+    "python": "3.12.3",
+    "mujoco": "3.16.0",
+    "stable_baselines3": "2.9.0",
+    "torch": "2.14.1+cpu",
+    "numpy": "2.5.4"
+  },
+  "summary": {
+    "episodes": 200,
+    "success_rate": 0.0,
+    "success_ci95": [
+      0.0,
+      0.018846005918320894
+    ],
+    "time_to_success_s": {
+      "median": null,
+      "p90": null
+    },
+    "distance_at_success_mm": {
+      "median": null
+    },
+    "final_distance_mm": {
+      "median": 375.0208061833795,
+      "p95": 545.547347607209,
+      "max": 640.0731752953396
+    },
+    "held_rate_given_success": null,
+    "path_ratio_median": 2.5006703315499688,
+    "action_jerk_median": 4.667018185907872,
+    "contact_episode_rate": 0.0,
+    "limit_episode_rate": 0.0,
+    "return_to_success": {
+      "mean": -2.7517568601662186,
+      "std": 1.4832866554106252
+    },
+    "by_region": {
+      "far-high": {
+        "n": 71,
+        "success_rate": 0.0,
+        "success_ci95": [
+          0.0,
+          0.05132974174790491
+        ]
+      },
+      "far-low": {
+        "n": 26,
+        "success_rate": 0.0,
+        "success_ci95": [
+          0.0,
+          0.12873304380462175
+        ]
+      },
+      "near-high": {
+        "n": 68,
+        "success_rate": 0.0,
+        "success_ci95": [
+          0.0,
+          0.05347319658804926
+        ]
+      },
+      "near-low": {
+        "n": 35,
+        "success_rate": 0.0,
+        "success_ci95": [
+          0.0,
+          0.09890426758938868
+        ]
+      }
+    },
+    "failures": {
+      "timeout": 200
+    },
+    "inference_latency_us": {
+      "median": 10.05100011752802,
+      "p99": 47.95201993147203
+    },
+    "eval_config": {
+      "action": {
+        "max_delta": 0.015,
+        "n_substeps": 25,
+        "max_lead": null
+      },
+      "workspace": {
+        "low": [
+          0.25,
+          -0.45,
+          0.1
+        ],
+        "high": [
+          0.75,
+          0.45,
+          0.65
+        ],
+        "joint_margin": 0.1,
+        "max_tries": 10000
+      },
+      "episode": {
+        "horizon": 200,
+        "min_start_distance": 0.1,
+        "start_joint_noise": 0.0
+      },
+      "success": {
+        "tolerance": 0.02,
+        "dwell_steps": 5,
+        "terminate": false
+      },
+      "reward": {
+        "progress": 20.0,
+        "success_bonus": 5.0,
+        "action": 0.005,
+        "contact": 0.1,
+        "joint_limit": 0.01,
+        "non_finite": 10.0
+      }
+    }
+  }
+}

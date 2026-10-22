@@ -2,7 +2,7 @@
 
 Hierarchical reinforcement learning for Franka Panda manipulation: modular PPO/SAC skills, MuJoCo environments, a rule-based task supervisor, and reproducible robotics-control benchmarks.
 
-> **Status: early development.** Milestone 1 (reproducible simulator foundation) is complete. No RL policies have been trained yet. The roadmap is updated only when a milestone is actually completed and tested.
+> **Status: early development.** Milestones 1–2 are complete: a reproducible simulator, the reaching environment, and classical baselines evaluated on a held-out set. No RL policies have been trained yet. The roadmap is updated only when a milestone is actually completed and tested.
 
 ## Overview
 
@@ -34,12 +34,24 @@ Optional interactive viewer:
 uv run python -m mujoco.viewer --mjcf=external/mujoco_menagerie/franka_emika_panda/scene.xml
 ```
 
+## Current results
+
+Held-out reach evaluation (200 targets, [protocol](docs/evaluation_protocol.md)):
+
+| Policy | Success (95 % CI) | Time to success (median) | Final error (median) |
+|---|---|---|---|
+| Random | 0 % (0–1.9 %) | — | 375 mm |
+| Jacobian IK baseline | 100 % (98.1–100 %) | 1.65 s | < 0.001 mm |
+| PPO / SAC | not yet trained | | |
+
+Evaluate a baseline yourself: `uv run python scripts/evaluate.py --policy ik`
+
 ## Roadmap
 
 | Milestone | Scope | Status |
 |---|---|---|
 | 1 | Reproducible environment, pinned Panda model, headless simulation, tests | Done ([details](docs/environment.md)) |
-| 2 | Custom reaching environment and classical IK baseline | Planned |
+| 2 | Custom reaching environment and classical IK baseline | Done ([task](docs/reach_task.md), [results](docs/results.md)) |
 | 3 | PPO and SAC reaching policies with benchmark | Planned |
 | 4 | Grasp and transport skills | Planned |
 | 5 | Multi-policy FSM supervisor and full pick-and-place | Planned |
