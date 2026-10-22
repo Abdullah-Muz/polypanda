@@ -22,7 +22,7 @@ from polypanda.simulation.assets import (
     menagerie_revision,
     panda_scene_path,
 )
-from polypanda.simulation.panda import ARM_ACTUATORS, PandaIndices, reset_to_home
+from polypanda.simulation.panda import ARM_ACTUATORS, PandaIndices, reset_to_home, tcp_position
 
 failures: list[str] = []
 
@@ -71,6 +71,7 @@ def main() -> int:
     home_q = data.qpos[idx.arm_qpos].copy()
     home_ctrl = data.ctrl[idx.arm_actuators].copy()
     print(f"  arm qpos: {np.round(home_q, 4)}")
+    print(f"  TCP world position: {np.round(tcp_position(data, idx), 4)} m")
     check(np.allclose(home_q, home_ctrl), "home arm targets equal home joint positions")
     lo, hi = model.actuator_ctrlrange[idx.arm_actuators].T
     check(bool(np.all((home_ctrl >= lo) & (home_ctrl <= hi))), "home targets within ctrlrange")

@@ -24,6 +24,15 @@ Franka Emika Panda from [MuJoCo Menagerie](https://github.com/google-deepmind/mu
 - `nq` = 9, `nv` = 9 (7 arm joints + 2 finger joints), `nu` = 8 (7 arm actuators + 1 gripper)
 - `home` keyframe: arm `q = [0, 0, 0, -1.5708, 0, 1.5708, -0.7853]` rad; its arm control targets equal its joint positions
 
+### Tool centre point (TCP)
+
+Menagerie's Panda has no end-effector site. PolyPanda adds one named `tcp` to the `hand` body when the model is loaded (`add_tcp_site`, via `mujoco.MjSpec`), so the pinned Menagerie files stay unmodified.
+
+- Location: 0.1029 m along the hand's z axis, the midpoint between the two main fingertip pads (finger body offset 0.0584 m plus pad centre 0.0445 m). Franka documents 0.1034 m from flange to TCP.
+- At `home`, the TCP is at (0.5545, 0.0, 0.5216) m in the world frame, with the gripper pointing straight down.
+- Tests check that it stays midway between the pads at any finger opening and that it moves correctly under joint rotation.
+- `uv run python scripts/view_panda.py` opens the viewer with the TCP drawn as a red sphere.
+
 ### Arm actuators
 
 Each arm actuator is a position servo: `tau = kp * (q_cmd - q) - kd * qdot`, clamped to the force range.

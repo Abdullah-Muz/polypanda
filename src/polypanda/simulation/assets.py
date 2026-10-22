@@ -6,6 +6,8 @@ from pathlib import Path
 
 import mujoco
 
+from polypanda.simulation.panda import add_tcp_site
+
 MENAGERIE_COMMIT = "cda5236f98383f6fbaa4820c6b18dba892cd087f"
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -37,5 +39,8 @@ def menagerie_revision() -> str | None:
 
 
 def load_panda_scene() -> tuple[mujoco.MjModel, mujoco.MjData]:
-    model = mujoco.MjModel.from_xml_path(str(panda_scene_path()))
+    """Menagerie Panda scene plus PolyPanda's additions (currently the TCP site)."""
+    spec = mujoco.MjSpec.from_file(str(panda_scene_path()))
+    add_tcp_site(spec)
+    model = spec.compile()
     return model, mujoco.MjData(model)
