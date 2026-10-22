@@ -46,13 +46,16 @@ class EpisodeConfig:
 class SuccessConfig:
     tolerance: float = 0.02  # m
     dwell_steps: int = 5     # consecutive policy steps within tolerance
-    terminate: bool = True   # False keeps the episode running to measure holding (evaluation)
+    # Reach v1 terminated here; the policy then never saw post-success states and learned to
+    # pass through targets without holding them. v2 runs the full horizon.
+    terminate: bool = False
 
 
 @dataclass(frozen=True)
 class RewardConfig:
     progress: float = 20.0      # per metre of distance reduced
-    success_bonus: float = 5.0
+    hold: float = 0.5           # per step, scaled 1 -> 0 from target centre to tolerance edge
+    success_bonus: float = 0.0  # paid at most once per episode (v1 used 5.0 with termination)
     action: float = 0.005       # times ||a||^2
     contact: float = 0.1        # per step with any contact
     joint_limit: float = 0.01   # per joint target on a ctrlrange bound
@@ -91,6 +94,7 @@ class ReachEnv(gym.Env):
         self._distance = 0.0
         self._dwell = 0
         self._steps = 0
+        self._bonus_paid = False
 
     @property
     def elapsed_steps(self) -> int:
@@ -121,6 +125,7 @@ class ReachEnv(gym.Env):
         self._distance = float(np.linalg.norm(self.target - tcp))
         self._dwell = 0
         self._steps = 0
+        self._bonus_paid = False
         return self._observation(), {"distance": self._distance, "target": self.target.copy()}
 
     def step(self, action):
@@ -141,9 +146,12 @@ class ReachEnv(gym.Env):
         contact = self.data.ncon > 0
         joints_at_limit = int(self.adapter.at_limit.sum())
 
+        first_success = success and not self._bonus_paid
+        self._bonus_paid |= success
         terms = {
             "progress": cfg.reward.progress * (self._distance - distance),
-            "success": cfg.reward.success_bonus if success else 0.0,
+            "hold": cfg.reward.hold * max(0.0, 1.0 - distance / cfg.success.tolerance),
+            "success": cfg.reward.success_bonus if first_success else 0.0,
             "action": -cfg.reward.action * float(a @ a),
             "contact": -cfg.reward.contact if contact else 0.0,
             "joint_limit": -cfg.reward.joint_limit * joints_at_limit,

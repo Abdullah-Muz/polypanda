@@ -1,0 +1,33 @@
+# Reach task v1 (superseded). Kept to reproduce the PPO pilot in docs/results.md: episodes ended
+# on success, so the policy never experienced post-success states and learned to pass through
+# targets (100 % success, ~14 % held). Use configs/reach.yaml (v2) for new work.
+
+action:
+  max_delta: 0.015
+  n_substeps: 25
+  max_lead: null
+
+workspace:
+  low: [0.25, -0.45, 0.10]
+  high: [0.75, 0.45, 0.65]
+  joint_margin: 0.1
+  max_tries: 10000
+
+episode:
+  horizon: 200
+  min_start_distance: 0.10
+  start_joint_noise: 0.0
+
+success:
+  tolerance: 0.02
+  dwell_steps: 5
+  terminate: true
+
+reward:
+  progress: 20.0
+  hold: 0.0
+  success_bonus: 5.0
+  action: 0.005
+  contact: 0.1
+  joint_limit: 0.01
+  non_finite: 10.0

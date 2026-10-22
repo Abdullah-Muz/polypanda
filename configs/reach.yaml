@@ -1,5 +1,7 @@
-# ReachEnv configuration. Every key maps to a field of polypanda.environments.reach.ReachConfig;
-# unknown keys are rejected. Values are starting hypotheses, to be tuned with measurements.
+# ReachEnv configuration, task version v2. Every key maps to a field of
+# polypanda.environments.reach.ReachConfig (whose defaults match this file; tested); unknown keys
+# are rejected. v1 (configs/reach_v1.yaml) ended episodes on success, and the PPO pilot learned
+# to pass through targets without holding them; see docs/reach_task.md.
 
 action:
   max_delta: 0.015      # rad per policy step per joint (0.3 rad/s at 20 Hz)
@@ -20,11 +22,12 @@ episode:
 success:
   tolerance: 0.02       # m
   dwell_steps: 5        # 0.25 s held within tolerance
-  terminate: true       # end the episode on success (evaluation sets false to measure holding)
+  terminate: false      # v2: always run the full horizon so holding is learned
 
 reward:
   progress: 20.0        # per metre of distance reduced
-  success_bonus: 5.0
+  hold: 0.5             # per step within tolerance, scaled 1 -> 0 from centre to edge
+  success_bonus: 0.0    # at most once per episode; v1 used 5.0
   action: 0.005         # x ||a||^2
   contact: 0.1
   joint_limit: 0.01

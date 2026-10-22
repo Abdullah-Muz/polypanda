@@ -73,8 +73,12 @@ def test_target_option_overrides_sampling():
         env.reset(options={"target": [0.4, 0.2]})
 
 
-def test_success_requires_dwell():
-    env = _env()
+def test_defaults_match_yaml():
+    assert ReachConfig() == ReachConfig.from_yaml(CONFIG_PATH)
+
+
+def test_v1_success_terminates_after_dwell():
+    env = ReachEnv(ReachConfig.from_yaml(CONFIG_PATH.with_name("reach_v1.yaml")))
     env.reset(seed=0, options={"target": _home_tcp()})  # already within tolerance
     dwell = env.config.success.dwell_steps
     for step in range(1, dwell + 1):
@@ -82,7 +86,33 @@ def test_success_requires_dwell():
         assert info["distance"] < env.config.success.tolerance
         assert terminated == (step == dwell) and info["is_success"] == (step == dwell)
         assert not truncated
-    assert info["reward_terms"]["success"] == env.config.reward.success_bonus
+    assert info["reward_terms"]["success"] == env.config.reward.success_bonus == 5.0
+
+
+def test_v2_success_does_not_terminate_and_bonus_is_paid_once():
+    cfg = ReachConfig()
+    env = ReachEnv(replace(cfg, reward=replace(cfg.reward, success_bonus=1.0)))
+    env.reset(seed=0, options={"target": _home_tcp()})
+    dwell = env.config.success.dwell_steps
+    bonuses = []
+    for _ in range(30):
+        _, _, terminated, _, info = env.step(ZERO)
+        assert not terminated
+        bonuses.append(info["reward_terms"]["success"])
+    assert info["is_success"]
+    assert bonuses[dwell - 1] == 1.0 and sum(bonuses) == 1.0
+
+
+def test_hold_reward_scales_with_distance_inside_tolerance():
+    env = _env()
+    env.reset(seed=0, options={"target": _home_tcp()})
+    _, _, _, _, info = env.step(ZERO)  # TCP sags a few mm: inside the 2 cm tolerance
+    tol, weight = env.config.success.tolerance, env.config.reward.hold
+    assert 0 < info["distance"] < tol
+    assert info["reward_terms"]["hold"] == pytest.approx(weight * (1 - info["distance"] / tol))
+    env.reset(seed=0, options={"target": np.array([0.3, 0.4, 0.15])})
+    _, _, _, _, info = env.step(ZERO)
+    assert info["reward_terms"]["hold"] == 0.0
 
 
 def test_timeout_truncates_not_terminates():
