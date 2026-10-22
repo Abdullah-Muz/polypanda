@@ -1,0 +1,49 @@
+[project]
+name = "polypanda"
+version = "0.1.0"
+description = "Hierarchical reinforcement learning for Franka Panda manipulation in MuJoCo."
+readme = "README.md"
+license = "MIT"
+authors = [{ name = "Abdullah Muzher" }]
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "mujoco",
+    "gymnasium",
+    "stable-baselines3[extra]",
+    "torch",
+    "numpy",
+    "scipy",
+    "pandas",
+    "matplotlib",
+    "tensorboard",
+]
+
+[dependency-groups]
+dev = ["pytest", "ruff"]
+notebooks = ["jupyterlab"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/polypanda"]
+
+# CPU-only PyTorch: this project targets machines without CUDA.
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "NPY"]

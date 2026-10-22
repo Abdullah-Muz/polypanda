@@ -9,6 +9,9 @@ dist/
 .ruff_cache/
 .ipynb_checkpoints/
 
+# Third-party assets, fetched at a pinned commit by scripts/fetch_assets.sh
+external/
+
 # Training outputs (checkpoints, logs, recordings are kept out of git history)
 runs/
 logs/
