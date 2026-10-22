@@ -20,6 +20,11 @@ tensorboard/
 *.zip
 *.mp4
 
+# MuJoCo viewer dumps (Print model / Print data / Screenshot buttons)
+MJMODEL.TXT
+MJDATA.TXT
+screenshot.ppm
+
 # Editors / OS
 .vscode/
 .idea/
