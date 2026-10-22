@@ -2,6 +2,59 @@
 
 The reach skill moves the TCP (see [environment.md](environment.md#tool-centre-point-tcp)) to a 3-D target position. Orientation is not constrained in v1.
 
+Environment: `polypanda.environments.reach.ReachEnv`, registered as `PolyPanda/Reach-v0`. Configuration is in `configs/reach.yaml`; unknown keys are rejected.
+
+## Interface
+
+**Action:** `Box(-1, 1, (7,), float32)`, sent through the joint-increment adapter ([control_design.md](control_design.md)) at 20 Hz.
+
+**Observation:** schema `reach-v1-27d`, `float32`, world frame (the robot base is at the world origin):
+
+| Slice | Content | Size |
+|---|---|---:|
+| 0–6 | joint positions `q` (rad) | 7 |
+| 7–13 | joint velocities `dq` (rad/s) | 7 |
+| 14–20 | commanded joint targets `q_cmd` (rad) | 7 |
+| 21–23 | TCP position (m) | 3 |
+| 24–26 | `target − TCP` (m) | 3 |
+
+**Reset:** the arm starts at `home`, optionally with uniform joint noise (`start_joint_noise`). Targets are drawn by the sampler below, at least 0.10 m from the start TCP. `reset(options={"target": xyz})` injects a fixed target, which the evaluation set uses.
+
+## Reward
+
+Every term is returned separately in `info["reward_terms"]`.
+
+| Term | Value | Purpose | Exploit risk |
+|---|---|---|---|
+| progress | `20 · (d_prev − d)` | Dense guidance | Telescopes to `20 · (d_start − d_end)`, so oscillating earns nothing |
+| success | `+5` once | Reward finishing | Only paid for a physical success held through the dwell |
+| action | `−0.005 · ‖a‖²` | Smooth, economical motion | If too large, standing still becomes optimal |
+| contact | `−0.1` per step in contact | Avoid self and floor collisions | None obvious |
+| joint_limit | `−0.01` per joint target at a bound | Avoid jamming into the stops | None obvious |
+| non_finite | `−10`, then terminate | Numerical blow-up guard | Should never trigger |
+
+Scale check: an efficient reach of 0.36 m earns about `+7 + 5 − 1.4 ≈ +11`. Standing still earns about 0, and a random policy about −2.7 (measured below). Success clearly dominates the do-nothing optimum.
+
+## Termination
+
+- **Success** (`terminated`): TCP within 0.02 m of the target for 5 consecutive policy steps (0.25 s). `info["is_success"]` is set, which SB3 uses for success-rate logging.
+- **Time limit** (`truncated`): 200 policy steps (10 s). This is reported as truncation, not termination, so value targets bootstrap through timeouts instead of treating them as terminal states.
+- **Non-finite state** (`terminated`): with `info["failure"] = "non_finite"`.
+
+## Random-policy sanity baseline
+
+30 episodes, seeds 0–29, uniform random actions:
+
+| Metric | Value |
+|---|---|
+| Success | 0 / 30 |
+| Return | −2.70 ± 1.50 |
+| Mean distance, start → end | 0.378 m → 0.397 m |
+| Mean reward terms per episode | progress −0.37, action −2.32, contact 0, joint_limit 0 |
+| Single-process throughput | about 1,860 env steps/s (≈46,000 physics steps/s) |
+
+SB3's `check_env` passes with no warnings.
+
 ## Targets (`polypanda.environments.targets`)
 
 Targets are **reachable by construction**:

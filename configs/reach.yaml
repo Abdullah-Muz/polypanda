@@ -1,0 +1,30 @@
+# ReachEnv configuration. Every key maps to a field of polypanda.environments.reach.ReachConfig;
+# unknown keys are rejected. Values are starting hypotheses, to be tuned with measurements.
+
+action:
+  max_delta: 0.015      # rad per policy step per joint (0.3 rad/s at 20 Hz)
+  n_substeps: 25        # physics steps per action: 25 x 0.002 s = 0.05 s
+  max_lead: null        # anti-windup bound on |q_cmd - q|; off for free-space reaching
+
+workspace:              # target box in the world frame (m)
+  low: [0.25, -0.45, 0.10]
+  high: [0.75, 0.45, 0.65]
+  joint_margin: 0.1     # rad kept clear of joint limits when sampling witnesses
+  max_tries: 10000
+
+episode:
+  horizon: 200          # policy steps (10 s), then truncated
+  min_start_distance: 0.10
+  start_joint_noise: 0.0
+
+success:
+  tolerance: 0.02       # m
+  dwell_steps: 5        # 0.25 s held within tolerance
+
+reward:
+  progress: 20.0        # per metre of distance reduced
+  success_bonus: 5.0
+  action: 0.005         # x ||a||^2
+  contact: 0.1
+  joint_limit: 0.01
+  non_finite: 10.0
