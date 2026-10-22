@@ -55,6 +55,30 @@ Scale check: an efficient reach of 0.36 m earns about `+7 + 5 − 1.4 ≈ +11`. 
 
 SB3's `check_env` passes with no warnings.
 
+## Validation (`tests/test_reach_validation.py`)
+
+- **Random rollouts** (3 seeds, full horizon): observations finite, `float32` and inside the space; joint targets inside the ctrlrange; measured joints within 0.01 rad of their limits; no bad-acceleration warnings.
+- **Deliberate abuse** (constant action `[0, 1, 0, -1, 0, -1, 0]`): the arm hits the floor and itself, and the contact and joint-limit penalties fire. Joint 4 reaches its lower limit at exactly step 101, as predicted by ⌈(3.0718 − 1.5708) / 0.015⌉. Penetration stays under 1 cm and the physics stays finite.
+- Other edge cases covered: invalid actions are rejected; resetting mid-episode restarts the step and dwell counters; unseeded resets continue the seeded random stream deterministically; 200 consecutive resets all produce valid targets.
+
+Across six bang-bang action patterns probed during development: maximum penetration was 4.7 mm and maximum joint-limit overshoot 3.9 mrad (MuJoCo uses soft constraints), with no instability. Contacts observed included hand and fingers against the floor, and hand–link1, link0–link7 and link1–link5 self-collisions.
+
+## Throughput (`scripts/benchmark_env.py`)
+
+Random actions, 4 s windows, 8-core / 16-thread laptop under WSL2. These are single measurements, roughly ±10 %.
+
+| Configuration | Env steps/s |
+|---|---:|
+| Raw `ReachEnv` | ~1,800 |
+| `DummyVecEnv` × 1–16 | ~1,450–1,690 (sequential, no gain) |
+| `SubprocVecEnv` × 2 | 1,456 (slower than one env: IPC cost ≈ step cost) |
+| `SubprocVecEnv` × 4 | 2,317 |
+| `SubprocVecEnv` × 8 | 3,737 |
+| `SubprocVecEnv` × 12 | 4,400 (peak) |
+| `SubprocVecEnv` × 16 | 3,562 (oversubscribed) |
+
+One env step (25 physics substeps) takes about 0.55 ms, so inter-process communication is a large fraction of the cost and scaling stays sub-linear. Starting choice: 8 `SubprocVecEnv` workers for PPO, which leaves cores for the policy update, and 1–4 envs for SAC, which is limited by gradient updates. Milestone 3 confirms this with end-to-end training wall-clock.
+
 ## Targets (`polypanda.environments.targets`)
 
 Targets are **reachable by construction**:
