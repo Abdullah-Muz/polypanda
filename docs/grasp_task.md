@@ -1,6 +1,6 @@
 # Grasp task (Milestone 4, in progress)
 
-Steps so far: 4.1 scene, 4.2 pose IK, 4.3 grasp predicate, 4.4 scripted baseline, 4.5 grasp environment for RL. Next: PPO training on `GraspEnv`.
+Steps so far: 4.1 scene, 4.2 pose IK, 4.3 grasp predicate, 4.4 scripted baseline, 4.5 grasp environment for RL, 4.6 PPO grasp training with a curriculum (80.5 % held-out success over 3 seeds). Next: transport.
 
 ## Scene (`polypanda.simulation.scenes`)
 
@@ -174,3 +174,49 @@ The policy had learned the hard spatial part: centring within 1 cm and aligning 
 - **Evaluation is unchanged.** Resets with an explicit placement never use the curriculum, and training validation uses `GraspConfig.for_evaluation()` (curriculum off), so the "best model" is chosen on the real task.
 - PPO entropy bonus `ent_coef: 0.005` (pilot: 0.0) keeps exploration from collapsing.
 - Observed physics in pre-grasped starts: on the table, the coupled fingers sometimes squeeze one-sidedly (about 2 N on one finger). Gravity sag offsets the hand by millimetres while floor friction pins the cube. Lifting turns it into a two-finger grip, as in the 4.3 physics check.
+
+### Result: 3 seeds with the curriculum
+
+Runs `grasp_ppo_curr_seed{0,1,2}`: 1M steps each, trained at commit `1d00632` (clean). Seed 0 ran alone in 37 min; seeds 1 and 2 ran in parallel at about 58 min each. Held-out evaluation uses the GraspEnv protocol on `grasp_nominal_v1` (200 placements, every episode from home), best checkpoints, evaluated at `1d00632`.
+
+![PPO grasp validation curves](figures/grasp_ppo_learning.png)
+
+*Validation success from home (30 placements per point). The pilot without the curriculum never succeeds. With pre-grasped training starts, the three seeds take off between 200k and 450k steps.*
+
+| Seed | Held-out success (95 % CI) | Failures |
+|---|---|---|
+| 0 | 86.5 % (81.1–90.6 %) | never closed 26, knocked over 1 |
+| 1 | 79.0 % (72.8–84.1 %) | never closed 34, knocked over 7, dropped 1 |
+| 2 | 76.0 % (69.6–81.4 %) | never closed 37, knocked over 7, not lifted 2, dropped 2 |
+| **Pooled** | **483 / 600 = 80.5 % (77.1–83.5 %)**; per seed 80.5 ± 5.4 % | never closed 97, knocked over 15, dropped 3, not lifted 2 |
+
+**Comparison with the scripted baseline (same protocol):**
+
+| | PPO + curriculum (3 seeds) | Scripted baseline |
+|---|---|---|
+| Success | 80.5 % | **100 %** |
+| Time to first success (median) | **4.31 ± 0.12 s** | 6.98 s |
+| Share of the episode in the success state (median) | **69.7 %** | 52.8 % |
+| Cube tilt in grip (median) | 12.4 ± 2.4° | 11.3° |
+| Episodes with floor contact | 8.2 ± 4.8 % | **0 %** |
+| Mean return | 89.7 ± 3.5 | 89.2 |
+
+When PPO succeeds it is about 2.7 s faster than the deliberately unhurried scripted baseline. It is less reliable and scrapes the floor in some episodes. Once a cube is lifted it almost never drops it (3 drops in 600 episodes). Nearly all failures happen before the grasp.
+
+**Where it fails** (pooled 600 episodes):
+
+| Condition | Success | Never closed |
+|---|---|---|
+| Wrist must turn 0–11° to align | 88.7 % | 9.3 % |
+| 11–29° | 82.7 % | 13.6 % |
+| 29–40° | 81.5 % | 14.1 % |
+| **40–45°** | **54.2 %** | **43.1 %** |
+| Cube on the robot's left (y > 0.08 m) | 72.6 % | 24.5 % |
+| Centre (abs(y) ≤ 0.08 m) | 87.6 % | 9.0 % |
+| Right (y < −0.08 m) | 83.9 % | 12.4 % |
+
+- **Symmetric ambiguity at 45°.** A square cube offers two equally good grasp yaws when it sits about 45° from the wrist's starting angle, one turning each way. The observation encodes alignment as sin/cos of 4× the error, which is continuous but gives no tie-breaker, and the policies often fail to commit. A classical controller breaks the tie by rule. Possible fixes: an explicit tie-break in the observation or target definition, or more training on such placements.
+- **No placement is failed by all three seeds.** 102 of 200 are solved by every seed and 79 are failed by exactly one, so failures are learning gaps, not infeasible placements. The scripted baseline grasps all 200.
+- **Validation was optimistic.** Seed 1 peaked at 93 % on a 30-episode validation but scored 79 % on the 200-episode held-out set. Choosing the best checkpoint on a small, noisy validation sample inflates its validation score, which is why results are reported only on the held-out set.
+
+**Conclusion:** plain PPO with dense shaping could not discover lifting (0 %). Adding training-only pre-grasped starts produced a policy that learns the complete skill from home in about 0.5M steps and reaches 80.5 % on held-out placements. It is faster than the scripted baseline when it succeeds, but not yet as reliable, and its main weakness (the 45° tie) is identified.

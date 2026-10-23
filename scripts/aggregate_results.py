@@ -1,9 +1,11 @@
 """Aggregate held-out evaluation results across seeds.
 
 Usage: uv run python scripts/aggregate_results.py results/reach/reach_ppo_v2_seed*_best_*.json
+       uv run python scripts/aggregate_results.py results/grasp/grasp_ppo_curr_seed*_best_*.json
 
 Prints one row per run, then mean ± sample std across runs, and the success rate pooled over
-all episodes with a 95 % Wilson interval.
+all episodes with a 95 % Wilson interval. Reach and grasp (GraspEnv protocol) results are
+recognised from their summary fields.
 """
 
 import argparse
@@ -26,6 +28,16 @@ METRICS = [
     ("contact %", lambda s: 100 * s["contact_episode_rate"]),
 ]
 
+GRASP_METRICS = [
+    ("success %", lambda s: 100 * s["success_rate"]),
+    ("t_succ med s", lambda s: s["first_success_s"]["median"]),
+    ("t_succ p90 s", lambda s: s["first_success_s"]["p90"]),
+    ("in-success %", lambda s: 100 * s["success_fraction_median"]),
+    ("tilt med deg", lambda s: s["max_cube_tilt_deg"]["median"]),
+    ("floor ep %", lambda s: 100 * s["floor_contact_episode_rate"]),
+    ("return", lambda s: s["return"]["mean"]),
+]
+
 
 def main() -> None:
     parser = argparse.ArgumentParser()
@@ -37,17 +49,22 @@ def main() -> None:
     if len(digests) != 1:
         raise SystemExit(f"results come from different evaluation sets: {digests}")
 
-    header = f"{'run':44s}" + "".join(f"{name:>14s}" for name, _ in METRICS)
+    grasp = ["success_fraction_median" in r["summary"] for r in records]
+    if len(set(grasp)) != 1:
+        raise SystemExit("cannot mix reach and grasp results")
+    metrics = GRASP_METRICS if grasp[0] else METRICS
+
+    header = f"{'run':44s}" + "".join(f"{name:>14s}" for name, _ in metrics)
     print(header)
     table = []
     for r in records:
-        values = [fn(r["summary"]) for _, fn in METRICS]
+        values = [fn(r["summary"]) for _, fn in metrics]
         table.append(values)
         dirty = " (dirty)" if r["git"]["dirty"] else ""
         print(f"{r['name'][:44]:44s}" + "".join(f"{v:14.3f}" for v in values) + dirty)
     arr = np.array(table, dtype=float)
     mean = arr.mean(axis=0)
-    std = arr.std(axis=0, ddof=1) if len(arr) > 1 else np.zeros(len(METRICS))
+    std = arr.std(axis=0, ddof=1) if len(arr) > 1 else np.zeros(len(metrics))
     print(f"{'mean ± std over ' + str(len(arr)) + ' runs':44s}"
           + "".join(f"{m:8.3f}±{s:<5.3f}" for m, s in zip(mean, std, strict=True)))
 

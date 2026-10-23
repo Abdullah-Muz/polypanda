@@ -80,4 +80,18 @@ Held-out placement set `grasp_nominal_v1` (200 cube placements, digest `ad1eeb22
 |---|---|---|---|---|---|
 | Scripted top-down grasp (PoseIK, privileged cube pose) | **100 %** (98.1–100 %) | 6.95 / 8.50 s | 0.00 mm | 4.7° / 14.8° | 0 % |
 
-The learned grasp policy will be evaluated on the same set.
+## Grasp: learned (PPO) vs scripted
+
+Comparison protocol: every policy acts through `GraspEnv` for the full 15 s from home, with the env's gate closing the fingers. Success means a verified grasp with the cube ≥ 5 cm up at the final step. Same 200 placements. Curriculum PPO runs were trained and evaluated at `1d00632`; the pilot and the scripted row at `12f57b8` (all clean). Full analysis: [grasp_task.md](grasp_task.md#learning-to-grasp-ppo).
+
+| Policy | Success (95 % CI) | Time to first success, median | Share of episode in success state | Floor-contact episodes | Return |
+|---|---|---|---|---|---|
+| Scripted baseline | **100 %** (98.1–100 %) | 6.98 s | 52.8 % | **0 %** | 89.2 |
+| PPO, no curriculum (pilot, 1 seed) | 0 % (0–1.9 %) | — | 0 % | 0 % | 8.7 |
+| **PPO + pre-grasped training starts** (3 seeds, pooled 600) | 80.5 % (77.1–83.5 %); 80.5 ± 5.4 per seed | **4.31 ± 0.12 s** | **69.7 %** | 8.2 ± 4.8 % | 89.7 ± 3.5 |
+
+![PPO grasp validation curves](figures/grasp_ppo_learning.png)
+
+- **Exploration is the bottleneck.** Plain PPO learned to centre and align so the gate closed (84 % of episodes) but never learned to lift. Its action noise collapsed before it experienced a single hold. Starting 30 % of training episodes with the cube already in the hand let it learn lifting, and it then chained the two halves from home. Evaluation never uses these starts.
+- **The learned policy is faster but less reliable.** It is about 2.7 s quicker to a verified grasp than the deliberately slow scripted baseline, but succeeds 80.5 % vs 100 %, and touches the floor in about 8 % of episodes.
+- **Main weakness:** cubes about 45° off the wrist's start angle (two equally good grasp yaws) succeed only 54 %. No placement is failed by all three seeds.

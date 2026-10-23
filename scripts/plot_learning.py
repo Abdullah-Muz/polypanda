@@ -24,6 +24,10 @@ def main() -> None:
     parser.add_argument("--labels", nargs="+")
     parser.add_argument("--out", type=Path, default=Path("docs/figures/ppo_reach_learning.png"))
     parser.add_argument("--title", default="PPO on reach v2")
+    parser.add_argument("--subtitle",
+                        default="50 targets per point; success = reached and still held at 10 s")
+    parser.add_argument("--reference", type=int, nargs="*", default=[],
+                        help="indices of runs drawn as grey dashed reference lines")
     args = parser.parse_args()
     labels = args.labels or [r.name for r in args.runs]
     if len(labels) != len(args.runs):
@@ -32,22 +36,25 @@ def main() -> None:
     palettes = {"PPO": plt.cm.Blues, "SAC": plt.cm.Oranges, "TD3": plt.cm.Greens}
     counts: dict[str, int] = {}
     fig, ax = plt.subplots(figsize=(8, 4.5))
-    for run, label in zip(args.runs, labels, strict=True):
+    for i, (run, label) in enumerate(zip(args.runs, labels, strict=True)):
         ev = np.load(run / "eval" / "evaluations.npz")
         meta = yaml.safe_load((run / "metadata.yaml").read_text())
-        algo = meta["algorithm"]
-        shade = 0.85 - 0.2 * counts.get(algo, 0)  # successive seeds of an algorithm get lighter
-        counts[algo] = counts.get(algo, 0) + 1
-        ax.plot(ev["timesteps"], ev["successes"].mean(axis=1) * 100, marker="o", ms=4,
-                color=palettes.get(algo, plt.cm.Greys)(shade),
-                label=f"{label} ({meta['wall_clock_s'] / 60:.1f} min)")
+        style = {"marker": "o", "ms": 4, "label": f"{label} ({meta['wall_clock_s'] / 60:.1f} min)"}
+        if i in args.reference:
+            style.update(color="0.5", linestyle="--")
+        else:
+            algo = meta["algorithm"]
+            shade = 0.85 - 0.2 * counts.get(algo, 0)  # successive seeds get lighter
+            counts[algo] = counts.get(algo, 0) + 1
+            style["color"] = palettes.get(algo, plt.cm.Greys)(shade)
+        ax.plot(ev["timesteps"], ev["successes"].mean(axis=1) * 100, **style)
     ax.set_xlabel("environment steps")
     ax.set_ylabel("validation success (%)")
     ax.set_ylim(-3, 103)
     ax.grid(alpha=0.3)
     ax.legend(fontsize=8, loc="lower right")
-    ax.set_title(f"{args.title}: validation success during training\n"
-                 "(50 targets per point; success = reached and still held at 10 s)", fontsize=10)
+    ax.set_title(f"{args.title}: validation success during training\n({args.subtitle})",
+                 fontsize=10)
     fig.tight_layout()
     args.out.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(args.out, dpi=110)
