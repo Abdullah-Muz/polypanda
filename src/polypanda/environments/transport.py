@@ -182,7 +182,9 @@ class TransportEnv(gym.Env):
         lift = cube[2] - self.cube.half_size[2]
         dropped = (self._no_contact >= cfg.episode.drop_steps or lift < 0.01
                    or tilt > cfg.episode.max_cube_tilt)
-        at_goal = distance < cfg.success.tolerance and state.grasped
+        # A cube that has fallen over in the fingers is not delivered, even if the grasp
+        # predicate still holds (found in the baseline evaluation: 80.1 deg tilt at the goal).
+        at_goal = distance < cfg.success.tolerance and state.grasped and not dropped
         self._dwell = self._dwell + 1 if at_goal else 0
         success = self._dwell >= cfg.success.dwell_steps
         R = self.data.site_xmat[self.arm.tcp_site].reshape(3, 3)

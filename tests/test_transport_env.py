@@ -171,6 +171,18 @@ def test_opening_the_gripper_is_a_drop(env):
     assert env.elapsed_steps <= 15
 
 
+def test_success_never_coexists_with_a_drop():
+    """Regression: a tipped cube at the goal was once counted as delivered and dropped."""
+    from dataclasses import replace
+    cfg = TransportConfig()
+    env = TransportEnv(replace(cfg, episode=replace(cfg.episode, max_cube_tilt=0.0)))
+    ev = HandoffPool.load(EVAL)
+    env.reset(options={"state": ev.states[0], "goal": ev.goals[0]})
+    infos = carry(env)
+    assert infos[-1][1]["failure"] == "dropped"  # any tilt now counts as fallen over
+    assert not any(info["is_success"] or info["reward_terms"]["hold"] for _, info in infos)
+
+
 def test_gym_make():
     e = gym.make("PolyPanda/Transport-v0")
     assert e.reset(seed=0)[0].shape == (47,)
