@@ -7,9 +7,9 @@
     "n": 200,
     "digest": "b3735acee710"
   },
-  "created_utc": "2026-10-23T20:36:35+00:00",
+  "created_utc": "2026-10-23T21:48:27+00:00",
   "git": {
-    "commit": "7ec2e71fa2474715809a0b9dc4283afbc12ad076",
+    "commit": "df0868385eefe5b9bedee2d390daf73fe151dfcf",
     "dirty": false
   },
   "versions": {
@@ -25,6 +25,7 @@
       0.9501598448237337
     ],
     "drop_rate": 0.075,
+    "touchdown_rate": 0.0,
     "first_success_s": {
       "median": 2.0500000000000003,
       "p90": 2.95
@@ -41,8 +42,8 @@
     "floor_contact_episode_rate": 0.0,
     "action_jerk_median": 0.001500672571793051,
     "return": {
-      "mean": 73.98722490129393,
-      "std": 17.36421947529206
+      "mean": 73.94614700705085,
+      "std": 17.485795680310574
     },
     "by_source": {
       "runs/grasp_ppo_curr_seed0": {
@@ -52,7 +53,8 @@
           0.738135428014719,
           0.9304925473797714
         ],
-        "drop_rate": 0.14
+        "drop_rate": 0.14,
+        "touchdown_rate": 0.0
       },
       "runs/grasp_ppo_curr_seed1": {
         "n": 50,
@@ -61,7 +63,8 @@
           0.8653966212204534,
           0.9889613473391734
         ],
-        "drop_rate": 0.04
+        "drop_rate": 0.04,
+        "touchdown_rate": 0.0
       },
       "runs/grasp_ppo_curr_seed2": {
         "n": 50,
@@ -70,7 +73,8 @@
           0.7619492111337642,
           0.9438247628937535
         ],
-        "drop_rate": 0.1
+        "drop_rate": 0.1,
+        "touchdown_rate": 0.0
       },
       "scripted": {
         "n": 50,
@@ -79,17 +83,18 @@
           0.8950431352816304,
           0.9964608319110235
         ],
-        "drop_rate": 0.02
+        "drop_rate": 0.02,
+        "touchdown_rate": 0.0
       }
     },
     "failures": {
-      "dropped": 15,
+      "lost_grip": 15,
       "grasp_unverified": 1
     },
     "inference_latency_us": {
-      "median": 177.2489999893878,
-      "p99": 686.6023200564088
+      "median": 254.85099996558347,
+      "p99": 1071.249740033409
     },
-    "wall_clock_s": 118.3
+    "wall_clock_s": 172.7
   }
 }
