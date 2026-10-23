@@ -38,9 +38,13 @@ def menagerie_revision() -> str | None:
     return out.stdout.strip()
 
 
-def load_panda_scene() -> tuple[mujoco.MjModel, mujoco.MjData]:
-    """Menagerie Panda scene plus PolyPanda's additions (currently the TCP site)."""
+def panda_spec() -> mujoco.MjSpec:
+    """Menagerie Panda scene plus PolyPanda's additions (currently the TCP site), uncompiled."""
     spec = mujoco.MjSpec.from_file(str(panda_scene_path()))
     add_tcp_site(spec)
-    model = spec.compile()
+    return spec
+
+
+def load_panda_scene() -> tuple[mujoco.MjModel, mujoco.MjData]:
+    model = panda_spec().compile()
     return model, mujoco.MjData(model)
