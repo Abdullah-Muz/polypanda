@@ -1,0 +1,77 @@
+# Transport task (Milestone 4, in progress)
+
+Carry a grasped cube to a 3-D goal and hold it there, following the brief: *"assume an object is already grasped, then learn to move it toward a placement target while keeping it secure."* Obstacles are a planned extension and are not part of v1.
+
+## T1: can the grip survive carrying? (physics check)
+
+The scripted grasp lifted the cube, then IK steered it to random goals, 20 carries per speed:
+
+| IK gain | Real drops (finger contact lost) | Success at goal (verified grasp, within 2 cm) | Final cube error (median) | Cube tilt (median / max) |
+|---|---|---|---|---|
+| 0.2 | 0 / 20 | 20 / 20 | 12.6 mm | 21° / 39° |
+| 1.0 | 0 / 20 | 14 / 20 | 13.6 mm | 19° / 33° |
+| 3.0 | 0 / 20 | 16 / 20 | 16.7 mm | 15° / 34° |
+
+- The about-2 N grip never lost contact while carrying.
+- The cube **slides about 13 mm in the hand**, so a mover that aims the hand using the cube offset measured at pickup lands 1–2 cm off. The baseline therefore steers in closed loop on the cube's current position.
+- The cube **pivots 15–39° in the grip**: the clamping force is small and torsional friction is 0.03. This is kept as a documented property of the model's gripper rather than changed.
+
+## T2: handoff start states (`polypanda.environments.handoff`)
+
+Transport starts where a grasp controller hands over. A **handoff state** is the full MuJoCo integration state (positions, velocities, controls, solver warm start; restored bit-exactly with `mj_setState`) captured when a grasp controller has held a verified grasp (GraspEnv success: grasp predicate true, cube ≥ 5 cm up) for 10 consecutive policy steps. That is the moment a supervisor would switch skills.
+
+Pools mix four grasp controllers in equal shares: the scripted grasp and PPO grasp seeds 0–2. Transport is therefore trained and evaluated on the start distribution it will actually receive in pick-and-place, not only on tidy scripted starts.
+
+| Pool | States | Use | Grasp capture rate per source (scripted / PPO 0 / 1 / 2) |
+|---|---|---|---|
+| `data/handoff/transport_train_v1.npz` | 1200 | training starts | 100 % / 85.0 % / 86.2 % / 83.8 % |
+| `eval_sets/transport_nominal_v1.npz` | 200, with goals | held-out evaluation | 100 % / 89.3 % / 89.3 % / 79.4 % |
+
+Placements come from SeedSequence streams with a separate spawn key per pool and source. Each file stores a digest, the Menagerie commit and the state size, all checked on load. The pools depend on grasp checkpoints that are not in git, so they are committed as artifacts. Evaluation goals are uniform in x 0.35–0.65 m, y ±0.25 m, z 0.10–0.25 m (cube centre) and at least 15 cm from the cube at handoff.
+
+## T3: environment (`polypanda.environments.transport.TransportEnv`, `PolyPanda/Transport-v0`)
+
+Configuration: `configs/transport.yaml`. The dataclass defaults match the file (tested).
+
+- **Reset** restores a handoff state and keeps the grasp skill's joint commands (`adopt_ctrl`, so nothing jumps at the switch). The gripper stays closed throughout; releasing belongs to the place skill.
+- **Observation** (`transport-v1-47d`): arm `q`/`dq`/`q_cmd`, TCP pose (6-D rotation), finger gap, cube relative to the TCP, **cube slip velocity in the hand frame**, cube height and tilt, finger contacts, goal, and goal − cube.
+- **Reward:**
+
+| Term | Value | Purpose |
+|---|---|---|
+| progress | 20 × reduction in cube–goal distance | telescoping |
+| hold | 0.5 × (1 − d / 2 cm) per step at the goal with a verified grasp | arrive and stay |
+| action / **action rate** | −0.005‖a‖², **−0.05‖aₜ − aₜ₋₁‖²** | smooth motion slips less; random actions drop the cube every time |
+| gripper / cube tilt | −0.1 per rad each | keep things upright |
+| floor | −0.1 per step | |
+| drop | −5, terminate | both-finger contact lost for 5 steps, cube back on the table, or tipped past 80° |
+
+- **Success:** cube centre within 2 cm of the goal with a verified grasp, for 5 steps, and **not dropped**, at the end of the 10 s episode. (The "not dropped" condition was added after the baseline evaluation found a cube at the goal tipped 80.1° in the fingers; a regression test now covers it.)
+- **Reward scale** on 10 held-out starts: scripted carry +78.9 (10/10), random −24.8 (drops 10/10), standing still −5.8.
+- **Throughput:** about 310 env steps/s single process and about 1,230 with 8 workers. Finger–cube contact is active on every step.
+
+## T4: scripted carry baseline
+
+`ScriptedCarryDriver`: `PoseIK`, gain 0.2, steering the hand so the cube's **current** position (privileged) goes to the goal, with the gripper levelled. Evaluated on all 200 held-out cases at commit `7ec2e71` (clean):
+
+| Metric | Value |
+|---|---|
+| Success | **92.0 %** (95 % CI 87.4–95.0 %) |
+| Drops | 7.5 % (15); plus 1 case at the goal without a verified grasp |
+| Time to first success | median 2.05 s, p90 2.95 s |
+| Final distance | median 0.2 mm |
+| Cube tilt | median 18.5°, max 80.1° |
+| Floor contact / action jerk | 0 % / 0.0015 |
+
+By the grasp controller that produced the handoff:
+
+| Handoff source | Success | Drops |
+|---|---|---|
+| scripted grasp | **98 %** | 2 % |
+| PPO grasp seed 1 | 96 % | 4 % |
+| PPO grasp seed 2 | 88 % | 10 % |
+| PPO grasp seed 0 | **86 %** | **14 %** |
+
+**Findings:**
+- **Handoffs from learned grasps are harder to carry.** They hold the cube less centrally and more tilted, which justifies building the pool from learned as well as scripted grasps.
+- **Drops happen while holding, not while moving.** 13 of 15 drops occur after 2.9 s, after the cube has typically reached the goal (median 2.05 s). Dropped cubes had tilted far more (median 37° vs 17°). Under the weak grip the cube slowly creeps and rotates out under gravity, more so on longer carries (median start distance 374 mm for drops vs 253 mm for the rest). This matters for the place skill: the sooner a cube is set down, the better.

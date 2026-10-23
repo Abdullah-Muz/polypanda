@@ -1,0 +1,30 @@
+# PPO on TransportEnv. Keys map to polypanda.training.config.TrainConfig; unknown keys are rejected.
+# Same PPO settings and network size as configs/grasp_ppo.yaml (including the entropy bonus that
+# kept grasp exploration from collapsing). Starts come from the handoff pool in transport.yaml.
+
+algorithm: ppo
+task: transport
+env_config: configs/transport.yaml
+seed: 0
+n_envs: 8                 # ~1.2k env steps/s (contacts every step)
+vec_env: subproc
+total_timesteps: 1000000
+normalize_obs: true
+normalize_reward: true
+eval_freq: 50000
+eval_episodes: 30         # validation: training-pool starts, fresh goals (never the held-out set)
+eval_seed: 100000
+checkpoint_freq: 250000
+
+ppo:
+  learning_rate: 0.0003
+  n_steps: 512            # x 8 envs = 4096 transitions per update
+  batch_size: 256
+  n_epochs: 10
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_range: 0.2
+  ent_coef: 0.005
+  vf_coef: 0.5
+  max_grad_norm: 0.5
+  net_arch: [128, 128]
