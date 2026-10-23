@@ -5,14 +5,37 @@ by both scripted and learned grasp controllers, so transport sees the start dist
 receive in pick-and-place. The gripper stays closed; releasing belongs to the place skill.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
+import gymnasium as gym
 import numpy as np
+from gymnasium import spaces
 
 from polypanda.config import load_yaml
+from polypanda.control.action_adapter import ACTION_DIM, JointDeltaActionAdapter
+from polypanda.environments.grasp import GRIPPER_CLOSED, gripper_tilt
+from polypanda.environments.handoff import HandoffPool, restore_state
 from polypanda.environments.reach import ActionConfig
-from polypanda.simulation.grasp import GraspCheckConfig
+from polypanda.simulation.grasp import GraspCheckConfig, GraspMonitor
+from polypanda.simulation.panda import PandaIndices, tcp_position
+from polypanda.simulation.scenes import CubeIndices, cube_position, cube_tilt, load_pick_scene
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
+
+OBS_SCHEMA = "transport-v1-47d"
+OBS_LAYOUT = (
+    ("q", 7), ("dq", 7), ("q_cmd", 7),
+    ("tcp", 3), ("tcp_rot6", 6), ("finger_gap", 1),
+    ("cube_rel", 3), ("slip_velocity", 3), ("cube_height", 1), ("cube_tilt", 1),
+    ("contacts", 2), ("goal", 3), ("goal_error", 3),
+)
+OBS_DIM = sum(n for _, n in OBS_LAYOUT)
+OBS_SLICES = {
+    name: slice(start, start + n)
+    for (name, n), start in zip(
+        OBS_LAYOUT, np.cumsum([0] + [n for _, n in OBS_LAYOUT[:-1]]), strict=True)
+}
 
 
 @dataclass(frozen=True)
@@ -72,3 +95,146 @@ class TransportConfig:
     @classmethod
     def from_yaml(cls, path: str | Path) -> "TransportConfig":
         return load_yaml(cls, path)
+
+
+def _resolve(path: str) -> Path:
+    p = Path(path)
+    return p if p.is_absolute() or p.exists() else REPO_ROOT / p
+
+
+class TransportEnv(gym.Env):
+    metadata = {"render_modes": []}
+
+    def __init__(self, config: TransportConfig | None = None) -> None:
+        self.config = config or TransportConfig()
+        self.model, self.data = load_pick_scene()
+        self.arm = PandaIndices.from_model(self.model)
+        self.cube = CubeIndices.from_model(self.model)
+        self.adapter = JointDeltaActionAdapter(self.model, self.arm, **asdict(self.config.action))
+        self.monitor = GraspMonitor(self.model, self.arm, self.cube, self.config.check)
+        self.pool = HandoffPool.load(_resolve(self.config.start_pool), self.model)
+        self._finger_qpos = [self.model.joint(f"finger_joint{i}").qposadr[0] for i in (1, 2)]
+        self.action_space = spaces.Box(-1.0, 1.0, shape=(ACTION_DIM,), dtype=np.float32)
+        self.observation_space = spaces.Box(-np.inf, np.inf, shape=(OBS_DIM,), dtype=np.float32)
+        self.goal = np.zeros(3)
+        self.start_index = 0
+        self._steps = self._dwell = self._no_contact = 0
+        self._distance = 0.0
+        self._p_rel = np.zeros(3)
+        self._slip = np.zeros(3)
+        self._prev_action = np.zeros(ACTION_DIM)
+        self._state = None
+
+    @property
+    def elapsed_steps(self) -> int:
+        return self._steps
+
+    def _hand_frame_cube(self) -> np.ndarray:
+        """Cube centre in the TCP frame (m)."""
+        R = self.data.site_xmat[self.arm.tcp_site].reshape(3, 3)
+        return R.T @ (cube_position(self.data, self.cube) - tcp_position(self.data, self.arm))
+
+    def reset(self, *, seed: int | None = None, options: dict | None = None):
+        super().reset(seed=seed)
+        options = options or {}
+        if "state" in options:
+            state, self.start_index = np.asarray(options["state"], dtype=float), -1
+        else:
+            self.start_index = int(options.get("state_index",
+                                               self.np_random.integers(len(self.pool))))
+            state = self.pool.states[self.start_index]
+        restore_state(self.model, self.data, state)
+        self.data.ctrl[self.arm.gripper_actuator] = GRIPPER_CLOSED
+        self.adapter.adopt_ctrl(self.data)  # continue from the grasp skill's commands: no jump
+        cube = cube_position(self.data, self.cube)
+        if "goal" in options:
+            self.goal = np.asarray(options["goal"], dtype=float).copy()
+        else:
+            self.goal = sample_goal(self.np_random, cube, self.config.goal)
+        self.monitor.reset()
+        self._state = self.monitor.update(self.data)
+        self._steps = self._dwell = self._no_contact = 0
+        self._distance = float(np.linalg.norm(self.goal - cube))
+        self._p_rel = self._hand_frame_cube()
+        self._slip = np.zeros(3)
+        self._prev_action = np.zeros(ACTION_DIM)
+        source = self.pool.sources[self.start_index] if self.start_index >= 0 else "given"
+        return self._observation(), {"goal": self.goal.copy(), "distance": self._distance,
+                                     "start_index": self.start_index, "start_source": source}
+
+    def step(self, action):
+        cfg, r = self.config, self.config.reward
+        a = np.clip(np.asarray(action, dtype=np.float64), -1.0, 1.0)
+        self.adapter.step(self.data, a)
+        self._steps += 1
+        if not (np.all(np.isfinite(self.data.qpos)) and np.all(np.isfinite(self.data.qvel))):
+            return (np.zeros(OBS_DIM, dtype=np.float32), -r.drop, True, False,
+                    {"is_success": False, "failure": "non_finite", "reward_terms": {}})
+
+        cube = cube_position(self.data, self.cube)
+        distance = float(np.linalg.norm(self.goal - cube))
+        p_rel = self._hand_frame_cube()
+        self._slip = (p_rel - self._p_rel) / self.adapter.control_dt
+        self._p_rel = p_rel
+        self._state = state = self.monitor.update(self.data)
+        self._no_contact = 0 if state.both_contact else self._no_contact + 1
+        tilt = cube_tilt(self.data, self.cube)
+        lift = cube[2] - self.cube.half_size[2]
+        dropped = (self._no_contact >= cfg.episode.drop_steps or lift < 0.01
+                   or tilt > cfg.episode.max_cube_tilt)
+        at_goal = distance < cfg.success.tolerance and state.grasped
+        self._dwell = self._dwell + 1 if at_goal else 0
+        success = self._dwell >= cfg.success.dwell_steps
+        R = self.data.site_xmat[self.arm.tcp_site].reshape(3, 3)
+        floor = any(
+            0 in (self.model.geom_bodyid[c.geom1], self.model.geom_bodyid[c.geom2])
+            and self.cube.body not in (self.model.geom_bodyid[c.geom1],
+                                       self.model.geom_bodyid[c.geom2])
+            for c in (self.data.contact[i] for i in range(self.data.ncon)))
+
+        terms = {
+            "progress": r.progress * (self._distance - distance),
+            "hold": r.hold * (1.0 - distance / cfg.success.tolerance) if at_goal else 0.0,
+            "action": -r.action * float(a @ a),
+            "action_rate": -r.action_rate * float(np.sum((a - self._prev_action) ** 2)),
+            "gripper_tilt": -r.gripper_tilt * gripper_tilt(R),
+            "cube_tilt": -r.cube_tilt * tilt,
+            "floor": -r.floor if floor else 0.0,
+            "drop": -r.drop if dropped else 0.0,
+        }
+        self._distance = distance
+        self._prev_action = a
+        terminated = dropped
+        truncated = not terminated and self._steps >= cfg.episode.horizon
+        info = {
+            "is_success": success,
+            "failure": "dropped" if dropped else None,
+            "distance": distance,
+            "grasped": state.grasped,
+            "contacts": (state.left_contact, state.right_contact),
+            "slip_speed": float(np.linalg.norm(self._slip)),
+            "cube_tilt": tilt,
+            "floor_contact": floor,
+            "reward_terms": terms,
+        }
+        return self._observation(), float(sum(terms.values())), terminated, truncated, info
+
+    def _observation(self) -> np.ndarray:
+        R = self.data.site_xmat[self.arm.tcp_site].reshape(3, 3)
+        cube = cube_position(self.data, self.cube)
+        tcp = tcp_position(self.data, self.arm)
+        s = self._state
+        return np.concatenate([
+            self.data.qpos[self.arm.arm_qpos],
+            self.data.qvel[self.arm.arm_qvel],
+            self.adapter.q_cmd,
+            tcp,
+            R[:, :2].T.flatten(),
+            [sum(self.data.qpos[adr] for adr in self._finger_qpos)],
+            cube - tcp,
+            self._slip,
+            [cube[2] - self.cube.half_size[2], cube_tilt(self.data, self.cube)],
+            [float(s.left_contact), float(s.right_contact)],
+            self.goal,
+            self.goal - cube,
+        ]).astype(np.float32)

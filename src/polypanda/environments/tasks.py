@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 
-from polypanda.environments import grasp, reach
+from polypanda.environments import grasp, reach, transport
 
 
 @dataclass(frozen=True)
@@ -15,6 +15,8 @@ class TaskSpec:
 TASKS = {
     "reach": TaskSpec(reach.ReachEnv, reach.ReachConfig, reach.OBS_SCHEMA),
     "grasp": TaskSpec(grasp.GraspEnv, grasp.GraspConfig, grasp.OBS_SCHEMA),
+    "transport": TaskSpec(transport.TransportEnv, transport.TransportConfig,
+                          transport.OBS_SCHEMA),
 }
 
 

@@ -1,0 +1,42 @@
+# TransportEnv configuration (task version v1). Keys map to
+# polypanda.environments.transport.TransportConfig, whose defaults match this file (tested);
+# unknown keys are rejected. Design rationale: docs/transport_task.md.
+
+action:
+  max_delta: 0.015
+  n_substeps: 25
+  max_lead: null
+
+goal:                     # cube-centre goals (m), uniform in this box
+  x_range: [0.35, 0.65]
+  y_range: [-0.25, 0.25]
+  z_range: [0.10, 0.25]
+  min_distance: 0.15      # from the cube at handoff
+  max_tries: 1000
+
+episode:
+  horizon: 200            # 10 s, always run to the end (no termination on success)
+  drop_steps: 5           # steps without both finger contacts that count as a drop
+  max_cube_tilt: 1.4      # rad: cube fallen over in the hand counts as a drop
+
+success:
+  tolerance: 0.02         # m, cube centre to goal, with a verified grasp
+  dwell_steps: 5
+
+reward:
+  progress: 20.0          # per m of cube-to-goal distance reduced (telescoping)
+  hold: 0.5               # per step at the goal with a verified grasp, 1 -> 0 inside tolerance
+  action: 0.005           # x ||a||^2
+  action_rate: 0.05       # x ||a_t - a_{t-1}||^2 (smooth motion: less slip)
+  gripper_tilt: 0.1       # per rad
+  cube_tilt: 0.1          # per rad
+  floor: 0.1              # per step touching the floor
+  drop: 5.0               # once; the episode terminates
+
+check:                    # verified grasp predicate
+  min_lift: 0.02
+  window: 5
+  max_slip: 0.002
+  max_slip_rot: 0.05
+
+start_pool: data/handoff/transport_train_v1.npz  # handoff states from 4 grasp controllers
