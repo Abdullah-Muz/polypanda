@@ -2,7 +2,7 @@
 
 Hierarchical reinforcement learning for Franka Panda manipulation: modular PPO/SAC skills, MuJoCo environments, a rule-based task supervisor, and reproducible robotics-control benchmarks.
 
-> **Status: early development.** Milestones 1–2 are complete: a reproducible simulator, the reaching environment, and classical baselines evaluated on a held-out set. Milestone 3 is in progress: PPO reaching is trained and evaluated over 3 seeds; SAC is next. The roadmap is updated only when a milestone is actually completed and tested.
+> **Status: early development.** Milestones 1–2 are complete: a reproducible simulator, the reaching environment, and classical baselines evaluated on a held-out set. Milestone 3 is complete: PPO and SAC reaching policies are trained and benchmarked against the baselines over 3 seeds each. Grasping (Milestone 4) is next. The roadmap is updated only when a milestone is actually completed and tested.
 
 ## Overview
 
@@ -43,9 +43,9 @@ Held-out reach evaluation (200 targets, [protocol](docs/evaluation_protocol.md))
 | Random | 0 % (0–1.9 %) | — | — | 375 mm |
 | Jacobian IK baseline | 100 % (98.1–100 %) | 100 % | 1.65 s | < 0.001 mm |
 | **PPO** (3 seeds, ~5 min CPU training each) | 100 % (99.4–100 %) | 100 % | 1.70 ± 0.09 s | 1.5 ± 0.3 mm |
-| SAC | not yet trained | | | |
+| SAC (3 seeds, same 200k-step budget) | 63.2 % (59.2–66.9 %) | 43 ± 19 % | 1.98 ± 0.28 s | 27 ± 6 mm |
 
-PPO matches the model-based IK controller on success and holding using only its observations. IK stays more precise and smoother. Details, learning curves and the reward-design lesson behind task v2 are in [docs/results.md](docs/results.md).
+PPO matches the model-based IK controller on success and holding using only its observations. IK stays more precise and smoother. With default settings and the same budget, SAC lagged far behind: its automatic entropy tuning collapsed exploration before it discovered the hold reward. Details, learning curves and the reward-design lesson behind task v2 are in [docs/results.md](docs/results.md).
 
 Evaluate a baseline yourself: `uv run python scripts/evaluate.py --policy ik`
 
@@ -55,7 +55,7 @@ Evaluate a baseline yourself: `uv run python scripts/evaluate.py --policy ik`
 |---|---|---|
 | 1 | Reproducible environment, pinned Panda model, headless simulation, tests | Done ([details](docs/environment.md)) |
 | 2 | Custom reaching environment and classical IK baseline | Done ([task](docs/reach_task.md), [results](docs/results.md)) |
-| 3 | PPO and SAC reaching policies with benchmark | In progress (PPO done) |
+| 3 | PPO and SAC reaching policies with benchmark | Done ([results](docs/results.md)) |
 | 4 | Grasp and transport skills | Planned |
 | 5 | Multi-policy FSM supervisor and full pick-and-place | Planned |
 | 6 | Robustness, evaluation, documentation | Planned |
