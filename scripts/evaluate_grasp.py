@@ -1,8 +1,12 @@
 """Evaluate a grasp controller on the held-out placement set and archive the results.
 
-Usage: uv run python scripts/evaluate_grasp.py [--set eval_sets/grasp_nominal_v1.json]
-       uv run python scripts/evaluate_grasp.py --make-set   # (re)generate the placement set
-Writes results/grasp/scripted_<set>.json (summary + provenance) and _episodes.csv.
+Usage:
+  uv run python scripts/evaluate_grasp.py                      # standalone scripted runner
+  uv run python scripts/evaluate_grasp.py --policy scripted    # scripted, GraspEnv protocol
+  uv run python scripts/evaluate_grasp.py --policy run:runs/<run_dir>[@final]
+  uv run python scripts/evaluate_grasp.py --make-set           # (re)generate the placement set
+Writes results/grasp/<name>.json (summary + provenance) and <name>_episodes.csv.
+The GraspEnv protocol (--policy) is the one used to compare learned and scripted grasping.
 """
 
 import argparse
@@ -19,8 +23,16 @@ import mujoco
 import numpy as np
 
 from polypanda.control.scripted_grasp import ScriptedGraspConfig
-from polypanda.evaluation.grasp import GraspEpisodeResult, evaluate_scripted_grasp
+from polypanda.evaluation.grasp import (
+    GraspEpisodeResult,
+    GraspPolicyEpisode,
+    PolicyDriver,
+    ScriptedDriver,
+    evaluate_grasp_policy,
+    evaluate_scripted_grasp,
+)
 from polypanda.evaluation.sets import GraspEvalSet, generate_grasp_eval_set
+from polypanda.policies.loader import load_run
 
 DEFAULT_SET = Path("eval_sets/grasp_nominal_v1.json")
 
@@ -32,9 +44,66 @@ def git_state() -> dict:
             "dirty": bool(run("git", "status", "--porcelain", "--untracked-files=no"))}
 
 
+def write_record(out_dir: Path, name: str, record: dict, episodes, row_type) -> None:
+    out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / f"{name}.json").write_text(json.dumps(record, indent=2) + "\n")
+    with open(out_dir / f"{name}_episodes.csv", "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=[fld.name for fld in fields(row_type)])
+        writer.writeheader()
+        writer.writerows(asdict(e) for e in episodes)
+
+
+def run_env_protocol(args, eval_set: GraspEvalSet) -> None:
+    if args.policy == "scripted":
+        driver, description, name = (ScriptedDriver(), "scripted top-down grasp through GraspEnv",
+                                     f"scripted_env_{eval_set.name}")
+    elif args.policy.startswith("run:"):
+        run_dir, _, which = args.policy[4:].partition("@")
+        policy = load_run(run_dir, which or "best")
+        meta = policy.metadata
+        if meta["skill"] != "grasp":
+            raise SystemExit(f"{run_dir} is a {meta['skill']} policy, not grasp")
+        driver = PolicyDriver(policy)
+        description = (f"{meta['algorithm']} {policy.which} model from {run_dir} "
+                       f"(seed {meta['seed']}, {meta['total_timesteps']:,} steps)")
+        name = f"{meta['policy_id']}_{policy.which}_{eval_set.name}"
+    else:
+        raise SystemExit(f"unknown policy {args.policy!r}; use scripted or run:DIR[@which]")
+
+    summary, episodes = evaluate_grasp_policy(driver, eval_set)
+    record = {"name": name, "policy": description, "protocol": "GraspEnv, 15 s horizon",
+              "eval_set": {"name": eval_set.name, "n": len(eval_set), "digest": eval_set.digest},
+              "created_utc": datetime.now(UTC).isoformat(timespec="seconds"),
+              "git": git_state(),
+              "versions": {"python": platform.python_version(), "mujoco": mujoco.__version__,
+                           "numpy": np.__version__},
+              "summary": summary}
+    write_record(args.out_dir, name, record, episodes, GraspPolicyEpisode)
+
+    s = summary
+    lo, hi = s["success_ci95"]
+    print(f"{name}: {description} on {eval_set.name} ({len(eval_set)} placements), "
+          f"{s['wall_clock_s']} s wall")
+    print(f"  success {s['success_rate']:.1%} (95% CI {lo:.1%}-{hi:.1%}); "
+          f"failures {s['failures']}")
+    if s["first_success_s"]["median"] is not None:
+        print(f"  first success median {s['first_success_s']['median']:.2f} s, "
+              f"p90 {s['first_success_s']['p90']:.2f} s; time in success state median "
+              f"{s['success_fraction_median']:.1%} of episode")
+    print(f"  retries {s['retry_rate']:.1%}, cube tilt median "
+          f"{s['max_cube_tilt_deg']['median']:.1f} deg (max {s['max_cube_tilt_deg']['max']:.1f}),"
+          f" floor-contact episodes {s['floor_contact_episode_rate']:.1%}")
+    print(f"  return {s['return']['mean']:.1f} +/- {s['return']['std']:.1f}; latency median "
+          f"{s['inference_latency_us']['median']:.0f} us")
+    for region, r in s["by_region"].items():
+        print(f"  {region:5s} n={r['n']:3d} success {r['success_rate']:.1%}")
+    print(f"  wrote {args.out_dir / name}.json and _episodes.csv")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--set", type=Path, default=DEFAULT_SET)
+    parser.add_argument("--policy", help="scripted | run:DIR[@best|final] (GraspEnv protocol)")
     parser.add_argument("--make-set", action="store_true")
     parser.add_argument("--n", type=int, default=200)
     parser.add_argument("--seed", type=int, default=20261022)
@@ -49,6 +118,9 @@ def main() -> None:
         return
 
     eval_set = GraspEvalSet.load(args.set)
+    if args.policy:
+        run_env_protocol(args, eval_set)
+        return
     config = ScriptedGraspConfig()
     summary, episodes = evaluate_scripted_grasp(eval_set, config)
     name = f"scripted_{eval_set.name}"
@@ -63,12 +135,7 @@ def main() -> None:
                      "numpy": np.__version__},
         "summary": summary,
     }
-    args.out_dir.mkdir(parents=True, exist_ok=True)
-    (args.out_dir / f"{name}.json").write_text(json.dumps(record, indent=2) + "\n")
-    with open(args.out_dir / f"{name}_episodes.csv", "w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=[fld.name for fld in fields(GraspEpisodeResult)])
-        writer.writeheader()
-        writer.writerows(asdict(e) for e in episodes)
+    write_record(args.out_dir, name, record, episodes, GraspEpisodeResult)
 
     s = summary
     lo, hi = s["success_ci95"]

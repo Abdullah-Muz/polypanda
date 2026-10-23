@@ -38,6 +38,7 @@ class SACParams:
 @dataclass(frozen=True)
 class TrainConfig:
     algorithm: str = "ppo"
+    task: str = "reach"              # key of polypanda.environments.tasks.TASKS
     env_config: str = "configs/reach.yaml"
     seed: int = 0
     n_envs: int = 8

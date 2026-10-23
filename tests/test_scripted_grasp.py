@@ -11,7 +11,11 @@ from polypanda.control.scripted_grasp import (
     ScriptedGrasp,
     ScriptedGraspConfig,
 )
-from polypanda.evaluation.grasp import evaluate_scripted_grasp
+from polypanda.evaluation.grasp import (
+    ScriptedDriver,
+    evaluate_grasp_policy,
+    evaluate_scripted_grasp,
+)
 from polypanda.evaluation.sets import GraspEvalSet, generate_grasp_eval_set
 from polypanda.simulation.panda import PandaIndices, reset_to_home
 from polypanda.simulation.scenes import (
@@ -86,6 +90,14 @@ def test_scripted_grasp_succeeds_on_held_out_subset(eval_set):
         assert e.success and e.failure is None
         assert e.nudge_mm < 1.0 and e.floor_contact_steps == 0
         assert e.final_lift_cm > 8.0
+
+
+def test_scripted_driver_succeeds_under_grasp_env_protocol(eval_set):
+    summary, episodes = evaluate_grasp_policy(ScriptedDriver(), eval_set.subset(3))
+    assert summary["success_rate"] == 1.0 and summary["failures"] == {}
+    for e in episodes:
+        assert e.gate_closures == 1 and e.floor_contact_steps == 0
+        assert e.final_lift_cm >= 5.0 and e.success_fraction > 0.3
 
 
 def test_phase_timeout_is_reported_as_failure(eval_set):

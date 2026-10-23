@@ -1,4 +1,4 @@
-"""Train an SB3 policy on ReachEnv and write a self-describing run directory.
+"""Train an SB3 policy on a registered task and write a self-describing run directory.
 
 Run directory layout:
   config.yaml, env_config.yaml        resolved configuration snapshots
@@ -23,7 +23,7 @@ from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecNormalize
 
 from polypanda.control.action_adapter import ACTION_SCHEMA
-from polypanda.environments.reach import OBS_SCHEMA, ReachConfig, ReachEnv
+from polypanda.environments.tasks import task_spec
 from polypanda.simulation.assets import MENAGERIE_COMMIT
 from polypanda.training.callbacks import RewardTermsCallback, SaveVecNormalizeCallback
 from polypanda.training.config import TrainConfig
@@ -55,9 +55,9 @@ def _lock_hash() -> str | None:
     return hashlib.sha256(lock.read_bytes()).hexdigest()[:16] if lock.exists() else None
 
 
-def _vec_env(env_config: ReachConfig, n_envs: int, seed: int, kind: str):
+def _vec_env(env_cls: type, env_config, n_envs: int, seed: int, kind: str):
     cls = SubprocVecEnv if kind == "subproc" and n_envs > 1 else DummyVecEnv
-    return make_vec_env(ReachEnv, n_envs=n_envs, seed=seed, vec_env_cls=cls,
+    return make_vec_env(env_cls, n_envs=n_envs, seed=seed, vec_env_cls=cls,
                         env_kwargs={"config": env_config})
 
 
@@ -73,8 +73,12 @@ def build_model(cfg: TrainConfig, env, tensorboard_log: str | None):
                **common, **params)
 
 
-def train(cfg: TrainConfig, env_config: ReachConfig, run_dir: Path) -> Path:
+def train(cfg: TrainConfig, env_config, run_dir: Path) -> Path:
     gamma = cfg.algo_params.gamma  # also rejects unsupported algorithms before any setup
+    task = task_spec(cfg.task)
+    if not isinstance(env_config, task.config_cls):
+        raise TypeError(f"task {cfg.task!r} needs {task.config_cls.__name__}, "
+                        f"got {type(env_config).__name__}")
     if cfg.torch_threads is not None:
         torch.set_num_threads(cfg.torch_threads)
     run_dir = Path(run_dir)
@@ -82,10 +86,10 @@ def train(cfg: TrainConfig, env_config: ReachConfig, run_dir: Path) -> Path:
     (run_dir / "config.yaml").write_text(yaml.safe_dump(plain(cfg), sort_keys=False))
     (run_dir / "env_config.yaml").write_text(yaml.safe_dump(plain(env_config), sort_keys=False))
 
-    env = VecNormalize(_vec_env(env_config, cfg.n_envs, cfg.seed, cfg.vec_env),
+    env = VecNormalize(_vec_env(task.env_cls, env_config, cfg.n_envs, cfg.seed, cfg.vec_env),
                        norm_obs=cfg.normalize_obs, norm_reward=cfg.normalize_reward,
                        gamma=gamma)
-    eval_env = VecNormalize(_vec_env(env_config, 1, cfg.eval_seed, "dummy"),
+    eval_env = VecNormalize(_vec_env(task.env_cls, env_config, 1, cfg.eval_seed, "dummy"),
                             norm_obs=cfg.normalize_obs, norm_reward=False, training=False)
     model = build_model(cfg, env, str(run_dir / "tb"))
     git = _git_state()  # recorded before training, so later edits cannot mislabel the run
@@ -114,10 +118,10 @@ def train(cfg: TrainConfig, env_config: ReachConfig, run_dir: Path) -> Path:
 
     metadata = {
         "policy_id": run_dir.name,
-        "skill": "reach",
+        "skill": cfg.task,
         "algorithm": cfg.algorithm.upper(),
         "seed": cfg.seed,
-        "observation_schema": OBS_SCHEMA,
+        "observation_schema": task.obs_schema,
         "action_schema": ACTION_SCHEMA,
         "robot_model_revision": MENAGERIE_COMMIT,
         "training_config": "config.yaml",

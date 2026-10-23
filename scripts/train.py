@@ -1,7 +1,8 @@
-"""Train a reach policy.
+"""Train a policy for a registered task (reach, grasp).
 
 Usage: uv run python scripts/train.py --config configs/reach_ppo.yaml [--seed 0]
                                       [--timesteps N] [--name RUN_NAME]
+       uv run python scripts/train.py --config configs/grasp_ppo.yaml
 Creates runs/<name>/ (gitignored). Watch progress with: uv run tensorboard --logdir runs
 """
 
@@ -12,7 +13,7 @@ from pathlib import Path
 
 import yaml
 
-from polypanda.environments.reach import ReachConfig
+from polypanda.environments.tasks import task_spec
 from polypanda.training.config import TrainConfig
 from polypanda.training.runner import train
 
@@ -31,17 +32,19 @@ def main() -> None:
         cfg = replace(cfg, seed=args.seed)
     if args.timesteps is not None:
         cfg = replace(cfg, total_timesteps=args.timesteps)
-    env_config = ReachConfig.from_yaml(cfg.env_config)
-    name = args.name or (f"reach_{cfg.algorithm}_seed{cfg.seed}_"
+    env_config = task_spec(cfg.task).config_cls.from_yaml(cfg.env_config)
+    name = args.name or (f"{cfg.task}_{cfg.algorithm}_seed{cfg.seed}_"
                          f"{datetime.now().strftime('%Y%m%d_%H%M%S')}")
 
-    print(f"training {cfg.algorithm.upper()} seed {cfg.seed} for {cfg.total_timesteps:,} steps "
-          f"with {cfg.n_envs} {cfg.vec_env} envs -> {args.runs_dir / name}")
+    print(f"training {cfg.algorithm.upper()} on {cfg.task} seed {cfg.seed} for "
+          f"{cfg.total_timesteps:,} steps with {cfg.n_envs} {cfg.vec_env} envs "
+          f"-> {args.runs_dir / name}")
     run_dir = train(cfg, env_config, args.runs_dir / name)
     meta = yaml.safe_load((run_dir / "metadata.yaml").read_text())
     print(f"done in {meta['wall_clock_s']:.0f} s ({meta['steps_per_s']:.0f} steps/s); "
           f"git dirty: {meta['git']['dirty']}")
-    print(f"evaluate: uv run python scripts/evaluate.py --policy run:{run_dir}")
+    script = "evaluate_grasp.py" if cfg.task == "grasp" else "evaluate.py"
+    print(f"evaluate: uv run python scripts/{script} --policy run:{run_dir}")
 
 
 if __name__ == "__main__":

@@ -1,0 +1,29 @@
+# PPO on GraspEnv. Keys map to polypanda.training.config.TrainConfig; unknown keys are rejected.
+# Same PPO hyperparameters and network size as configs/reach_ppo.yaml (the reach winner).
+
+algorithm: ppo
+task: grasp
+env_config: configs/grasp.yaml
+seed: 0
+n_envs: 8                 # ~1.8k env steps/s with contacts (docs/grasp_task.md)
+vec_env: subproc
+total_timesteps: 1000000
+normalize_obs: true
+normalize_reward: true
+eval_freq: 50000          # validation every 50k transitions
+eval_episodes: 30         # 30 x 300-step episodes per validation
+eval_seed: 100000         # validation placements: separate stream from training and the test set
+checkpoint_freq: 250000
+
+ppo:
+  learning_rate: 0.0003
+  n_steps: 512            # x 8 envs = 4096 transitions per update
+  batch_size: 256
+  n_epochs: 10
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_range: 0.2
+  ent_coef: 0.0
+  vf_coef: 0.5
+  max_grad_norm: 0.5
+  net_arch: [128, 128]

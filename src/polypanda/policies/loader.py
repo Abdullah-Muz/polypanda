@@ -7,7 +7,7 @@ from stable_baselines3 import PPO, SAC, TD3
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 
 from polypanda.control.action_adapter import ACTION_SCHEMA
-from polypanda.environments.reach import OBS_SCHEMA, ReachEnv
+from polypanda.environments.tasks import TASKS
 from polypanda.simulation.assets import MENAGERIE_COMMIT
 
 ALGORITHMS = {"PPO": PPO, "SAC": SAC, "TD3": TD3}
@@ -34,7 +34,10 @@ class LoadedPolicy:
 
 
 def check_compatible(metadata: dict) -> None:
-    expected = {"observation_schema": OBS_SCHEMA, "action_schema": ACTION_SCHEMA,
+    skill = metadata.get("skill")
+    if skill not in TASKS:
+        raise IncompatiblePolicyError(f"skill: unknown skill {skill!r}")
+    expected = {"observation_schema": TASKS[skill].obs_schema, "action_schema": ACTION_SCHEMA,
                 "robot_model_revision": MENAGERIE_COMMIT}
     problems = [f"{k}: policy has {metadata.get(k)!r}, environment expects {v!r}"
                 for k, v in expected.items() if metadata.get(k) != v]
@@ -51,7 +54,8 @@ def load_run(run_dir: str | Path, which: str = "best") -> LoadedPolicy:
     vec_normalize = None
     stats = run_dir / metadata["normalization"][which]
     if stats.exists():
-        vec_normalize = VecNormalize.load(str(stats), DummyVecEnv([ReachEnv]))
+        env_cls = TASKS[metadata["skill"]].env_cls
+        vec_normalize = VecNormalize.load(str(stats), DummyVecEnv([env_cls]))
         vec_normalize.training = False
         vec_normalize.norm_reward = False
     return LoadedPolicy(model, vec_normalize, metadata, which)

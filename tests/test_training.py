@@ -7,9 +7,11 @@ import numpy as np
 import pytest
 import yaml
 
+from polypanda.environments.grasp import GraspConfig
 from polypanda.environments.reach import ReachConfig
+from polypanda.evaluation.grasp import PolicyDriver, evaluate_grasp_policy
 from polypanda.evaluation.reach import evaluate
-from polypanda.evaluation.sets import ReachEvalSet
+from polypanda.evaluation.sets import GraspEvalSet, ReachEvalSet
 from polypanda.policies.loader import IncompatiblePolicyError, load_run
 from polypanda.training.config import PPOParams, SACParams, TrainConfig
 from polypanda.training.runner import train
@@ -31,6 +33,31 @@ def test_yaml_configs_load():
     sac = TrainConfig.from_yaml(ROOT / "configs" / "reach_sac.yaml")
     assert sac.algorithm == "sac" and not sac.normalize_reward and sac.torch_threads == 1
     assert sac.algo_params.ent_coef == "auto" and sac.algo_params.net_arch == (128, 128)
+
+
+def test_grasp_task_end_to_end(tmp_path):
+    cfg = TrainConfig(task="grasp", env_config="configs/grasp.yaml", n_envs=1, vec_env="dummy",
+                      total_timesteps=512, eval_freq=256, eval_episodes=1, checkpoint_freq=512,
+                      ppo=PPOParams(n_steps=256, batch_size=64, n_epochs=1))
+    run_dir = train(cfg, GraspConfig(), tmp_path / "grasp_smoke")
+    meta = yaml.safe_load((run_dir / "metadata.yaml").read_text())
+    assert meta["skill"] == "grasp" and meta["observation_schema"] == "grasp-v1-41d"
+    policy = load_run(run_dir, "final")
+    eval_set = GraspEvalSet.load(ROOT / "eval_sets" / "grasp_nominal_v1.json").subset(1)
+    summary, episodes = evaluate_grasp_policy(PolicyDriver(policy), eval_set)
+    assert summary["episodes"] == 1 and episodes[0].failure is not None  # untrained: fails
+
+
+def test_task_and_env_config_must_match(tmp_path):
+    cfg = TrainConfig(task="grasp", n_envs=1, vec_env="dummy", total_timesteps=1)
+    with pytest.raises(TypeError, match="GraspConfig"):
+        train(cfg, ReachConfig(), tmp_path / "mismatch")
+    assert not (tmp_path / "mismatch").exists()
+
+
+def test_grasp_ppo_config_loads():
+    cfg = TrainConfig.from_yaml(ROOT / "configs" / "grasp_ppo.yaml")
+    assert cfg.task == "grasp" and cfg.algorithm == "ppo" and cfg.n_envs == 8
 
 
 def test_sac_end_to_end(tmp_path):

@@ -1,8 +1,12 @@
 """Evaluate grasp controllers on held-out cube placements.
 
-Currently the scripted baseline; learned grasp policies will be evaluated on the same set and
-metrics. Success means the verified grasp predicate holds at the end of the episode (after the
-controller's hold), not merely at some moment.
+Two protocols:
+- `evaluate_scripted_grasp`: the scripted baseline in its own loop, ending after its 1 s hold
+  (reports per-phase timings).
+- `evaluate_grasp_policy`: any driver (learned policy or the scripted baseline) acting through
+  GraspEnv for the full 15 s horizon, with the env's gate controlling the fingers. This is the
+  comparison protocol: success = GraspEnv success (verified grasp, cube >= 5 cm up) at the
+  final step.
 """
 
 import time
@@ -19,6 +23,7 @@ from polypanda.control.scripted_grasp import (
     ScriptedGrasp,
     ScriptedGraspConfig,
 )
+from polypanda.environments.grasp import GraspConfig, GraspEnv
 from polypanda.evaluation.reach import wilson_interval
 from polypanda.evaluation.sets import GraspEvalSet
 from polypanda.simulation.grasp import GraspMonitor
@@ -168,5 +173,153 @@ def evaluate_scripted_grasp(eval_set: GraspEvalSet, config: ScriptedGraspConfig 
                for i, (placement, region) in enumerate(zip(eval_set.placements,
                                                            eval_set.regions, strict=True))]
     summary = summarize_grasp(results)
+    summary["wall_clock_s"] = round(time.perf_counter() - start, 1)
+    return summary, results
+
+
+# --- comparison protocol: any driver through GraspEnv ------------------------------------
+
+class PolicyDriver:
+    """Drives GraspEnv from observations with an SB3-style predict() (frozen, deterministic)."""
+
+    def __init__(self, policy) -> None:
+        self.policy = policy
+
+    def reset(self, env: GraspEnv) -> None:
+        pass
+
+    def __call__(self, env: GraspEnv, obs: np.ndarray) -> np.ndarray:
+        return self.policy.predict(obs, deterministic=True)[0]
+
+
+class ScriptedDriver:
+    """The scripted baseline's arm actions; GraspEnv's gate controls the fingers."""
+
+    def __init__(self, config: ScriptedGraspConfig | None = None) -> None:
+        self.config = config
+        self.controller = None
+
+    def reset(self, env: GraspEnv) -> None:
+        if self.controller is None:
+            self.controller = ScriptedGrasp(env.model, env.arm, env.cube,
+                                            env.adapter.max_delta, self.config)
+        self.controller.reset(env.data)
+
+    def __call__(self, env: GraspEnv, obs: np.ndarray) -> np.ndarray:
+        return self.controller.act(env.data)[0]
+
+
+@dataclass(frozen=True)
+class GraspPolicyEpisode:
+    index: int
+    region: str
+    x: float
+    y: float
+    yaw: float
+    success: bool                  # GraspEnv success at the final step
+    first_success_s: float | None
+    success_fraction: float        # fraction of all steps spent in the success state
+    gate_closures: int             # 1 = grasped at the first attempt; >1 = retries
+    max_lift_cm: float
+    final_lift_cm: float
+    max_cube_tilt_deg: float
+    floor_contact_steps: int
+    episode_return: float
+    failure: str | None  # knocked_over | never_closed | not_lifted | dropped | not_grasped
+
+
+def run_policy_episode(env: GraspEnv, driver, placement, index: int,
+                       region: str) -> tuple[GraspPolicyEpisode, list[float]]:
+    obs, _ = env.reset(options={"cube": tuple(placement)})
+    driver.reset(env)
+    dt = env.adapter.control_dt
+    latencies, ret = [], 0.0
+    first = None
+    success_steps = closures = floor_steps = 0
+    max_lift = max_tilt = 0.0
+    was_closed = ever_succeeded = False
+    info = {}
+    for _ in range(env.config.episode.horizon):
+        start = time.perf_counter()
+        action = driver(env, obs)
+        latencies.append(time.perf_counter() - start)
+        obs, reward, terminated, truncated, info = env.step(action)
+        ret += reward
+        closures += info["gripper_closed"] and not was_closed
+        was_closed = info["gripper_closed"]
+        success_steps += info["is_success"]
+        ever_succeeded |= info["is_success"]
+        if first is None and info["is_success"]:
+            first = env.elapsed_steps * dt
+        floor_steps += info["floor_contact"]
+        max_lift = max(max_lift, info["lift"])
+        max_tilt = max(max_tilt, cube_tilt(env.data, env.cube))
+        if terminated or truncated:
+            break
+    success = bool(info["is_success"])
+    if success:
+        failure = None
+    elif info["failure"] == "knocked_over":
+        failure = "knocked_over"
+    elif closures == 0:
+        failure = "never_closed"
+    elif ever_succeeded:
+        failure = "dropped"
+    elif max_lift < env.config.success.lift:
+        failure = "not_lifted"
+    else:
+        failure = "not_grasped"
+    x, y, yaw = placement
+    result = GraspPolicyEpisode(
+        index=index, region=region, x=float(x), y=float(y), yaw=float(yaw), success=success,
+        first_success_s=first, success_fraction=success_steps / env.config.episode.horizon,
+        gate_closures=int(closures), max_lift_cm=max_lift * 100,
+        final_lift_cm=info["lift"] * 100, max_cube_tilt_deg=float(np.degrees(max_tilt)),
+        floor_contact_steps=int(floor_steps), episode_return=float(ret), failure=failure,
+    )
+    return result, latencies
+
+
+def summarize_policy_grasp(results: list[GraspPolicyEpisode], latencies: list[float]) -> dict:
+    n = len(results)
+    wins = [r for r in results if r.success]
+    regions = {}
+    for region in sorted({r.region for r in results}):
+        group = [r for r in results if r.region == region]
+        k = sum(r.success for r in group)
+        regions[region] = {"n": len(group), "success_rate": k / len(group),
+                           "success_ci95": wilson_interval(k, len(group))}
+    lat_us = [v * 1e6 for v in latencies]
+    return {
+        "episodes": n,
+        "success_rate": len(wins) / n,
+        "success_ci95": list(wilson_interval(len(wins), n)),
+        "first_success_s": {"median": _pct([r.first_success_s for r in wins], 50),
+                            "p90": _pct([r.first_success_s for r in wins], 90)},
+        "success_fraction_median": _pct([r.success_fraction for r in results], 50),
+        "retry_rate": sum(r.gate_closures > 1 for r in results) / n,
+        "max_cube_tilt_deg": {"median": _pct([r.max_cube_tilt_deg for r in results], 50),
+                              "max": max(r.max_cube_tilt_deg for r in results)},
+        "final_lift_cm_median": _pct([r.final_lift_cm for r in wins], 50),
+        "floor_contact_episode_rate": sum(r.floor_contact_steps > 0 for r in results) / n,
+        "return": {"mean": float(np.mean([r.episode_return for r in results])),
+                   "std": float(np.std([r.episode_return for r in results]))},
+        "by_region": regions,
+        "failures": dict(Counter(r.failure for r in results if r.failure)),
+        "inference_latency_us": {"median": _pct(lat_us, 50), "p99": _pct(lat_us, 99)},
+    }
+
+
+def evaluate_grasp_policy(driver, eval_set: GraspEvalSet, config: GraspConfig | None = None
+                          ) -> tuple[dict, list[GraspPolicyEpisode]]:
+    env = GraspEnv(config)
+    start = time.perf_counter()
+    results, latencies = [], []
+    for i, (placement, region) in enumerate(zip(eval_set.placements, eval_set.regions,
+                                                strict=True)):
+        result, lat = run_policy_episode(env, driver, placement, i, region)
+        results.append(result)
+        latencies.extend(lat)
+    summary = summarize_policy_grasp(results, latencies)
     summary["wall_clock_s"] = round(time.perf_counter() - start, 1)
     return summary, results
