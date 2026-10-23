@@ -11,17 +11,16 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from polypanda.control.ik import PoseIK, closing_yaw, top_down_quat
+from polypanda.control.ik import PoseIK
+from polypanda.control.scripted_carry import carry_action, level_quat
 from polypanda.environments.handoff import HandoffPool
 from polypanda.environments.transport import TransportConfig, TransportEnv
 from polypanda.evaluation.reach import wilson_interval
-from polypanda.simulation.panda import tcp_position
-from polypanda.simulation.scenes import cube_position
 
 
 class ScriptedCarryDriver:
-    """Classical baseline: PoseIK steering the hand so the cube's *current* position (privileged)
-    goes to the goal, gripper levelled to point down, gain 0.2 as for the other IK baselines."""
+    """Classical baseline (polypanda.control.scripted_carry), gain 0.2 as for the other IK
+    baselines."""
 
     def __init__(self, gain: float = 0.2) -> None:
         self.gain = gain
@@ -31,13 +30,11 @@ class ScriptedCarryDriver:
     def reset(self, env: TransportEnv) -> None:
         if self.ik is None:
             self.ik = PoseIK()
-        R = env.data.site_xmat[env.arm.tcp_site].reshape(3, 3)
-        self._quat = top_down_quat(closing_yaw(R))
+        self._quat = level_quat(env.data, env.arm)
 
     def __call__(self, env: TransportEnv, obs: np.ndarray) -> np.ndarray:
-        offset = cube_position(env.data, env.cube) - tcp_position(env.data, env.arm)
-        q = env.data.qpos[env.arm.arm_qpos]
-        return self.ik.action(q, env.goal - offset, self._quat, self.gain, env.adapter.max_delta)
+        return carry_action(self.ik, env.data, env.arm, env.cube, env.goal, self._quat,
+                            self.gain, env.adapter.max_delta)
 
 
 @dataclass(frozen=True)
@@ -161,11 +158,12 @@ def summarize_transport(results: list[TransportEpisode], latencies: list[float])
     }
 
 
-def evaluate_transport(driver, eval_set: HandoffPool, config: TransportConfig | None = None
-                       ) -> tuple[dict, list[TransportEpisode]]:
+def evaluate_transport(driver, eval_set: HandoffPool, config: TransportConfig | None = None,
+                       env_cls: type = TransportEnv) -> tuple[dict, list[TransportEpisode]]:
+    """env_cls: TransportEnv, or TransportResidualEnv for residual policies."""
     if eval_set.goals is None:
         raise ValueError("evaluation pool has no goals")
-    env = TransportEnv(config)
+    env = env_cls(config)
     start = time.perf_counter()
     results, latencies = [], []
     for i, (state, goal, source) in enumerate(zip(eval_set.states, eval_set.goals,

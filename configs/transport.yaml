@@ -43,4 +43,9 @@ check:                    # verified grasp predicate
   max_slip: 0.002
   max_slip_rot: 0.05
 
+residual:               # used by TransportResidualEnv (task transport_residual) only
+  scale: 0.3             # policy output added to the scripted carry action, x 0.3
+  base_gain: 0.2         # scripted carry IK gain, as for the baseline
+  penalty: 0.01          # x ||policy output||^2 per step
+
 start_pool: data/handoff/transport_train_v1.npz  # handoff states from 4 grasp controllers

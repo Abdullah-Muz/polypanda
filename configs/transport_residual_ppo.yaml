@@ -1,0 +1,33 @@
+# Residual PPO on the scripted carry (task transport_residual). Keys map to TrainConfig.
+# After two plain-PPO transport pilots stalled at 0 %, the policy learns a correction added to
+# the scripted closed-loop carry (92.0 % held-out): applied = clip(base + 0.3 * policy).
+# Same PPO settings as the other skills; task v2 environment (configs/transport.yaml).
+
+algorithm: ppo
+task: transport_residual
+env_config: configs/transport.yaml
+seed: 0
+n_envs: 8
+vec_env: subproc
+total_timesteps: 1000000
+normalize_obs: true
+normalize_reward: true
+eval_freq: 50000
+eval_episodes: 30
+eval_seed: 100000
+checkpoint_freq: 250000
+
+ppo:
+  learning_rate: 0.0003
+  n_steps: 512
+  batch_size: 256
+  n_epochs: 10
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_range: 0.2
+  ent_coef: 0.005
+  vf_coef: 0.5
+  max_grad_norm: 0.5
+  net_arch: [128, 128]
+  log_std_init: -0.7      # initial residual noise std ~0.5: measured 80 % base success under
+                          # this noise vs 32 % at the SB3 default std 1.0 (60 % lost grip)

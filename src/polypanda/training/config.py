@@ -19,6 +19,7 @@ class PPOParams:
     vf_coef: float = 0.5
     max_grad_norm: float = 0.5
     net_arch: tuple[int, ...] = (128, 128)
+    log_std_init: float = 0.0    # initial log of the action noise std (0 -> std 1, SB3 default)
 
 
 @dataclass(frozen=True)

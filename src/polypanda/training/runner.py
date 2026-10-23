@@ -67,8 +67,9 @@ def build_model(cfg: TrainConfig, env, tensorboard_log: str | None):
     common = {"seed": cfg.seed, "device": "cpu", "verbose": 0,
               "tensorboard_log": tensorboard_log}
     if cfg.algorithm == "ppo":
-        return PPO("MlpPolicy", env, policy_kwargs={"net_arch": {"pi": arch, "vf": arch}},
-                   **common, **params)
+        policy_kwargs = {"net_arch": {"pi": arch, "vf": arch},
+                         "log_std_init": params.pop("log_std_init")}
+        return PPO("MlpPolicy", env, policy_kwargs=policy_kwargs, **common, **params)
     return SAC("MlpPolicy", env, policy_kwargs={"net_arch": {"pi": arch, "qf": arch}},
                **common, **params)
 

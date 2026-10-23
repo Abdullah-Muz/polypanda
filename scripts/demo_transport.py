@@ -18,6 +18,7 @@ import mujoco.viewer
 import numpy as np
 
 from polypanda.environments.handoff import HandoffPool
+from polypanda.environments.tasks import task_spec
 from polypanda.environments.transport import TransportEnv
 from polypanda.evaluation.grasp import PolicyDriver
 from polypanda.evaluation.transport import ScriptedCarryDriver
@@ -43,18 +44,21 @@ def main() -> None:
     parser.add_argument("--set", type=Path, default=Path("eval_sets/transport_nominal_v1.npz"))
     args = parser.parse_args()
 
-    env = TransportEnv()
-    if not args.shadows:
-        fast_rendering(env.model)
-    eval_set = HandoffPool.load(args.set, env.model)
     run_dir = None
+    env_cls = TransportEnv
     if args.policy == "scripted":
         driver = ScriptedCarryDriver()
     elif args.policy.startswith("run:"):
         run_dir, _, which = args.policy[4:].partition("@")
-        driver = PolicyDriver(load_run(run_dir, which or "best"))
+        policy = load_run(run_dir, which or "best")
+        env_cls = task_spec(policy.metadata["skill"]).env_cls  # residual policies need their env
+        driver = PolicyDriver(policy)
     else:
         raise SystemExit(f"unknown policy {args.policy!r}")
+    env = env_cls()
+    if not args.shadows:
+        fast_rendering(env.model)
+    eval_set = HandoffPool.load(args.set, env.model)
     frame = env.adapter.control_dt / args.speed
     best_file = Path(run_dir) / "best_model.zip" if run_dir else None
     loaded_mtime = best_file.stat().st_mtime if best_file and best_file.exists() else None

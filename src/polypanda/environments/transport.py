@@ -14,6 +14,8 @@ from gymnasium import spaces
 
 from polypanda.config import load_yaml
 from polypanda.control.action_adapter import ACTION_DIM, JointDeltaActionAdapter
+from polypanda.control.ik import PoseIK
+from polypanda.control.scripted_carry import carry_action, level_quat
 from polypanda.environments.grasp import GRIPPER_CLOSED, gripper_tilt
 from polypanda.environments.handoff import HandoffPool, restore_state
 from polypanda.environments.reach import ActionConfig
@@ -88,6 +90,14 @@ class TransportRewardConfig:
 
 
 @dataclass(frozen=True)
+class ResidualConfig:
+    """Used by TransportResidualEnv only."""
+    scale: float = 0.3       # policy output range added to the base action (normalized units)
+    base_gain: float = 0.2   # scripted-carry IK gain, as for the baseline
+    penalty: float = 0.01    # x ||policy output||^2 per step: deviate only when it helps
+
+
+@dataclass(frozen=True)
 class TransportConfig:
     action: ActionConfig = field(default_factory=ActionConfig)
     goal: GoalConfig = field(default_factory=GoalConfig)
@@ -95,6 +105,7 @@ class TransportConfig:
     success: TransportSuccessConfig = field(default_factory=TransportSuccessConfig)
     reward: TransportRewardConfig = field(default_factory=TransportRewardConfig)
     check: GraspCheckConfig = field(default_factory=GraspCheckConfig)
+    residual: ResidualConfig = field(default_factory=ResidualConfig)
     start_pool: str = "data/handoff/transport_train_v1.npz"
 
     @classmethod
@@ -163,18 +174,29 @@ class TransportEnv(gym.Env):
         self._p_rel = self._hand_frame_cube()
         self._slip = np.zeros(3)
         self._prev_action = np.zeros(ACTION_DIM)
+        self._after_reset()
         source = self.pool.sources[self.start_index] if self.start_index >= 0 else "given"
         return self._observation(), {"goal": self.goal.copy(), "distance": self._distance,
                                      "start_index": self.start_index, "start_source": source}
 
+    # Extension points (TransportResidualEnv); defaults give plain transport.
+    def _after_reset(self) -> None:
+        pass
+
+    def _applied_action(self, action) -> np.ndarray:
+        return np.clip(np.asarray(action, dtype=np.float64), -1.0, 1.0)
+
+    def _extra_terms(self) -> dict:
+        return {}
+
     def step(self, action):
         cfg, r = self.config, self.config.reward
-        a = np.clip(np.asarray(action, dtype=np.float64), -1.0, 1.0)
+        a = self._applied_action(action)
         self.adapter.step(self.data, a)
         self._steps += 1
         if not (np.all(np.isfinite(self.data.qpos)) and np.all(np.isfinite(self.data.qvel))):
-            return (np.zeros(OBS_DIM, dtype=np.float32), -r.drop, True, False,
-                    {"is_success": False, "failure": "non_finite", "reward_terms": {}})
+            return (np.zeros(self.observation_space.shape, dtype=np.float32), -r.drop, True,
+                    False, {"is_success": False, "failure": "non_finite", "reward_terms": {}})
 
         cube = cube_position(self.data, self.cube)
         distance = float(np.linalg.norm(self.goal - cube))
@@ -218,6 +240,7 @@ class TransportEnv(gym.Env):
             "low_height": -r.low_height * max(0.0, r.safe_lift - lift),
             "drop": -r.drop if lost_grip else 0.0,
             "touchdown": -r.touchdown if touched_down else 0.0,
+            **self._extra_terms(),
         }
         self._distance = distance
         self._prev_action = a
@@ -257,3 +280,46 @@ class TransportEnv(gym.Env):
             self.goal,
             self.goal - cube,
         ]).astype(np.float32)
+
+
+RESIDUAL_OBS_SCHEMA = "transport-residual-v1-54d"
+
+
+class TransportResidualEnv(TransportEnv):
+    """Residual RL on the scripted carry.
+
+    Applied action = clip(base + scale * policy_output, -1, 1), where base is the scripted
+    closed-loop carry (polypanda.control.scripted_carry). A zero policy output reproduces the
+    scripted baseline exactly. The observation appends the base action the policy's output will
+    be added to (schema transport-residual-v1-54d), and a small penalty on the policy output
+    keeps corrections to where they help. The base controller uses privileged information (true
+    cube pose, exact kinematics), as documented for the baseline.
+    """
+
+    def __init__(self, config: TransportConfig | None = None) -> None:
+        super().__init__(config)
+        self.observation_space = spaces.Box(-np.inf, np.inf, shape=(OBS_DIM + ACTION_DIM,),
+                                            dtype=np.float32)
+        self._ik = PoseIK()
+        self._quat = np.array([1.0, 0.0, 0.0, 0.0])
+        self._base = np.zeros(ACTION_DIM)
+        self._residual = np.zeros(ACTION_DIM)
+
+    def _after_reset(self) -> None:
+        self._quat = level_quat(self.data, self.arm)
+
+    def _base_action(self) -> np.ndarray:
+        rc = self.config.residual
+        return carry_action(self._ik, self.data, self.arm, self.cube, self.goal, self._quat,
+                            rc.base_gain, self.adapter.max_delta).astype(np.float64)
+
+    def _applied_action(self, action) -> np.ndarray:
+        self._residual = np.clip(np.asarray(action, dtype=np.float64), -1.0, 1.0)
+        return np.clip(self._base + self.config.residual.scale * self._residual, -1.0, 1.0)
+
+    def _extra_terms(self) -> dict:
+        return {"residual": -self.config.residual.penalty * float(self._residual @ self._residual)}
+
+    def _observation(self) -> np.ndarray:
+        self._base = self._base_action()  # the base the next policy output is added to
+        return np.concatenate([super()._observation(), self._base.astype(np.float32)])

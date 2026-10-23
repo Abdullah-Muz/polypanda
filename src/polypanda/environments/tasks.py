@@ -17,6 +17,8 @@ TASKS = {
     "grasp": TaskSpec(grasp.GraspEnv, grasp.GraspConfig, grasp.OBS_SCHEMA),
     "transport": TaskSpec(transport.TransportEnv, transport.TransportConfig,
                           transport.OBS_SCHEMA),
+    "transport_residual": TaskSpec(transport.TransportResidualEnv, transport.TransportConfig,
+                                   transport.RESIDUAL_OBS_SCHEMA),
 }
 
 

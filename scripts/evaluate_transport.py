@@ -18,6 +18,8 @@ import mujoco
 import numpy as np
 
 from polypanda.environments.handoff import HandoffPool
+from polypanda.environments.tasks import task_spec
+from polypanda.environments.transport import TransportEnv
 from polypanda.evaluation.grasp import PolicyDriver
 from polypanda.evaluation.transport import (
     ScriptedCarryDriver,
@@ -43,6 +45,7 @@ def main() -> None:
 
     eval_set = HandoffPool.load(args.set)
     set_name = args.set.stem
+    env_cls = TransportEnv
     if args.policy == "scripted":
         driver = ScriptedCarryDriver()
         description = "scripted closed-loop carry (PoseIK, privileged cube position, gain 0.2)"
@@ -51,16 +54,18 @@ def main() -> None:
         run_dir, _, which = args.policy[4:].partition("@")
         policy = load_run(run_dir, which or "best")
         meta = policy.metadata
-        if meta["skill"] != "transport":
+        if meta["skill"] not in ("transport", "transport_residual"):
             raise SystemExit(f"{run_dir} is a {meta['skill']} policy, not transport")
+        env_cls = task_spec(meta["skill"]).env_cls
         driver = PolicyDriver(policy)
-        description = (f"{meta['algorithm']} {policy.which} model from {run_dir} "
+        kind = "residual on scripted carry, " if meta["skill"] == "transport_residual" else ""
+        description = (f"{meta['algorithm']} {kind}{policy.which} model from {run_dir} "
                        f"(seed {meta['seed']}, {meta['total_timesteps']:,} steps)")
         name = f"{meta['policy_id']}_{policy.which}_{set_name}"
     else:
         raise SystemExit(f"unknown policy {args.policy!r}")
 
-    summary, episodes = evaluate_transport(driver, eval_set)
+    summary, episodes = evaluate_transport(driver, eval_set, env_cls=env_cls)
     record = {"name": name, "policy": description, "protocol": "TransportEnv, 10 s horizon",
               "eval_set": {"name": set_name, "n": len(eval_set), "digest": eval_set.digest},
               "created_utc": datetime.now(UTC).isoformat(timespec="seconds"),
