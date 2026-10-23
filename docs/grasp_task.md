@@ -37,3 +37,41 @@ For 300 random cube placements (x 0.25–0.75 m, y ±0.40 m, any yaw), IK was so
 - Inside x 0.30–0.70 m, y ±0.30 m: **190 / 190 feasible**.
 
 **Cube placement region for the grasp task: x 0.35–0.65 m, y ±0.25 m, any yaw.** This lies inside the fully feasible box with margin, and a test re-checks 25 random placements.
+
+## Can the gripper hold the cube? (physics check)
+
+The arm was teleported to the IK grasp pose around the cube, the gripper closed (control 0), the arm lifted 10 cm over 1 s, and the cube held for 2 s, at four placements:
+
+| Placement | Squeeze after closing, L / R | While holding, L / R | Lifted | Slip in hand | Tilt |
+|---|---|---|---|---|---|
+| (0.50, 0.00), yaw 0 | 1.02 / 0.98 N | 1.00 / 0.99 N | 9.71 cm | 2.45 mm | 0.7° |
+| (0.45, 0.15), yaw 0.6 | 1.01 / 0.99 N | 1.00 / 0.99 N | 9.71 cm | 2.51 mm | 2.3° |
+| (0.60, −0.20), yaw −1.0 | **2.09 / 0.00 N** | 1.00 / 0.99 N | 9.45 cm | 4.73 mm | 8.1° |
+| (0.40, 0.20), yaw 2.5 | 1.00 / 1.00 N | 1.00 / 1.00 N | 9.69 cm | 2.76 mm | 6.4° |
+
+- The squeeze matches the actuator model exactly: about 1 N per finger.
+- The cube sags a few millimetres in the grip and can tilt by several degrees, which is consistent with the roughly 2× friction margin.
+- In the third case only one finger was pressing right after closing, because the cube was slightly misaligned and got pushed. This is why the grasp predicate requires **both** fingers.
+- MuJoCo combines contact friction as the **maximum** of the two geoms' coefficients. The effective grip friction is therefore max(finger pad, object), so lowering only an object's friction has no effect unless that object's geom has higher `priority`. This matters for friction randomization in Milestone 6.
+
+## Grasp predicate (`polypanda.simulation.grasp`)
+
+`GraspMonitor.update(data)` is called once per policy step. The cube counts as **grasped** only when all of the following hold for 5 consecutive policy steps (0.25 s):
+
+1. **Both** fingers are in contact with the cube (normal force > 0 on each).
+2. The cube is at least **2 cm** above its resting height.
+3. It is **stable in the hand**: its pose in the TCP frame moves less than **2 mm** and rotates less than **0.05 rad (~3°)** across the window.
+
+The returned `GraspState` also reports per-finger contact and normal force, lift, held steps and slip, for diagnostics and reward terms.
+
+Each test stages a situation physically, and only the real grasp is allowed to pass:
+
+| Situation | Contacts | Lift | Grasped? |
+|---|---|---|---|
+| Gripper above a resting cube | none | 0 | no |
+| Fingers squeezing the cube on the table | both, about 1 N each | < 2 cm | no |
+| Cube in the air, away from the gripper | none | 37 cm | no |
+| Cube off-centre, so one finger touches first | one | 0 | no (single-finger steps detected) |
+| Closed, lifted 10 cm and held (3 placements) | both | > 8 cm | **yes**, after 5 stable steps |
+| Gripper opened while lifted | none | falls to < 1 cm | no |
+| Cube made slippery after grasping | — | — | no, lost within 5 steps |
