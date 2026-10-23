@@ -89,7 +89,10 @@ def train(cfg: TrainConfig, env_config, run_dir: Path) -> Path:
     env = VecNormalize(_vec_env(task.env_cls, env_config, cfg.n_envs, cfg.seed, cfg.vec_env),
                        norm_obs=cfg.normalize_obs, norm_reward=cfg.normalize_reward,
                        gamma=gamma)
-    eval_env = VecNormalize(_vec_env(task.env_cls, env_config, 1, cfg.eval_seed, "dummy"),
+    # Validation always measures the task as evaluated (e.g. no training curriculum starts).
+    eval_config = env_config.for_evaluation() if hasattr(env_config, "for_evaluation") \
+        else env_config
+    eval_env = VecNormalize(_vec_env(task.env_cls, eval_config, 1, cfg.eval_seed, "dummy"),
                             norm_obs=cfg.normalize_obs, norm_reward=False, training=False)
     model = build_model(cfg, env, str(run_dir / "tb"))
     git = _git_state()  # recorded before training, so later edits cannot mislabel the run

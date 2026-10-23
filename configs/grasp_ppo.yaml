@@ -1,9 +1,11 @@
 # PPO on GraspEnv. Keys map to polypanda.training.config.TrainConfig; unknown keys are rejected.
-# Same PPO hyperparameters and network size as configs/reach_ppo.yaml (the reach winner).
+# Same PPO settings and network size as configs/reach_ppo.yaml, except two changes made after the
+# pilot (grasp_ppo_pilot_seed0) never discovered lifting: 30 % pre-grasped training starts
+# (configs/grasp_curriculum.yaml) and a small entropy bonus. Validation uses no curriculum.
 
 algorithm: ppo
 task: grasp
-env_config: configs/grasp.yaml
+env_config: configs/grasp_curriculum.yaml
 seed: 0
 n_envs: 8                 # ~1.8k env steps/s with contacts (docs/grasp_task.md)
 vec_env: subproc
@@ -23,7 +25,7 @@ ppo:
   gamma: 0.99
   gae_lambda: 0.95
   clip_range: 0.2
-  ent_coef: 0.0
+  ent_coef: 0.005         # pilot used 0.0; its action std collapsed to 0.18 (reach PPO kept ~0.7)
   vf_coef: 0.5
   max_grad_norm: 0.5
   net_arch: [128, 128]

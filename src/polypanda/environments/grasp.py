@@ -7,16 +7,17 @@ horizon (lesson from reach v1). Success: the verified grasp predicate holds with
 least `success.lift` above the table. Reward terms are returned in info["reward_terms"].
 """
 
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
 
 import gymnasium as gym
+import mujoco
 import numpy as np
 from gymnasium import spaces
 
 from polypanda.config import load_yaml
 from polypanda.control.action_adapter import ACTION_DIM, JointDeltaActionAdapter
-from polypanda.control.ik import closing_yaw
+from polypanda.control.ik import PoseIK, closing_yaw, grasp_closing_yaw, top_down_quat
 from polypanda.environments.reach import ActionConfig
 from polypanda.simulation.grasp import GraspCheckConfig, GraspMonitor
 from polypanda.simulation.panda import PandaIndices, reset_to_home, tcp_position
@@ -90,6 +91,15 @@ class GraspRewardConfig:
 
 
 @dataclass(frozen=True)
+class CurriculumConfig:
+    # Training-only "reset to helpful states": this fraction of randomly placed episodes starts
+    # with the gripper already closed around the cube at its grasp pose, so the policy
+    # experiences lift and hold rewards it would otherwise rarely discover. Never applied to
+    # resets with an explicit placement (evaluation) or to validation (for_evaluation()).
+    pregrasp_start_prob: float = 0.0
+
+
+@dataclass(frozen=True)
 class GraspConfig:
     action: ActionConfig = field(default_factory=ActionConfig)
     placement: PlacementConfig = field(default_factory=PlacementConfig)
@@ -98,10 +108,15 @@ class GraspConfig:
     success: GraspSuccessConfig = field(default_factory=GraspSuccessConfig)
     reward: GraspRewardConfig = field(default_factory=GraspRewardConfig)
     check: GraspCheckConfig = field(default_factory=GraspCheckConfig)
+    curriculum: CurriculumConfig = field(default_factory=CurriculumConfig)
 
     @classmethod
     def from_yaml(cls, path: str | Path) -> "GraspConfig":
         return load_yaml(cls, path)
+
+    def for_evaluation(self) -> "GraspConfig":
+        """The task as evaluated: every episode starts from home with the cube on the table."""
+        return replace(self, curriculum=CurriculumConfig())
 
 
 def alignment_error(R_tcp: np.ndarray, cube_yaw_value: float) -> float:
@@ -132,6 +147,7 @@ class GraspEnv(gym.Env):
         self._dwell = self._empty = self._steps = 0
         self._prev = {"distance": 0.0, "align": 0.0, "lift": 0.0}
         self._state = None
+        self._ik = None  # built on first curriculum reset
 
     @property
     def elapsed_steps(self) -> int:
@@ -170,23 +186,57 @@ class GraspEnv(gym.Env):
         options = options or {}
         cfg = self.config.placement
         reset_to_home(self.model, self.data, self.arm)
+        pregrasp = False
         if "cube" in options:
             x, y, yaw = (float(v) for v in options["cube"])
         else:
             x = self.np_random.uniform(*cfg.x_range)
             y = self.np_random.uniform(*cfg.y_range)
             yaw = self.np_random.uniform(-np.pi, np.pi)
+            prob = self.config.curriculum.pregrasp_start_prob
+            pregrasp = prob > 0 and self.np_random.uniform() < prob  # no draw when disabled
         set_cube_pose(self.model, self.data, self.cube, (x, y), yaw)
-        self.adapter.reset_to_measured(self.data)
-        self.data.ctrl[self.arm.gripper_actuator] = GRIPPER_OPEN
+        if pregrasp:
+            pregrasp = self._pregrasp_start()
+        if pregrasp:
+            self.adapter.adopt_ctrl(self.data)  # keep the grasp-pose targets; no sag-induced jump
+        else:
+            self.adapter.reset_to_measured(self.data)
+            self.data.ctrl[self.arm.gripper_actuator] = GRIPPER_OPEN
         self.monitor.reset()
         self._state = self.monitor.update(self.data)
-        self.closed = False
+        self.closed = pregrasp
         self._dwell = self._empty = self._steps = 0
         m = self._measure()
         self._prev = {"distance": m["distance"], "align": abs(m["align"]),
                       "lift": min(m["lift"], self.config.reward.lift_cap)}
-        return self._observation(m), {"cube": (x, y, yaw), "distance": m["distance"]}
+        info = {"cube": (x, y, yaw), "distance": m["distance"],
+                "start": "pregrasp" if pregrasp else "home"}
+        return self._observation(m), info
+
+    def _pregrasp_start(self, settle_steps: int = 100) -> bool:
+        """Training curriculum: arm at the IK grasp pose, fingers closed on the cube.
+
+        Fingers are placed on the cube faces and squeeze for 0.2 s of physics so contacts are
+        established. Returns False (normal start) if IK does not converge.
+        """
+        if self._ik is None:
+            self._ik = PoseIK()
+        quat = top_down_quat(grasp_closing_yaw(cube_yaw(self.data, self.cube),
+                                               closing_yaw(self._tcp_R())))
+        q, ok = self._ik.solve(self.data.qpos[self.arm.arm_qpos],
+                               cube_position(self.data, self.cube), quat)
+        if not ok:
+            return False
+        self.data.qpos[self.arm.arm_qpos] = q
+        self.data.ctrl[self.arm.arm_actuators] = q
+        for adr in self._finger_qpos:
+            self.data.qpos[adr] = self.cube.half_size[0]  # finger pads on the cube faces
+        self.data.ctrl[self.arm.gripper_actuator] = GRIPPER_CLOSED
+        self.data.qvel[:] = 0.0
+        mujoco.mj_forward(self.model, self.data)
+        mujoco.mj_step(self.model, self.data, nstep=settle_steps)
+        return True
 
     def _update_gate(self, m: dict) -> None:
         g = self.config.gate

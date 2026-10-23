@@ -154,3 +154,23 @@ Configuration: `configs/grasp.yaml`. Unknown keys are rejected, and the dataclas
 About 88 % of a successful episode's return is hold reward, which only appears after a grasp and lift succeed. Exploration is the main risk for learning.
 
 **Throughput:** about 790 env steps/s single process, about 1,790 with 8 `SubprocVecEnv` workers. That is about half the reach environment's speed, because of contacts and grasp monitoring.
+
+## Learning to grasp (PPO)
+
+### Pilot: plain PPO stalls before lifting
+
+`grasp_ppo_pilot_seed0` used the reach PPO settings unchanged: 1M steps, 8 envs, about 31 min, commit `12f57b8`. Validation success was **0 % throughout**. Held-out evaluation (GraspEnv protocol) showed where it stopped:
+
+| Failure | Episodes |
+|---|---|
+| `not_lifted`: the gate closed on the cube, but it was never lifted 5 cm | 168 / 200 |
+| `never_closed`: got close, but not centred or aligned enough for the gate | 32 / 200 |
+
+The policy had learned the hard spatial part: centring within 1 cm and aligning within 0.15 rad of a face pair, at any cube yaw. After the fingers closed, it **stopped moving**. Actions decayed to |a| ≈ 0.02, and the median maximum lift was 0.1 cm (never more than 1.1 cm). Sitting still earns ≈ 0, while lifting first earns little (+1 spread over a 5 cm climb) and only then earns the large hold reward. By then the action noise had collapsed from 1.0 to 0.18, so the policy almost never lifted consistently enough to experience a hold even once.
+
+### Change: "reset to helpful states" during training only
+
+- `configs/grasp_curriculum.yaml` is identical to `configs/grasp.yaml` except `curriculum.pregrasp_start_prob: 0.3`. In 30 % of randomly placed training episodes, the arm starts at the IK grasp pose with the fingers closed on the cube (0.2 s of squeezing physics at reset), so lifting and holding are experienced directly. The other 70 % start from home as usual.
+- **Evaluation is unchanged.** Resets with an explicit placement never use the curriculum, and training validation uses `GraspConfig.for_evaluation()` (curriculum off), so the "best model" is chosen on the real task.
+- PPO entropy bonus `ent_coef: 0.005` (pilot: 0.0) keeps exploration from collapsing.
+- Observed physics in pre-grasped starts: on the table, the coupled fingers sometimes squeeze one-sidedly (about 2 N on one finger). Gravity sag offsets the hand by millimetres while floor friction pins the cube. Lifting turns it into a two-finger grip, as in the 4.3 physics check.

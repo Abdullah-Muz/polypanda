@@ -38,6 +38,9 @@ reward:
   floor: 0.1
   knocked_over: 5.0
 
+curriculum:               # training-only start states; the task as evaluated uses none
+  pregrasp_start_prob: 0.0
+
 check:                    # verified grasp predicate (polypanda.simulation.grasp)
   min_lift: 0.02
   window: 5
