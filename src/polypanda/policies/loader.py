@@ -45,9 +45,28 @@ def check_compatible(metadata: dict) -> None:
         raise IncompatiblePolicyError("; ".join(problems))
 
 
+def _in_progress_metadata(run_dir: Path) -> dict:
+    """Provisional metadata for a run still training (metadata.yaml is written at the end)."""
+    cfg = yaml.safe_load((run_dir / "config.yaml").read_text())
+    skill = cfg.get("task", "reach")
+    return {"policy_id": run_dir.name, "skill": skill, "algorithm": cfg["algorithm"].upper(),
+            "seed": cfg["seed"], "observation_schema": TASKS[skill].obs_schema,
+            "action_schema": ACTION_SCHEMA, "robot_model_revision": MENAGERIE_COMMIT,
+            "checkpoints": {"best": "best_model.zip"},
+            "normalization": {"best": "best_vecnormalize.pkl"},
+            "total_timesteps": 0, "in_progress": True}
+
+
 def load_run(run_dir: str | Path, which: str = "best") -> LoadedPolicy:
+    """Load a finished run, or the current best checkpoint of a run still training."""
     run_dir = Path(run_dir)
-    metadata = yaml.safe_load((run_dir / "metadata.yaml").read_text())
+    meta_file = run_dir / "metadata.yaml"
+    if meta_file.exists():
+        metadata = yaml.safe_load(meta_file.read_text())
+    elif which == "best" and (run_dir / "best_model.zip").exists():
+        metadata = _in_progress_metadata(run_dir)
+    else:
+        raise FileNotFoundError(f"{run_dir}: no metadata.yaml and no best checkpoint yet")
     check_compatible(metadata)
     model = ALGORITHMS[metadata["algorithm"]].load(run_dir / metadata["checkpoints"][which],
                                                    device="cpu")

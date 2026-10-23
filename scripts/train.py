@@ -43,7 +43,8 @@ def main() -> None:
     meta = yaml.safe_load((run_dir / "metadata.yaml").read_text())
     print(f"done in {meta['wall_clock_s']:.0f} s ({meta['steps_per_s']:.0f} steps/s); "
           f"git dirty: {meta['git']['dirty']}")
-    script = "evaluate_grasp.py" if cfg.task == "grasp" else "evaluate.py"
+    script = {"grasp": "evaluate_grasp.py", "transport": "evaluate_transport.py"}.get(
+        cfg.task, "evaluate.py")
     print(f"evaluate: uv run python scripts/{script} --policy run:{run_dir}")
 
 
