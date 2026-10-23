@@ -75,3 +75,20 @@ By the grasp controller that produced the handoff:
 **Findings:**
 - **Handoffs from learned grasps are harder to carry.** They hold the cube less centrally and more tilted, which justifies building the pool from learned as well as scripted grasps.
 - **Drops happen while holding, not while moving.** 13 of 15 drops occur after 2.9 s, after the cube has typically reached the goal (median 2.05 s). Dropped cubes had tilted far more (median 37° vs 17°). Under the weak grip the cube slowly creeps and rotates out under gravity, more so on longer carries (median start distance 374 mm for drops vs 253 mm for the rest). This matters for the place skill: the sooner a cube is set down, the better.
+
+## T5: PPO pilot (stalled), diagnosis and planned improvements
+
+`transport_ppo_pilot_seed0`: `configs/transport_ppo.yaml` (same PPO settings as grasp, including `ent_coef 0.005`), 1M steps, 8 envs, 41 min, trained at `8e7a955` (clean).
+
+- **Result: 0 % success.** Every validation test was 0 % (20 tests, 30 episodes each), no training episode succeeded (about 45k episodes), and the held-out evaluation scored 0 / 200 with every episode ending in a "drop".
+- **Learning did happen, just not enough.** Training episodes lengthened from about 10 to 22 steps before a terminating event, and in the last 100k steps validation episodes reached 33–40 steps (1.7–2 s). Action noise fell from 1.0 to 0.26, and the progress reward rose (the cube moved toward the goal; closest median approach 11 cm, best 3.4 cm). The hold reward never appeared.
+
+**Diagnosis: the grip never failed; the robot lowered the cube onto the table.** Instrumenting 40 held-out episodes showed the terminating condition was **"cube within 1 cm of the table" in 40 / 40**, never "finger contact lost" or "tipped over". By episode end the hand had moved down a median 6.3 cm (3.4–8.8 cm). Yet the goal is *above* the handoff height in 93 % of cases: the cube starts at a median 11.1 cm and goals sit at 10–25 cm, a median 6.3 cm higher. The policy learned to swing the cube sideways toward the goal with joint motions that trade height for reach, and nothing told it it was sinking until the binary termination at 1 cm. Moving sideways at constant height needs several joints coordinated, which random exploration rarely discovers.
+
+The first hypothesis, too-violent initial exploration noise, was ruled out by this check: noise had already fallen to 0.26 while the "drops" continued. Recording the specific terminating condition settled it.
+
+**Planned improvements (next transport run):**
+1. **Height-keeping signal.** Add a continuous penalty while the cube is below a safe carrying height (for example 6 cm above the table), so sinking is signalled long before touchdown. Today only the terminal −5 at 1 cm exists.
+2. **Honest failure labels.** Split `dropped` into **lost grip** (finger contact lost, cube tipped) and **lowered onto table**. The single label hid the real behaviour behind a "grip failure" name.
+3. Keep all other settings unchanged, so the effect of the fix is attributable. Then pilot → 3 seeds → held-out comparison with the scripted baseline (92.0 %).
+4. Possible later improvements: a goal-height range that also exercises upward moves more strongly, gentler initial exploration (`log_std_init`), or Cartesian end-effector actions as a separately labelled ablation.

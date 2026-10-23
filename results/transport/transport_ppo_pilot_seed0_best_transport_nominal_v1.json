@@ -1,0 +1,94 @@
+{
+  "name": "transport_ppo_pilot_seed0_best_transport_nominal_v1",
+  "policy": "PPO best model from runs/transport_ppo_pilot_seed0 (seed 0, 1,003,520 steps)",
+  "protocol": "TransportEnv, 10 s horizon",
+  "eval_set": {
+    "name": "transport_nominal_v1",
+    "n": 200,
+    "digest": "b3735acee710"
+  },
+  "created_utc": "2026-10-23T21:30:41+00:00",
+  "git": {
+    "commit": "8eec41b5eef7df4f30548b5c376b665a5fc05650",
+    "dirty": true
+  },
+  "versions": {
+    "python": "3.12.3",
+    "mujoco": "3.16.0",
+    "numpy": "2.5.4"
+  },
+  "summary": {
+    "episodes": 200,
+    "success_rate": 0.0,
+    "success_ci95": [
+      0.0,
+      0.018846005918320894
+    ],
+    "drop_rate": 1.0,
+    "first_success_s": {
+      "median": null,
+      "p90": null
+    },
+    "final_distance_mm": {
+      "median": 145.4524894961288,
+      "p95": 209.43097918132125
+    },
+    "max_slip_speed_mm_s_median": 12.193816155705306,
+    "max_cube_tilt_deg": {
+      "median": 10.407598489578032,
+      "max": 43.30413309053292
+    },
+    "floor_contact_episode_rate": 0.0,
+    "action_jerk_median": 0.06313583923111607,
+    "return": {
+      "mean": -4.0052307142388255,
+      "std": 1.874436332048502
+    },
+    "by_source": {
+      "runs/grasp_ppo_curr_seed0": {
+        "n": 50,
+        "success_rate": 0.0,
+        "success_ci95": [
+          0.0,
+          0.07135003417431873
+        ],
+        "drop_rate": 1.0
+      },
+      "runs/grasp_ppo_curr_seed1": {
+        "n": 50,
+        "success_rate": 0.0,
+        "success_ci95": [
+          0.0,
+          0.07135003417431873
+        ],
+        "drop_rate": 1.0
+      },
+      "runs/grasp_ppo_curr_seed2": {
+        "n": 50,
+        "success_rate": 0.0,
+        "success_ci95": [
+          0.0,
+          0.07135003417431873
+        ],
+        "drop_rate": 1.0
+      },
+      "scripted": {
+        "n": 50,
+        "success_rate": 0.0,
+        "success_ci95": [
+          0.0,
+          0.07135003417431873
+        ],
+        "drop_rate": 1.0
+      }
+    },
+    "failures": {
+      "dropped": 200
+    },
+    "inference_latency_us": {
+      "median": 854.6720000595087,
+      "p99": 6420.0211197930785
+    },
+    "wall_clock_s": 34.0
+  }
+}
