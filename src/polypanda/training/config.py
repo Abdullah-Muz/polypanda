@@ -22,6 +22,20 @@ class PPOParams:
 
 
 @dataclass(frozen=True)
+class SACParams:
+    learning_rate: float = 3e-4
+    buffer_size: int = 1_000_000
+    learning_starts: int = 10_000    # random-action transitions before the first update
+    batch_size: int = 256
+    tau: float = 0.005               # target-network Polyak averaging rate
+    gamma: float = 0.99
+    train_freq: int = 1              # env.step calls between update phases
+    gradient_steps: int = -1         # -1: one gradient step per collected transition (UTD 1)
+    ent_coef: str | float = "auto"   # entropy temperature, tuned automatically
+    net_arch: tuple[int, ...] = (128, 128)
+
+
+@dataclass(frozen=True)
 class TrainConfig:
     algorithm: str = "ppo"
     env_config: str = "configs/reach.yaml"
@@ -35,7 +49,16 @@ class TrainConfig:
     eval_episodes: int = 50
     eval_seed: int = 100_000         # validation target stream; never the held-out test set
     checkpoint_freq: int = 100_000   # env transitions between checkpoints
+    torch_threads: int | None = None  # trainer's PyTorch threads; None = PyTorch default
     ppo: PPOParams = field(default_factory=PPOParams)
+    sac: SACParams = field(default_factory=SACParams)
+
+    @property
+    def algo_params(self) -> PPOParams | SACParams:
+        try:
+            return {"ppo": self.ppo, "sac": self.sac}[self.algorithm]
+        except KeyError:
+            raise ValueError(f"unsupported algorithm {self.algorithm!r}") from None
 
     @classmethod
     def from_yaml(cls, path: str | Path) -> "TrainConfig":

@@ -15,8 +15,9 @@ import time
 from datetime import UTC, datetime
 from pathlib import Path
 
+import torch
 import yaml
-from stable_baselines3 import PPO
+from stable_baselines3 import PPO, SAC
 from stable_baselines3.common.callbacks import CallbackList, CheckpointCallback, EvalCallback
 from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecNormalize
@@ -61,16 +62,21 @@ def _vec_env(env_config: ReachConfig, n_envs: int, seed: int, kind: str):
 
 
 def build_model(cfg: TrainConfig, env, tensorboard_log: str | None):
-    if cfg.algorithm != "ppo":
-        raise ValueError(f"unsupported algorithm {cfg.algorithm!r}")
-    params = dataclasses.asdict(cfg.ppo)
+    params = dataclasses.asdict(cfg.algo_params)
     arch = list(params.pop("net_arch"))
-    return PPO("MlpPolicy", env, seed=cfg.seed, device="cpu", verbose=0,
-               tensorboard_log=tensorboard_log,
-               policy_kwargs={"net_arch": {"pi": arch, "vf": arch}}, **params)
+    common = {"seed": cfg.seed, "device": "cpu", "verbose": 0,
+              "tensorboard_log": tensorboard_log}
+    if cfg.algorithm == "ppo":
+        return PPO("MlpPolicy", env, policy_kwargs={"net_arch": {"pi": arch, "vf": arch}},
+                   **common, **params)
+    return SAC("MlpPolicy", env, policy_kwargs={"net_arch": {"pi": arch, "qf": arch}},
+               **common, **params)
 
 
 def train(cfg: TrainConfig, env_config: ReachConfig, run_dir: Path) -> Path:
+    gamma = cfg.algo_params.gamma  # also rejects unsupported algorithms before any setup
+    if cfg.torch_threads is not None:
+        torch.set_num_threads(cfg.torch_threads)
     run_dir = Path(run_dir)
     run_dir.mkdir(parents=True, exist_ok=False)
     (run_dir / "config.yaml").write_text(yaml.safe_dump(plain(cfg), sort_keys=False))
@@ -78,7 +84,7 @@ def train(cfg: TrainConfig, env_config: ReachConfig, run_dir: Path) -> Path:
 
     env = VecNormalize(_vec_env(env_config, cfg.n_envs, cfg.seed, cfg.vec_env),
                        norm_obs=cfg.normalize_obs, norm_reward=cfg.normalize_reward,
-                       gamma=cfg.ppo.gamma)
+                       gamma=gamma)
     eval_env = VecNormalize(_vec_env(env_config, 1, cfg.eval_seed, "dummy"),
                             norm_obs=cfg.normalize_obs, norm_reward=False, training=False)
     model = build_model(cfg, env, str(run_dir / "tb"))
@@ -122,6 +128,7 @@ def train(cfg: TrainConfig, env_config: ReachConfig, run_dir: Path) -> Path:
         "total_timesteps": int(model.num_timesteps),
         "wall_clock_s": round(wall, 1),
         "steps_per_s": round(model.num_timesteps / wall, 1),
+        "torch_threads": torch.get_num_threads(),
         "package_lock_hash": _lock_hash(),
         "git": git,
         "created_utc": datetime.now(UTC).isoformat(timespec="seconds"),

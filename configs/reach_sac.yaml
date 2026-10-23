@@ -1,0 +1,28 @@
+# SAC on ReachEnv (task v2). Keys map to polypanda.training.config.TrainConfig.
+# Same task, network size, validation stream and evaluation as configs/reach_ppo.yaml.
+
+algorithm: sac
+env_config: configs/reach.yaml
+seed: 0
+n_envs: 4                 # SAC is gradient-bound, not simulation-bound
+vec_env: subproc
+total_timesteps: 200000
+normalize_obs: true       # running mean/std; the replay buffer stores raw obs, normalized on sampling
+normalize_reward: false   # off-policy: drifting reward stats would mis-scale stored transitions
+eval_freq: 20000
+eval_episodes: 50
+eval_seed: 100000
+checkpoint_freq: 100000
+torch_threads: 1          # measured: 9.0 ms per gradient step at 1 thread vs 10.8 ms at 8 (tiny nets)
+
+sac:
+  learning_rate: 0.0003
+  buffer_size: 1000000    # larger than the whole run: nothing is ever discarded
+  learning_starts: 10000  # random-action transitions (2,500 per env) before the first update
+  batch_size: 256
+  tau: 0.005
+  gamma: 0.99
+  train_freq: 1
+  gradient_steps: -1      # one gradient step per transition collected (update-to-data ratio 1)
+  ent_coef: auto
+  net_arch: [128, 128]    # same size as PPO; separate actor and twin Q networks

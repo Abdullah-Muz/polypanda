@@ -11,7 +11,7 @@ from polypanda.environments.reach import ReachConfig
 from polypanda.evaluation.reach import evaluate
 from polypanda.evaluation.sets import ReachEvalSet
 from polypanda.policies.loader import IncompatiblePolicyError, load_run
-from polypanda.training.config import PPOParams, TrainConfig
+from polypanda.training.config import PPOParams, SACParams, TrainConfig
 from polypanda.training.runner import train
 
 ROOT = Path(__file__).parents[1]
@@ -25,9 +25,26 @@ def run_dir(tmp_path_factory):
     return train(cfg, ReachConfig(), tmp_path_factory.mktemp("runs") / "smoke")
 
 
-def test_yaml_config_loads():
-    cfg = TrainConfig.from_yaml(ROOT / "configs" / "reach_ppo.yaml")
-    assert cfg.algorithm == "ppo" and cfg.n_envs == 8 and cfg.ppo.net_arch == (128, 128)
+def test_yaml_configs_load():
+    ppo = TrainConfig.from_yaml(ROOT / "configs" / "reach_ppo.yaml")
+    assert ppo.algorithm == "ppo" and ppo.n_envs == 8 and ppo.algo_params.net_arch == (128, 128)
+    sac = TrainConfig.from_yaml(ROOT / "configs" / "reach_sac.yaml")
+    assert sac.algorithm == "sac" and not sac.normalize_reward and sac.torch_threads == 1
+    assert sac.algo_params.ent_coef == "auto" and sac.algo_params.net_arch == (128, 128)
+
+
+def test_sac_end_to_end(tmp_path):
+    cfg = TrainConfig(algorithm="sac", n_envs=1, vec_env="dummy", total_timesteps=400,
+                      normalize_reward=False, eval_freq=200, eval_episodes=1,
+                      checkpoint_freq=200,
+                      sac=SACParams(buffer_size=1000, learning_starts=100, batch_size=32))
+    run_dir = train(cfg, ReachConfig(), tmp_path / "sac_smoke")
+    meta = yaml.safe_load((run_dir / "metadata.yaml").read_text())
+    assert meta["algorithm"] == "SAC" and meta["total_timesteps"] >= 400
+    policy = load_run(run_dir, "final")
+    eval_set = ReachEvalSet.load(ROOT / "eval_sets" / "reach_nominal_v1.json").subset(1)
+    summary, _ = evaluate(policy, eval_set)
+    assert summary["episodes"] == 1
 
 
 def test_run_directory_contents(run_dir):
