@@ -1,5 +1,7 @@
 # Grasp task (Milestone 4, in progress)
 
+Steps so far: 4.1 scene, 4.2 pose IK, 4.3 grasp predicate, 4.4 scripted baseline (results at the end). Next: the grasp environment for RL.
+
 ## Scene (`polypanda.simulation.scenes`)
 
 `load_pick_scene()` adds one free cube to the Panda scene through `MjSpec`. Menagerie files are not modified.
@@ -75,3 +77,35 @@ Each test stages a situation physically, and only the real grasp is allowed to p
 | Closed, lifted 10 cm and held (3 placements) | both | > 8 cm | **yes**, after 5 stable steps |
 | Gripper opened while lifted | none | falls to < 1 cm | no |
 | Cube made slippery after grasping | — | — | no, lost within 5 steps |
+
+## Scripted grasp baseline (`polypanda.control.scripted_grasp`)
+
+A state machine: **APPROACH** (TCP 10 cm above the cube centre, gripper open, closing yaw aligned to the cube) → **DESCEND** (to the cube centre at half joint speed) → **CLOSE** (gripper control 0 for 0.5 s) → **LIFT** (10 cm) → **HOLD** (1 s) → **DONE**.
+
+- The arm moves **only through the 7-D joint-increment action interface**, steered by `PoseIK` with gain 0.2, the same integral-action scheme as the reach IK baseline. There is no teleporting.
+- Phases advance on measured TCP pose error (under 4 mm and 0.03 rad). Each moving phase has a 6 s timeout, which is reported as a failure.
+- Privileged information: the true cube pose and an exact kinematic model.
+
+### Held-out evaluation (`scripts/evaluate_grasp.py`)
+
+- Placement set `eval_sets/grasp_nominal_v1.json`: 200 placements, uniform over x 0.35–0.65 m, y ±0.25 m, yaw ±π. Drawn from `SeedSequence(20261022, spawn_key=(0x6A5B,))`, digest `ad1eeb22b054`, regenerated exactly by a test. Regions: near (horizontal radius under 0.5 m) 84, far 116.
+- **Success** means the verified grasp predicate holds at the **end** of the episode, after the 1 s hold.
+
+Results (commit `2249cd3`, clean):
+
+| Metric | Value |
+|---|---|
+| Success | **200 / 200 = 100 %** (95 % CI 98.1–100 %); near 84/84, far 116/116 |
+| Time to first verified grasp | median 6.95 s, p90 8.50 s |
+| Episode length (to DONE) | median 8.43 s |
+| Phase durations (median) | approach 3.7 s, descend 2.05 s, close 0.5 s, lift 1.0 s, hold 1.0 s |
+| Cube pushed before the fingers closed | 0.00 mm (max 0.00 mm) |
+| Cube tilt in the grip | median 4.7°, p95 11.5°, max 14.8° |
+| Lift achieved / finger force | 9.3 cm (10 cm commanded) / 1.00 N per finger |
+| Episodes with arm–floor contact | 0 % |
+
+**Reading this:**
+- With exact knowledge of the cube pose, top-down grasping of this cube is reliable across the whole placement region.
+- The only imperfection is **tilt**: with about 2 N of squeeze and a roughly 2× friction margin, the cube pivots up to ~15° in the fingers during the lift, more often for placements close to the robot. It never drops.
+- The baseline is deliberately unhurried (half-speed descent, 1 s hold), so a learned policy has room to be faster.
+- Watch it: `uv run python scripts/demo_grasp.py --episodes 5`.

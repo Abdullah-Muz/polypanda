@@ -71,3 +71,13 @@ Per-seed SAC held-out success: 69.0 %, 62.0 %, 58.5 %. Validation success at 200
 - **SAC's actions were smoother** (jerk 0.032 vs 0.044). Its lower final-step entropy shows up as steadier commands, but that does not compensate for the lower success rate.
 
 **Scope of the claim:** with default hyperparameters and an equal 200k-step budget, PPO clearly beat SAC on this task in sample efficiency, final quality and wall clock. This is a statement about this reward structure and configuration, not about SAC in general. A follow-up that keeps exploration alive, such as a higher target entropy or a lower bound on `ent_coef`, would test the explanation above. It would be reported as a separate, labelled experiment, not as a replacement for this comparison.
+
+## Grasp: scripted baseline (Milestone 4)
+
+Held-out placement set `grasp_nominal_v1` (200 cube placements, digest `ad1eeb22b054`). **Success** means the verified grasp predicate (both fingers in contact, lifted ≥ 2 cm, under 2 mm / 0.05 rad of in-hand motion over 0.25 s) holds at the end of the episode. Details are in [grasp_task.md](grasp_task.md). Evaluated at commit `2249cd3` (clean).
+
+| Controller | Success (95 % CI) | Time to first grasp, median / p90 | Cube pushed before closing | Tilt in grip, median / max | Floor contact |
+|---|---|---|---|---|---|
+| Scripted top-down grasp (PoseIK, privileged cube pose) | **100 %** (98.1–100 %) | 6.95 / 8.50 s | 0.00 mm | 4.7° / 14.8° | 0 % |
+
+The learned grasp policy will be evaluated on the same set.

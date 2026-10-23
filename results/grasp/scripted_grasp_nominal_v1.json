@@ -1,0 +1,80 @@
+{
+  "name": "scripted_grasp_nominal_v1",
+  "policy": "scripted top-down grasp (PoseIK, privileged cube pose)",
+  "controller_config": {
+    "pregrasp_height": 0.1,
+    "lift_height": 0.1,
+    "gain": 0.2,
+    "descend_speed": 0.5,
+    "pos_tol": 0.004,
+    "rot_tol": 0.03,
+    "close_steps": 10,
+    "hold_steps": 20,
+    "phase_timeout": 120
+  },
+  "eval_set": {
+    "name": "grasp_nominal_v1",
+    "n": 200,
+    "digest": "ad1eeb22b054"
+  },
+  "created_utc": "2026-10-23T03:24:29+00:00",
+  "git": {
+    "commit": "2249cd3f2713223f437fc7eddc08c226d2ca9914",
+    "dirty": false
+  },
+  "versions": {
+    "python": "3.12.3",
+    "mujoco": "3.16.0",
+    "numpy": "2.5.4"
+  },
+  "summary": {
+    "episodes": 200,
+    "success_rate": 1.0,
+    "success_ci95": [
+      0.9811539940816791,
+      1.0
+    ],
+    "first_grasp_s": {
+      "median": 6.95,
+      "p90": 8.504999999999999
+    },
+    "episode_s_median": 8.425,
+    "phase_s_median": {
+      "approach": 3.725,
+      "descend": 2.0500000000000003,
+      "lift": 1.0
+    },
+    "nudge_mm": {
+      "median": 4.069359161694625e-07,
+      "max": 7.707578009677664e-07
+    },
+    "max_tilt_deg": {
+      "median": 4.747923118663067,
+      "p95": 11.51574128137892,
+      "max": 14.833945855294967
+    },
+    "final_lift_cm_median": 9.326892988014349,
+    "finger_force_n_median": 0.9989778388533836,
+    "floor_contact_episode_rate": 0.0,
+    "by_region": {
+      "far": {
+        "n": 116,
+        "success_rate": 1.0,
+        "success_ci95": [
+          0.9679443532129076,
+          0.9999999999999999
+        ]
+      },
+      "near": {
+        "n": 84,
+        "success_rate": 1.0,
+        "success_ci95": [
+          0.9562667346678565,
+          0.9999999999999999
+        ]
+      }
+    },
+    "failures": {},
+    "wall_clock_s": 50.9
+  }
+}
