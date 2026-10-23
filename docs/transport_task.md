@@ -96,3 +96,11 @@ The first hypothesis, too-violent initial exploration noise, was ruled out by th
    A test writing the v2 code caught a mislabel: a cube released by opening the fingers reached the table before 5 contact-free steps had passed, so it was briefly counted as "lowered". The definition now requires both fingers in contact at touchdown.
 3. Keep all other settings unchanged, so the effect of the fix is attributable. Then pilot → 3 seeds → held-out comparison with the scripted baseline (92.0 %).
 4. Possible later improvements: a goal-height range that also exercises upward moves more strongly, gentler initial exploration (`log_std_init`), or Cartesian end-effector actions as a separately labelled ablation.
+
+### T5b: v2 pilot (also stalled)
+
+`transport_ppo_v2_seed0`: identical settings on task v2, 1M steps, trained at `df08683` (clean). The laptop slept for about 45 min mid-run, which paused but did not affect training.
+
+- **Held-out: 0 / 200.** Failures: 102 lowered onto table, 98 lost grip. Closest approach 1.7 cm; median closest 12.7 cm.
+- **The height signal worked as designed, but was not sufficient.** During training the touchdown penalty per step fell from −0.28 to −0.085 and the low-height penalty from −0.14 to −0.06. Episode lengths still matched v1 (about 22 steps, around 1.1 s at 800k steps), and failures shifted toward lost grip. The hold reward never appeared.
+- **Interpretation:** carrying a weakly held cube smoothly toward a goal, by discovering coordinated 7-joint increments through trial and error, is beyond plain PPO at this budget. The scripted carry does it easily because it plans in hand coordinates with an exact kinematic model. Fixing one failure mode exposed the next: the bottleneck is discovering smooth, coordinated motion at all, not a single reward bug.
