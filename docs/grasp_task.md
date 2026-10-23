@@ -1,6 +1,6 @@
 # Grasp task (Milestone 4, in progress)
 
-Steps so far: 4.1 scene, 4.2 pose IK, 4.3 grasp predicate, 4.4 scripted baseline (results at the end). Next: the grasp environment for RL.
+Steps so far: 4.1 scene, 4.2 pose IK, 4.3 grasp predicate, 4.4 scripted baseline, 4.5 grasp environment for RL. Next: PPO training on `GraspEnv`.
 
 ## Scene (`polypanda.simulation.scenes`)
 
@@ -109,3 +109,48 @@ Results (commit `2249cd3`, clean):
 - The only imperfection is **tilt**: with about 2 N of squeeze and a roughly 2× friction margin, the cube pivots up to ~15° in the fingers during the lift, more often for placements close to the robot. It never drops.
 - The baseline is deliberately unhurried (half-speed descent, 1 s hold), so a learned policy has room to be faster.
 - Watch it: `uv run python scripts/demo_grasp.py --episodes 5`.
+
+## Grasp environment for RL (`polypanda.environments.grasp.GraspEnv`, `PolyPanda/Grasp-v0`)
+
+Configuration: `configs/grasp.yaml`. Unknown keys are rejected, and the dataclass defaults match the file (tested).
+
+**Control.** The policy moves the arm for the whole task (approach, align, descend, lift) with the same 7-D joint-increment actions as reach. The fingers are **gated**, following the brief's scripted-gripper stage:
+- They **close** when the TCP is within 1 cm of the cube centre horizontally and vertically, the closing axis is within 0.15 rad of a cube face pair, and the gripper is within 0.15 rad of vertical, for 2 consecutive steps.
+- They **reopen** if the finger gap stays under 2 cm for 0.5 s (closed on nothing), which allows a retry.
+
+**Observation** (`grasp-v1-41d`):
+
+| Group | Size | Contents |
+|---|---:|---|
+| Arm | 21 | `q`, `dq`, `q_cmd` |
+| Gripper | 11 | TCP position, TCP rotation (first two matrix columns, a continuous 6-D encoding), finger gap, gate state |
+| Cube | 9 | position relative to the TCP, alignment as sin/cos(4·error), height above rest, tilt, left/right finger contact |
+
+`4·error` makes the cube's 90° symmetry continuous. The four equivalent grasps map to the same point.
+
+**Reward** (each term in `info["reward_terms"]`):
+
+| Term | Value | Notes |
+|---|---|---|
+| approach | 20 × reduction in TCP–cube distance | telescoping |
+| align | 1 × reduction in alignment error (rad) | telescoping |
+| lift | 20 × change in cube height, capped at 10 cm | telescoping and **not** gated on contact: a drop gives back exactly what the lift earned, so lift–drop–regrasp cycles cannot farm reward |
+| hold | +0.5 per step while the grasp predicate holds and the cube is ≥ 5 cm up | the main objective |
+| action / gripper tilt / floor | −0.005‖a‖², −0.1 × tilt (rad), −0.1 per floor-contact step | |
+| knocked over | −5, and the episode terminates | cube tilt > 60° |
+
+**Episodes** last 300 steps (15 s) and always run to the end (the reach v1 lesson). **Success** (`info["is_success"]`): the verified grasp predicate holds with the cube ≥ 5 cm above the table, the same criterion as the scripted baseline.
+
+**Consistency check:** driving `GraspEnv` with the scripted baseline's arm actions, with the gripper left to the env's gate, succeeds at every tested placement. The gate closes once and never reopens, and there is no floor contact.
+
+**Reward scale** (10 held-out placements each):
+
+| Behaviour | Success | Mean return | Main terms |
+|---|---|---|---|
+| Scripted baseline's actions | 10 / 10 | +88.7 | hold +77.8, approach +10.0, lift +1.8, align +0.4 |
+| Random actions | 0 / 10 | −9.2 | gripper tilt −6.3, action −3.5 |
+| Standing still | 0 / 10 | −0.3 | — |
+
+About 88 % of a successful episode's return is hold reward, which only appears after a grasp and lift succeed. Exploration is the main risk for learning.
+
+**Throughput:** about 790 env steps/s single process, about 1,790 with 8 `SubprocVecEnv` workers. That is about half the reach environment's speed, because of contacts and grasp monitoring.
