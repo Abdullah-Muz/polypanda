@@ -21,6 +21,7 @@ from polypanda.environments.reach import ReachConfig, ReachEnv
 from polypanda.evaluation.reach import evaluation_config
 from polypanda.evaluation.sets import ReachEvalSet
 from polypanda.policies.loader import load_run
+from polypanda.visualization.viewer import fast_rendering
 
 
 def load_policy(spec: str):
@@ -47,6 +48,7 @@ def main() -> None:
     parser.add_argument("--policy", default="ik")
     parser.add_argument("--episodes", type=int, default=10)
     parser.add_argument("--speed", type=float, default=1.0, help="playback speed multiplier")
+    parser.add_argument("--shadows", action="store_true", help="render shadows and reflections")
     parser.add_argument("--hold", type=float, default=2.0, help="seconds to watch after success")
     parser.add_argument("--set", type=Path, default=Path("eval_sets/reach_nominal_v1.json"))
     args = parser.parse_args()
@@ -58,6 +60,8 @@ def main() -> None:
     frame = env.adapter.control_dt / args.speed
     hold_steps = round(args.hold / env.adapter.control_dt)
 
+    if not args.shadows:
+        fast_rendering(env.model)
     with mujoco.viewer.launch_passive(env.model, env.data) as viewer:
         viewer.opt.sitegroup[4] = 1  # show the TCP site
         for i, target in enumerate(eval_set.targets[:args.episodes]):

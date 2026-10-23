@@ -13,13 +13,17 @@ import mujoco.viewer
 from polypanda.simulation.assets import load_panda_scene
 from polypanda.simulation.panda import PandaIndices, reset_to_home
 from polypanda.simulation.scenes import load_pick_scene
+from polypanda.visualization.viewer import fast_rendering
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--cube", action="store_true", help="add the graspable cube")
+    parser.add_argument("--shadows", action="store_true", help="render shadows and reflections")
     args = parser.parse_args()
     model, data = load_pick_scene() if args.cube else load_panda_scene()
+    if not args.shadows:
+        fast_rendering(model)
     idx = PandaIndices.from_model(model)
     reset_to_home(model, data, idx)
     with mujoco.viewer.launch_passive(model, data) as viewer:
