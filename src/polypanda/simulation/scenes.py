@@ -18,6 +18,9 @@ CUBE_JOINT = "cube_joint"
 CUBE_GEOM = "cube"
 CUBE_SITE = "cube_center"
 DEFAULT_CUBE_XY = (0.5, 0.0)
+# Placement region where top-down grasps are reachable and collision-free (docs/grasp_task.md).
+CUBE_X_RANGE = (0.35, 0.65)
+CUBE_Y_RANGE = (-0.25, 0.25)
 
 
 @dataclass(frozen=True)
