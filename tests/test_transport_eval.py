@@ -44,6 +44,9 @@ def test_scripted_carry_succeeds_from_every_grasp_source():
 
 def test_failure_classification():
     _, random_eps = evaluate_transport(RandomDriver(), _one_per_source())
-    assert all(e.failure == "dropped" and e.drop_s is not None for e in random_eps)
+    for e in random_eps:
+        assert e.failure in ("lost_grip", "lowered_onto_table")
+        assert (e.drop_s if e.failure == "lost_grip" else e.touchdown_s) is not None
     _, still_eps = evaluate_transport(StillDriver(), _one_per_source())
-    assert all(e.failure == "never_reached" and not e.dropped for e in still_eps)
+    assert all(e.failure == "never_reached" and not e.dropped and not e.touched_down
+               for e in still_eps)

@@ -166,9 +166,40 @@ def test_opening_the_gripper_is_a_drop(env):
         _, reward, terminated, truncated, info = env.step(ZERO)
         if terminated:
             break
-    assert terminated and info["failure"] == "dropped" and not truncated
+    assert terminated and info["failure"] == "lost_grip" and not truncated
     assert info["reward_terms"]["drop"] == -env.config.reward.drop
+    assert info["reward_terms"]["touchdown"] == 0.0
     assert env.elapsed_steps <= 15
+
+
+def test_lowering_the_cube_is_warned_then_labelled_touchdown(env):
+    """v2: sinking below the safe carrying height is penalised before the terminal touchdown."""
+    env.reset(options={"state_index": 0, "goal": [0.5, 0.0, 0.2]})
+    ik = PoseIK()
+    R = env.data.site_xmat[env.arm.tcp_site].reshape(3, 3)
+    quat = top_down_quat(closing_yaw(R))
+    lows, info = [], {}
+    for _ in range(120):
+        offset = cube_position(env.data, env.cube) - tcp_position(env.data, env.arm)
+        target = cube_position(env.data, env.cube) * [1, 1, 0] + [0, 0, env.cube.half_size[2]]
+        q = env.data.qpos[env.arm.arm_qpos]
+        _, _, terminated, _, info = env.step(
+            ik.action(q, target - offset, quat, 0.2, env.adapter.max_delta))
+        lows.append(info["reward_terms"]["low_height"])
+        if terminated:
+            break
+    assert terminated and info["failure"] == "lowered_onto_table"
+    assert info["reward_terms"]["touchdown"] == -env.config.reward.touchdown
+    assert info["reward_terms"]["drop"] == 0.0
+    warned = [x for x in lows[:-1] if x < 0]
+    assert len(warned) >= 3  # several warning steps before touchdown
+
+
+def test_v1_config_has_no_height_signal():
+    v1 = TransportConfig.from_yaml(ROOT / "configs" / "transport_v1.yaml")
+    from dataclasses import replace
+    assert v1.reward.low_height == 0.0
+    assert replace(v1, reward=replace(v1.reward, low_height=10.0)) == TransportConfig()
 
 
 def test_success_never_coexists_with_a_drop():
@@ -179,7 +210,7 @@ def test_success_never_coexists_with_a_drop():
     ev = HandoffPool.load(EVAL)
     env.reset(options={"state": ev.states[0], "goal": ev.goals[0]})
     infos = carry(env)
-    assert infos[-1][1]["failure"] == "dropped"  # any tilt now counts as fallen over
+    assert infos[-1][1]["failure"] == "lost_grip"  # any tilt now counts as fallen over
     assert not any(info["is_success"] or info["reward_terms"]["hold"] for _, info in infos)
 
 

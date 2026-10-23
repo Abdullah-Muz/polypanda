@@ -79,7 +79,12 @@ class TransportRewardConfig:
     gripper_tilt: float = 0.1   # per rad
     cube_tilt: float = 0.1      # per rad of cube tilt in the world
     floor: float = 0.1          # per step with the arm or fingers touching the floor
-    drop: float = 5.0           # once; the episode terminates
+    drop: float = 5.0           # once, lost grip (contacts lost or cube tipped); terminates
+    touchdown: float = 5.0      # once, cube lowered onto the table while held; terminates
+    # v2: the v1 pilot sank the cube onto the table while carrying it sideways, warned only by
+    # the terminal touchdown. Continuous signal below a safe carrying height (cube lift, m):
+    safe_lift: float = 0.06
+    low_height: float = 10.0    # per metre below safe_lift, per step
 
 
 @dataclass(frozen=True)
@@ -180,8 +185,16 @@ class TransportEnv(gym.Env):
         self._no_contact = 0 if state.both_contact else self._no_contact + 1
         tilt = cube_tilt(self.data, self.cube)
         lift = cube[2] - self.cube.half_size[2]
-        dropped = (self._no_contact >= cfg.episode.drop_steps or lift < 0.01
-                   or tilt > cfg.episode.max_cube_tilt)
+        on_table = lift < 0.01
+        # Touchdown = set down while both fingers still hold it; reaching the table unheld is a
+        # fall, i.e. lost grip (even before drop_steps without contact have accumulated).
+        touched_down = bool(on_table and state.both_contact)
+        lost_grip = bool(self._no_contact >= cfg.episode.drop_steps
+                         or tilt > cfg.episode.max_cube_tilt
+                         or (on_table and not state.both_contact))
+        if lost_grip:
+            touched_down = False
+        dropped = lost_grip or touched_down  # any terminal failure
         # A cube that has fallen over in the fingers is not delivered, even if the grasp
         # predicate still holds (found in the baseline evaluation: 80.1 deg tilt at the goal).
         at_goal = distance < cfg.success.tolerance and state.grasped and not dropped
@@ -202,15 +215,19 @@ class TransportEnv(gym.Env):
             "gripper_tilt": -r.gripper_tilt * gripper_tilt(R),
             "cube_tilt": -r.cube_tilt * tilt,
             "floor": -r.floor if floor else 0.0,
-            "drop": -r.drop if dropped else 0.0,
+            "low_height": -r.low_height * max(0.0, r.safe_lift - lift),
+            "drop": -r.drop if lost_grip else 0.0,
+            "touchdown": -r.touchdown if touched_down else 0.0,
         }
         self._distance = distance
         self._prev_action = a
         terminated = dropped
         truncated = not terminated and self._steps >= cfg.episode.horizon
+        failure = "lost_grip" if lost_grip else "lowered_onto_table" if touched_down else None
         info = {
             "is_success": success,
-            "failure": "dropped" if dropped else None,
+            "failure": failure,
+            "lift": float(lift),
             "distance": distance,
             "grasped": state.grasped,
             "contacts": (state.left_contact, state.right_contact),

@@ -89,8 +89,11 @@ def main() -> None:
                     break
             if info["is_success"]:
                 outcome = f"DELIVERED at {first:.1f} s and held"
-            elif info["failure"] == "dropped":
-                outcome = f"DROPPED after {env.elapsed_steps * env.adapter.control_dt:.1f} s"
+            elif info["failure"] == "lost_grip":
+                outcome = f"LOST GRIP after {env.elapsed_steps * env.adapter.control_dt:.1f} s"
+            elif info["failure"] == "lowered_onto_table":
+                outcome = (f"LOWERED ONTO TABLE after "
+                           f"{env.elapsed_steps * env.adapter.control_dt:.1f} s (still holding)")
             else:
                 outcome = f"not delivered: {info['distance'] * 100:.1f} cm from goal"
             print(f"episode {n + 1} (start from {eval_set.sources[i]}): {outcome}")

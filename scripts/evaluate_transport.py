@@ -78,8 +78,9 @@ def main() -> None:
     s = summary
     lo, hi = s["success_ci95"]
     print(f"{name}: {description}, {len(eval_set)} cases, {s['wall_clock_s']} s wall")
-    print(f"  success {s['success_rate']:.1%} (95% CI {lo:.1%}-{hi:.1%}); drops "
-          f"{s['drop_rate']:.1%}; failures {s['failures']}")
+    print(f"  success {s['success_rate']:.1%} (95% CI {lo:.1%}-{hi:.1%}); lost grip "
+          f"{s['drop_rate']:.1%}; lowered onto table {s['touchdown_rate']:.1%}; "
+          f"failures {s['failures']}")
     if s["first_success_s"]["median"] is not None:
         print(f"  first success median {s['first_success_s']['median']:.2f} s, "
               f"p90 {s['first_success_s']['p90']:.2f} s")
@@ -92,7 +93,7 @@ def main() -> None:
           f"{s['inference_latency_us']['median']:.0f} us")
     for source, r in s["by_source"].items():
         print(f"  from {source:28s} n={r['n']:3d} success {r['success_rate']:.1%}, "
-              f"drops {r['drop_rate']:.1%}")
+              f"lost grip {r['drop_rate']:.1%}, lowered {r['touchdown_rate']:.1%}")
     print(f"  wrote {args.out_dir / name}.json and _episodes.csv")
 
 

@@ -49,14 +49,17 @@ class TransportEpisode:
     start_distance_mm: float
     final_distance_mm: float
     min_distance_mm: float
-    dropped: bool
+    dropped: bool                  # lost grip: finger contact lost or cube tipped over
     drop_s: float | None
+    touched_down: bool             # cube lowered onto the table while still held
+    touchdown_s: float | None
     max_slip_speed_mm_s: float
     max_cube_tilt_deg: float
     floor_contact_steps: int
     action_jerk: float             # mean ||a_t - a_{t-1}||^2
     episode_return: float
-    failure: str | None  # dropped | never_reached | drifted_away | grasp_unverified
+    # lost_grip | lowered_onto_table | never_reached | drifted_away | grasp_unverified
+    failure: str | None
 
 
 def run_transport_episode(env: TransportEnv, driver, state, goal, index: int,
@@ -66,7 +69,7 @@ def run_transport_episode(env: TransportEnv, driver, state, goal, index: int,
     dt = env.adapter.control_dt
     start_distance = info["distance"]
     latencies, ret, jerk, jerk_n = [], 0.0, 0.0, 0
-    first = drop_at = None
+    first = drop_at = touchdown_at = None
     min_d, max_slip, max_tilt, floor = start_distance, 0.0, 0.0, 0
     prev_a = None
     for _ in range(env.config.episode.horizon):
@@ -79,8 +82,10 @@ def run_transport_episode(env: TransportEnv, driver, state, goal, index: int,
             jerk += float(np.sum((a - prev_a) ** 2))
             jerk_n += 1
         prev_a = a
-        if info["failure"] == "dropped":
+        if info["failure"] == "lost_grip":
             drop_at = env.elapsed_steps * dt
+        elif info["failure"] == "lowered_onto_table":
+            touchdown_at = env.elapsed_steps * dt
         else:
             min_d = min(min_d, info["distance"])
             max_slip = max(max_slip, info["slip_speed"])
@@ -95,7 +100,9 @@ def run_transport_episode(env: TransportEnv, driver, state, goal, index: int,
     if success:
         failure = None
     elif drop_at is not None:
-        failure = "dropped"
+        failure = "lost_grip"
+    elif touchdown_at is not None:
+        failure = "lowered_onto_table"
     elif min_d >= tol:
         failure = "never_reached"
     elif info["distance"] >= tol:
@@ -106,7 +113,9 @@ def run_transport_episode(env: TransportEnv, driver, state, goal, index: int,
         index=index, source=source, success=success, first_success_s=first,
         start_distance_mm=start_distance * 1e3,
         final_distance_mm=info.get("distance", float("nan")) * 1e3, min_distance_mm=min_d * 1e3,
-        dropped=drop_at is not None, drop_s=drop_at, max_slip_speed_mm_s=max_slip * 1e3,
+        dropped=drop_at is not None, drop_s=drop_at,
+        touched_down=touchdown_at is not None, touchdown_s=touchdown_at,
+        max_slip_speed_mm_s=max_slip * 1e3,
         max_cube_tilt_deg=float(np.degrees(max_tilt)), floor_contact_steps=int(floor),
         action_jerk=jerk / jerk_n if jerk_n else 0.0, episode_return=float(ret), failure=failure,
     ), latencies
@@ -126,13 +135,15 @@ def summarize_transport(results: list[TransportEpisode], latencies: list[float])
         k = sum(r.success for r in group)
         by_source[source] = {"n": len(group), "success_rate": k / len(group),
                              "success_ci95": wilson_interval(k, len(group)),
-                             "drop_rate": sum(r.dropped for r in group) / len(group)}
+                             "drop_rate": sum(r.dropped for r in group) / len(group),
+                             "touchdown_rate": sum(r.touched_down for r in group) / len(group)}
     lat_us = [v * 1e6 for v in latencies]
     return {
         "episodes": n,
         "success_rate": len(wins) / n,
         "success_ci95": list(wilson_interval(len(wins), n)),
         "drop_rate": sum(r.dropped for r in results) / n,
+        "touchdown_rate": sum(r.touched_down for r in results) / n,
         "first_success_s": {"median": _pct([r.first_success_s for r in wins], 50),
                             "p90": _pct([r.first_success_s for r in wins], 90)},
         "final_distance_mm": {"median": _pct([r.final_distance_mm for r in results], 50),
