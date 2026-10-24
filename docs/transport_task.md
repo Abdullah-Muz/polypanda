@@ -1,4 +1,4 @@
-# Transport task (Milestone 4, in progress)
+# Transport task (Milestone 4)
 
 Carry a grasped cube to a 3-D goal and hold it there, following the brief: *"assume an object is already grasped, then learn to move it toward a placement target while keeping it secure."* Obstacles are a planned extension and are not part of v1.
 
@@ -104,3 +104,34 @@ The first hypothesis, too-violent initial exploration noise, was ruled out by th
 - **Held-out: 0 / 200.** Failures: 102 lowered onto table, 98 lost grip. Closest approach 1.7 cm; median closest 12.7 cm.
 - **The height signal worked as designed, but was not sufficient.** During training the touchdown penalty per step fell from −0.28 to −0.085 and the low-height penalty from −0.14 to −0.06. Episode lengths still matched v1 (about 22 steps, around 1.1 s at 800k steps), and failures shifted toward lost grip. The hold reward never appeared.
 - **Interpretation:** carrying a weakly held cube smoothly toward a goal, by discovering coordinated 7-joint increments through trial and error, is beyond plain PPO at this budget. The scripted carry does it easily because it plans in hand coordinates with an exact kinematic model. Fixing one failure mode exposed the next: the bottleneck is discovering smooth, coordinated motion at all, not a single reward bug.
+
+### T5c: residual RL on the scripted carry
+
+`TransportResidualEnv` (task `transport_residual`): the policy outputs a correction added to the scripted closed-loop carry, applied = clip(base + 0.3 × policy). The observation appends the base action (`transport-residual-v1-54d`), and a −0.01‖output‖² penalty discourages needless deviation. A zero output reproduces the baseline exactly (tested). Initial exploration noise was set to std ≈ 0.5 (`log_std_init −0.7`) after measuring the base carry under residual noise: 95 % success with no noise, 80 % at std 0.5, and 32 % at the SB3 default std 1.0 (60 % lost grip).
+
+`transport_residual_seed0`: 1M steps, trained and evaluated at `de474a4` (clean). Wall clock was 66 min, inflated by background load on the laptop (OneDrive sync, viewer) and the per-step base IK; results are unaffected. Training behaved completely differently from plain PPO: episodes ran almost the full 200 steps, validation stayed at 87–100 %, the hold reward rose from 0.29 to 0.38 per step, and correction size and noise shrank steadily.
+
+**Held-out (200 cases):**
+
+| | Scripted carry | Residual RL |
+|---|---|---|
+| Success (95 % CI) | 92.0 % (87.4–95.0 %) | 92.5 % (88.0–95.4 %) |
+| Lost grip | 7.5 % | 6.5 % |
+| Time to first success (median) | 2.05 s | 1.90 s |
+| Final distance (median) | 0.2 mm | 0.6 mm |
+| Action jerk (median) | 0.0015 | 0.0175 |
+
+Paired on the same 200 cases, both succeed in 183, **both fail in the same 14**, only scripted succeeds in 1, and only residual succeeds in 2 (exact McNemar p = 1.0). **The residual matches the baseline but does not improve it.** It arrives slightly sooner with jerkier actions and changes the outcome in only 3 cases.
+
+**Why no gain: transport failures are limited by grasp quality, not by carrying.** The shared failures are cubes creeping out of the grip while held at the goal (all are `lost_grip`), and they concentrate on handoffs from PPO grasp seed 0 (84 % success from its handoffs vs 100 % from the scripted grasp's). A cube grasped off-centre in the about-2 N grip slowly works loose during the hold, and no arm correction within the residual's range repairs how the fingers hold it. This is a cross-skill dependency: improving end-to-end reliability means improving grasp quality, or placing the cube sooner, rather than refining the carry.
+
+### Transport conclusion (Milestone 4)
+
+| Approach | Held-out success |
+|---|---|
+| Scripted closed-loop carry | **92.0 %** |
+| Plain PPO v1 | 0 % (sinks the cube onto the table) |
+| Plain PPO v2 (height-keeping signal) | 0 % (sinking reduced; lost grip instead) |
+| Residual PPO on the scripted carry | 92.5 % (equivalent to the baseline, p = 1.0) |
+
+The scripted closed-loop carry is the transport skill used in pick-and-place: it is as reliable as the best learned variant, much smoother, and simpler. The learning results are reported as findings: plain PPO cannot discover smooth coordinated carrying under this weak grip at a 1M-step budget, and residual RL cannot fix failures that originate in the grasp.
