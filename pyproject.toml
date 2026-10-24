@@ -21,6 +21,10 @@ dependencies = [
 
 [dependency-groups]
 dev = ["pytest", "ruff"]
+media = [
+    "imageio>=2.38.1",
+    "imageio-ffmpeg>=0.6.0",
+]
 notebooks = ["jupyterlab"]
 
 [build-system]
