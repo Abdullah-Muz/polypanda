@@ -95,3 +95,19 @@ Comparison protocol: every policy acts through `GraspEnv` for the full 15 s from
 - **Exploration is the bottleneck.** Plain PPO learned to centre and align so the gate closed (84 % of episodes) but never learned to lift. Its action noise collapsed before it experienced a single hold. Starting 30 % of training episodes with the cube already in the hand let it learn lifting, and it then chained the two halves from home. Evaluation never uses these starts.
 - **The learned policy is faster but less reliable.** It is about 2.7 s quicker to a verified grasp than the deliberately slow scripted baseline, but succeeds 80.5 % vs 100 %, and touches the floor in about 8 % of episodes.
 - **Main weakness:** cubes about 45° off the wrist's start angle (two equally good grasp yaws) succeed only 54 %. No placement is failed by all three seeds.
+
+## Transport (Milestone 4)
+
+Held-out set `transport_nominal_v1`: 200 grasp-to-transport handoff states, 50 each from the scripted grasp and PPO grasp seeds 0–2, each with a 3-D goal at least 15 cm away. **Success** means the cube centre is within 2 cm of the goal with a verified grasp, held to the end of the 10 s episode, and not dropped. Task v2 labels; all evaluations at clean commits. Full analysis: [transport_task.md](transport_task.md).
+
+| Policy | Success (95 % CI) | Lost grip | Lowered onto table | Time to first success, median | Action jerk |
+|---|---|---|---|---|---|
+| **Scripted closed-loop carry** | **92.0 %** (87.4–95.0 %) | 7.5 % | 0 % | 2.05 s | **0.0015** |
+| PPO v1 pilot | 0 % (0–1.9 %) | 14.5 % | 85.5 % | — | — |
+| PPO v2 pilot (height-keeping signal) | 0 % (0–1.9 %) | 49.0 % | 51.0 % | — | 0.135 |
+| PPO residual on the scripted carry | 92.5 % (88.0–95.4 %) | 6.5 % | 0 % | **1.90 s** | 0.0175 |
+
+- **Plain PPO could not learn to carry.** Swinging the cube sideways with uncoordinated joint increments sank it onto the table. With a height-keeping signal it lost the grip instead. The hold reward was never discovered in 1M steps.
+- **Residual RL matched but did not improve the scripted carry.** Paired on the same cases, both fail the same 14 (discordant 2 vs 1, exact McNemar p = 1.0).
+- **Transport reliability is limited by grasp quality.** Failures are cubes creeping out of off-centre grips while held at the goal: 100 % success from scripted-grasp handoffs vs 84 % from PPO grasp seed 0's.
+- **The scripted closed-loop carry is the transport skill** used for pick-and-place.

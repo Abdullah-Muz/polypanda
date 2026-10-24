@@ -2,7 +2,7 @@
 
 Hierarchical reinforcement learning for Franka Panda manipulation: modular PPO/SAC skills, MuJoCo environments, a rule-based task supervisor, and reproducible robotics-control benchmarks.
 
-> **Status: early development.** Milestones 1–2 are complete: a reproducible simulator, the reaching environment, and classical baselines evaluated on a held-out set. Milestone 3 is complete: PPO and SAC reaching policies are trained and benchmarked against the baselines over 3 seeds each. In Milestone 4, learned grasping is done (80.5 % held-out success); transport is next. The roadmap is updated only when a milestone is actually completed and tested.
+> **Status: early development.** Milestones 1–2 are complete: a reproducible simulator, the reaching environment, and classical baselines evaluated on a held-out set. Milestone 3 is complete: PPO and SAC reaching policies are trained and benchmarked against the baselines over 3 seeds each. Milestone 4 is complete: learned grasping (80.5 % held-out success) and transport (scripted closed-loop carry, 92.0 %, after plain and residual RL were evaluated). Milestone 5 (place skill and full pick-and-place supervisor) is next. The roadmap is updated only when a milestone is actually completed and tested.
 
 ## Overview
 
@@ -57,6 +57,16 @@ Held-out grasping (200 cube placements, any position and rotation in the workspa
 
 Details, failure analysis and the curriculum story: [docs/grasp_task.md](docs/grasp_task.md).
 
+Held-out transport (200 grasp-to-transport handoffs from scripted and learned grasps; carry the held cube to a 3-D goal and hold it there with a verified grasp):
+
+| Policy | Success (95 % CI) |
+|---|---|
+| **Scripted closed-loop carry** (privileged cube pose, IK) | **92.0 %** (87.4–95.0 %) |
+| PPO, plain (two diagnosed attempts) | 0 %: sinks the cube onto the table, then loses the grip |
+| PPO residual on the scripted carry | 92.5 % (88.0–95.4 %), statistically identical (same 14 failures) |
+
+The remaining transport failures are cubes creeping out of off-centre grips while held, mostly from handoffs of one learned grasp policy. Transport reliability is limited by grasp quality, not by the carry. Details: [docs/transport_task.md](docs/transport_task.md).
+
 Evaluate a baseline yourself: `uv run python scripts/evaluate.py --policy ik`
 
 ## Roadmap
@@ -66,7 +76,7 @@ Evaluate a baseline yourself: `uv run python scripts/evaluate.py --policy ik`
 | 1 | Reproducible environment, pinned Panda model, headless simulation, tests | Done ([details](docs/environment.md)) |
 | 2 | Custom reaching environment and classical IK baseline | Done ([task](docs/reach_task.md), [results](docs/results.md)) |
 | 3 | PPO and SAC reaching policies with benchmark | Done ([results](docs/results.md)) |
-| 4 | Grasp and transport skills | In progress (grasp done, [details](docs/grasp_task.md); transport next) |
+| 4 | Grasp and transport skills | Done ([grasp](docs/grasp_task.md), [transport](docs/transport_task.md)) |
 | 5 | Multi-policy FSM supervisor and full pick-and-place | Planned |
 | 6 | Robustness, evaluation, documentation | Planned |
 
