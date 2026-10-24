@@ -69,7 +69,9 @@ def test_cube_on_its_side_is_not_regraspable(supervisor):
     q = [np.cos(np.pi / 4), np.sin(np.pi / 4), 0.0, 0.0]
     env.data.qpos[env.cube.qpos:env.cube.qpos + 7] = [0.5, 0.0, 0.02, *q]
     mujoco.mj_forward(env.model, env.data)
-    assert not supervisor._regraspable(env)[0]
+    assert supervisor._regraspable(env)[0] == "cube tipped over"
+    env.reset(options={"cube": (0.34, 0.0, 0.0)})  # just outside the placement region: fine
+    assert supervisor._regraspable(env)[0] is None
 
 
 def test_time_budget_ends_the_episode():

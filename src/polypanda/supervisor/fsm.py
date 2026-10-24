@@ -10,11 +10,12 @@
 Each skill runs in its own environment (GraspEnv, TransportEnv, PlaceEnv), so every skill sees
 exactly the observations and gating it was built and evaluated with. At each handoff the full
 MuJoCo state is transferred bit-exactly (mj_getState / mj_setState) and the next skill continues
-from the previous skill's joint commands. For a retry, the arm is first driven back to its home
-pose in simulation with the gripper open (so recovery costs real time); the cube's resting pose
-is then measured and the grasp skill restarts from home with the cube at that pose. Transitions
-are decided by the same verified predicates used throughout (grasp predicate, transport success,
-placed check), never by elapsed time. A global time budget bounds the whole episode.
+from the previous skill's joint commands. For a retry, the fingers open, the hand lifts clear and
+the arm drives back to its home pose, all in simulation (so recovery costs real time and can
+disturb the cube, as it would on hardware); the cube's resting pose is then measured and the
+grasp skill restarts from home with the cube at that pose. Transitions are decided by the same
+verified predicates used throughout (grasp predicate, transport success, placed check), never
+by elapsed time. A global time budget bounds the whole episode.
 """
 
 from dataclasses import dataclass, field
@@ -22,10 +23,13 @@ from enum import Enum
 
 import numpy as np
 
+from polypanda.control.ik import PoseIK
+from polypanda.control.scripted_carry import level_quat
 from polypanda.environments.grasp import GRIPPER_OPEN, GraspEnv
 from polypanda.environments.handoff import capture_state
 from polypanda.environments.place import PlaceEnv
 from polypanda.environments.transport import TransportEnv
+from polypanda.simulation.panda import tcp_position
 from polypanda.simulation.scenes import (
     CUBE_X_RANGE,
     CUBE_Y_RANGE,
@@ -47,10 +51,14 @@ class SupervisorConfig:
     max_grasp_attempts: int = 3      # first attempt + 2 retries
     handoff_steps: int = 10          # consecutive verified steps before handing over (0.5 s)
     pre_place_height: float = 0.12   # m, cube-centre height above the target before placing
+    release_steps: int = 10          # recovery: hold still while the fingers open (0.5 s)
+    retreat_height: float = 0.10     # m, then lift the hand straight up before going home
+    retreat_steps: int = 40          # policy steps allowed for the lift
     home_tol: float = 0.02           # rad, every arm joint within this of home
-    home_timeout: int = 200          # policy steps (10 s)
+    home_timeout: int = 200          # policy steps (10 s), whole recovery
     retry_max_tilt: float = 0.1745   # rad (10 deg): only upright cubes are re-grasped
     retry_max_lift: float = 0.005    # m: and only cubes resting on the table
+    retry_margin: float = 0.03       # m beyond the cube placement region, still re-grasped
     time_budget_s: float = 90.0      # global timeout for the whole pick-and-place
 
 
@@ -84,6 +92,7 @@ class PickPlaceSupervisor:
         self.dt = self.envs[Stage.GRASP].adapter.control_dt
         self.budget = round(self.config.time_budget_s / self.dt)
         self.on_step = None  # optional callback(stage, env) after every physics step (demo)
+        self._ik = None
 
     # --- skill execution --------------------------------------------------------------------
     def _run_skill(self, stage: Stage, obs, horizon: int, handoff_steps: int):
@@ -106,26 +115,48 @@ class PickPlaceSupervisor:
         return "timeout", step, info
 
     def _go_home(self, env, home_q: np.ndarray, horizon: int) -> int:
-        """Open the gripper and drive the arm back to its home configuration."""
+        """Recovery: open the fingers and hold still, lift the hand straight up so it clears
+        the cube, then drive the arm back to its home configuration in joint space."""
+        cfg, adapter = self.config, env.adapter
+        if self._ik is None:
+            self._ik = PoseIK()
         env.data.ctrl[env.arm.gripper_actuator] = GRIPPER_OPEN
-        env.adapter.adopt_ctrl(env.data)
+        adapter.adopt_ctrl(env.data)
+        lift_to = tcp_position(env.data, env.arm) + [0.0, 0.0, cfg.retreat_height]
+        quat = level_quat(env.data, env.arm)
+        lifting = True
         for step in range(1, horizon + 1):
-            env.adapter.step(env.data, np.clip((home_q - env.adapter.q_cmd)
-                                               / env.adapter.max_delta, -1.0, 1.0))
+            if step <= cfg.release_steps:
+                action = np.zeros(7)
+            else:
+                lifting = lifting and (step <= cfg.release_steps + cfg.retreat_steps
+                                       and tcp_position(env.data, env.arm)[2] < lift_to[2] - 0.01)
+                if lifting:
+                    action = self._ik.action(env.data.qpos[env.arm.arm_qpos], lift_to, quat,
+                                             0.2, adapter.max_delta)
+                else:
+                    action = np.clip((home_q - adapter.q_cmd) / adapter.max_delta, -1.0, 1.0)
+            adapter.step(env.data, action)
             if self.on_step:
                 self.on_step(Stage.HOME, env)
-            if np.abs(home_q - env.data.qpos[env.arm.arm_qpos]).max() < self.config.home_tol:
+            if (not lifting
+                    and np.abs(home_q - env.data.qpos[env.arm.arm_qpos]).max() < cfg.home_tol):
                 return step
         return horizon
 
-    def _regraspable(self, env) -> tuple[bool, tuple[float, float, float]]:
-        c = cube_position(env.data, env.cube)
+    def _regraspable(self, env) -> tuple[str | None, tuple[float, float, float]]:
+        """None if the cube can be grasped again where it lies, else the reason it cannot."""
+        cfg, c = self.config, cube_position(env.data, env.cube)
         pose = (float(c[0]), float(c[1]), cube_yaw(env.data, env.cube))
-        ok = (cube_tilt(env.data, env.cube) < self.config.retry_max_tilt
-              and c[2] - env.cube.half_size[2] < self.config.retry_max_lift
-              and CUBE_X_RANGE[0] <= c[0] <= CUBE_X_RANGE[1]
-              and CUBE_Y_RANGE[0] <= c[1] <= CUBE_Y_RANGE[1])
-        return ok, pose
+        m = cfg.retry_margin
+        if cube_tilt(env.data, env.cube) >= cfg.retry_max_tilt:
+            return "cube tipped over", pose
+        if c[2] - env.cube.half_size[2] >= cfg.retry_max_lift:
+            return "cube not resting on the table", pose
+        if not (CUBE_X_RANGE[0] - m <= c[0] <= CUBE_X_RANGE[1] + m
+                and CUBE_Y_RANGE[0] - m <= c[1] <= CUBE_Y_RANGE[1] + m):
+            return "cube out of the workspace", pose
+        return None, pose
 
     # --- episode ------------------------------------------------------------------------------
     def run(self, cube_pose, target_xy) -> PickPlaceResult:
@@ -169,9 +200,9 @@ class PickPlaceSupervisor:
             steps = self._go_home(env, home_q, min(cfg.home_timeout, self.budget - used))
             used += steps
             records.append(StageRecord(Stage.HOME.value, attempt, steps, "ok"))
-            ok, pose = self._regraspable(env)
-            if not ok:
-                return result(False, failed, f"{outcome}; cube not re-graspable", attempt)
+            why_not, pose = self._regraspable(env)
+            if why_not:
+                return result(False, failed, f"{outcome}; {why_not}", attempt)
             if attempt == cfg.max_grasp_attempts:
                 return result(False, failed, f"{outcome}; out of attempts", attempt)
             if used >= self.budget:
