@@ -174,12 +174,15 @@ class GraspEvalSet:
         return loaded
 
 
-def generate_grasp_eval_set(name: str, n: int, seed: int) -> GraspEvalSet:
+def generate_grasp_eval_set(name: str, n: int, seed: int,
+                            x_range: tuple[float, float] = CUBE_X_RANGE,
+                            y_range: tuple[float, float] = CUBE_Y_RANGE) -> GraspEvalSet:
     rng = np.random.default_rng(np.random.SeedSequence(seed, spawn_key=(GRASP_SPAWN_KEY,)))
-    placements = np.column_stack([rng.uniform(*CUBE_X_RANGE, n), rng.uniform(*CUBE_Y_RANGE, n),
+    placements = np.column_stack([rng.uniform(*x_range, n), rng.uniform(*y_range, n),
                                   rng.uniform(-np.pi, np.pi, n)])
     return GraspEvalSet(name=name, seed=seed, placements=placements,
-                        regions=tuple(grasp_region_of(p[:2]) for p in placements))
+                        regions=tuple(grasp_region_of(p[:2]) for p in placements),
+                        x_range=tuple(x_range), y_range=tuple(y_range))
 
 
 PICKPLACE_SPAWN_KEY = 0x7B1C  # distinct from the reach and grasp streams
@@ -242,15 +245,17 @@ class PickPlaceEvalSet:
         return loaded
 
 
-def generate_pickplace_eval_set(name: str, n: int, seed: int,
-                                min_separation: float = 0.10) -> PickPlaceEvalSet:
+def generate_pickplace_eval_set(name: str, n: int, seed: int, min_separation: float = 0.10,
+                                x_range: tuple[float, float] = CUBE_X_RANGE,
+                                y_range: tuple[float, float] = CUBE_Y_RANGE) -> PickPlaceEvalSet:
     rng = np.random.default_rng(np.random.SeedSequence(seed, spawn_key=(PICKPLACE_SPAWN_KEY,)))
     placements, targets = [], []
     while len(placements) < n:
-        p = [rng.uniform(*CUBE_X_RANGE), rng.uniform(*CUBE_Y_RANGE), rng.uniform(-np.pi, np.pi)]
-        t = [rng.uniform(*CUBE_X_RANGE), rng.uniform(*CUBE_Y_RANGE)]
+        p = [rng.uniform(*x_range), rng.uniform(*y_range), rng.uniform(-np.pi, np.pi)]
+        t = [rng.uniform(*x_range), rng.uniform(*y_range)]
         if np.hypot(t[0] - p[0], t[1] - p[1]) >= min_separation:
             placements.append(p)
             targets.append(t)
     return PickPlaceEvalSet(name=name, seed=seed, placements=np.array(placements),
-                            targets=np.array(targets), min_separation=min_separation)
+                            targets=np.array(targets), min_separation=min_separation,
+                            x_range=tuple(x_range), y_range=tuple(y_range))

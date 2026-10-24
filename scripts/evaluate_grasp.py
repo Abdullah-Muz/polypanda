@@ -34,6 +34,7 @@ from polypanda.evaluation.grasp import (
 from polypanda.evaluation.pickplace import grasp_env_for
 from polypanda.evaluation.sets import GraspEvalSet, generate_grasp_eval_set
 from polypanda.policies.loader import load_run
+from polypanda.simulation.scenes import WIDE_X_RANGE, WIDE_Y_RANGE
 
 DEFAULT_SET = Path("eval_sets/grasp_nominal_v1.json")
 
@@ -108,13 +109,16 @@ def main() -> None:
     parser.add_argument("--set", type=Path, default=DEFAULT_SET)
     parser.add_argument("--policy", help="scripted | run:DIR[@best|final] (GraspEnv protocol)")
     parser.add_argument("--make-set", action="store_true")
+    parser.add_argument("--wide", action="store_true",
+                        help="with --make-set: placements over the wide (fully reachable) region")
     parser.add_argument("--n", type=int, default=200)
     parser.add_argument("--seed", type=int, default=20261022)
     parser.add_argument("--out-dir", type=Path, default=Path("results/grasp"))
     args = parser.parse_args()
 
     if args.make_set:
-        eval_set = generate_grasp_eval_set(args.set.stem, args.n, args.seed)
+        ranges = ({"x_range": WIDE_X_RANGE, "y_range": WIDE_Y_RANGE} if args.wide else {})
+        eval_set = generate_grasp_eval_set(args.set.stem, args.n, args.seed, **ranges)
         eval_set.save(args.set)
         print(f"wrote {args.set}: {len(eval_set)} placements, digest {eval_set.digest}, "
               f"regions {dict(Counter(eval_set.regions))}")

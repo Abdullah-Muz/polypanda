@@ -59,6 +59,8 @@ class SupervisorConfig:
     retry_max_tilt: float = 0.1745   # rad (10 deg): only upright cubes are re-grasped
     retry_max_lift: float = 0.005    # m: and only cubes resting on the table
     retry_margin: float = 0.03       # m beyond the cube placement region, still re-grasped
+    # the workspace (x range, y range) that counts as the placement region for re-grasping
+    retry_region: tuple[tuple[float, float], tuple[float, float]] = (CUBE_X_RANGE, CUBE_Y_RANGE)
     time_budget_s: float = 90.0      # global timeout for the whole pick-and-place
     # Ablation only: switch skills after fixed times (grasp, transport, place seconds) instead
     # of on verified predicates. Without verification there is no failure detection, hence no
@@ -159,8 +161,8 @@ class PickPlaceSupervisor:
             return "cube tipped over", pose
         if c[2] - env.cube.half_size[2] >= cfg.retry_max_lift:
             return "cube not resting on the table", pose
-        if not (CUBE_X_RANGE[0] - m <= c[0] <= CUBE_X_RANGE[1] + m
-                and CUBE_Y_RANGE[0] - m <= c[1] <= CUBE_Y_RANGE[1] + m):
+        (x0, x1), (y0, y1) = cfg.retry_region
+        if not (x0 - m <= c[0] <= x1 + m and y0 - m <= c[1] <= y1 + m):
             return "cube out of the workspace", pose
         return None, pose
 

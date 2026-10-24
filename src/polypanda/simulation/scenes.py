@@ -21,6 +21,10 @@ DEFAULT_CUBE_XY = (0.5, 0.0)
 # Placement region where top-down grasps are reachable and collision-free (docs/grasp_task.md).
 CUBE_X_RANGE = (0.35, 0.65)
 CUBE_Y_RANGE = (-0.25, 0.25)
+# The whole box where top-down grasps were verified feasible by IK (190 / 190 placements;
+# docs/grasp_task.md): the wide region used from Milestone 7 on.
+WIDE_X_RANGE = (0.30, 0.70)
+WIDE_Y_RANGE = (-0.30, 0.30)
 
 
 @dataclass(frozen=True)

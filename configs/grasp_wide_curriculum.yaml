@@ -1,0 +1,49 @@
+# Grasp TRAINING configuration for the wide placement region (Milestone 7.2): identical to
+# configs/grasp_curriculum.yaml except the placement region, widened to the whole box where
+# top-down grasps were verified feasible (x 0.30-0.70 m, y +-0.30 m). Used with task grasp_v2
+# (committed grasp yaw). Validation (for_evaluation) also draws placements from this region.
+
+action:
+  max_delta: 0.015        # rad per policy step per joint, as for reach
+  n_substeps: 25
+  max_lead: null
+
+placement:                # wide region: the whole IK-verified feasible box (any yaw)
+  x_range: [0.30, 0.70]
+  y_range: [-0.30, 0.30]
+
+gate:                     # scripted finger closing
+  xy_tol: 0.01            # m, TCP to cube centre, horizontal
+  z_tol: 0.01             # m, vertical
+  align_tol: 0.15         # rad to the nearest cube face pair
+  tilt_tol: 0.15          # rad, gripper from straight down
+  dwell_steps: 2
+  reopen_gap: 0.02        # m: closed on nothing
+  reopen_steps: 10
+
+episode:
+  horizon: 300            # 15 s, always run to the end (no termination on success)
+  max_cube_tilt: 1.047    # rad: knocked over -> terminate
+
+success:
+  lift: 0.05              # m, with the verified grasp predicate
+
+reward:
+  approach: 20.0          # per m of TCP-to-cube distance reduced (telescoping)
+  align: 1.0              # per rad of alignment error reduced (telescoping)
+  lift: 20.0              # per m of cube height (telescoping; a drop gives it back)
+  lift_cap: 0.10
+  hold: 0.5               # per step while grasped and lifted >= success.lift
+  action: 0.005
+  gripper_tilt: 0.1
+  floor: 0.1
+  knocked_over: 5.0
+
+curriculum:               # training-only start states; the task as evaluated uses none
+  pregrasp_start_prob: 0.3   # see docs/grasp_task.md: the v1 pilot never discovered lifting
+
+check:                    # verified grasp predicate (polypanda.simulation.grasp)
+  min_lift: 0.02
+  window: 5
+  max_slip: 0.002
+  max_slip_rot: 0.05

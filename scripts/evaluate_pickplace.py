@@ -33,6 +33,7 @@ from polypanda.evaluation.pickplace import (
 )
 from polypanda.evaluation.sets import PickPlaceEvalSet, generate_pickplace_eval_set
 from polypanda.evaluation.transport import ScriptedCarryDriver
+from polypanda.simulation.scenes import WIDE_X_RANGE, WIDE_Y_RANGE
 from polypanda.supervisor.fsm import SupervisorConfig
 
 DEFAULT_SET = Path("eval_sets/pickplace_nominal_v1.json")
@@ -52,13 +53,16 @@ def main() -> None:
     parser.add_argument("--make-set", action="store_true")
     parser.add_argument("--n", type=int, default=200)
     parser.add_argument("--seed", type=int, default=20261025)
+    parser.add_argument("--wide", action="store_true",
+                        help="with --make-set: scenes over the wide (fully reachable) region")
     parser.add_argument("--compare", type=Path, help="episodes CSV of another configuration")
     parser.add_argument("--out-dir", type=Path, default=Path("results/pickplace"))
     args = parser.parse_args()
     torch.set_num_threads(1)
 
     if args.make_set:
-        eval_set = generate_pickplace_eval_set(args.set.stem, args.n, args.seed)
+        ranges = ({"x_range": WIDE_X_RANGE, "y_range": WIDE_Y_RANGE} if args.wide else {})
+        eval_set = generate_pickplace_eval_set(args.set.stem, args.n, args.seed, **ranges)
         eval_set.save(args.set)
         d = np.linalg.norm(eval_set.targets - eval_set.placements[:, :2], axis=1)
         print(f"wrote {args.set}: {len(eval_set)} scenes, digest {eval_set.digest}; "
@@ -68,7 +72,8 @@ def main() -> None:
 
     eval_set = PickPlaceEvalSet.load(args.set)
     driver, description, tag, provenance = grasp_driver_from_spec(args.grasp)
-    config = SupervisorConfig()
+    # re-grasp anywhere in the scenes' own workspace (+ margin)
+    config = SupervisorConfig(retry_region=(eval_set.x_range, eval_set.y_range))
     name = f"pickplace_{tag}_{eval_set.name}"
     summary, episodes = evaluate_pickplace(driver, ScriptedCarryDriver(), ScriptedPlace(),
                                            eval_set, config, grasp_env_for(args.grasp))
