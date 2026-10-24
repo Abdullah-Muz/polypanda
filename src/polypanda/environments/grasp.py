@@ -186,6 +186,10 @@ class GraspEnv(gym.Env):
         options = options or {}
         cfg = self.config.placement
         reset_to_home(self.model, self.data, self.arm)
+        if "arm_offset" in options:  # robustness tests: start away from the exact home pose
+            q = self.data.qpos[self.arm.arm_qpos] + np.asarray(options["arm_offset"])
+            self.data.qpos[self.arm.arm_qpos] = np.clip(q, self.adapter.low, self.adapter.high)
+            mujoco.mj_forward(self.model, self.data)
         pregrasp = False
         if "cube" in options:
             x, y, yaw = (float(v) for v in options["cube"])

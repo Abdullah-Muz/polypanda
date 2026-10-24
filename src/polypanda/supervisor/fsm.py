@@ -159,8 +159,9 @@ class PickPlaceSupervisor:
         return None, pose
 
     # --- episode ------------------------------------------------------------------------------
-    def run(self, cube_pose, target_xy) -> PickPlaceResult:
-        """Pick the cube at (x, y, yaw) and place it upright at target (x, y)."""
+    def run(self, cube_pose, target_xy, grasp_options: dict | None = None) -> PickPlaceResult:
+        """Pick the cube at (x, y, yaw) and place it upright at target (x, y).
+        `grasp_options` are passed to every GraspEnv reset (e.g. a start-pose offset)."""
         cfg = self.config
         records: list[StageRecord] = []
         used = 0
@@ -173,7 +174,7 @@ class PickPlaceSupervisor:
                                    round(used * self.dt, 3), xy_error, records)
 
         for attempt in range(1, cfg.max_grasp_attempts + 1):
-            obs, _ = grasp_env.reset(options={"cube": pose})
+            obs, _ = grasp_env.reset(options={**(grasp_options or {}), "cube": pose})
             home_q = grasp_env.data.qpos[grasp_env.arm.arm_qpos].copy()
             prev = None
             for stage in (Stage.GRASP, Stage.TRANSPORT, Stage.PLACE):

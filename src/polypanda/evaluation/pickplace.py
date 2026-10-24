@@ -9,12 +9,30 @@ import time
 from collections import Counter
 from dataclasses import dataclass
 from math import comb
+from pathlib import Path
 
 import numpy as np
 
+from polypanda.evaluation.grasp import PolicyDriver, ScriptedDriver
 from polypanda.evaluation.reach import wilson_interval
 from polypanda.evaluation.sets import PickPlaceEvalSet
+from polypanda.policies.loader import load_run
 from polypanda.supervisor.fsm import PickPlaceResult, PickPlaceSupervisor, SupervisorConfig
+
+
+def grasp_driver_from_spec(spec: str):
+    """'scripted' or 'run:<run_dir>[@best|final]' -> (driver, description, tag, provenance)."""
+    if spec == "scripted":
+        return ScriptedDriver(), "scripted top-down grasp", "scripted", {}
+    if not spec.startswith("run:"):
+        raise ValueError("grasp must be 'scripted' or 'run:<run_dir>[@best|final]'")
+    run_dir, _, which = spec[4:].partition("@")
+    policy = load_run(run_dir, which or "best")
+    meta = policy.metadata
+    return (PolicyDriver(policy), f"PPO grasp policy {meta['policy_id']}",
+            f"{Path(run_dir).name}_{policy.which}",
+            {"run_dir": run_dir, "checkpoint": policy.which, "policy_id": meta["policy_id"],
+             "trained_at": meta["git"]["commit"]})
 
 
 @dataclass(frozen=True)

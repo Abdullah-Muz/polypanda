@@ -24,11 +24,14 @@ import numpy as np
 import torch
 
 from polypanda.control.scripted_place import ScriptedPlace
-from polypanda.evaluation.grasp import PolicyDriver, ScriptedDriver
-from polypanda.evaluation.pickplace import PickPlaceEpisode, evaluate_pickplace, mcnemar_exact
+from polypanda.evaluation.pickplace import (
+    PickPlaceEpisode,
+    evaluate_pickplace,
+    grasp_driver_from_spec,
+    mcnemar_exact,
+)
 from polypanda.evaluation.sets import PickPlaceEvalSet, generate_pickplace_eval_set
 from polypanda.evaluation.transport import ScriptedCarryDriver
-from polypanda.policies.loader import load_run
 from polypanda.supervisor.fsm import SupervisorConfig
 
 DEFAULT_SET = Path("eval_sets/pickplace_nominal_v1.json")
@@ -39,20 +42,6 @@ def git_state() -> dict:
         return subprocess.run(cmd, capture_output=True, text=True, check=False).stdout.strip()
     return {"commit": run("git", "rev-parse", "HEAD"),
             "dirty": bool(run("git", "status", "--porcelain", "--untracked-files=no"))}
-
-
-def grasp_driver(spec: str):
-    if spec == "scripted":
-        return ScriptedDriver(), "scripted top-down grasp", "scripted", {}
-    if not spec.startswith("run:"):
-        raise SystemExit("--grasp must be 'scripted' or 'run:<run_dir>[@final]'")
-    run_dir, _, which = spec[4:].partition("@")
-    policy = load_run(run_dir, which or "best")
-    meta = policy.metadata
-    return (PolicyDriver(policy), f"PPO grasp policy {meta['policy_id']}",
-            f"{Path(run_dir).name}_{policy.which}",
-            {"run_dir": run_dir, "checkpoint": policy.which, "policy_id": meta["policy_id"],
-             "trained_at": meta["git"]["commit"]})
 
 
 def main() -> None:
@@ -77,7 +66,7 @@ def main() -> None:
         return
 
     eval_set = PickPlaceEvalSet.load(args.set)
-    driver, description, tag, provenance = grasp_driver(args.grasp)
+    driver, description, tag, provenance = grasp_driver_from_spec(args.grasp)
     config = SupervisorConfig()
     name = f"pickplace_{tag}_{eval_set.name}"
     summary, episodes = evaluate_pickplace(driver, ScriptedCarryDriver(), ScriptedPlace(),
