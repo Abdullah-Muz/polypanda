@@ -80,3 +80,17 @@ def test_time_budget_ends_the_episode():
     r = sup.run(CUBE, TARGET)
     assert not r.success and r.failure_stage == "grasp"
     assert "time budget" in r.failure_reason and r.total_s <= 2.0
+
+
+def test_timed_switching_hands_over_blindly_and_never_retries():
+    cfg = SupervisorConfig(timed_switching_s=(9.0, 3.0, 4.0))
+    sup = PickPlaceSupervisor(ScriptedDriver(), ScriptedCarryDriver(), ScriptedPlace(), cfg)
+    r = sup.run(CUBE, TARGET)
+    assert r.success
+    assert [(s.stage, s.steps) for s in r.records] == [("grasp", 180), ("transport", 60),
+                                                       ("place", 80)]
+    short = PickPlaceSupervisor(ScriptedDriver(), ScriptedCarryDriver(), ScriptedPlace(),
+                                SupervisorConfig(timed_switching_s=(2.0, 3.0, 4.0)))
+    r = short.run(CUBE, TARGET)  # 2 s is too short to grasp: no detection, no retry
+    assert not r.success and r.grasp_attempts == 1
+    assert "home" not in [s.stage for s in r.records]

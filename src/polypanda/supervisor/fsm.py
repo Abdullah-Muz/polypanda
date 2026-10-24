@@ -60,6 +60,10 @@ class SupervisorConfig:
     retry_max_lift: float = 0.005    # m: and only cubes resting on the table
     retry_margin: float = 0.03       # m beyond the cube placement region, still re-grasped
     time_budget_s: float = 90.0      # global timeout for the whole pick-and-place
+    # Ablation only: switch skills after fixed times (grasp, transport, place seconds) instead
+    # of on verified predicates. Without verification there is no failure detection, hence no
+    # recovery; success is still judged by the placed check at the end of the place window.
+    timed_switching_s: tuple[float, float, float] | None = None
 
 
 @dataclass
@@ -179,7 +183,8 @@ class PickPlaceSupervisor:
             obs, _ = grasp_env.reset(options={**(grasp_options or {}), "cube": pose})
             home_q = grasp_env.data.qpos[grasp_env.arm.arm_qpos].copy()
             prev = None
-            for stage in (Stage.GRASP, Stage.TRANSPORT, Stage.PLACE):
+            timed = cfg.timed_switching_s
+            for k, stage in enumerate((Stage.GRASP, Stage.TRANSPORT, Stage.PLACE)):
                 env = self.envs[stage]
                 if prev is not None:  # hand over the exact physics state
                     state = capture_state(prev.model, prev.data)
@@ -188,7 +193,13 @@ class PickPlaceSupervisor:
                 horizon = min(env.config.horizon if stage == Stage.PLACE
                               else env.config.episode.horizon, self.budget - used)
                 handoff = 1 if stage == Stage.PLACE else cfg.handoff_steps  # check has a window
+                if timed:  # ablation: run each skill for a fixed time, then hand over blindly
+                    horizon = min(round(timed[k] / self.dt), self.budget - used)
+                    handoff = horizon + 1
                 outcome, steps, info = self._run_skill(stage, obs, horizon, handoff)
+                if timed and outcome == "timeout":
+                    if stage != Stage.PLACE or info.get("is_success"):
+                        outcome = "ok"
                 used += steps
                 records.append(StageRecord(stage.value, attempt, steps, outcome))
                 if outcome != "ok":
@@ -198,6 +209,8 @@ class PickPlaceSupervisor:
             else:
                 return result(True, attempts=attempt, xy_error=info["xy_error"] * 1e3)
 
+            if timed:  # no verification, so no failure detection and no recovery
+                return result(False, failed, outcome, attempt)
             if used >= self.budget:
                 return result(False, failed, f"{outcome}; time budget exhausted", attempt)
             steps = self._go_home(env, home_q, min(cfg.home_timeout, self.budget - used))
