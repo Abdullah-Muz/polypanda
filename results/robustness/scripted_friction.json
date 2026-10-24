@@ -1,0 +1,126 @@
+{
+  "name": "scripted_friction",
+  "condition": "friction",
+  "skills": {
+    "grasp": "scripted top-down grasp",
+    "grasp_provenance": {},
+    "transport": "scripted carry",
+    "place": "scripted place"
+  },
+  "supervisor": {
+    "max_grasp_attempts": 3,
+    "handoff_steps": 10,
+    "pre_place_height": 0.12,
+    "release_steps": 10,
+    "retreat_height": 0.1,
+    "retreat_steps": 40,
+    "home_tol": 0.02,
+    "home_timeout": 200,
+    "retry_max_tilt": 0.1745,
+    "retry_max_lift": 0.005,
+    "retry_margin": 0.03,
+    "time_budget_s": 90.0
+  },
+  "eval_set": {
+    "name": "pickplace_nominal_v1",
+    "n": 200,
+    "digest": "439a38044438"
+  },
+  "perturbation_seed": 20261026,
+  "created_utc": "2026-10-24T03:32:04+00:00",
+  "git": {
+    "commit": "d35408fdf32033350081a17f0e08cce6987993fd",
+    "dirty": false
+  },
+  "versions": {
+    "python": "3.12.3",
+    "mujoco": "3.16.0",
+    "numpy": "2.5.4",
+    "torch": "2.14.1+cpu"
+  },
+  "summary": {
+    "episodes": 200,
+    "success_rate": 0.885,
+    "success_ci95": [
+      0.8333517476611362,
+      0.9221368277817569
+    ],
+    "first_attempt_success_rate": 0.71,
+    "failures_by_stage": {
+      "place": 10,
+      "transport": 11,
+      "grasp": 2
+    },
+    "failures": {
+      "toppled; cube tipped over": 7,
+      "lost_grip; out of attempts": 7,
+      "knocked_over; cube tipped over": 1,
+      "lost_grip; cube tipped over": 4,
+      "timeout; out of attempts": 4
+    },
+    "first_failures": {
+      "place:timeout": 23,
+      "place:toppled": 6,
+      "transport:lost_grip": 27,
+      "grasp:knocked_over": 1,
+      "grasp:timeout": 1
+    },
+    "retries": {
+      "episodes_with_retry": 48,
+      "recovered": 35,
+      "attempts": {
+        "1": 152,
+        "2": 34,
+        "3": 14
+      }
+    },
+    "time_s": {
+      "median": 12.6,
+      "p90": 30.590000000000007,
+      "by_stage_median": {
+        "grasp": 7.8,
+        "transport": 2.4,
+        "place": 2.0
+      }
+    },
+    "final_xy_error_mm": {
+      "median": 1.6956720974484536,
+      "p95": 14.560485814865281
+    },
+    "by_level": {
+      "0.5-0.75": {
+        "n": 60,
+        "success_rate": 0.6333333333333333,
+        "success_ci95": [
+          0.5068276736679673,
+          0.7437926115379172
+        ]
+      },
+      "0.75-1": {
+        "n": 51,
+        "success_rate": 0.9803921568627451,
+        "success_ci95": [
+          0.8969519232441061,
+          0.9965303967465577
+        ]
+      },
+      "1-1.25": {
+        "n": 42,
+        "success_rate": 1.0,
+        "success_ci95": [
+          0.9161983874908382,
+          1.0
+        ]
+      },
+      "1.25-1.5": {
+        "n": 47,
+        "success_rate": 1.0,
+        "success_ci95": [
+          0.9244398288016114,
+          1.0
+        ]
+      }
+    },
+    "wall_clock_s": 154.2
+  }
+}

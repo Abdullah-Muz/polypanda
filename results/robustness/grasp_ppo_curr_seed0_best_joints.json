@@ -1,0 +1,123 @@
+{
+  "name": "grasp_ppo_curr_seed0_best_joints",
+  "condition": "joints",
+  "skills": {
+    "grasp": "PPO grasp policy grasp_ppo_curr_seed0",
+    "grasp_provenance": {
+      "run_dir": "runs/grasp_ppo_curr_seed0",
+      "checkpoint": "best",
+      "policy_id": "grasp_ppo_curr_seed0",
+      "trained_at": "1d00632d1b4cc6153a944038b477ff5f2c7757d6"
+    },
+    "transport": "scripted carry",
+    "place": "scripted place"
+  },
+  "supervisor": {
+    "max_grasp_attempts": 3,
+    "handoff_steps": 10,
+    "pre_place_height": 0.12,
+    "release_steps": 10,
+    "retreat_height": 0.1,
+    "retreat_steps": 40,
+    "home_tol": 0.02,
+    "home_timeout": 200,
+    "retry_max_tilt": 0.1745,
+    "retry_max_lift": 0.005,
+    "retry_margin": 0.03,
+    "time_budget_s": 90.0
+  },
+  "eval_set": {
+    "name": "pickplace_nominal_v1",
+    "n": 200,
+    "digest": "439a38044438"
+  },
+  "perturbation_seed": 20261026,
+  "created_utc": "2026-10-24T03:37:13+00:00",
+  "git": {
+    "commit": "d35408fdf32033350081a17f0e08cce6987993fd",
+    "dirty": false
+  },
+  "versions": {
+    "python": "3.12.3",
+    "mujoco": "3.16.0",
+    "numpy": "2.5.4",
+    "torch": "2.14.1+cpu"
+  },
+  "summary": {
+    "episodes": 200,
+    "success_rate": 0.825,
+    "success_ci95": [
+      0.7663545078991807,
+      0.8713955882539106
+    ],
+    "first_attempt_success_rate": 0.745,
+    "failures_by_stage": {
+      "grasp": 31,
+      "place": 2,
+      "transport": 2
+    },
+    "failures": {
+      "timeout; out of attempts": 6,
+      "timeout; cube out of the workspace": 19,
+      "toppled; cube tipped over": 2,
+      "lost_grip; cube tipped over": 2,
+      "knocked_over; cube tipped over": 6
+    },
+    "first_failures": {
+      "place:timeout": 3,
+      "grasp:timeout": 40,
+      "place:toppled": 2,
+      "transport:lost_grip": 3,
+      "grasp:knocked_over": 3
+    },
+    "retries": {
+      "episodes_with_retry": 30,
+      "recovered": 16,
+      "attempts": {
+        "2": 21,
+        "1": 170,
+        "3": 9
+      }
+    },
+    "time_s": {
+      "median": 10.4,
+      "p90": 18.869999999999997,
+      "by_stage_median": {
+        "grasp": 5.1,
+        "transport": 2.4,
+        "place": 2.65
+      }
+    },
+    "final_xy_error_mm": {
+      "median": 1.8438840243697263,
+      "p95": 17.21299129947408
+    },
+    "by_level": {
+      "0-0.05": {
+        "n": 5,
+        "success_rate": 0.8,
+        "success_ci95": [
+          0.3755282641185388,
+          0.9637768390302125
+        ]
+      },
+      "0.05-0.075": {
+        "n": 23,
+        "success_rate": 0.8260869565217391,
+        "success_ci95": [
+          0.6286194521470433,
+          0.9302145964938723
+        ]
+      },
+      "0.075-0.1": {
+        "n": 172,
+        "success_rate": 0.8255813953488372,
+        "success_ci95": [
+          0.7619310019225785,
+          0.8750058776326577
+        ]
+      }
+    },
+    "wall_clock_s": 140.3
+  }
+}

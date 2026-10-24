@@ -1,0 +1,105 @@
+{
+  "name": "scripted_joints",
+  "condition": "joints",
+  "skills": {
+    "grasp": "scripted top-down grasp",
+    "grasp_provenance": {},
+    "transport": "scripted carry",
+    "place": "scripted place"
+  },
+  "supervisor": {
+    "max_grasp_attempts": 3,
+    "handoff_steps": 10,
+    "pre_place_height": 0.12,
+    "release_steps": 10,
+    "retreat_height": 0.1,
+    "retreat_steps": 40,
+    "home_tol": 0.02,
+    "home_timeout": 200,
+    "retry_max_tilt": 0.1745,
+    "retry_max_lift": 0.005,
+    "retry_margin": 0.03,
+    "time_budget_s": 90.0
+  },
+  "eval_set": {
+    "name": "pickplace_nominal_v1",
+    "n": 200,
+    "digest": "439a38044438"
+  },
+  "perturbation_seed": 20261026,
+  "created_utc": "2026-10-24T03:36:28+00:00",
+  "git": {
+    "commit": "d35408fdf32033350081a17f0e08cce6987993fd",
+    "dirty": false
+  },
+  "versions": {
+    "python": "3.12.3",
+    "mujoco": "3.16.0",
+    "numpy": "2.5.4",
+    "torch": "2.14.1+cpu"
+  },
+  "summary": {
+    "episodes": 200,
+    "success_rate": 1.0,
+    "success_ci95": [
+      0.9811539940816791,
+      1.0
+    ],
+    "first_attempt_success_rate": 0.97,
+    "failures_by_stage": {},
+    "failures": {},
+    "first_failures": {
+      "place:timeout": 5,
+      "transport:lost_grip": 1
+    },
+    "retries": {
+      "episodes_with_retry": 6,
+      "recovered": 6,
+      "attempts": {
+        "1": 194,
+        "2": 5,
+        "3": 1
+      }
+    },
+    "time_s": {
+      "median": 12.425,
+      "p90": 15.964999999999998,
+      "by_stage_median": {
+        "grasp": 7.9,
+        "transport": 2.275,
+        "place": 2.15
+      }
+    },
+    "final_xy_error_mm": {
+      "median": 1.7036684499140566,
+      "p95": 15.030632217974293
+    },
+    "by_level": {
+      "0-0.05": {
+        "n": 5,
+        "success_rate": 1.0,
+        "success_ci95": [
+          0.5655085052479191,
+          1.0
+        ]
+      },
+      "0.05-0.075": {
+        "n": 23,
+        "success_rate": 1.0,
+        "success_ci95": [
+          0.8568788745827374,
+          1.0
+        ]
+      },
+      "0.075-0.1": {
+        "n": 172,
+        "success_rate": 1.0,
+        "success_ci95": [
+          0.9781530650312552,
+          0.9999999999999999
+        ]
+      }
+    },
+    "wall_clock_s": 132.4
+  }
+}
