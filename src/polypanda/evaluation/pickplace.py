@@ -49,7 +49,8 @@ def grasp_driver_from_spec(spec: str):
     return (PolicyDriver(policy), f"PPO grasp policy {meta['policy_id']}",
             f"{Path(run_dir).name}_{policy.which}",
             {"run_dir": run_dir, "checkpoint": policy.which, "policy_id": meta["policy_id"],
-             "trained_at": meta["git"]["commit"]})
+             # runs still training have provisional metadata without a git record
+             "trained_at": meta.get("git", {}).get("commit", "in progress")})
 
 
 @dataclass(frozen=True)
