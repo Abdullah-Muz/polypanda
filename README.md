@@ -2,7 +2,7 @@
 
 Hierarchical reinforcement learning for Franka Panda manipulation: modular PPO/SAC skills, MuJoCo environments, a rule-based task supervisor, and reproducible robotics-control benchmarks.
 
-> **Status: early development.** Milestones 1–2 are complete: a reproducible simulator, the reaching environment, and classical baselines evaluated on a held-out set. Milestone 3 is complete: PPO and SAC reaching policies are trained and benchmarked against the baselines over 3 seeds each. Milestone 4 is complete: learned grasping (80.5 % held-out success) and transport (scripted closed-loop carry, 92.0 %, after plain and residual RL were evaluated). Milestone 5 (place skill and full pick-and-place supervisor) is next. The roadmap is updated only when a milestone is actually completed and tested.
+> **Status: early development.** Milestones 1–2 are complete: a reproducible simulator, the reaching environment, and classical baselines evaluated on a held-out set. Milestone 3 is complete: PPO and SAC reaching policies are trained and benchmarked against the baselines over 3 seeds each. Milestone 4 is complete: learned grasping (80.5 % held-out success) and transport (scripted closed-loop carry, 92.0 %, after plain and residual RL were evaluated). Milestone 5 is complete: a place skill (97.5 %) and a supervisor with failure recovery perform full autonomous pick-and-place, at 100 % with scripted skills and 86.0 % with the learned grasp. Milestone 6 (robustness and final evaluation) is next. The roadmap is updated only when a milestone is actually completed and tested.
 
 ## Overview
 
@@ -67,6 +67,21 @@ Held-out transport (200 grasp-to-transport handoffs from scripted and learned gr
 
 The remaining transport failures are cubes creeping out of off-centre grips while held, mostly from handoffs of one learned grasp policy. Transport reliability is limited by grasp quality, not by the carry. Details: [docs/transport_task.md](docs/transport_task.md).
 
+Held-out place (198 transport-to-place handoffs; success = resting upright within 2 cm of the target, still and released): the scripted place reaches **97.5 %** (94.2–98.9 %), 1.7 mm from the target (median). Cubes pivot in the weak grip and topple if released tilted beyond about 34°, so the hand first rotates the cube upright. Details: [docs/place_task.md](docs/place_task.md).
+
+### Full pick-and-place
+
+A finite-state-machine supervisor chains **grasp → transport → place**. It hands the exact physics state from one skill's environment to the next, and switches only on verified success predicates. On a failure it opens the fingers, lifts clear, returns home and re-grasps the cube where it lies (at most twice) if it is still upright and within reach. Held-out set: 200 scenes, each a random cube pose and a target spot at least 10 cm away, every episode from the home pose.
+
+| Grasp skill (transport and place scripted) | Success (95 % CI) | First attempt | Time to verified placement (median) |
+|---|---|---|---|
+| Scripted grasp | **100 %** (98.1–100 %) | 97.5 % | 12.4 s |
+| PPO grasp (3 seeds, pooled 600) | 86.0 % (83.0–88.5 %) | 78.3 % | ~9.5 s |
+
+With the learned grasp, nearly all failures are grasp failures: the cube is pushed out of reach or knocked over. Retries add about 8 points. Supervisor design, failure breakdown and a recovery bug the evaluation exposed: [docs/pick_and_place.md](docs/pick_and_place.md).
+
+Watch it: `uv run python scripts/demo_pickplace.py`
+
 Evaluate a baseline yourself: `uv run python scripts/evaluate.py --policy ik`
 
 ## Roadmap
@@ -77,7 +92,7 @@ Evaluate a baseline yourself: `uv run python scripts/evaluate.py --policy ik`
 | 2 | Custom reaching environment and classical IK baseline | Done ([task](docs/reach_task.md), [results](docs/results.md)) |
 | 3 | PPO and SAC reaching policies with benchmark | Done ([results](docs/results.md)) |
 | 4 | Grasp and transport skills | Done ([grasp](docs/grasp_task.md), [transport](docs/transport_task.md)) |
-| 5 | Multi-policy FSM supervisor and full pick-and-place | Planned |
+| 5 | Place skill, multi-policy FSM supervisor and full pick-and-place | Done ([place](docs/place_task.md), [pick-and-place](docs/pick_and_place.md)) |
 | 6 | Robustness, evaluation, documentation | Planned |
 
 ## License

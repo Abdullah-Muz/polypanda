@@ -111,3 +111,30 @@ Held-out set `transport_nominal_v1`: 200 grasp-to-transport handoff states, 50 e
 - **Residual RL matched but did not improve the scripted carry.** Paired on the same cases, both fail the same 14 (discordant 2 vs 1, exact McNemar p = 1.0).
 - **Transport reliability is limited by grasp quality.** Failures are cubes creeping out of off-centre grips while held at the goal: 100 % success from scripted-grasp handoffs vs 84 % from PPO grasp seed 0's.
 - **The scripted closed-loop carry is the transport skill** used for pick-and-place.
+
+## Place (Milestone 5)
+
+Held-out set `place_nominal_v1`: 198 transport-to-place handoffs (the cube held 12 cm above a target spot), covering all four grasp sources. **Success** means a verified placement: resting within 3 mm of the table, under 10° of tilt, within 2 cm of the target, still, and clear of the gripper for 0.5 s. Evaluated at commit `e2c59bc` (clean). Full analysis: [place_task.md](place_task.md).
+
+| Controller | Success (95 % CI) | Time to verified placement, median / p90 | Final xy error, median / p95 | Failures |
+|---|---|---|---|---|
+| **Scripted place with upright correction** | **97.5 %** (94.2–98.9 %) | 2.05 / 3.90 s | 1.7 / 16.7 mm | toppled 2, off target 1, never released 1, not settled 1 |
+
+- **Tilt at release decides toppling.** Cubes released with 0–25° of tilt in the fingers never toppled, those at 25–35° toppled 11 % of the time, and those beyond 35° always toppled (the 4 × 4 × 6 cm cube tips over beyond atan(2/3) ≈ 34°). Rotating the hand so the cube stands upright before lowering raised success from 90.4 % to 97.5 % and cut the median xy error from 6.3 to 1.7 mm.
+- **RL for placing was not attempted:** the baseline leaves too little to improve.
+
+## Pick-and-place, end to end (Milestone 5)
+
+Held-out set `pickplace_nominal_v1`: 200 scenes (cube start pose and a target at least 10 cm away), every episode from the home pose, through the [supervisor](pick_and_place.md) with up to two re-grasps and a 90 s budget. Transport and place are scripted in every configuration. Evaluated at commit `a8fced5` (clean).
+
+| Grasp skill | Success (95 % CI) | First attempt | Retried → recovered | Time to placed, median / p90 | Final xy error, median |
+|---|---|---|---|---|---|
+| **Scripted** | **100 %** (98.1–100 %) | 97.5 % | 5 → 5 | 12.4 / 15.8 s | 1.7 mm |
+| PPO seed 0 | 86.0 % (80.5–90.1 %) | 75.0 % | 33 → 22 | 10.3 / 28.9 s | 1.8 mm |
+| PPO seed 1 | 89.0 % (83.9–92.6 %) | 84.0 % | 20 → 10 | 9.7 / 13.9 s | 1.5 mm |
+| PPO seed 2 | 83.0 % (77.2–87.6 %) | 76.0 % | 32 → 14 | 9.3 / 13.2 s | 1.7 mm |
+| PPO, pooled 600 | 86.0 % (83.0–88.5 %); 86.0 ± 3.0 per seed | 78.3 % | 85 → 46 | | |
+
+- Final failures with the PPO grasp occur at the grasp stage 77 times, transport 2 and place 5. The grasp failures are cubes pushed out of the workspace (30), knocked over (25), or missed on all three attempts (22).
+- Paired against all-scripted on the same scenes, every PPO seed is significantly worse (exact McNemar p ≤ 4.8 × 10⁻⁷).
+- Retries lift the learned chain from 78.3 % (first attempt, close to the standalone grasp rate of 80.5 %) to 86.0 %.
