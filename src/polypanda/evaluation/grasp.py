@@ -228,9 +228,12 @@ class GraspPolicyEpisode:
     failure: str | None  # knocked_over | never_closed | not_lifted | dropped | not_grasped
 
 
-def run_policy_episode(env: GraspEnv, driver, placement, index: int,
-                       region: str) -> tuple[GraspPolicyEpisode, list[float]]:
-    obs, _ = env.reset(options={"cube": tuple(placement)})
+def run_policy_episode(env: GraspEnv, driver, placement, index: int, region: str,
+                       distractors=None) -> tuple[GraspPolicyEpisode, list[float]]:
+    options = {"cube": tuple(placement)}
+    if distractors is not None:
+        options["distractors"] = [tuple(d) for d in distractors]
+    obs, _ = env.reset(options=options)
     driver.reset(env)
     dt = env.adapter.control_dt
     latencies, ret = [], 0.0
@@ -316,9 +319,12 @@ def evaluate_grasp_policy(driver, eval_set: GraspEvalSet, config: GraspConfig | 
     env = env or GraspEnv(config)
     start = time.perf_counter()
     results, latencies = [], []
+    if eval_set.distractors is not None and env.distractor_slots < eval_set.distractors.shape[1]:
+        raise ValueError(f"{type(env).__name__} has no room for the set's distractor cubes")
     for i, (placement, region) in enumerate(zip(eval_set.placements, eval_set.regions,
                                                 strict=True)):
-        result, lat = run_policy_episode(env, driver, placement, i, region)
+        others = None if eval_set.distractors is None else eval_set.distractors[i]
+        result, lat = run_policy_episode(env, driver, placement, i, region, others)
         results.append(result)
         latencies.extend(lat)
     summary = summarize_policy_grasp(results, latencies)

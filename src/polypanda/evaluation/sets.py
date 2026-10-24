@@ -134,17 +134,21 @@ class GraspEvalSet:
     x_range: tuple[float, float] = CUBE_X_RANGE
     y_range: tuple[float, float] = CUBE_Y_RANGE
     menagerie_commit: str = MENAGERIE_COMMIT
+    distractors: np.ndarray | None = None  # (n, k, 3): other cubes' x, y, yaw (clutter sets)
 
     def __len__(self) -> int:
         return len(self.placements)
 
     @property
     def digest(self) -> str:
-        return hashlib.sha256(np.ascontiguousarray(self.placements).tobytes()).hexdigest()[:12]
+        data = self.placements if self.distractors is None else np.concatenate(
+            [self.placements.ravel(), self.distractors.ravel()])
+        return hashlib.sha256(np.ascontiguousarray(data).tobytes()).hexdigest()[:12]
 
     def subset(self, n: int) -> "GraspEvalSet":
         return GraspEvalSet(self.name, self.seed, self.placements[:n], self.regions[:n],
-                            self.x_range, self.y_range, self.menagerie_commit)
+                            self.x_range, self.y_range, self.menagerie_commit,
+                            None if self.distractors is None else self.distractors[:n])
 
     def save(self, path: str | Path) -> None:
         payload = {
@@ -155,6 +159,11 @@ class GraspEvalSet:
             "placements": [{"x": p[0], "y": p[1], "yaw": p[2], "region": r}
                            for p, r in zip(self.placements.tolist(), self.regions, strict=True)],
         }
+        if self.distractors is not None:
+            payload["start"] += "; other cubes (distractors) upright at rest"
+            for entry, others in zip(payload["placements"], self.distractors.tolist(),
+                                     strict=True):
+                entry["distractors"] = others
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         Path(path).write_text(json.dumps(payload, indent=1) + "\n")
 
@@ -168,6 +177,8 @@ class GraspEvalSet:
             regions=tuple(e["region"] for e in entries),
             x_range=tuple(payload["x_range"]), y_range=tuple(payload["y_range"]),
             menagerie_commit=payload["menagerie_commit"],
+            distractors=(np.array([e["distractors"] for e in entries])
+                         if "distractors" in entries[0] else None),
         )
         if loaded.digest != payload["digest"]:
             raise ValueError(f"{path}: placement digest mismatch (file edited or corrupted)")
@@ -176,13 +187,28 @@ class GraspEvalSet:
 
 def generate_grasp_eval_set(name: str, n: int, seed: int,
                             x_range: tuple[float, float] = CUBE_X_RANGE,
-                            y_range: tuple[float, float] = CUBE_Y_RANGE) -> GraspEvalSet:
+                            y_range: tuple[float, float] = CUBE_Y_RANGE, distractors: int = 0,
+                            min_separation: float = 0.10) -> GraspEvalSet:
+    """Uniform placements; with `distractors`, each also gets that many other cubes, at least
+    `min_separation` (centre to centre) from the target and each other, drawn afterwards."""
     rng = np.random.default_rng(np.random.SeedSequence(seed, spawn_key=(GRASP_SPAWN_KEY,)))
     placements = np.column_stack([rng.uniform(*x_range, n), rng.uniform(*y_range, n),
                                   rng.uniform(-np.pi, np.pi, n)])
+    others = None
+    if distractors:
+        others = np.zeros((n, distractors, 3))
+        for i, p in enumerate(placements):
+            taken = [p[:2]]
+            for k in range(distractors):
+                while True:
+                    xy = np.array([rng.uniform(*x_range), rng.uniform(*y_range)])
+                    if all(np.linalg.norm(xy - t) >= min_separation for t in taken):
+                        break
+                taken.append(xy)
+                others[i, k] = [*xy, rng.uniform(-np.pi, np.pi)]
     return GraspEvalSet(name=name, seed=seed, placements=placements,
                         regions=tuple(grasp_region_of(p[:2]) for p in placements),
-                        x_range=tuple(x_range), y_range=tuple(y_range))
+                        x_range=tuple(x_range), y_range=tuple(y_range), distractors=others)
 
 
 PICKPLACE_SPAWN_KEY = 0x7B1C  # distinct from the reach and grasp streams

@@ -118,6 +118,16 @@ class RandomizationConfig:
 
 
 @dataclass(frozen=True)
+class DistractorConfig:
+    # v3 (GraspV3Env) only: other cubes on the table. Randomly placed episodes (training and
+    # validation) draw 0..max_count of them uniformly; explicit placements pass their own.
+    max_count: int = 0
+    min_separation: float = 0.10   # m, centre to centre, from the target cube and each other
+    disturb: float = 20.0          # penalty per metre a distractor moves (same scale as push)
+    knocked_over: float = 5.0      # once, when a distractor tips past episode.max_cube_tilt
+
+
+@dataclass(frozen=True)
 class GraspConfig:
     action: ActionConfig = field(default_factory=ActionConfig)
     placement: PlacementConfig = field(default_factory=PlacementConfig)
@@ -128,6 +138,7 @@ class GraspConfig:
     check: GraspCheckConfig = field(default_factory=GraspCheckConfig)
     curriculum: CurriculumConfig = field(default_factory=CurriculumConfig)
     randomization: RandomizationConfig = field(default_factory=RandomizationConfig)
+    distractors: DistractorConfig = field(default_factory=DistractorConfig)
 
     @classmethod
     def from_yaml(cls, path: str | Path) -> "GraspConfig":
@@ -152,10 +163,11 @@ def gripper_tilt(R_tcp: np.ndarray) -> float:
 
 class GraspEnv(gym.Env):
     metadata = {"render_modes": []}
+    distractor_slots = 0  # extra cubes in the scene (GraspV3Env)
 
     def __init__(self, config: GraspConfig | None = None) -> None:
         self.config = config or GraspConfig()
-        self.model, self.data = load_pick_scene()
+        self.model, self.data = load_pick_scene(distractors=self.distractor_slots)
         self.arm = PandaIndices.from_model(self.model)
         self.cube = CubeIndices.from_model(self.model)
         self.adapter = JointDeltaActionAdapter(self.model, self.arm, **asdict(self.config.action))
@@ -412,3 +424,114 @@ class GraspV2Env(GraspEnv):
             info["failure"] = "pushed_away"
             terminated, truncated = True, False
         return obs, reward + sum(terms.values()), terminated, truncated, info
+
+
+OBS_SCHEMA_V3 = "grasp-v3-49d"  # v2 layout + per distractor slot: present flag, cube - TCP (3)
+
+
+class GraspV3Env(GraspV2Env):
+    """Grasp task v3: v2 (committed grasp yaw) on a table with up to two other cubes.
+
+    The distractors are the same size as the target and must be left alone: they are observed
+    (presence flag and position relative to the gripper, per slot), moving one costs
+    distractors.disturb per metre, and tipping one over ends the episode (distractors.knocked_over,
+    failure `knocked_distractor`). Unused slots park their cube out of reach and observe as
+    absent. Built for multi-cube tasks (stacking), where the other cubes are part of the scene.
+    """
+
+    distractor_slots = 2
+
+    def __init__(self, config: GraspConfig | None = None) -> None:
+        super().__init__(config)
+        self.others = CubeIndices.distractors(self.model)
+        dim = OBS_DIM + 4 * len(self.others)
+        self.observation_space = spaces.Box(-np.inf, np.inf, shape=(dim,), dtype=np.float32)
+        self.present = [False] * len(self.others)
+        self._other_xy = [np.zeros(2) for _ in self.others]
+
+    def _place_others(self, poses) -> None:
+        for k, other in enumerate(self.others):
+            if k < len(poses):
+                x, y, yaw = (float(v) for v in poses[k])
+                set_cube_pose(self.model, self.data, other, (x, y), yaw)
+                self.present[k] = True
+            else:
+                self.present[k] = False  # stays parked (home keyframe)
+        mujoco.mj_forward(self.model, self.data)
+        self._other_xy = [cube_position(self.data, o)[:2].copy() for o in self.others]
+
+    def _draw_others(self) -> list[tuple[float, float, float]]:
+        cfg, d = self.config.placement, self.config.distractors
+        count = int(self.np_random.integers(0, d.max_count + 1)) if d.max_count else 0
+        taken = [cube_position(self.data, self.cube)[:2]]
+        poses = []
+        for _ in range(count):
+            for _ in range(100):  # rejection sampling; gives up quietly if the table is full
+                xy = np.array([self.np_random.uniform(*cfg.x_range),
+                               self.np_random.uniform(*cfg.y_range)])
+                if all(np.linalg.norm(xy - t) >= d.min_separation for t in taken):
+                    taken.append(xy)
+                    poses.append((*xy, float(self.np_random.uniform(-np.pi, np.pi))))
+                    break
+        return poses
+
+    def reset(self, *, seed: int | None = None, options: dict | None = None):
+        options = options or {}
+        obs, info = super().reset(seed=seed, options=options)
+        poses = options.get("distractors", []) if "cube" in options else self._draw_others()
+        self._place_others(poses)
+        info["distractors"] = [tuple(p) for p in poses]
+        return self._observation(), info
+
+    def _floor_contact(self) -> bool:
+        cubes = {self.cube.body, *(o.body for o in self.others)}
+        for i in range(self.data.ncon):
+            c = self.data.contact[i]
+            bodies = {self.model.geom_bodyid[c.geom1], self.model.geom_bodyid[c.geom2]}
+            if 0 in bodies and not bodies & cubes:
+                return True
+        return False
+
+    def _observation(self, m: dict | None = None) -> np.ndarray:
+        obs = super()._observation(m)
+        tcp = tcp_position(self.data, self.arm)
+        extra = []
+        for present, other in zip(self.present, self.others, strict=True):
+            rel = cube_position(self.data, other) - tcp if present else np.zeros(3)
+            extra += [float(present), *rel]
+        return np.concatenate([obs, np.asarray(extra, dtype=np.float32)])
+
+    def step(self, action):
+        d, ep = self.config.distractors, self.config.episode
+        obs, reward, terminated, truncated, info = super().step(action)
+        if info.get("failure") == "non_finite":
+            return np.zeros(self.observation_space.shape, dtype=np.float32), reward, \
+                terminated, truncated, info
+        moved, knocked = 0.0, False
+        for k, other in enumerate(self.others):
+            if not self.present[k]:
+                continue
+            xy = cube_position(self.data, other)[:2]
+            moved += float(np.linalg.norm(xy - self._other_xy[k]))
+            self._other_xy[k] = xy.copy()
+            knocked |= cube_tilt(self.data, other) > ep.max_cube_tilt
+        terms = {"disturb": -d.disturb * moved,
+                 "knocked_distractor": -d.knocked_over if knocked and not terminated else 0.0}
+        info["reward_terms"].update(terms)
+        if knocked and not terminated:
+            info["failure"] = "knocked_distractor"
+            info["is_success"] = False
+            terminated, truncated = True, False
+        return obs, reward + sum(terms.values()), terminated, truncated, info
+
+
+class GraspV2BlindClutterEnv(GraspV3Env):
+    """Evaluation only: v2's observation (no distractor slots) in a scene WITH distractor cubes,
+    so v2 policies, which cannot see other cubes, can be measured on clutter sets."""
+
+    def __init__(self, config: GraspConfig | None = None) -> None:
+        super().__init__(config)
+        self.observation_space = spaces.Box(-np.inf, np.inf, shape=(OBS_DIM,), dtype=np.float32)
+
+    def _observation(self, m: dict | None = None) -> np.ndarray:
+        return GraspV2Env._observation(self, m)

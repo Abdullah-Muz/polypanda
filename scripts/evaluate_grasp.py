@@ -23,6 +23,7 @@ import mujoco
 import numpy as np
 
 from polypanda.control.scripted_grasp import ScriptedGraspConfig
+from polypanda.environments.grasp import GraspV2BlindClutterEnv, GraspV2Env, GraspV3Env
 from polypanda.evaluation.grasp import (
     GraspEpisodeResult,
     GraspPolicyEpisode,
@@ -63,7 +64,7 @@ def run_env_protocol(args, eval_set: GraspEvalSet) -> None:
         run_dir, _, which = args.policy[4:].partition("@")
         policy = load_run(run_dir, which or "best")
         meta = policy.metadata
-        if meta["skill"] not in ("grasp", "grasp_v2"):
+        if meta["skill"] not in ("grasp", "grasp_v2", "grasp_v3"):
             raise SystemExit(f"{run_dir} is a {meta['skill']} policy, not grasp")
         driver = PolicyDriver(policy)
         description = (f"{meta['algorithm']} {policy.which} model from {run_dir} "
@@ -72,7 +73,15 @@ def run_env_protocol(args, eval_set: GraspEvalSet) -> None:
     else:
         raise SystemExit(f"unknown policy {args.policy!r}; use scripted or run:DIR[@which]")
 
-    env = grasp_env_for(args.policy)  # the policy's own task env (GraspEnv or GraspV2Env)
+    env = grasp_env_for(args.policy)  # the policy's own task env (GraspEnv, V2 or V3)
+    if eval_set.distractors is not None and env.distractor_slots == 0:
+        # clutter set: put the other cubes in the scene even if the skill cannot observe them
+        if args.policy == "scripted":
+            env = GraspV3Env(env.config)
+        elif isinstance(env, GraspV2Env):
+            env = GraspV2BlindClutterEnv(env.config)
+        else:
+            raise SystemExit("v1 grasp policies cannot be evaluated on clutter sets")
     summary, episodes = evaluate_grasp_policy(driver, eval_set, env=env)
     record = {"name": name, "policy": description,
               "protocol": f"{type(env).__name__}, 15 s horizon",
@@ -111,6 +120,8 @@ def main() -> None:
     parser.add_argument("--make-set", action="store_true")
     parser.add_argument("--wide", action="store_true",
                         help="with --make-set: placements over the wide (fully reachable) region")
+    parser.add_argument("--distractors", type=int, default=0,
+                        help="with --make-set: other cubes per placement (clutter set)")
     parser.add_argument("--n", type=int, default=200)
     parser.add_argument("--seed", type=int, default=20261022)
     parser.add_argument("--out-dir", type=Path, default=Path("results/grasp"))
@@ -118,7 +129,8 @@ def main() -> None:
 
     if args.make_set:
         ranges = ({"x_range": WIDE_X_RANGE, "y_range": WIDE_Y_RANGE} if args.wide else {})
-        eval_set = generate_grasp_eval_set(args.set.stem, args.n, args.seed, **ranges)
+        eval_set = generate_grasp_eval_set(args.set.stem, args.n, args.seed, **ranges,
+                                           distractors=args.distractors)
         eval_set.save(args.set)
         print(f"wrote {args.set}: {len(eval_set)} placements, digest {eval_set.digest}, "
               f"regions {dict(Counter(eval_set.regions))}")

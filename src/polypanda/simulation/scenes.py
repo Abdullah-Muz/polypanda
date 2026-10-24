@@ -35,21 +35,32 @@ class CubeSpec:
     density: float = 1000.0                                     # kg/m^3 -> 0.096 kg
 
 
+DISTRACTOR = "distractor{}"
+# Where unused distractor cubes wait: on the floor behind the robot, out of its reach.
+DISTRACTOR_PARK = ((-0.8, -0.4), (-0.8, 0.4), (-0.8, 0.0), (-0.8, -0.8), (-0.8, 0.8))
+
+
 def add_cube(spec: mujoco.MjSpec, cube: CubeSpec | None = None,
-             xy: tuple[float, float] = DEFAULT_CUBE_XY) -> None:
+             xy: tuple[float, float] = DEFAULT_CUBE_XY, name: str = CUBE_BODY,
+             rgba: tuple[float, ...] = (0.2, 0.7, 0.3, 1.0)) -> None:
+    """A free cube: body and geom `name`, joint `<name>_joint`, centre site `<name>_center`."""
     cube = cube or CubeSpec()
-    body = spec.worldbody.add_body(name=CUBE_BODY, pos=[*xy, cube.half_size[2]])
-    body.add_freejoint(name=CUBE_JOINT)
-    body.add_geom(name=CUBE_GEOM, type=mujoco.mjtGeom.mjGEOM_BOX, size=list(cube.half_size),
+    body = spec.worldbody.add_body(name=name, pos=[*xy, cube.half_size[2]])
+    body.add_freejoint(name=f"{name}_joint")
+    body.add_geom(name=name, type=mujoco.mjtGeom.mjGEOM_BOX, size=list(cube.half_size),
                   friction=list(cube.friction), solref=list(cube.solref), density=cube.density,
-                  rgba=[0.2, 0.7, 0.3, 1.0])
-    body.add_site(name=CUBE_SITE, size=[0.005, 0.005, 0.005], group=4)
+                  rgba=list(rgba))
+    body.add_site(name=f"{name}_center", size=[0.005, 0.005, 0.005], group=4)
 
 
-def load_pick_scene(cube: CubeSpec | None = None) -> tuple[mujoco.MjModel, mujoco.MjData]:
-    """Panda (with TCP site) plus one free cube. The `home` keyframe gains the cube's rest pose."""
+def load_pick_scene(cube: CubeSpec | None = None, distractors: int = 0
+                    ) -> tuple[mujoco.MjModel, mujoco.MjData]:
+    """Panda (with TCP site) plus one free cube and, optionally, identical distractor cubes
+    (blue) parked out of reach. The `home` keyframe gains every cube's rest pose."""
     spec = panda_spec()
     add_cube(spec, cube)
+    for k in range(distractors):
+        add_cube(spec, cube, DISTRACTOR_PARK[k], DISTRACTOR.format(k), (0.25, 0.4, 0.85, 1.0))
     model = spec.compile()
     return model, mujoco.MjData(model)
 
@@ -64,12 +75,20 @@ class CubeIndices:
     half_size: np.ndarray
 
     @classmethod
-    def from_model(cls, model: mujoco.MjModel) -> "CubeIndices":
-        joint = model.joint(CUBE_JOINT)
-        geom = model.geom(CUBE_GEOM)
-        return cls(body=model.body(CUBE_BODY).id, geom=geom.id, site=model.site(CUBE_SITE).id,
+    def from_model(cls, model: mujoco.MjModel, name: str = CUBE_BODY) -> "CubeIndices":
+        joint = model.joint(f"{name}_joint")
+        geom = model.geom(name)
+        return cls(body=model.body(name).id, geom=geom.id, site=model.site(f"{name}_center").id,
                    qpos=int(joint.qposadr[0]), qvel=int(joint.dofadr[0]),
                    half_size=model.geom_size[geom.id].copy())
+
+    @classmethod
+    def distractors(cls, model: mujoco.MjModel) -> list["CubeIndices"]:
+        out, k = [], 0
+        while mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, DISTRACTOR.format(k)) >= 0:
+            out.append(cls.from_model(model, DISTRACTOR.format(k)))
+            k += 1
+        return out
 
 
 def set_cube_pose(model: mujoco.MjModel, data: mujoco.MjData, cube: CubeIndices,
