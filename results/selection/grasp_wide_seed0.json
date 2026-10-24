@@ -1,0 +1,14 @@
+{
+  "run": "grasp_wide_seed0",
+  "validation_set": "grasp_select_wide_v1",
+  "digest": "7de448fde791",
+  "episodes": 100,
+  "scores": {
+    "best": 0.72,
+    "final": 0.66,
+    "250k": 0.3,
+    "500k": 0.53,
+    "750k": 0.72
+  },
+  "selected": "best"
+}

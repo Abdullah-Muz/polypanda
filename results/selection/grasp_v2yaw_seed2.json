@@ -1,0 +1,14 @@
+{
+  "run": "grasp_v2yaw_seed2",
+  "validation_set": "grasp_select_nominal_v1",
+  "digest": "26d27b3db3da",
+  "episodes": 100,
+  "scores": {
+    "best": 0.91,
+    "final": 0.67,
+    "250k": 0.49,
+    "500k": 0.94,
+    "750k": 0.93
+  },
+  "selected": "500k"
+}
