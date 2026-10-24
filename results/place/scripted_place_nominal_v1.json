@@ -1,0 +1,86 @@
+{
+  "name": "scripted_place_nominal_v1",
+  "policy": "scripted place (lower via closed-loop IK, gated release, retreat 10 cm)",
+  "protocol": "PlaceEnv, 6 s horizon",
+  "eval_set": {
+    "name": "place_nominal_v1",
+    "n": 198,
+    "digest": "27394086fce3"
+  },
+  "created_utc": "2026-10-24T01:18:38+00:00",
+  "git": {
+    "commit": "e2c59bc942fbea7352960de894a17c35ce503dc4",
+    "dirty": false
+  },
+  "versions": {
+    "python": "3.12.3",
+    "mujoco": "3.16.0",
+    "numpy": "2.5.4"
+  },
+  "summary": {
+    "episodes": 198,
+    "success_rate": 0.9747474747474747,
+    "success_ci95": [
+      0.9422568193468797,
+      0.9891666334993126
+    ],
+    "first_placed_s": {
+      "median": 2.0500000000000003,
+      "p90": 3.9000000000000004
+    },
+    "release_s_median": 1.4500000000000002,
+    "final_xy_error_mm": {
+      "median": 1.6978108054881162,
+      "p95": 16.720062830993037
+    },
+    "final_tilt_deg": {
+      "median": 1.7075472925031877e-06,
+      "max": 48.14059657083202
+    },
+    "floor_contact_episode_rate": 0.0,
+    "return": {
+      "mean": 34.149069752335855
+    },
+    "by_source": {
+      "runs/grasp_ppo_curr_seed0": {
+        "n": 50,
+        "success_rate": 0.94,
+        "success_ci95": [
+          0.8378265662912299,
+          0.9793854036353695
+        ]
+      },
+      "runs/grasp_ppo_curr_seed1": {
+        "n": 50,
+        "success_rate": 1.0,
+        "success_ci95": [
+          0.9286499658256813,
+          1.0
+        ]
+      },
+      "runs/grasp_ppo_curr_seed2": {
+        "n": 49,
+        "success_rate": 1.0,
+        "success_ci95": [
+          0.9272997032640949,
+          0.9999999999999999
+        ]
+      },
+      "scripted": {
+        "n": 49,
+        "success_rate": 0.9591836734693877,
+        "success_ci95": [
+          0.8628671652316889,
+          0.9887346030720717
+        ]
+      }
+    },
+    "failures": {
+      "off_target": 1,
+      "never_released": 1,
+      "toppled": 2,
+      "not_settled": 1
+    },
+    "wall_clock_s": 40.2
+  }
+}
