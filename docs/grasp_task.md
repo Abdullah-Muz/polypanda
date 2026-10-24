@@ -220,3 +220,50 @@ When PPO succeeds it is about 2.7 s faster than the deliberately unhurried scrip
 - **Validation was optimistic.** Seed 1 peaked at 93 % on a 30-episode validation but scored 79 % on the 200-episode held-out set. Choosing the best checkpoint on a small, noisy validation sample inflates its validation score, which is why results are reported only on the held-out set.
 
 **Conclusion:** plain PPO with dense shaping could not discover lifting (0 %). Adding training-only pre-grasped starts produced a policy that learns the complete skill from home in about 0.5M steps and reaches 80.5 % on held-out placements. It is faster than the scripted baseline when it succeeds, but not yet as reliable, and its main weakness (the 45° tie) is identified.
+
+## Task v2 (Milestone 6.2)
+
+Two weaknesses of the v1 policies drove a second version of the task. The pick-and-place evaluation and the robustness suite found both:
+
+1. **The 45° tie** (above): 54 % success when two face pairs are equally good.
+2. **Pushing the cube out of reach.** End to end, the most common unrecoverable failure (30 of 84 final failures over 3 seeds).
+3. In addition, the robustness suite found the v1 grasp more sensitive to cube mass and friction than the scripted grasp ([robustness.md](robustness.md)).
+
+### GraspV2Env (`polypanda.environments.grasp`, task `grasp_v2`, schema `grasp-v2-41d`)
+
+- **Committed grasp yaw.** At reset the target closing yaw is the face pair nearest the wrist (the scripted grasp's rule). Afterwards it follows the cube's yaw continuously, staying nearest the previous target, so the target never flips between pairs. The alignment error is measured to that target, wrapped to ±90° (the fingers are symmetric), and observed as sin/cos of 2× the error, so a cube at 45° has one definite answer. The gate also requires alignment with the committed pair. Same observation layout, new schema name.
+- **Pushing penalty** (configurable): −20 per metre the cube moves horizontally while the fingers are open, and termination (−5, `pushed_away`) once it is more than 5 cm from where it started before the grasp.
+- **Training-only cube randomization** (configurable, `randomization`): mass × 0.5–2 (log-uniform) and contact friction × 0.5–1.5 per randomly placed training episode, using the same code as the robustness suite. Never used in validation or evaluation.
+
+Tests: `tests/test_grasp_v2.py` (the target stays committed as the wrist turns through 45°, so the error has no jump; pushing is charged and terminates; the randomization is training-only; the scripted grasp still succeeds through the v2 gate).
+
+### Full v2: all three changes at once (failed)
+
+`configs/grasp_v2_ppo.yaml`, the same PPO settings as v1, 3 seeds, trained at `29ac066`:
+
+| Seed | Held-out grasp | Pick-and-place |
+|---|---|---|
+| 0 | 4.5 % | 14.0 % |
+| 1 | 26.0 % | 26.5 % |
+| 2 | 23.0 % | 42.0 % |
+
+Most failures were `never_closed`. In 80 diagnosed episodes, no gripper was aligned for the nearest face pair but not the committed one, so the committed yaw was not the cause. Instead the policies hovered about 1 cm short of the closing pose (median miss 8–12 mm horizontally and vertically). This is consistent with the pushing penalty: the fingers inevitably nudge the cube while they are lowered around it, so the penalty taught the policy to stay just short of touching. The randomization probably made lifting harder as well; that part is not separately tested.
+
+### v2 with the committed yaw only (adopted)
+
+`configs/grasp_v2_yaw_ppo.yaml`: GraspV2Env with v1's own task configuration (no pushing penalty, no randomization). PPO settings are unchanged, 3 seeds, trained at `9cb7f9a` and evaluated at `78f4c2e` (both clean).
+
+| | v1 (3 seeds, pooled 600) | **v2 yaw-only** (3 seeds, pooled 600) | Paired test |
+|---|---|---|---|
+| Held-out grasp success | 80.5 % (77.1–83.5 %) | **87.0 %** (84.1–89.5 %); per seed 83.0 / 87.0 / 91.0 % | exact McNemar p = 0.002 (93 vs 54 discordant) |
+| Pick-and-place success | 86.0 % (83.0–88.5 %) | **89.2 %** (86.4–91.4 %); per seed 88.0 / 90.0 / 89.5 % | p = 0.09 (66 vs 47), not significant |
+| Grasp success when the wrist must turn 40–45° | 54.2 % | **65.3 %** | |
+| Grasp success at 11–29° | 82.7 % | 93.0 % | |
+| Time to first grasp (median) | 4.31 s | about 4.4 s | |
+| Episodes with floor contact | 8.2 % | 9.7 % | |
+
+(The pairing is by seed index and placement. The seeds are independent runs, so the test asks whether the same placements are solved more often.)
+
+**Decision:** the yaw-only policy beats v1 on both held-out tests, so it replaces v1 as the learned grasp in the pick-and-place system. The robustness suite and the supervisor ablations use it. The grasp improvement is statistically clear. The end-to-end improvement is consistent across seeds but within noise for 600 episodes.
+
+**Lesson:** changing three things at once cost a 3-seed training run and explained nothing. Isolating the one change the failure analysis actually pointed to took 40 minutes and produced the clearest result in the milestone.

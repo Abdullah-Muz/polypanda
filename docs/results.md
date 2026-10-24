@@ -138,3 +138,45 @@ Held-out set `pickplace_nominal_v1`: 200 scenes (cube start pose and a target at
 - Final failures with the PPO grasp occur at the grasp stage 77 times, transport 2 and place 5. The grasp failures are cubes pushed out of the workspace (30), knocked over (25), or missed on all three attempts (22).
 - Paired against all-scripted on the same scenes, every PPO seed is significantly worse (exact McNemar p ≤ 4.8 × 10⁻⁷).
 - Retries lift the learned chain from 78.3 % (first attempt, close to the standalone grasp rate of 80.5 %) to 86.0 %.
+
+## Grasp v2 (Milestone 6.2)
+
+A second grasp task targeted v1's two weaknesses: the 45° tie and pushing the cube out of reach. Full analysis: [grasp_task.md](grasp_task.md#task-v2-milestone-62). Same held-out set and protocol as v1, 3 seeds each:
+
+| Policy | Held-out grasp (pooled 600) | Pick-and-place (pooled 600) |
+|---|---|---|
+| PPO grasp v1 | 80.5 % (77.1–83.5 %) | 86.0 % (83.0–88.5 %) |
+| v2, all changes (committed yaw + pushing penalty + cube randomization) | 4.5 / 26.0 / 23.0 % per seed | 14.0 / 26.5 / 42.0 % per seed |
+| **v2, committed yaw only** (adopted) | **87.0 %** (84.1–89.5 %) | **89.2 %** (86.4–91.4 %) |
+
+- The full v2 policies learned to hover about 1 cm short of the cube; the pushing penalty discouraged the contact a grasp needs. The committed yaw alone improved the grasp significantly (paired exact McNemar p = 0.002) and the 40–45° case from 54 % to 65 %.
+- End to end the gain is +3.2 points, consistent across seeds but not significant (p = 0.09).
+
+## Robustness (Milestone 6.1)
+
+The full pick-and-place system on the same 200 scenes under perturbations it was never trained on. Each PPO column pools 3 seeds. Details and plot: [robustness.md](robustness.md).
+
+| Condition | Scripted grasp | PPO grasp v1 | PPO grasp v2 |
+|---|---|---|---|
+| nominal | 100 % | 86.0 % | 89.2 % |
+| cube mass × 0.5–2 | 84.5 % | 70.5 % | 74.3 % |
+| friction × 0.5–1.5 | 88.5 % | 72.7 % | 79.7 % |
+| cube size × 0.85–1.15 | 99.5 % | 83.5 % | 89.2 % |
+| start pose ± 0.1 rad per joint | 100 % | 82.3 % | 86.5 % |
+| push 0–2 N during transport | 66.0 % | 62.0 % | 64.8 % |
+| all combined | 55.5 % | 45.3 % | 48.7 % |
+| cube outside the training region | 99.0 % | 63.7 % | 58.0 % |
+
+- The gripper's roughly 2 N of grip is the physical limit. Heavy cubes, slippery cubes and pushes above about 1 N slip out during transport, whichever grasp picked them up.
+- The learned grasp does not extrapolate beyond the region it was trained on; the scripted grasp, planning from the measured pose, does.
+
+## Supervisor ablations (Milestone 6.3)
+
+Removing one supervisor design choice at a time; same 200 scenes, paired with the full system. Details: [pick_and_place.md](pick_and_place.md#ablations-milestone-63-what-each-supervisor-design-choice-is-worth).
+
+| System | Scripted grasp | PPO grasp v2 (pooled 600) |
+|---|---|---|
+| Full system | 100 % | 89.2 % |
+| No retries | 97.5 % | 83.3 % |
+| Timed switching instead of verified handoffs | 84.5 % | 71.2 % |
+| No upright correction before release | 97.0 % | 81.5 % |

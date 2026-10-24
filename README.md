@@ -1,102 +1,166 @@
 # PolyPanda
 
-Hierarchical reinforcement learning for Franka Panda manipulation: modular PPO/SAC skills, MuJoCo environments, a rule-based task supervisor, and reproducible robotics-control benchmarks.
+Autonomous pick-and-place with a simulated Franka Panda: reinforcement-learned and classical skills coordinated by a finite-state-machine supervisor, in MuJoCo, with every result measured on held-out sets and reproducible from a clean commit.
 
-> **Status: early development.** Milestones 1–2 are complete: a reproducible simulator, the reaching environment, and classical baselines evaluated on a held-out set. Milestone 3 is complete: PPO and SAC reaching policies are trained and benchmarked against the baselines over 3 seeds each. Milestone 4 is complete: learned grasping (80.5 % held-out success) and transport (scripted closed-loop carry, 92.0 %, after plain and residual RL were evaluated). Milestone 5 is complete: a place skill (97.5 %) and a supervisor with failure recovery perform full autonomous pick-and-place, at 100 % with scripted skills and 86.0 % with the learned grasp. Milestone 6 (robustness and final evaluation) is next. The roadmap is updated only when a milestone is actually completed and tested.
+![PolyPanda picking and placing a cube with a learned grasp policy](docs/figures/pickplace.gif)
 
-## Overview
+*From the home pose, the robot grasps a cube with a learned PPO policy, carries it, and stands it upright on the green target. Each stage is chosen by the supervisor and verified before the next starts (`scripts/record_demo.py`; [full video](https://github.com/Abdullah-Muz/polypanda/releases)).*
 
-PolyPanda trains several task-specialized reinforcement-learning policies (reach, grasp, transport, place) for a simulated 7-DOF Franka Emika Panda arm and coordinates them with a rule-based finite-state-machine supervisor to perform autonomous tabletop pick-and-place. Learned policies are benchmarked against a classical inverse-kinematics baseline on held-out scenarios across multiple seeds.
+> **Status: complete** (Milestones 1–6). Simulation only: nothing here has been run on a real robot.
 
-## Planned stack
+## What it does
 
-- [MuJoCo](https://mujoco.org/) physics with the Panda model from [MuJoCo Menagerie](https://github.com/google-deepmind/mujoco_menagerie)
-- [Gymnasium](https://gymnasium.farama.org/) custom environments
-- [Stable-Baselines3](https://stable-baselines3.readthedocs.io/) (PPO, SAC) on CPU PyTorch
-- Python 3.12 on Ubuntu 24.04, CPU-first; no NVIDIA GPU required
+```mermaid
+flowchart LR
+    S([home]) --> G[GRASP<br/>PPO policy]
+    G -- "verified grasp, 0.5 s" --> T[TRANSPORT<br/>scripted closed-loop carry]
+    T -- "held over target, 0.5 s" --> P[PLACE<br/>scripted: stand upright, lower, release]
+    P -- "placed check passes" --> OK([success])
+    G & T & P -- "failure: knocked over, lost grip, toppled, timeout" --> H[HOME<br/>release, lift clear, return]
+    H -- "cube upright and reachable (≤ 2 retries)" --> G
+    H -- "otherwise" --> F([labelled failure])
+```
 
-## Setup
+- **One environment per skill** (`GraspEnv`, `TransportEnv`, `PlaceEnv`), so each skill sees exactly the observations, gates and success checks it was built and evaluated with. At every handoff the supervisor moves the **exact physics state** (`mj_getState`/`mj_setState`) to the next skill's environment.
+- **Transitions are verified predicates, never timers**: a grasp counts only with both fingers in contact, the cube lifted and not slipping. A placement counts only when the cube rests upright within 2 cm of the target, is still and is released. Switching on fixed timers instead costs 18 points (see the ablations below).
+- **Each skill was chosen by evaluation, not assumption.** Learned PPO policies won at reaching and grasping. For transport and place, carefully designed scripted controllers were as good or better than RL, which was tried and documented.
 
-Requires Linux (developed on Ubuntu 24.04 under WSL2), git, and [uv](https://docs.astral.sh/uv/). No GPU needed.
+## Results
+
+All numbers come from held-out sets that training never touched, with 95 % Wilson intervals; learned policies are pooled over 3 seeds. Full tables: [docs/results.md](docs/results.md).
+
+**Full pick-and-place** (200 scenes: random cube pose, random target ≥ 10 cm away, every episode from home):
+
+| Grasp skill (transport and place scripted) | Success | First attempt | Time to verified placement (median) |
+|---|---|---|---|
+| Scripted grasp (IK from the true cube pose) | **100 %** (98.1–100 %) | 97.5 % | 12.4 s |
+| **PPO grasp v2** (learned, from observations) | **89.2 %** (86.4–91.4 %) | 83.3 % | 9.8 s |
+| PPO grasp v1 | 86.0 % (83.0–88.5 %) | 78.3 % | 9.5 s |
+
+**Skills on their own:**
+
+| Skill | Learned | Classical baseline |
+|---|---|---|
+| Reach (hold the tool point within 2 cm of a target) | PPO **100 %**, 1.5 mm; SAC 63.2 % | Jacobian IK 100 %, < 0.001 mm |
+| Grasp (any cube pose, lift ≥ 5 cm with a verified grasp) | PPO v2 **87.0 %**, 4.4 s | scripted 100 %, 7.0 s |
+| Transport (carry a held cube to a 3-D goal) | PPO 0 %; residual PPO 92.5 % (no gain) | **closed-loop carry 92.0 %** |
+| Place (stand the cube upright on a target) | not needed | **scripted with upright correction 97.5 %** |
+
+**Supervisor ablations** (same 200 scenes, PPO grasp v2):
+
+| Full system | No retries | Timed switching instead of verified handoffs | No upright correction |
+|---|---|---|---|
+| **89.2 %** | 83.3 % | 71.2 % | 81.5 % |
+
+**Robustness** (no training on any of these; [details and plot](docs/robustness.md)):
+
+| Condition | Scripted grasp | PPO grasp v2 |
+|---|---|---|
+| Cube mass × 0.5–2 | 84.5 % | 74.3 % |
+| Contact friction × 0.5–1.5 | 88.5 % | 79.7 % |
+| Cube size ± 15 % | 99.5 % | 89.2 % |
+| Arm start pose ± 0.1 rad per joint | 100 % | 86.5 % |
+| Push of 0–2 N during transport | 66.0 % | 64.8 % |
+| Cube outside the training region | 99.0 % | 58.0 % |
+
+## What I learned
+
+1. **Episode design can teach the wrong skill.** Reach v1 ended episodes on success, so PPO learned to pass through targets (14.5 % held). Running every episode to the horizon with a hold reward fixed it (100 %). [reach_task.md](docs/reach_task.md)
+2. **Exploration, not reward, was the grasping bottleneck.** Plain PPO learned to close on the cube but never to lift it (0 %). Starting 30 % of *training* episodes with the cube already in hand ("reset to helpful states") produced 80.5 % from home. [grasp_task.md](docs/grasp_task.md)
+3. **Diagnose before changing things.** The v1 grasp failed at 45° because two grasps were equally good. Fixing only that tie gave 87.0 % (p = 0.002). An earlier version that also penalized pushing the cube collapsed to 4–26 %: it learned to hover just short of touching. [grasp_task.md](docs/grasp_task.md#task-v2-milestone-62)
+4. **RL is not always the right tool.** For transport, plain PPO never learned to carry (0 %), and learned residual corrections on the scripted carry changed nothing (the same 14 failures). The remaining failures came from grasp quality, not from the carry. [transport_task.md](docs/transport_task.md)
+5. **Physics sets the ceiling.** The Panda gripper squeezes with about 1 N per finger, so cubes pivot in the hand. A cube released tilted more than 34° falls over, which is why the place skill first stands it upright (90.4 % → 97.5 %). Heavy or slippery cubes and pushes above about 1 N slip out whatever the grasp. [place_task.md](docs/place_task.md), [robustness.md](docs/robustness.md)
+6. **Learned policies interpolate; planners extrapolate.** Inside its training region the PPO grasp handles physical variation reasonably well. Just outside it, success falls to 58 %, while the IK grasp stays at 99 %.
+
+Other measured engineering lessons:
+- three PPO runs in parallel were 9× slower until PyTorch was limited to one thread each;
+- a recovery bug knocked cubes over on the way home;
+- SAC's entropy collapse.
+
+All three are written up where they happened.
+
+## Quickstart
+
+Requires Linux (developed on Ubuntu 24.04 under WSL2), git and [uv](https://docs.astral.sh/uv/). No GPU needed.
 
 ```bash
 git clone https://github.com/Abdullah-Muz/polypanda.git
 cd polypanda
-scripts/fetch_assets.sh                       # pinned MuJoCo Menagerie Panda model
-uv sync                                       # Python 3.12 env from uv.lock (CPU PyTorch)
-uv run python scripts/verify_install.py       # versions, model contract, headless stepping
-uv run pytest                                 # test suite
+scripts/fetch_assets.sh                  # pinned MuJoCo Menagerie Panda model
+uv sync                                  # Python 3.12 from uv.lock (CPU PyTorch)
+uv run python scripts/verify_install.py  # versions, model contract, headless stepping
+uv run pytest                            # test suite
+scripts/fetch_models.sh                  # trained policies from the GitHub Release (checksummed)
 ```
 
-Optional interactive viewer:
+Watch it (opens the MuJoCo viewer):
 
 ```bash
-uv run python -m mujoco.viewer --mjcf=external/mujoco_menagerie/franka_emika_panda/scene.xml
+uv run python scripts/demo_pickplace.py --grasp run:runs/grasp_v2yaw_seed1   # learned grasp
+uv run python scripts/demo_pickplace.py                                      # all scripted
+uv run python scripts/demo_grasp.py --policy run:runs/grasp_v2yaw_seed2      # grasp skill only
 ```
 
-## Current results
+Reproduce a headline number:
 
-Held-out reach evaluation (200 targets, [protocol](docs/evaluation_protocol.md)):
+```bash
+uv run python scripts/evaluate_pickplace.py --grasp run:runs/grasp_v2yaw_seed1  # end to end
+uv run python scripts/evaluate_grasp.py --policy run:runs/grasp_v2yaw_seed1     # grasp skill
+uv run python scripts/evaluate_robustness.py --grasp scripted                   # robustness suite
+uv run python scripts/evaluate_ablations.py --grasp scripted                    # ablations
+uv run python scripts/train.py --config configs/grasp_v2_yaw_ppo.yaml --seed 0  # retrain (~40 min)
+```
 
-| Policy | Success (95 % CI) | Holds target | Time to success (median) | Final error (median) |
-|---|---|---|---|---|
-| Random | 0 % (0–1.9 %) | — | — | 375 mm |
-| Jacobian IK baseline | 100 % (98.1–100 %) | 100 % | 1.65 s | < 0.001 mm |
-| **PPO** (3 seeds, ~5 min CPU training each) | 100 % (99.4–100 %) | 100 % | 1.70 ± 0.09 s | 1.5 ± 0.3 mm |
-| SAC (3 seeds, same 200k-step budget) | 63.2 % (59.2–66.9 %) | 43 ± 19 % | 1.98 ± 0.28 s | 27 ± 6 mm |
+Every result file in [`results/`](results/) records the git commit (and whether the tree was clean), package versions and the evaluation set's digest.
 
-PPO matches the model-based IK controller on success and holding using only its observations. IK stays more precise and smoother. With default settings and the same budget, SAC lagged far behind: its automatic entropy tuning collapsed exploration before it discovered the hold reward. Details, learning curves and the reward-design lesson behind task v2 are in [docs/results.md](docs/results.md).
+## How it is built
 
-Held-out grasping (200 cube placements, any position and rotation in the workspace; success = verified grasp lifted ≥ 5 cm):
-
-| Policy | Success (95 % CI) | Time to first grasp (median) |
-|---|---|---|
-| Scripted top-down grasp (privileged cube pose, IK) | 100 % (98.1–100 %) | 6.98 s |
-| PPO, plain | 0 %: learned to close on the cube, never to lift | — |
-| **PPO + pre-grasped training starts** (3 seeds) | **80.5 %** (77.1–83.5 %) | **4.31 s** |
-
-Details, failure analysis and the curriculum story: [docs/grasp_task.md](docs/grasp_task.md).
-
-Held-out transport (200 grasp-to-transport handoffs from scripted and learned grasps; carry the held cube to a 3-D goal and hold it there with a verified grasp):
-
-| Policy | Success (95 % CI) |
+| Layer | Contents |
 |---|---|
-| **Scripted closed-loop carry** (privileged cube pose, IK) | **92.0 %** (87.4–95.0 %) |
-| PPO, plain (two diagnosed attempts) | 0 %: sinks the cube onto the table, then loses the grip |
-| PPO residual on the scripted carry | 92.5 % (88.0–95.4 %), statistically identical (same 14 failures) |
+| Simulation | MuJoCo 3.16; Panda from [MuJoCo Menagerie](https://github.com/google-deepmind/mujoco_menagerie) at a pinned commit, never modified (scenes are composed in memory with `MjSpec`) |
+| Control | 7-D joint-increment actions on the Panda's position servos (20 Hz); damped-least-squares Jacobian IK for the classical baselines |
+| Environments | Gymnasium envs per skill with versioned observation schemas, verified success predicates and gated finger actuation |
+| Learning | Stable-Baselines3 PPO and SAC on CPU PyTorch; YAML configs; TensorBoard logs; best checkpoint selected on a separate validation stream |
+| Evaluation | versioned held-out sets drawn from dedicated random streams; Wilson intervals; exact McNemar tests for paired comparisons; per-stage failure labels |
+| Engineering | `uv.lock`; Ruff; pytest; GitHub Actions CI; run metadata with git commit and schema checks on load |
 
-The remaining transport failures are cubes creeping out of off-centre grips while held, mostly from handoffs of one learned grasp policy. Transport reliability is limited by grasp quality, not by the carry. Details: [docs/transport_task.md](docs/transport_task.md).
+| Docs | |
+|---|---|
+| [environment.md](docs/environment.md) | simulator setup, model contract |
+| [control_design.md](docs/control_design.md) | action interface and servo behaviour |
+| [reach_task.md](docs/reach_task.md), [grasp_task.md](docs/grasp_task.md), [transport_task.md](docs/transport_task.md), [place_task.md](docs/place_task.md) | each skill: task design, baselines, training, failure analysis |
+| [pick_and_place.md](docs/pick_and_place.md) | supervisor, end-to-end evaluation, ablations |
+| [robustness.md](docs/robustness.md) | perturbation suite |
+| [evaluation_protocol.md](docs/evaluation_protocol.md), [results.md](docs/results.md) | protocol and every result table |
+| [model_cards.md](docs/model_cards.md) | the published policies, their scope and limitations |
 
-Held-out place (198 transport-to-place handoffs; success = resting upright within 2 cm of the target, still and released): the scripted place reaches **97.5 %** (94.2–98.9 %), 1.7 mm from the target (median). Cubes pivot in the weak grip and topple if released tilted beyond about 34°, so the hand first rotates the cube upright. Details: [docs/place_task.md](docs/place_task.md).
+## Limitations
 
-### Full pick-and-place
-
-A finite-state-machine supervisor chains **grasp → transport → place**. It hands the exact physics state from one skill's environment to the next, and switches only on verified success predicates. On a failure it opens the fingers, lifts clear, returns home and re-grasps the cube where it lies (at most twice) if it is still upright and within reach. Held-out set: 200 scenes, each a random cube pose and a target spot at least 10 cm away, every episode from the home pose.
-
-| Grasp skill (transport and place scripted) | Success (95 % CI) | First attempt | Time to verified placement (median) |
-|---|---|---|---|
-| Scripted grasp | **100 %** (98.1–100 %) | 97.5 % | 12.4 s |
-| PPO grasp (3 seeds, pooled 600) | 86.0 % (83.0–88.5 %) | 78.3 % | ~9.5 s |
-
-With the learned grasp, nearly all failures are grasp failures: the cube is pushed out of reach or knocked over. Retries add about 8 points. Supervisor design, failure breakdown and a recovery bug the evaluation exposed: [docs/pick_and_place.md](docs/pick_and_place.md).
-
-Watch it: `uv run python scripts/demo_pickplace.py`
-
-Evaluate a baseline yourself: `uv run python scripts/evaluate.py --policy ik`
+- **Simulation only.** No sim-to-real claim is made; the policies have never controlled hardware.
+- **One object, one gripper.** A 4 × 4 × 6 cm cube on an open table, no obstacles or clutter, the Panda's standard parallel gripper.
+- **The scripted skills use privileged state** (the true cube pose); the learned grasp uses its observation vector, which includes the cube's position relative to the hand. Neither uses vision.
+- **The learned grasp is narrow.** It is trained on a 30 × 50 cm placement region and falls to 58 % just outside it. It remains well below the scripted grasp (89 % against 100 % end to end).
 
 ## Roadmap
 
 | Milestone | Scope | Status |
 |---|---|---|
 | 1 | Reproducible environment, pinned Panda model, headless simulation, tests | Done ([details](docs/environment.md)) |
-| 2 | Custom reaching environment and classical IK baseline | Done ([task](docs/reach_task.md), [results](docs/results.md)) |
+| 2 | Custom reaching environment and classical IK baseline | Done ([task](docs/reach_task.md)) |
 | 3 | PPO and SAC reaching policies with benchmark | Done ([results](docs/results.md)) |
 | 4 | Grasp and transport skills | Done ([grasp](docs/grasp_task.md), [transport](docs/transport_task.md)) |
-| 5 | Place skill, multi-policy FSM supervisor and full pick-and-place | Done ([place](docs/place_task.md), [pick-and-place](docs/pick_and_place.md)) |
-| 6 | Robustness, evaluation, documentation | Planned |
+| 5 | Place skill, FSM supervisor and full pick-and-place | Done ([place](docs/place_task.md), [pick-and-place](docs/pick_and_place.md)) |
+| 6 | Robustness, grasp v2, ablations, model release, demo video | Done ([robustness](docs/robustness.md), [ablations](docs/pick_and_place.md#ablations-milestone-63-what-each-supervisor-design-choice-is-worth), [models](docs/model_cards.md)) |
+
+## Acknowledgements and references
+
+- E. Todorov, T. Erez, Y. Tassa. *MuJoCo: A physics engine for model-based control.* IROS 2012.
+- K. Zakka, Y. Tassa, MuJoCo Menagerie contributors. *MuJoCo Menagerie: A collection of high-quality simulation models for MuJoCo.* 2022. The Franka Emika Panda model (Apache-2.0) is downloaded at a pinned commit and not redistributed here.
+- A. Raffin et al. *Stable-Baselines3: Reliable Reinforcement Learning Implementations.* JMLR 22(268), 2021.
+- M. Towers et al. *Gymnasium: A Standard Interface for Reinforcement Learning Environments.* 2024.
+- J. Schulman et al. *Proximal Policy Optimization Algorithms.* arXiv:1707.06347, 2017.
+- T. Haarnoja et al. *Soft Actor-Critic Algorithms and Applications.* arXiv:1812.05905, 2018.
 
 ## License
 
 MIT, see [LICENSE](LICENSE).
-
-The Franka Emika Panda model comes from [MuJoCo Menagerie](https://github.com/google-deepmind/mujoco_menagerie) (Apache-2.0). It is downloaded by `scripts/fetch_assets.sh` at a pinned commit and is not redistributed in this repository.

@@ -1,6 +1,6 @@
 """Summarize the robustness suite: a markdown table per grasp skill and a success-vs-level plot.
 
-Usage: uv run python scripts/summarize_robustness.py [--groups scripted grasp_ppo_curr grasp_v2]
+Usage: uv run python scripts/summarize_robustness.py [--groups scripted grasp_v2yaw ...]
 Pools seeds within a group (e.g. grasp_ppo_curr_seed0..2 -> "grasp_ppo_curr"), reads
 results/robustness/ and the nominal results in results/pickplace/, prints the table and writes
 docs/figures/robustness.png.
@@ -21,7 +21,7 @@ from polypanda.evaluation.reach import wilson_interval  # noqa: E402
 from polypanda.evaluation.robustness import CONDITIONS, LEVELS  # noqa: E402
 
 LABELS = {"scripted": "Scripted grasp", "grasp_ppo_curr": "PPO grasp v1 (3 seeds)",
-          "grasp_v2": "PPO grasp v2 (3 seeds)"}
+          "grasp_v2yaw": "PPO grasp v2, committed yaw (3 seeds)"}
 TITLES = {"mass": "Cube mass (x nominal)", "friction": "Contact friction (x nominal)",
           "size": "Cube size (x nominal)", "push": "Push during transport (N)"}
 
@@ -55,7 +55,8 @@ def rate(rows: list[dict]) -> tuple[float, float, float, int]:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--groups", nargs="+", default=["scripted", "grasp_ppo_curr", "grasp_v2"])
+    parser.add_argument("--groups", nargs="+",
+                        default=["scripted", "grasp_ppo_curr", "grasp_v2yaw"])
     parser.add_argument("--results", type=Path, default=Path("results/robustness"))
     parser.add_argument("--nominal", type=Path, default=Path("results/pickplace"))
     parser.add_argument("--out", type=Path, default=Path("docs/figures/robustness.png"))

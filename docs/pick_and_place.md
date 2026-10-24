@@ -42,10 +42,12 @@ Held-out set `pickplace_nominal_v1`: 200 scenes (digest `439a38044438`), each a 
 | Grasp skill (transport and place scripted) | Success (95 % CI) | First-attempt success | Episodes with a retry → recovered | Time to placed, median / p90 | Final xy error, median |
 |---|---|---|---|---|---|
 | **Scripted grasp** | **100 %** (98.1–100 %) | 97.5 % | 5 → 5 | 12.4 / 15.8 s | 1.7 mm |
-| PPO grasp seed 0 | 86.0 % (80.5–90.1 %) | 75.0 % | 33 → 22 | 10.3 / 28.9 s | 1.8 mm |
-| PPO grasp seed 1 | 89.0 % (83.9–92.6 %) | 84.0 % | 20 → 10 | 9.7 / 13.9 s | 1.5 mm |
-| PPO grasp seed 2 | 83.0 % (77.2–87.6 %) | 76.0 % | 32 → 14 | 9.3 / 13.2 s | 1.7 mm |
-| PPO grasp, pooled 600 | **86.0 %** (83.0–88.5 %); 86.0 ± 3.0 per seed | 78.3 % | 85 → 46 | about 9.5 s | 1.7 mm |
+| PPO grasp v1 seed 0 | 86.0 % (80.5–90.1 %) | 75.0 % | 33 → 22 | 10.3 / 28.9 s | 1.8 mm |
+| PPO grasp v1 seed 1 | 89.0 % (83.9–92.6 %) | 84.0 % | 20 → 10 | 9.7 / 13.9 s | 1.5 mm |
+| PPO grasp v1 seed 2 | 83.0 % (77.2–87.6 %) | 76.0 % | 32 → 14 | 9.3 / 13.2 s | 1.7 mm |
+| PPO grasp v1, pooled 600 | **86.0 %** (83.0–88.5 %); 86.0 ± 3.0 per seed | 78.3 % | 85 → 46 | about 9.5 s | 1.7 mm |
+
+(In Milestone 6 the learned grasp was replaced by v2 with a committed grasp yaw: **89.2 %** end to end. See [below](#milestone-6-the-v2-grasp-and-ablations).)
 
 Where the attempts that end an episode fail:
 
@@ -66,11 +68,40 @@ Paired on the same 200 scenes, every PPO configuration is significantly worse th
 - **The learned chain is faster when it works.** The PPO grasp is about 3 s quicker than the deliberately cautious scripted grasp, so successful episodes finish in about 9.5 s instead of 12.4 s. Its p90 times are longer because of retries.
 - **Information asymmetry:** the scripted skills use the privileged cube pose; the PPO grasp uses its observation vector. This is the same caveat as for every scripted baseline in the project.
 
+## Milestone 6: the v2 grasp and ablations
+
+### With the v2 grasp (committed yaw)
+
+The grasp policy retrained with a committed grasp yaw ([grasp_task.md](grasp_task.md#task-v2-milestone-62)), same supervisor and scripted transport/place. Evaluated at `78f4c2e` (clean).
+
+| Grasp skill | Success (95 % CI) | First attempt | Retried → recovered | Time to placed, median | Final xy error, median |
+|---|---|---|---|---|---|
+| PPO grasp v2 seed 0 / 1 / 2 | 88.0 / 90.0 / 89.5 % | 80.0 / 84.0 / 86.0 % | 26 → 16, 14 → 12, 17 → 7 | 10.1 / 9.5 / 9.8 s | 1.5 / 1.4 / 1.5 mm |
+| **PPO grasp v2, pooled 600** | **89.2 %** (86.4–91.4 %) | 83.3 % | 57 → 35 | about 9.8 s | 1.5 mm |
+
+Against v1 (86.0 %) the gain is consistent across seeds but not statistically significant: paired exact McNemar p = 0.09, with 66 against 47 discordant scenes. Against all-scripted (100 %) every v2 seed is still significantly worse (p ≤ 1.9 × 10⁻⁶). The failures are again almost all at the grasp stage: 59 of 65.
+
+### Ablations (Milestone 6.3): what each supervisor design choice is worth
+
+`scripts/evaluate_ablations.py` removes one design choice at a time and re-runs the 200 held-out scenes. Each result is paired with the full system on the same scenes. The PPO column pools the three v2 seeds. Evaluated at `d6bc214` (clean); raw outputs in [`results/ablations/`](../results/ablations/).
+
+| System | Scripted grasp | PPO grasp v2 (pooled 600) |
+|---|---|---|
+| **Full system** | **100 %** | **89.2 %** |
+| No retries: failure detection, but give up on the first failure | 97.5 % (p = 0.06) | 83.3 % (−5.9; every seed p ≤ 0.016) |
+| Timed switching: skills switch after fixed times, without verification | 84.5 % (p = 9 × 10⁻¹⁰) | **71.2 %** (−18.0; every seed p ≤ 2 × 10⁻⁹) |
+| No upright correction before release | 97.0 % (p = 0.03) | 81.5 % (−7.7; every seed p ≤ 0.006) |
+
+- **Verified handoffs matter most.** The timed supervisor gives each skill the 90th percentile of its own successful durations in the full system, a fair, tuned schedule. It still fails every case that runs long. A grasp that is not finished is carried away empty: 100 PPO episodes fail at "transport". A cube still on its way reaches "place" too early: 63 fail there. Without verification there is also nothing to trigger a recovery.
+- **Retries are worth about 6 points** with the learned grasp and 2.5 with the scripted one. They are cheap insurance, but they cannot fix a cube pushed out of reach or knocked over.
+- **The upright correction matters more for the learned grasp** (−7.7 against −3.0). PPO grasps leave the cube tilted more in the fingers (median 12–15° against 11°), and a cube released past about 34° falls over.
+- Across all 2,400 ablated episodes, the ablated system solved only 2 scenes the full system failed (both without the upright correction). Each removed piece only removes capability.
+
 ## Watch it
 
 ```bash
 uv run python scripts/demo_pickplace.py                                  # scripted, 6 scenes
-uv run python scripts/demo_pickplace.py --grasp run:runs/grasp_ppo_curr_seed1
+uv run python scripts/demo_pickplace.py --grasp run:runs/grasp_v2yaw_seed1
 uv run python scripts/demo_pickplace.py --scenes 62 178                  # place fails, re-grasp
 ```
 
