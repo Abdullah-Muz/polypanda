@@ -1,0 +1,132 @@
+{
+  "name": "grasp_v2yaw_seed2_best_push",
+  "condition": "push",
+  "skills": {
+    "grasp": "PPO grasp policy grasp_v2yaw_seed2",
+    "grasp_provenance": {
+      "run_dir": "runs/grasp_v2yaw_seed2",
+      "checkpoint": "best",
+      "policy_id": "grasp_v2yaw_seed2",
+      "trained_at": "9cb7f9a8c370a7bcf961d25eba48c6edf57b2afd"
+    },
+    "transport": "scripted carry",
+    "place": "scripted place"
+  },
+  "supervisor": {
+    "max_grasp_attempts": 3,
+    "handoff_steps": 10,
+    "pre_place_height": 0.12,
+    "release_steps": 10,
+    "retreat_height": 0.1,
+    "retreat_steps": 40,
+    "home_tol": 0.02,
+    "home_timeout": 200,
+    "retry_max_tilt": 0.1745,
+    "retry_max_lift": 0.005,
+    "retry_margin": 0.03,
+    "time_budget_s": 90.0,
+    "timed_switching_s": null
+  },
+  "eval_set": {
+    "name": "pickplace_nominal_v1",
+    "n": 200,
+    "digest": "439a38044438"
+  },
+  "perturbation_seed": 20261026,
+  "created_utc": "2026-10-24T06:57:22+00:00",
+  "git": {
+    "commit": "d6bc2141d4c7f109798bcb9a95911626222f6b1e",
+    "dirty": false
+  },
+  "versions": {
+    "python": "3.12.3",
+    "mujoco": "3.16.0",
+    "numpy": "2.5.4",
+    "torch": "2.14.1+cpu"
+  },
+  "summary": {
+    "episodes": 200,
+    "success_rate": 0.64,
+    "success_ci95": [
+      0.5714139956562682,
+      0.7033091226866021
+    ],
+    "first_attempt_success_rate": 0.61,
+    "failures_by_stage": {
+      "grasp": 24,
+      "transport": 45,
+      "place": 3
+    },
+    "failures": {
+      "timeout; cube out of the workspace": 10,
+      "lost_grip; cube tipped over": 45,
+      "timeout; out of attempts": 12,
+      "toppled; cube tipped over": 3,
+      "knocked_over; cube tipped over": 2
+    },
+    "first_failures": {
+      "grasp:timeout": 24,
+      "transport:lost_grip": 46,
+      "place:timeout": 3,
+      "place:toppled": 3,
+      "grasp:knocked_over": 2
+    },
+    "retries": {
+      "episodes_with_retry": 29,
+      "recovered": 6,
+      "attempts": {
+        "1": 171,
+        "3": 15,
+        "2": 14
+      }
+    },
+    "time_s": {
+      "median": 9.75,
+      "p90": 12.765,
+      "by_stage_median": {
+        "grasp": 5.0,
+        "transport": 2.175,
+        "place": 2.275
+      }
+    },
+    "final_xy_error_mm": {
+      "median": 1.5969503579347675,
+      "p95": 14.41200547119866
+    },
+    "by_level": {
+      "0-0.5": {
+        "n": 55,
+        "success_rate": 0.9272727272727272,
+        "success_ci95": [
+          0.827398219083632,
+          0.9713564034963114
+        ]
+      },
+      "0.5-1": {
+        "n": 38,
+        "success_rate": 0.8421052631578947,
+        "success_ci95": [
+          0.6958287736272311,
+          0.9255623777627731
+        ]
+      },
+      "1-1.5": {
+        "n": 55,
+        "success_rate": 0.6181818181818182,
+        "success_ci95": [
+          0.4860897928239239,
+          0.7348423368258477
+        ]
+      },
+      "1.5-2": {
+        "n": 52,
+        "success_rate": 0.21153846153846154,
+        "success_ci95": [
+          0.12244245849448492,
+          0.34032365135910086
+        ]
+      }
+    },
+    "wall_clock_s": 110.7
+  }
+}

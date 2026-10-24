@@ -1,0 +1,100 @@
+{
+  "name": "grasp_v2yaw_seed0_best_no_upright",
+  "ablation": "no_upright",
+  "skills": {
+    "grasp": "PPO grasp policy grasp_v2yaw_seed0",
+    "grasp_provenance": {
+      "run_dir": "runs/grasp_v2yaw_seed0",
+      "checkpoint": "best",
+      "policy_id": "grasp_v2yaw_seed0",
+      "trained_at": "9cb7f9a8c370a7bcf961d25eba48c6edf57b2afd"
+    },
+    "transport": "scripted carry",
+    "place": "scripted place (upright=False)"
+  },
+  "supervisor": {
+    "max_grasp_attempts": 3,
+    "handoff_steps": 10,
+    "pre_place_height": 0.12,
+    "release_steps": 10,
+    "retreat_height": 0.1,
+    "retreat_steps": 40,
+    "home_tol": 0.02,
+    "home_timeout": 200,
+    "retry_max_tilt": 0.1745,
+    "retry_max_lift": 0.005,
+    "retry_margin": 0.03,
+    "time_budget_s": 90.0,
+    "timed_switching_s": null
+  },
+  "eval_set": {
+    "name": "pickplace_nominal_v1",
+    "n": 200,
+    "digest": "439a38044438"
+  },
+  "paired_with_full_system": {
+    "only_first": 1,
+    "only_second": 18,
+    "p_value": 7.62939453125e-05
+  },
+  "created_utc": "2026-10-24T06:52:56+00:00",
+  "git": {
+    "commit": "d6bc2141d4c7f109798bcb9a95911626222f6b1e",
+    "dirty": false
+  },
+  "versions": {
+    "python": "3.12.3",
+    "mujoco": "3.16.0",
+    "numpy": "2.5.4",
+    "torch": "2.14.1+cpu"
+  },
+  "summary": {
+    "episodes": 200,
+    "success_rate": 0.795,
+    "success_ci95": [
+      0.7337418048192546,
+      0.8451390516889363
+    ],
+    "first_attempt_success_rate": 0.74,
+    "failures_by_stage": {
+      "grasp": 18,
+      "place": 23
+    },
+    "failures": {
+      "timeout; cube out of the workspace": 9,
+      "timeout; out of attempts": 7,
+      "toppled; cube tipped over": 23,
+      "knocked_over; cube tipped over": 2
+    },
+    "first_failures": {
+      "grasp:timeout": 25,
+      "place:toppled": 20,
+      "grasp:knocked_over": 2,
+      "place:timeout": 3,
+      "transport:lost_grip": 2
+    },
+    "retries": {
+      "episodes_with_retry": 23,
+      "recovered": 11,
+      "attempts": {
+        "1": 177,
+        "3": 10,
+        "2": 13
+      }
+    },
+    "time_s": {
+      "median": 9.0,
+      "p90": 13.440000000000008,
+      "by_stage_median": {
+        "grasp": 5.1,
+        "transport": 2.2,
+        "place": 1.5
+      }
+    },
+    "final_xy_error_mm": {
+      "median": 6.615668309392629,
+      "p95": 16.769948091204295
+    },
+    "wall_clock_s": 113.3
+  }
+}

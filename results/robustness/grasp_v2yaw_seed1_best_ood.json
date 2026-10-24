@@ -1,0 +1,96 @@
+{
+  "name": "grasp_v2yaw_seed1_best_ood",
+  "condition": "ood",
+  "skills": {
+    "grasp": "PPO grasp policy grasp_v2yaw_seed1",
+    "grasp_provenance": {
+      "run_dir": "runs/grasp_v2yaw_seed1",
+      "checkpoint": "best",
+      "policy_id": "grasp_v2yaw_seed1",
+      "trained_at": "9cb7f9a8c370a7bcf961d25eba48c6edf57b2afd"
+    },
+    "transport": "scripted carry",
+    "place": "scripted place"
+  },
+  "supervisor": {
+    "max_grasp_attempts": 3,
+    "handoff_steps": 10,
+    "pre_place_height": 0.12,
+    "release_steps": 10,
+    "retreat_height": 0.1,
+    "retreat_steps": 40,
+    "home_tol": 0.02,
+    "home_timeout": 200,
+    "retry_max_tilt": 0.1745,
+    "retry_max_lift": 0.005,
+    "retry_margin": 0.03,
+    "time_budget_s": 90.0,
+    "timed_switching_s": null
+  },
+  "eval_set": {
+    "name": "pickplace_nominal_v1",
+    "n": 200,
+    "digest": "439a38044438"
+  },
+  "perturbation_seed": 20261026,
+  "created_utc": "2026-10-24T06:59:51+00:00",
+  "git": {
+    "commit": "d6bc2141d4c7f109798bcb9a95911626222f6b1e",
+    "dirty": false
+  },
+  "versions": {
+    "python": "3.12.3",
+    "mujoco": "3.16.0",
+    "numpy": "2.5.4",
+    "torch": "2.14.1+cpu"
+  },
+  "summary": {
+    "episodes": 200,
+    "success_rate": 0.55,
+    "success_ci95": [
+      0.48075488574571107,
+      0.6173605136624569
+    ],
+    "first_attempt_success_rate": 0.505,
+    "failures_by_stage": {
+      "grasp": 89,
+      "transport": 1
+    },
+    "failures": {
+      "timeout; cube out of the workspace": 42,
+      "knocked_over; cube tipped over": 46,
+      "knocked_over; cube out of the workspace": 1,
+      "lost_grip; cube tipped over": 1
+    },
+    "first_failures": {
+      "grasp:timeout": 44,
+      "place:timeout": 6,
+      "grasp:knocked_over": 47,
+      "transport:lost_grip": 2
+    },
+    "retries": {
+      "episodes_with_retry": 9,
+      "recovered": 9,
+      "attempts": {
+        "1": 191,
+        "2": 7,
+        "3": 2
+      }
+    },
+    "time_s": {
+      "median": 11.0,
+      "p90": 17.965000000000014,
+      "by_stage_median": {
+        "grasp": 5.05,
+        "transport": 2.95,
+        "place": 2.5
+      }
+    },
+    "final_xy_error_mm": {
+      "median": 1.634710276509388,
+      "p95": 16.584716430735757
+    },
+    "by_level": {},
+    "wall_clock_s": 101.0
+  }
+}

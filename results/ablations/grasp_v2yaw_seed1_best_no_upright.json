@@ -1,0 +1,99 @@
+{
+  "name": "grasp_v2yaw_seed1_best_no_upright",
+  "ablation": "no_upright",
+  "skills": {
+    "grasp": "PPO grasp policy grasp_v2yaw_seed1",
+    "grasp_provenance": {
+      "run_dir": "runs/grasp_v2yaw_seed1",
+      "checkpoint": "best",
+      "policy_id": "grasp_v2yaw_seed1",
+      "trained_at": "9cb7f9a8c370a7bcf961d25eba48c6edf57b2afd"
+    },
+    "transport": "scripted carry",
+    "place": "scripted place (upright=False)"
+  },
+  "supervisor": {
+    "max_grasp_attempts": 3,
+    "handoff_steps": 10,
+    "pre_place_height": 0.12,
+    "release_steps": 10,
+    "retreat_height": 0.1,
+    "retreat_steps": 40,
+    "home_tol": 0.02,
+    "home_timeout": 200,
+    "retry_max_tilt": 0.1745,
+    "retry_max_lift": 0.005,
+    "retry_margin": 0.03,
+    "time_budget_s": 90.0,
+    "timed_switching_s": null
+  },
+  "eval_set": {
+    "name": "pickplace_nominal_v1",
+    "n": 200,
+    "digest": "439a38044438"
+  },
+  "paired_with_full_system": {
+    "only_first": 1,
+    "only_second": 11,
+    "p_value": 0.00634765625
+  },
+  "created_utc": "2026-10-24T06:52:29+00:00",
+  "git": {
+    "commit": "d6bc2141d4c7f109798bcb9a95911626222f6b1e",
+    "dirty": false
+  },
+  "versions": {
+    "python": "3.12.3",
+    "mujoco": "3.16.0",
+    "numpy": "2.5.4",
+    "torch": "2.14.1+cpu"
+  },
+  "summary": {
+    "episodes": 200,
+    "success_rate": 0.85,
+    "success_ci95": [
+      0.7939430617334484,
+      0.892864734123727
+    ],
+    "first_attempt_success_rate": 0.79,
+    "failures_by_stage": {
+      "grasp": 19,
+      "place": 11
+    },
+    "failures": {
+      "timeout; cube out of the workspace": 5,
+      "knocked_over; cube tipped over": 14,
+      "toppled; cube tipped over": 11
+    },
+    "first_failures": {
+      "grasp:timeout": 10,
+      "grasp:knocked_over": 13,
+      "place:toppled": 11,
+      "transport:lost_grip": 5,
+      "place:timeout": 3
+    },
+    "retries": {
+      "episodes_with_retry": 13,
+      "recovered": 12,
+      "attempts": {
+        "1": 187,
+        "2": 12,
+        "3": 1
+      }
+    },
+    "time_s": {
+      "median": 8.65,
+      "p90": 12.539999999999997,
+      "by_stage_median": {
+        "grasp": 4.75,
+        "transport": 2.35,
+        "place": 1.45
+      }
+    },
+    "final_xy_error_mm": {
+      "median": 5.814121429047528,
+      "p95": 16.376715497527627
+    },
+    "wall_clock_s": 97.0
+  }
+}

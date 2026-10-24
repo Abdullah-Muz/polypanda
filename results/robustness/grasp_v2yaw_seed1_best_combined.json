@@ -1,0 +1,101 @@
+{
+  "name": "grasp_v2yaw_seed1_best_combined",
+  "condition": "combined",
+  "skills": {
+    "grasp": "PPO grasp policy grasp_v2yaw_seed1",
+    "grasp_provenance": {
+      "run_dir": "runs/grasp_v2yaw_seed1",
+      "checkpoint": "best",
+      "policy_id": "grasp_v2yaw_seed1",
+      "trained_at": "9cb7f9a8c370a7bcf961d25eba48c6edf57b2afd"
+    },
+    "transport": "scripted carry",
+    "place": "scripted place"
+  },
+  "supervisor": {
+    "max_grasp_attempts": 3,
+    "handoff_steps": 10,
+    "pre_place_height": 0.12,
+    "release_steps": 10,
+    "retreat_height": 0.1,
+    "retreat_steps": 40,
+    "home_tol": 0.02,
+    "home_timeout": 200,
+    "retry_max_tilt": 0.1745,
+    "retry_max_lift": 0.005,
+    "retry_margin": 0.03,
+    "time_budget_s": 90.0,
+    "timed_switching_s": null
+  },
+  "eval_set": {
+    "name": "pickplace_nominal_v1",
+    "n": 200,
+    "digest": "439a38044438"
+  },
+  "perturbation_seed": 20261026,
+  "created_utc": "2026-10-24T06:58:10+00:00",
+  "git": {
+    "commit": "d6bc2141d4c7f109798bcb9a95911626222f6b1e",
+    "dirty": false
+  },
+  "versions": {
+    "python": "3.12.3",
+    "mujoco": "3.16.0",
+    "numpy": "2.5.4",
+    "torch": "2.14.1+cpu"
+  },
+  "summary": {
+    "episodes": 200,
+    "success_rate": 0.49,
+    "success_ci95": [
+      0.4215615528275274,
+      0.5588153672908391
+    ],
+    "first_attempt_success_rate": 0.46,
+    "failures_by_stage": {
+      "transport": 52,
+      "grasp": 49,
+      "place": 1
+    },
+    "failures": {
+      "lost_grip; cube tipped over": 48,
+      "timeout; cube out of the workspace": 19,
+      "knocked_over; cube tipped over": 24,
+      "timeout; cube tipped over": 4,
+      "lost_grip; out of attempts": 4,
+      "timeout; out of attempts": 2,
+      "toppled; cube tipped over": 1
+    },
+    "first_failures": {
+      "transport:lost_grip": 49,
+      "grasp:timeout": 33,
+      "grasp:knocked_over": 20,
+      "place:timeout": 5,
+      "place:toppled": 1
+    },
+    "retries": {
+      "episodes_with_retry": 33,
+      "recovered": 6,
+      "attempts": {
+        "1": 167,
+        "2": 22,
+        "3": 11
+      }
+    },
+    "time_s": {
+      "median": 9.675,
+      "p90": 14.1,
+      "by_stage_median": {
+        "grasp": 4.9,
+        "transport": 2.35,
+        "place": 1.925
+      }
+    },
+    "final_xy_error_mm": {
+      "median": 1.520278497965478,
+      "p95": 14.54225150614504
+    },
+    "by_level": {},
+    "wall_clock_s": 109.5
+  }
+}

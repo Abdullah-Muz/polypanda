@@ -1,0 +1,201 @@
+index,success,failure_stage,failure_reason,grasp_attempts,total_s,final_xy_error_mm,grasp_s,transport_s,place_s,home_s,first_failure,trace
+0,True,,,1,14.45,12.767275845490204,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+1,True,,,1,14.45,1.1830274275643122,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+2,False,transport,lost_grip,1,7.55,,7.5,0.05,0,0,transport:lost_grip,grasp:ok transport:lost_grip
+3,False,transport,lost_grip,1,7.55,,7.5,0.05,0,0,transport:lost_grip,grasp:ok transport:lost_grip
+4,False,place,timeout,1,14.45,,7.5,3.25,3.7,0,place:timeout,grasp:ok transport:ok place:timeout
+5,True,,,1,14.45,19.36538882174964,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+6,False,transport,lost_grip,1,7.55,,7.5,0.05,0,0,transport:lost_grip,grasp:ok transport:lost_grip
+7,False,place,timeout,1,14.45,,7.5,3.25,3.7,0,place:timeout,grasp:ok transport:ok place:timeout
+8,True,,,1,14.45,1.2175264593668673,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+9,False,place,timeout,1,14.45,,7.5,3.25,3.7,0,place:timeout,grasp:ok transport:ok place:timeout
+10,False,grasp,knocked_over,1,5.75,,5.75,0,0,0,grasp:knocked_over,grasp:knocked_over
+11,True,,,1,14.45,0.9235788485592217,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+12,False,place,timeout,1,14.45,,7.5,3.25,3.7,0,place:timeout,grasp:ok transport:ok place:timeout
+13,True,,,1,14.45,10.447949099032865,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+14,True,,,1,14.45,1.8722145643429569,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+15,True,,,1,14.45,3.466162386279016,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+16,True,,,1,14.45,2.7916732248853546,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+17,True,,,1,14.45,1.0416511893878218,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+18,True,,,1,14.45,1.1587544640593914,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+19,True,,,1,14.45,2.0744241239003856,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+20,True,,,1,14.45,0.9141801036283992,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+21,True,,,1,14.45,11.37402528296208,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+22,True,,,1,14.45,2.0624193318478032,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+23,False,transport,lost_grip,1,7.55,,7.5,0.05,0,0,transport:lost_grip,grasp:ok transport:lost_grip
+24,True,,,1,14.45,1.1080899255569536,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+25,True,,,1,14.45,4.794758768836775,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+26,True,,,1,14.45,1.5335962343688534,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+27,True,,,1,14.45,1.1386958838909502,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+28,True,,,1,14.45,1.7793833853268808,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+29,False,transport,lost_grip,1,7.55,,7.5,0.05,0,0,transport:lost_grip,grasp:ok transport:lost_grip
+30,False,place,timeout,1,14.45,,7.5,3.25,3.7,0,place:timeout,grasp:ok transport:ok place:timeout
+31,True,,,1,14.45,1.4614595820015295,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+32,False,place,timeout,1,14.45,,7.5,3.25,3.7,0,place:timeout,grasp:ok transport:ok place:timeout
+33,True,,,1,14.45,1.5108054902785142,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+34,True,,,1,14.45,1.0729092195015886,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+35,True,,,1,14.45,1.299509970708243,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+36,True,,,1,14.45,1.303040468748497,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+37,True,,,1,14.45,2.714334076785058,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+38,False,transport,lost_grip,1,9.15,,7.5,1.65,0,0,transport:lost_grip,grasp:ok transport:lost_grip
+39,True,,,1,14.45,1.185004142321136,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+40,False,transport,lost_grip,1,7.55,,7.5,0.05,0,0,transport:lost_grip,grasp:ok transport:lost_grip
+41,True,,,1,14.45,1.4544658707170905,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+42,False,transport,lost_grip,1,7.55,,7.5,0.05,0,0,transport:lost_grip,grasp:ok transport:lost_grip
+43,True,,,1,14.45,1.6108676795343657,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+44,True,,,1,14.45,1.1268291568390183,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+45,False,place,timeout,1,14.45,,7.5,3.25,3.7,0,place:timeout,grasp:ok transport:ok place:timeout
+46,True,,,1,14.45,14.02246591210252,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+47,False,transport,lost_grip,1,7.55,,7.5,0.05,0,0,transport:lost_grip,grasp:ok transport:lost_grip
+48,False,transport,lost_grip,1,7.55,,7.5,0.05,0,0,transport:lost_grip,grasp:ok transport:lost_grip
+49,True,,,1,14.45,1.3574787663402874,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+50,True,,,1,14.45,2.157610642324576,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+51,True,,,1,14.45,1.1478860873054344,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+52,True,,,1,14.45,0.5770457941169302,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+53,False,transport,lost_grip,1,7.55,,7.5,0.05,0,0,transport:lost_grip,grasp:ok transport:lost_grip
+54,False,place,timeout,1,14.45,,7.5,3.25,3.7,0,place:timeout,grasp:ok transport:ok place:timeout
+55,True,,,1,14.45,2.62059847059063,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+56,True,,,1,14.45,11.611610566938161,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+57,True,,,1,14.45,0.7932350663870795,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+58,True,,,1,14.45,1.7380319358837886,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+59,True,,,1,14.45,1.2362260148640511,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+60,True,,,1,14.45,1.1523596414562998,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+61,False,place,timeout,1,14.45,,7.5,3.25,3.7,0,place:timeout,grasp:ok transport:ok place:timeout
+62,False,transport,lost_grip,1,7.55,,7.5,0.05,0,0,transport:lost_grip,grasp:ok transport:lost_grip
+63,True,,,1,14.45,2.3647376570828103,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+64,True,,,1,14.45,1.4433115753607502,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+65,False,place,timeout,1,14.45,,7.5,3.25,3.7,0,place:timeout,grasp:ok transport:ok place:timeout
+66,True,,,1,14.45,16.561895819599535,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+67,True,,,1,14.45,1.9519612174903949,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+68,True,,,1,14.45,1.8876904610043128,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+69,True,,,1,14.45,0.8514206740244749,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+70,True,,,1,14.45,1.6013646923361897,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+71,True,,,1,14.45,5.972638177888839,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+72,True,,,1,14.45,15.707479249846637,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+73,True,,,1,14.45,1.4041435863125984,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+74,True,,,1,14.45,8.842188403961321,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+75,True,,,1,14.45,8.922792403185188,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+76,False,transport,lost_grip,1,7.55,,7.5,0.05,0,0,transport:lost_grip,grasp:ok transport:lost_grip
+77,True,,,1,14.45,1.7250554437705468,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+78,False,transport,lost_grip,1,7.55,,7.5,0.05,0,0,transport:lost_grip,grasp:ok transport:lost_grip
+79,False,transport,lost_grip,1,7.55,,7.5,0.05,0,0,transport:lost_grip,grasp:ok transport:lost_grip
+80,True,,,1,14.45,2.242467974806568,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+81,True,,,1,14.45,1.4440180750420775,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+82,False,place,timeout,1,14.45,,7.5,3.25,3.7,0,place:timeout,grasp:ok transport:ok place:timeout
+83,True,,,1,14.45,1.1064040950669651,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+84,False,transport,lost_grip,1,7.55,,7.5,0.05,0,0,transport:lost_grip,grasp:ok transport:lost_grip
+85,False,transport,lost_grip,1,7.55,,7.5,0.05,0,0,transport:lost_grip,grasp:ok transport:lost_grip
+86,True,,,1,14.45,1.202205498634714,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+87,False,place,toppled,1,13.25,,7.5,3.25,2.5,0,place:toppled,grasp:ok transport:ok place:toppled
+88,True,,,1,14.45,0.7841321627184963,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+89,True,,,1,14.45,15.4537476432215,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+90,True,,,1,14.45,4.977244423959963,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+91,True,,,1,14.45,10.794799572575803,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+92,False,transport,lost_grip,1,7.55,,7.5,0.05,0,0,transport:lost_grip,grasp:ok transport:lost_grip
+93,True,,,1,14.45,1.4256570751455044,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+94,True,,,1,14.45,0.8112082399390971,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+95,True,,,1,14.45,2.00564013147998,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+96,True,,,1,14.45,1.285510931225247,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+97,False,transport,lost_grip,1,7.55,,7.5,0.05,0,0,transport:lost_grip,grasp:ok transport:lost_grip
+98,False,transport,lost_grip,1,7.55,,7.5,0.05,0,0,transport:lost_grip,grasp:ok transport:lost_grip
+99,True,,,1,14.45,1.1424087421698952,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+100,True,,,1,14.45,1.0058036901083616,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+101,True,,,1,14.45,1.3849574600911494,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+102,False,grasp,knocked_over,1,5.55,,5.55,0,0,0,grasp:knocked_over,grasp:knocked_over
+103,True,,,1,14.45,5.151213753574182,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+104,True,,,1,14.45,5.313591693959199,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+105,True,,,1,14.45,1.0508805326925195,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+106,True,,,1,14.45,2.305183092520767,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+107,False,place,timeout,1,14.45,,7.5,3.25,3.7,0,place:timeout,grasp:ok transport:ok place:timeout
+108,True,,,1,14.45,5.422301282960169,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+109,True,,,1,14.45,3.8606988549525494,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+110,False,transport,lowered_onto_table,1,7.55,,7.5,0.05,0,0,transport:lowered_onto_table,grasp:ok transport:lowered_onto_table
+111,True,,,1,14.45,1.0855796651204517,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+112,False,transport,lost_grip,1,7.55,,7.5,0.05,0,0,transport:lost_grip,grasp:ok transport:lost_grip
+113,True,,,1,14.45,2.1373822632573996,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+114,False,transport,lost_grip,1,7.55,,7.5,0.05,0,0,transport:lost_grip,grasp:ok transport:lost_grip
+115,True,,,1,14.45,7.550842996039419,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+116,True,,,1,14.45,2.176685192985083,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+117,True,,,1,14.45,3.9787102683694004,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+118,False,transport,lost_grip,1,7.55,,7.5,0.05,0,0,transport:lost_grip,grasp:ok transport:lost_grip
+119,True,,,1,14.45,2.57375606162876,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+120,True,,,1,14.45,0.9146906941539432,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+121,True,,,1,14.45,17.27324925962686,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+122,False,place,timeout,1,14.45,,7.5,3.25,3.7,0,place:timeout,grasp:ok transport:ok place:timeout
+123,False,transport,lost_grip,1,7.55,,7.5,0.05,0,0,transport:lost_grip,grasp:ok transport:lost_grip
+124,False,place,timeout,1,14.45,,7.5,3.25,3.7,0,place:timeout,grasp:ok transport:ok place:timeout
+125,False,transport,lost_grip,1,7.55,,7.5,0.05,0,0,transport:lost_grip,grasp:ok transport:lost_grip
+126,True,,,1,14.45,1.6540425329553963,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+127,True,,,1,14.45,9.997624683285055,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+128,True,,,1,14.45,1.5899280035885321,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+129,False,place,timeout,1,14.45,,7.5,3.25,3.7,0,place:timeout,grasp:ok transport:ok place:timeout
+130,True,,,1,14.45,3.049998537869403,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+131,False,transport,lost_grip,1,7.55,,7.5,0.05,0,0,transport:lost_grip,grasp:ok transport:lost_grip
+132,True,,,1,14.45,1.2666669267002169,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+133,False,transport,lost_grip,1,7.55,,7.5,0.05,0,0,transport:lost_grip,grasp:ok transport:lost_grip
+134,False,place,timeout,1,14.45,,7.5,3.25,3.7,0,place:timeout,grasp:ok transport:ok place:timeout
+135,True,,,1,14.45,0.8096612350039857,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+136,True,,,1,14.45,0.5779474970160798,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+137,True,,,1,14.45,14.20317032037649,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+138,True,,,1,14.45,1.0827364406515028,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+139,False,place,timeout,1,14.45,,7.5,3.25,3.7,0,place:timeout,grasp:ok transport:ok place:timeout
+140,True,,,1,14.45,3.181844205174967,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+141,False,transport,lost_grip,1,7.55,,7.5,0.05,0,0,transport:lost_grip,grasp:ok transport:lost_grip
+142,True,,,1,14.45,1.049457815630457,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+143,True,,,1,14.45,5.034730154381658,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+144,True,,,1,14.45,1.5637286987054013,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+145,True,,,1,14.45,1.6958747938592695,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+146,True,,,1,14.45,8.618155447103915,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+147,True,,,1,14.45,1.8285425293291426,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+148,False,transport,lost_grip,1,7.55,,7.5,0.05,0,0,transport:lost_grip,grasp:ok transport:lost_grip
+149,True,,,1,14.45,1.4262973501805012,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+150,True,,,1,14.45,2.6805262766619045,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+151,False,transport,lost_grip,1,10.35,,7.5,2.85,0,0,transport:lost_grip,grasp:ok transport:lost_grip
+152,True,,,1,14.45,8.806891759486835,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+153,True,,,1,14.45,13.818178467159722,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+154,True,,,1,14.45,1.166511083401318,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+155,False,transport,lost_grip,1,7.55,,7.5,0.05,0,0,transport:lost_grip,grasp:ok transport:lost_grip
+156,True,,,1,14.45,1.498022877447614,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+157,True,,,1,14.45,1.2175076236804776,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+158,True,,,1,14.45,0.5271287156772213,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+159,True,,,1,14.45,1.637140144249528,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+160,False,transport,lost_grip,1,7.55,,7.5,0.05,0,0,transport:lost_grip,grasp:ok transport:lost_grip
+161,False,place,timeout,1,14.45,,7.5,3.25,3.7,0,place:timeout,grasp:ok transport:ok place:timeout
+162,True,,,1,14.45,1.635856911224135,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+163,True,,,1,14.45,1.2711782073219569,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+164,True,,,1,14.45,1.1394335527665038,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+165,False,transport,lost_grip,1,7.55,,7.5,0.05,0,0,transport:lost_grip,grasp:ok transport:lost_grip
+166,True,,,1,14.45,7.1508302627657985,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+167,False,transport,lost_grip,1,7.55,,7.5,0.05,0,0,transport:lost_grip,grasp:ok transport:lost_grip
+168,True,,,1,14.45,1.2435510620264916,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+169,True,,,1,14.45,1.0493313153128192,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+170,True,,,1,14.45,13.889875554927242,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+171,True,,,1,14.45,17.362891439094902,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+172,True,,,1,14.45,0.9600310489314131,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+173,True,,,1,14.45,0.7458658232714698,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+174,True,,,1,14.45,9.454169906367444,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+175,True,,,1,14.45,2.550359052740422,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+176,True,,,1,14.45,0.7564103682670039,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+177,True,,,1,14.45,14.739486072418124,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+178,True,,,1,14.45,1.75935543312818,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+179,True,,,1,14.45,1.259970929996869,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+180,False,place,timeout,1,14.45,,7.5,3.25,3.7,0,place:timeout,grasp:ok transport:ok place:timeout
+181,False,place,timeout,1,14.45,,7.5,3.25,3.7,0,place:timeout,grasp:ok transport:ok place:timeout
+182,False,transport,lost_grip,1,7.55,,7.5,0.05,0,0,transport:lost_grip,grasp:ok transport:lost_grip
+183,True,,,1,14.45,1.1901324264434556,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+184,False,place,timeout,1,14.45,,7.5,3.25,3.7,0,place:timeout,grasp:ok transport:ok place:timeout
+185,True,,,1,14.45,9.671330750657974,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+186,True,,,1,14.45,1.898067930169068,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+187,True,,,1,14.45,1.4117520561084442,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+188,True,,,1,14.45,11.928306281557072,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+189,True,,,1,14.45,1.2936666368666525,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+190,True,,,1,14.45,1.5583823740926284,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+191,False,transport,lost_grip,1,7.55,,7.5,0.05,0,0,transport:lost_grip,grasp:ok transport:lost_grip
+192,True,,,1,14.45,19.220884988562027,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+193,False,place,timeout,1,14.45,,7.5,3.25,3.7,0,place:timeout,grasp:ok transport:ok place:timeout
+194,True,,,1,14.45,1.0703074423996202,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+195,True,,,1,14.45,3.6089053851435753,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+196,False,transport,lost_grip,1,7.55,,7.5,0.05,0,0,transport:lost_grip,grasp:ok transport:lost_grip
+197,True,,,1,14.45,16.085740048245434,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+198,True,,,1,14.45,2.081198736347089,7.5,3.25,3.7,0,,grasp:ok transport:ok place:ok
+199,False,transport,lost_grip,1,7.55,,7.5,0.05,0,0,transport:lost_grip,grasp:ok transport:lost_grip
