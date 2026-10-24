@@ -7,7 +7,7 @@ set -euo pipefail
 
 TAG="v1.0"
 ARCHIVE="polypanda-models-${TAG}.tar.gz"
-SHA256="__FILLED_AT_RELEASE__"
+SHA256="867f1d1067c0c9c62725c1f31ea60071a649406711850e3d826d1f21d1b0edc2"
 URL="https://github.com/Abdullah-Muz/polypanda/releases/download/${TAG}/${ARCHIVE}"
 
 cd "$(dirname "$0")/.."
