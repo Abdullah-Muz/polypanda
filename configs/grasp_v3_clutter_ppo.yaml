@@ -7,11 +7,11 @@ env_config: configs/grasp_v3_clutter_curriculum.yaml
 seed: 0
 n_envs: 8
 vec_env: subproc
-total_timesteps: 1000000
+total_timesteps: 1500000  # wider task: more budget (7.2)
 normalize_obs: true
 normalize_reward: true
-eval_freq: 50000
-eval_episodes: 30
+eval_freq: 100000         # 100-episode validation (7.2 lesson)
+eval_episodes: 100        # 30 episodes picked lucky checkpoints
 eval_seed: 100000
 checkpoint_freq: 250000
 torch_threads: 1          # 3 seeds run in parallel (see configs/grasp_v2_ppo.yaml)
