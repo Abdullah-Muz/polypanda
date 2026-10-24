@@ -180,3 +180,77 @@ def generate_grasp_eval_set(name: str, n: int, seed: int) -> GraspEvalSet:
                                   rng.uniform(-np.pi, np.pi, n)])
     return GraspEvalSet(name=name, seed=seed, placements=placements,
                         regions=tuple(grasp_region_of(p[:2]) for p in placements))
+
+
+PICKPLACE_SPAWN_KEY = 0x7B1C  # distinct from the reach and grasp streams
+
+
+@dataclass(frozen=True)
+class PickPlaceEvalSet:
+    """End-to-end scenes: the cube's start pose and the spot it must be placed on."""
+
+    name: str
+    seed: int
+    placements: np.ndarray  # (n, 3): cube start x, y (m) and yaw (rad), upright at rest
+    targets: np.ndarray     # (n, 2): placement target x, y (m), cube-centre
+    min_separation: float   # m, start-to-target horizontal distance
+    x_range: tuple[float, float] = CUBE_X_RANGE
+    y_range: tuple[float, float] = CUBE_Y_RANGE
+    menagerie_commit: str = MENAGERIE_COMMIT
+
+    def __len__(self) -> int:
+        return len(self.placements)
+
+    @property
+    def digest(self) -> str:
+        data = np.ascontiguousarray(np.hstack([self.placements, self.targets]))
+        return hashlib.sha256(data.tobytes()).hexdigest()[:12]
+
+    def subset(self, n: int) -> "PickPlaceEvalSet":
+        return PickPlaceEvalSet(self.name, self.seed, self.placements[:n], self.targets[:n],
+                                self.min_separation, self.x_range, self.y_range,
+                                self.menagerie_commit)
+
+    def save(self, path: str | Path) -> None:
+        payload = {
+            "name": self.name, "seed": self.seed, "spawn_key": PICKPLACE_SPAWN_KEY,
+            "n": len(self), "digest": self.digest, "menagerie_commit": self.menagerie_commit,
+            "x_range": list(self.x_range), "y_range": list(self.y_range),
+            "min_separation": self.min_separation,
+            "start": "home keyframe, cube upright at rest; targets in the same region",
+            "scenes": [{"x": p[0], "y": p[1], "yaw": p[2], "target_x": t[0], "target_y": t[1]}
+                       for p, t in zip(self.placements.tolist(), self.targets.tolist(),
+                                       strict=True)],
+        }
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
+        Path(path).write_text(json.dumps(payload, indent=1) + "\n")
+
+    @classmethod
+    def load(cls, path: str | Path) -> "PickPlaceEvalSet":
+        payload = json.loads(Path(path).read_text())
+        entries = payload["scenes"]
+        loaded = cls(
+            name=payload["name"], seed=payload["seed"],
+            placements=np.array([[e["x"], e["y"], e["yaw"]] for e in entries]),
+            targets=np.array([[e["target_x"], e["target_y"]] for e in entries]),
+            min_separation=payload["min_separation"],
+            x_range=tuple(payload["x_range"]), y_range=tuple(payload["y_range"]),
+            menagerie_commit=payload["menagerie_commit"],
+        )
+        if loaded.digest != payload["digest"]:
+            raise ValueError(f"{path}: scene digest mismatch (file edited or corrupted)")
+        return loaded
+
+
+def generate_pickplace_eval_set(name: str, n: int, seed: int,
+                                min_separation: float = 0.10) -> PickPlaceEvalSet:
+    rng = np.random.default_rng(np.random.SeedSequence(seed, spawn_key=(PICKPLACE_SPAWN_KEY,)))
+    placements, targets = [], []
+    while len(placements) < n:
+        p = [rng.uniform(*CUBE_X_RANGE), rng.uniform(*CUBE_Y_RANGE), rng.uniform(-np.pi, np.pi)]
+        t = [rng.uniform(*CUBE_X_RANGE), rng.uniform(*CUBE_Y_RANGE)]
+        if np.hypot(t[0] - p[0], t[1] - p[1]) >= min_separation:
+            placements.append(p)
+            targets.append(t)
+    return PickPlaceEvalSet(name=name, seed=seed, placements=np.array(placements),
+                            targets=np.array(targets), min_separation=min_separation)
