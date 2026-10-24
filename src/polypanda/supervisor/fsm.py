@@ -83,9 +83,11 @@ class PickPlaceResult:
 
 class PickPlaceSupervisor:
     def __init__(self, grasp_driver, transport_driver, place_driver,
-                 config: SupervisorConfig | None = None) -> None:
+                 config: SupervisorConfig | None = None, grasp_env: GraspEnv | None = None
+                 ) -> None:
+        """`grasp_env` is the environment the grasp skill was built for (default: GraspEnv)."""
         self.config = config or SupervisorConfig()
-        self.envs = {Stage.GRASP: GraspEnv(), Stage.TRANSPORT: TransportEnv(),
+        self.envs = {Stage.GRASP: grasp_env or GraspEnv(), Stage.TRANSPORT: TransportEnv(),
                      Stage.PLACE: PlaceEnv()}
         self.drivers = {Stage.GRASP: grasp_driver, Stage.TRANSPORT: transport_driver,
                         Stage.PLACE: place_driver}

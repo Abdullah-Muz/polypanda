@@ -1,0 +1,51 @@
+# Grasp task v2 (GraspV2Env, task "grasp_v2"): the task as EVALUATED. Identical to
+# configs/grasp.yaml except for the v2 additions (committed grasp yaw, implemented in the env
+# class; and the pushing penalty below). See docs/grasp_task.md, "Task v2".
+
+action:
+  max_delta: 0.015
+  n_substeps: 25
+  max_lead: null
+
+placement:
+  x_range: [0.35, 0.65]
+  y_range: [-0.25, 0.25]
+
+gate:
+  xy_tol: 0.01
+  z_tol: 0.01
+  align_tol: 0.15         # rad, to the COMMITTED face pair in v2
+  tilt_tol: 0.15
+  dwell_steps: 2
+  reopen_gap: 0.02
+  reopen_steps: 10
+
+episode:
+  horizon: 300
+  max_cube_tilt: 1.047
+  max_push: 0.05          # v2: pushed more than 5 cm before the grasp -> terminate
+
+success:
+  lift: 0.05
+
+reward:
+  approach: 20.0
+  align: 1.0
+  lift: 20.0
+  lift_cap: 0.10
+  hold: 0.5
+  action: 0.005
+  gripper_tilt: 0.1
+  floor: 0.1
+  knocked_over: 5.0
+  push: 20.0              # v2: per m the cube moves with the fingers open (same scale as approach)
+  pushed_away: 5.0        # v2: once, on the max_push termination (same as knocked_over)
+
+curriculum:
+  pregrasp_start_prob: 0.0
+
+check:
+  min_lift: 0.02
+  window: 5
+  max_slip: 0.002
+  max_slip_rot: 0.05

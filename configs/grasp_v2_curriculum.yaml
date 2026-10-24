@@ -1,0 +1,58 @@
+# Grasp task v2 TRAINING configuration: identical to configs/grasp_v2.yaml (the task as evaluated)
+# except for two training-only additions, neither used in validation or evaluation:
+# - curriculum: 30 % pre-grasped training starts, as for v1 (configs/grasp_curriculum.yaml);
+# - randomization: cube mass and contact friction varied per episode. The robustness suite
+#   (Milestone 6.1) showed v1 grasp failures rising under mass/friction changes; the ranges equal
+#   the suite's mass and friction conditions, which are therefore in-distribution for v2.
+
+action:
+  max_delta: 0.015
+  n_substeps: 25
+  max_lead: null
+
+placement:
+  x_range: [0.35, 0.65]
+  y_range: [-0.25, 0.25]
+
+gate:
+  xy_tol: 0.01
+  z_tol: 0.01
+  align_tol: 0.15         # rad, to the COMMITTED face pair in v2
+  tilt_tol: 0.15
+  dwell_steps: 2
+  reopen_gap: 0.02
+  reopen_steps: 10
+
+episode:
+  horizon: 300
+  max_cube_tilt: 1.047
+  max_push: 0.05          # v2: pushed more than 5 cm before the grasp -> terminate
+
+success:
+  lift: 0.05
+
+reward:
+  approach: 20.0
+  align: 1.0
+  lift: 20.0
+  lift_cap: 0.10
+  hold: 0.5
+  action: 0.005
+  gripper_tilt: 0.1
+  floor: 0.1
+  knocked_over: 5.0
+  push: 20.0              # v2: per m the cube moves with the fingers open (same scale as approach)
+  pushed_away: 5.0        # v2: once, on the max_push termination (same as knocked_over)
+
+curriculum:
+  pregrasp_start_prob: 0.3
+
+randomization:            # training-only domain randomization of the cube
+  mass_scale: [0.5, 2.0]   # log-uniform
+  friction_scale: [0.5, 1.5]
+
+check:
+  min_lift: 0.02
+  window: 5
+  max_slip: 0.002
+  max_slip_rot: 0.05

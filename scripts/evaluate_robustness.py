@@ -22,7 +22,11 @@ import numpy as np
 import torch
 
 from polypanda.control.scripted_place import ScriptedPlace
-from polypanda.evaluation.pickplace import PickPlaceEpisode, grasp_driver_from_spec
+from polypanda.evaluation.pickplace import (
+    PickPlaceEpisode,
+    grasp_driver_from_spec,
+    grasp_env_for,
+)
 from polypanda.evaluation.robustness import CONDITIONS, RobustEpisode, run_condition
 from polypanda.evaluation.sets import PickPlaceEvalSet
 from polypanda.evaluation.transport import ScriptedCarryDriver
@@ -52,7 +56,8 @@ def main() -> None:
     args.out_dir.mkdir(parents=True, exist_ok=True)
     for condition in args.conditions:
         summary, results = run_condition(driver, ScriptedCarryDriver(), ScriptedPlace(),
-                                         eval_set, condition, args.seed, config)
+                                         eval_set, condition, args.seed, config,
+                                         grasp_env_for(args.grasp))
         name = f"{tag}_{condition}"
         record = {"name": name, "condition": condition,
                   "skills": {"grasp": description, "grasp_provenance": provenance,

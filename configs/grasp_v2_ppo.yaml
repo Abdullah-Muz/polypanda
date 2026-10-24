@@ -1,0 +1,30 @@
+# PPO on GraspV2Env (task v2). Keys map to polypanda.training.config.TrainConfig.
+# Identical PPO settings to configs/grasp_ppo.yaml (the v1 curriculum runs); only the task changes:
+# a committed grasp yaw (45 deg tie-break) and a pushing penalty. Validation uses no curriculum.
+
+algorithm: ppo
+task: grasp_v2
+env_config: configs/grasp_v2_curriculum.yaml
+seed: 0
+n_envs: 8                 # ~1.8k env steps/s with contacts (docs/grasp_task.md)
+vec_env: subproc
+total_timesteps: 1000000
+normalize_obs: true
+normalize_reward: true
+eval_freq: 50000          # validation every 50k transitions
+eval_episodes: 30         # 30 x 300-step episodes per validation
+eval_seed: 100000         # validation placements: separate stream from training and the test set
+checkpoint_freq: 250000
+
+ppo:
+  learning_rate: 0.0003
+  n_steps: 512            # x 8 envs = 4096 transitions per update
+  batch_size: 256
+  n_epochs: 10
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_range: 0.2
+  ent_coef: 0.005         # pilot used 0.0; its action std collapsed to 0.18 (reach PPO kept ~0.7)
+  vf_coef: 0.5
+  max_grad_norm: 0.5
+  net_arch: [128, 128]

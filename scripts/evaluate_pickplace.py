@@ -28,6 +28,7 @@ from polypanda.evaluation.pickplace import (
     PickPlaceEpisode,
     evaluate_pickplace,
     grasp_driver_from_spec,
+    grasp_env_for,
     mcnemar_exact,
 )
 from polypanda.evaluation.sets import PickPlaceEvalSet, generate_pickplace_eval_set
@@ -70,7 +71,7 @@ def main() -> None:
     config = SupervisorConfig()
     name = f"pickplace_{tag}_{eval_set.name}"
     summary, episodes = evaluate_pickplace(driver, ScriptedCarryDriver(), ScriptedPlace(),
-                                           eval_set, config)
+                                           eval_set, config, grasp_env_for(args.grasp))
     record = {"name": name,
               "skills": {"grasp": description, "grasp_provenance": provenance,
                          "transport": "scripted carry (closed-loop IK, gain 0.2)",

@@ -18,7 +18,6 @@ are evaluation-only: no skill was trained or tuned on them.
 import time
 from dataclasses import asdict, dataclass
 
-import mujoco
 import numpy as np
 
 from polypanda.evaluation.pickplace import (
@@ -28,6 +27,7 @@ from polypanda.evaluation.pickplace import (
 )
 from polypanda.evaluation.reach import wilson_interval
 from polypanda.evaluation.sets import PickPlaceEvalSet
+from polypanda.simulation.randomization import CubePhysics
 from polypanda.simulation.scenes import CUBE_X_RANGE, CUBE_Y_RANGE
 from polypanda.supervisor.fsm import PickPlaceSupervisor, Stage, SupervisorConfig
 
@@ -73,38 +73,14 @@ def ood_scenes(eval_set: PickPlaceEvalSet, rng: np.random.Generator) -> np.ndarr
     return np.array(poses)
 
 
-class ScenePhysics:
+class ScenePhysics(CubePhysics):
     """Applies a Perturbation's model changes to one environment, always relative to nominal."""
 
     def __init__(self, env) -> None:
-        m, self.env = env.model, env
-        self.cube = env.cube
-        pads = [g for g in range(m.ngeom) if m.geom_bodyid[g] in
-                {m.body(n).id for n in ("left_finger", "right_finger")}]
-        self.friction_geoms = [env.cube.geom, *pads, *np.flatnonzero(m.geom_bodyid == 0)]
-        self.nominal = {
-            "friction": m.geom_friction[self.friction_geoms].copy(),
-            "size": m.geom_size[env.cube.geom].copy(),
-            "rbound": float(m.geom_rbound[env.cube.geom]),
-            "aabb": m.geom_aabb[env.cube.geom].copy(),
-            "mass": float(m.body_mass[env.cube.body]),
-            "inertia": m.body_inertia[env.cube.body].copy(),
-        }
+        super().__init__(env.model, env.cube)
 
-    def apply(self, p: Perturbation) -> None:
-        m, n, g, b = self.env.model, self.nominal, self.cube.geom, self.cube.body
-        m.geom_friction[self.friction_geoms] = n["friction"] * p.friction_scale
-        s = p.size_scale
-        m.geom_size[g] = n["size"] * s
-        m.geom_rbound[g] = n["rbound"] * s
-        m.geom_aabb[g] = n["aabb"] * s
-        self.cube.half_size[:] = m.geom_size[g]  # shared by the env, its checks and drivers
-        mass = n["mass"] * s**3 * p.mass_scale
-        m.body_mass[b] = mass
-        m.body_inertia[b] = n["inertia"] * (mass / n["mass"]) * s**2
-        # recompute derived constants (subtree masses, inverse weights used by the contact
-        # solver) on scratch data, as the compiler would have
-        mujoco.mj_setConst(m, mujoco.MjData(m))
+    def apply(self, p: Perturbation) -> None:  # type: ignore[override]
+        super().apply(p.mass_scale, p.friction_scale, p.size_scale)
 
 
 @dataclass(frozen=True)
@@ -122,11 +98,12 @@ class RobustEpisode:
 
 
 def run_condition(grasp_driver, transport_driver, place_driver, eval_set: PickPlaceEvalSet,
-                  condition: str, seed: int, config: SupervisorConfig | None = None
-                  ) -> tuple[dict, list[RobustEpisode]]:
+                  condition: str, seed: int, config: SupervisorConfig | None = None,
+                  grasp_env=None) -> tuple[dict, list[RobustEpisode]]:
     if condition not in CONDITIONS:
         raise ValueError(f"unknown condition {condition!r}")
-    supervisor = PickPlaceSupervisor(grasp_driver, transport_driver, place_driver, config)
+    supervisor = PickPlaceSupervisor(grasp_driver, transport_driver, place_driver, config,
+                                     grasp_env)
     physics = [ScenePhysics(env) for env in supervisor.envs.values()]
     rng = np.random.default_rng(np.random.SeedSequence(
         seed, spawn_key=(ROBUSTNESS_SPAWN_KEY, CONDITIONS.index(condition))))

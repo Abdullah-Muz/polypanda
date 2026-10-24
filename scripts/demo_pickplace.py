@@ -18,10 +18,9 @@ import numpy as np
 
 from polypanda.control.scripted_place import ScriptedPlace
 from polypanda.environments.handoff import capture_state, restore_state
-from polypanda.evaluation.grasp import PolicyDriver, ScriptedDriver
+from polypanda.evaluation.pickplace import grasp_driver_from_spec, grasp_env_for
 from polypanda.evaluation.sets import PickPlaceEvalSet
 from polypanda.evaluation.transport import ScriptedCarryDriver
-from polypanda.policies.loader import load_run
 from polypanda.simulation.scenes import load_pick_scene
 from polypanda.supervisor.fsm import PickPlaceSupervisor, Stage
 from polypanda.visualization.viewer import fast_rendering
@@ -49,14 +48,9 @@ def main() -> None:
     parser.add_argument("--set", type=Path, default=Path("eval_sets/pickplace_nominal_v1.json"))
     args = parser.parse_args()
 
-    if args.grasp == "scripted":
-        grasp = ScriptedDriver()
-    elif args.grasp.startswith("run:"):
-        run_dir, _, which = args.grasp[4:].partition("@")
-        grasp = PolicyDriver(load_run(run_dir, which or "best"))
-    else:
-        raise SystemExit(f"unknown grasp {args.grasp!r}")
-    supervisor = PickPlaceSupervisor(grasp, ScriptedCarryDriver(), ScriptedPlace())
+    grasp = grasp_driver_from_spec(args.grasp)[0]
+    supervisor = PickPlaceSupervisor(grasp, ScriptedCarryDriver(), ScriptedPlace(),
+                                     grasp_env=grasp_env_for(args.grasp))
     eval_set = PickPlaceEvalSet.load(args.set)
     model, data = load_pick_scene()  # display copy; mirrors the active skill's environment
     if not args.shadows:

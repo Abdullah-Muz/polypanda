@@ -12,12 +12,29 @@ from math import comb
 from pathlib import Path
 
 import numpy as np
+import yaml
 
+from polypanda.environments.grasp import GraspEnv
+from polypanda.environments.tasks import TASKS
 from polypanda.evaluation.grasp import PolicyDriver, ScriptedDriver
 from polypanda.evaluation.reach import wilson_interval
 from polypanda.evaluation.sets import PickPlaceEvalSet
 from polypanda.policies.loader import load_run
 from polypanda.supervisor.fsm import PickPlaceResult, PickPlaceSupervisor, SupervisorConfig
+
+
+def grasp_env_for(spec: str):
+    """The environment a grasp skill is evaluated in: GraspEnv for the scripted grasp; for a
+    trained run, its task's env with the run's own task configuration, as evaluated."""
+    if spec == "scripted":
+        return GraspEnv()
+    run_dir = Path(spec[4:].partition("@")[0])
+    meta_file = run_dir / "metadata.yaml"
+    skill = (yaml.safe_load(meta_file.read_text())["skill"] if meta_file.exists()
+             else yaml.safe_load((run_dir / "config.yaml").read_text())["task"])
+    task = TASKS[skill]
+    config = task.config_cls.from_yaml(run_dir / "env_config.yaml").for_evaluation()
+    return task.env_cls(config)
 
 
 def grasp_driver_from_spec(spec: str):
@@ -106,9 +123,10 @@ def summarize_pickplace(results: list[PickPlaceEpisode]) -> dict:
 
 
 def evaluate_pickplace(grasp_driver, transport_driver, place_driver,
-                       eval_set: PickPlaceEvalSet, config: SupervisorConfig | None = None
-                       ) -> tuple[dict, list[PickPlaceEpisode]]:
-    supervisor = PickPlaceSupervisor(grasp_driver, transport_driver, place_driver, config)
+                       eval_set: PickPlaceEvalSet, config: SupervisorConfig | None = None,
+                       grasp_env=None) -> tuple[dict, list[PickPlaceEpisode]]:
+    supervisor = PickPlaceSupervisor(grasp_driver, transport_driver, place_driver, config,
+                                     grasp_env)
     start = time.perf_counter()
     results = [episode_from_result(i, supervisor.run(p, t), supervisor.dt)
                for i, (p, t) in enumerate(zip(eval_set.placements, eval_set.targets,

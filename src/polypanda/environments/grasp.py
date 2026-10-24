@@ -21,6 +21,7 @@ from polypanda.control.ik import PoseIK, closing_yaw, grasp_closing_yaw, top_dow
 from polypanda.environments.reach import ActionConfig
 from polypanda.simulation.grasp import GraspCheckConfig, GraspMonitor
 from polypanda.simulation.panda import PandaIndices, reset_to_home, tcp_position
+from polypanda.simulation.randomization import CubePhysics
 from polypanda.simulation.scenes import (
     CUBE_X_RANGE,
     CUBE_Y_RANGE,
@@ -35,6 +36,7 @@ from polypanda.simulation.scenes import (
 GRIPPER_OPEN, GRIPPER_CLOSED = 255.0, 0.0
 
 OBS_SCHEMA = "grasp-v1-41d"
+OBS_SCHEMA_V2 = "grasp-v2-41d"  # same layout; the alignment slots hold sin/cos(2 x error)
 OBS_LAYOUT = (
     ("q", 7), ("dq", 7), ("q_cmd", 7),
     ("tcp", 3), ("tcp_rot6", 6), ("finger_gap", 1), ("gripper_closed", 1),
@@ -70,6 +72,7 @@ class GateConfig:
 class GraspEpisodeConfig:
     horizon: int = 300            # policy steps (15 s); no termination on success
     max_cube_tilt: float = 1.047  # rad (60 deg): cube knocked over, episode terminates
+    max_push: float = 0.0         # v2: m the cube may be pushed before the grasp (0 = no limit)
 
 
 @dataclass(frozen=True)
@@ -88,6 +91,8 @@ class GraspRewardConfig:
     gripper_tilt: float = 0.1  # per radian of gripper tilt, per step
     floor: float = 0.1         # per step with the arm or fingers touching the floor
     knocked_over: float = 5.0  # once, when the cube tips past max_cube_tilt
+    push: float = 0.0          # v2: per metre the cube moves horizontally with the fingers open
+    pushed_away: float = 0.0   # v2: once, when the cube is pushed beyond episode.max_push
 
 
 @dataclass(frozen=True)
@@ -100,6 +105,19 @@ class CurriculumConfig:
 
 
 @dataclass(frozen=True)
+class RandomizationConfig:
+    # Training-only domain randomization of the cube, drawn per randomly placed episode: mass
+    # log-uniform and contact friction uniform in these scale ranges (simulation.randomization).
+    # Like the curriculum, never applied to explicit placements or to validation.
+    mass_scale: tuple[float, float] = (1.0, 1.0)
+    friction_scale: tuple[float, float] = (1.0, 1.0)
+
+    @property
+    def enabled(self) -> bool:
+        return self.mass_scale != (1.0, 1.0) or self.friction_scale != (1.0, 1.0)
+
+
+@dataclass(frozen=True)
 class GraspConfig:
     action: ActionConfig = field(default_factory=ActionConfig)
     placement: PlacementConfig = field(default_factory=PlacementConfig)
@@ -109,14 +127,16 @@ class GraspConfig:
     reward: GraspRewardConfig = field(default_factory=GraspRewardConfig)
     check: GraspCheckConfig = field(default_factory=GraspCheckConfig)
     curriculum: CurriculumConfig = field(default_factory=CurriculumConfig)
+    randomization: RandomizationConfig = field(default_factory=RandomizationConfig)
 
     @classmethod
     def from_yaml(cls, path: str | Path) -> "GraspConfig":
         return load_yaml(cls, path)
 
     def for_evaluation(self) -> "GraspConfig":
-        """The task as evaluated: every episode starts from home with the cube on the table."""
-        return replace(self, curriculum=CurriculumConfig())
+        """The task as evaluated: every episode starts from home with the nominal cube on the
+        table."""
+        return replace(self, curriculum=CurriculumConfig(), randomization=RandomizationConfig())
 
 
 def alignment_error(R_tcp: np.ndarray, cube_yaw_value: float) -> float:
@@ -148,10 +168,18 @@ class GraspEnv(gym.Env):
         self._prev = {"distance": 0.0, "align": 0.0, "lift": 0.0}
         self._state = None
         self._ik = None  # built on first curriculum reset
+        self._physics = None  # built on first randomized reset
+        self.cube_scales = {"mass": 1.0, "friction": 1.0}
 
     @property
     def elapsed_steps(self) -> int:
         return self._steps
+
+    def _randomize(self, mass: float, friction: float) -> None:
+        if self._physics is None:
+            self._physics = CubePhysics(self.model, self.cube)
+        self._physics.apply(mass_scale=mass, friction_scale=friction)
+        self.cube_scales = {"mass": mass, "friction": friction}
 
     # --- measurements ------------------------------------------------------------------
     def _tcp_R(self) -> np.ndarray:
@@ -199,6 +227,13 @@ class GraspEnv(gym.Env):
             yaw = self.np_random.uniform(-np.pi, np.pi)
             prob = self.config.curriculum.pregrasp_start_prob
             pregrasp = prob > 0 and self.np_random.uniform() < prob  # no draw when disabled
+            rnd = self.config.randomization
+            if rnd.enabled:  # training-only domain randomization; no draws when disabled
+                lo, hi = np.log(rnd.mass_scale)
+                self._randomize(mass=float(np.exp(self.np_random.uniform(lo, hi))),
+                                friction=float(self.np_random.uniform(*rnd.friction_scale)))
+        if "cube" in options and self._physics is not None:
+            self._randomize(mass=1.0, friction=1.0)  # explicit placements use the nominal cube
         set_cube_pose(self.model, self.data, self.cube, (x, y), yaw)
         if pregrasp:
             pregrasp = self._pregrasp_start()
@@ -316,3 +351,64 @@ class GraspEnv(gym.Env):
             [np.sin(4 * m["align"]), np.cos(4 * m["align"]), m["lift"], m["cube_tilt"]],
             [float(s.left_contact), float(s.right_contact)],
         ]).astype(np.float32)
+
+
+class GraspV2Env(GraspEnv):
+    """Grasp task v2: a committed grasp yaw, and pushing the cube is penalized.
+
+    v1 policies were weakest on cubes about 45 deg from the wrist, where two face pairs are equally
+    good and the v1 alignment error (to the nearest pair, observed as sin/cos of 4x the error)
+    offers no tie-break. v2 commits: at reset the target closing yaw is the face pair nearest the
+    wrist (ties broken by rounding, as in the scripted grasp); afterwards it follows the cube's yaw
+    continuously (nearest to the previous target), so the target never flips. The alignment error
+    is to that target, wrapped to +-90 deg (the fingers are symmetric), and is observed as sin/cos
+    of 2x the error. The gate also requires alignment with the committed pair.
+
+    v1 policies also often pushed the cube out of reach. v2 charges reward.push per metre the cube
+    moves horizontally while the fingers are open, and ends the episode (reward.pushed_away) once
+    it is more than episode.max_push from where it started, before the fingers closed.
+    """
+
+    def reset(self, *, seed: int | None = None, options: dict | None = None):
+        self._target_yaw = None
+        obs, info = super().reset(seed=seed, options=options)
+        self._start_xy = cube_position(self.data, self.cube)[:2].copy()
+        info["target_closing_yaw"] = self._target_yaw
+        return obs, info
+
+    def _measure(self) -> dict:
+        m = super()._measure()
+        current = closing_yaw(self._tcp_R())
+        reference = current if self._target_yaw is None else self._target_yaw
+        self._target_yaw = grasp_closing_yaw(cube_yaw(self.data, self.cube), reference)
+        error = self._target_yaw - current
+        m["align"] = float((error + np.pi / 2) % np.pi - np.pi / 2)
+        return m
+
+    def _observation(self, m: dict | None = None) -> np.ndarray:
+        m = m or self._measure()
+        obs = super()._observation(m)
+        obs[OBS_SLICES["align_sin4"]] = np.sin(2 * m["align"])
+        obs[OBS_SLICES["align_cos4"]] = np.cos(2 * m["align"])
+        return obs
+
+    def step(self, action):
+        cfg, r = self.config, self.config.reward
+        open_before = not self.closed
+        xy_before = cube_position(self.data, self.cube)[:2].copy()
+        obs, reward, terminated, truncated, info = super().step(action)
+        if info.get("failure") == "non_finite":
+            return obs, reward, terminated, truncated, info
+        xy = cube_position(self.data, self.cube)[:2]
+        moved = float(np.linalg.norm(xy - xy_before)) if open_before else 0.0
+        displaced = float(np.linalg.norm(xy - self._start_xy))
+        pushed_away = bool(open_before and not self.closed and cfg.episode.max_push > 0
+                           and displaced > cfg.episode.max_push and not terminated)
+        terms = {"push": -r.push * moved,
+                 "pushed_away": -r.pushed_away if pushed_away else 0.0}
+        info["reward_terms"].update(terms)
+        info["cube_displacement"] = displaced
+        if pushed_away:
+            info["failure"] = "pushed_away"
+            terminated, truncated = True, False
+        return obs, reward + sum(terms.values()), terminated, truncated, info
