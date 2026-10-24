@@ -15,6 +15,8 @@ eval_freq: 50000          # validation every 50k transitions
 eval_episodes: 30         # 30 x 300-step episodes per validation
 eval_seed: 100000         # validation placements: separate stream from training and the test set
 checkpoint_freq: 250000
+torch_threads: 1          # 3 seeds in parallel: PyTorch's default 16 threads per run
+                          # busy-waited and starved the env workers (~65 steps/s per run)
 
 ppo:
   learning_rate: 0.0003
