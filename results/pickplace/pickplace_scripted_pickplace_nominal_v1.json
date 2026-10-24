@@ -1,0 +1,75 @@
+{
+  "name": "pickplace_scripted_pickplace_nominal_v1",
+  "skills": {
+    "grasp": "scripted top-down grasp",
+    "grasp_provenance": {},
+    "transport": "scripted carry (closed-loop IK, gain 0.2)",
+    "place": "scripted place (upright correction, gated release)"
+  },
+  "supervisor": {
+    "max_grasp_attempts": 3,
+    "handoff_steps": 10,
+    "pre_place_height": 0.12,
+    "release_steps": 10,
+    "retreat_height": 0.1,
+    "retreat_steps": 40,
+    "home_tol": 0.02,
+    "home_timeout": 200,
+    "retry_max_tilt": 0.1745,
+    "retry_max_lift": 0.005,
+    "retry_margin": 0.03,
+    "time_budget_s": 90.0
+  },
+  "eval_set": {
+    "name": "pickplace_nominal_v1",
+    "n": 200,
+    "digest": "439a38044438"
+  },
+  "created_utc": "2026-10-24T02:29:54+00:00",
+  "git": {
+    "commit": "a8fced576bce0947ea4374b12c2ab38e85d6a844",
+    "dirty": false
+  },
+  "versions": {
+    "python": "3.12.3",
+    "mujoco": "3.16.0",
+    "numpy": "2.5.4",
+    "torch": "2.14.1+cpu"
+  },
+  "summary": {
+    "episodes": 200,
+    "success_rate": 1.0,
+    "success_ci95": [
+      0.9811539940816791,
+      1.0
+    ],
+    "first_attempt_success_rate": 0.975,
+    "failures_by_stage": {},
+    "failures": {},
+    "first_failures": {
+      "place:timeout": 5
+    },
+    "retries": {
+      "episodes_with_retry": 5,
+      "recovered": 5,
+      "attempts": {
+        "1": 195,
+        "2": 5
+      }
+    },
+    "time_s": {
+      "median": 12.4,
+      "p90": 15.76,
+      "by_stage_median": {
+        "grasp": 7.775,
+        "transport": 2.3,
+        "place": 2.15
+      }
+    },
+    "final_xy_error_mm": {
+      "median": 1.6718068651483113,
+      "p95": 15.07135388108053
+    },
+    "wall_clock_s": 174.6
+  }
+}
