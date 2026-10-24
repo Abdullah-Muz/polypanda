@@ -1,0 +1,96 @@
+{
+  "name": "pickplace_grasp_v2yaw_seed1_best_pickplace_nominal_v1",
+  "skills": {
+    "grasp": "PPO grasp policy grasp_v2yaw_seed1",
+    "grasp_provenance": {
+      "run_dir": "runs/grasp_v2yaw_seed1",
+      "checkpoint": "best",
+      "policy_id": "grasp_v2yaw_seed1",
+      "trained_at": "9cb7f9a8c370a7bcf961d25eba48c6edf57b2afd"
+    },
+    "transport": "scripted carry (closed-loop IK, gain 0.2)",
+    "place": "scripted place (upright correction, gated release)"
+  },
+  "supervisor": {
+    "max_grasp_attempts": 3,
+    "handoff_steps": 10,
+    "pre_place_height": 0.12,
+    "release_steps": 10,
+    "retreat_height": 0.1,
+    "retreat_steps": 40,
+    "home_tol": 0.02,
+    "home_timeout": 200,
+    "retry_max_tilt": 0.1745,
+    "retry_max_lift": 0.005,
+    "retry_margin": 0.03,
+    "time_budget_s": 90.0,
+    "timed_switching_s": null
+  },
+  "eval_set": {
+    "name": "pickplace_nominal_v1",
+    "n": 200,
+    "digest": "439a38044438"
+  },
+  "created_utc": "2026-10-24T06:44:39+00:00",
+  "git": {
+    "commit": "78f4c2ee20225d71b26a20fcf4250bbb63dcbacf",
+    "dirty": false
+  },
+  "versions": {
+    "python": "3.12.3",
+    "mujoco": "3.16.0",
+    "numpy": "2.5.4",
+    "torch": "2.14.1+cpu"
+  },
+  "summary": {
+    "episodes": 200,
+    "success_rate": 0.9,
+    "success_ci95": [
+      0.8505931364369146,
+      0.9343300588284289
+    ],
+    "first_attempt_success_rate": 0.84,
+    "failures_by_stage": {
+      "grasp": 20
+    },
+    "failures": {
+      "timeout; cube out of the workspace": 5,
+      "knocked_over; cube tipped over": 15
+    },
+    "first_failures": {
+      "grasp:timeout": 10,
+      "grasp:knocked_over": 13,
+      "place:timeout": 4,
+      "transport:lost_grip": 5
+    },
+    "retries": {
+      "episodes_with_retry": 14,
+      "recovered": 12,
+      "attempts": {
+        "1": 186,
+        "2": 13,
+        "3": 1
+      }
+    },
+    "time_s": {
+      "median": 9.475,
+      "p90": 13.874999999999998,
+      "by_stage_median": {
+        "grasp": 4.8,
+        "transport": 2.35,
+        "place": 1.8
+      }
+    },
+    "final_xy_error_mm": {
+      "median": 1.4058090622002732,
+      "p95": 8.720343462601853
+    },
+    "wall_clock_s": 112.2
+  },
+  "paired_comparison": {
+    "against": "results/pickplace/pickplace_scripted_pickplace_nominal_v1_episodes.csv",
+    "only_first": 0,
+    "only_second": 20,
+    "p_value": 1.9073486328125e-06
+  }
+}
