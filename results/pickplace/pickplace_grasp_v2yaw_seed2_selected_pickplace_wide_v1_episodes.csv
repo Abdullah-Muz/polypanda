@@ -1,0 +1,201 @@
+index,success,failure_stage,failure_reason,grasp_attempts,total_s,final_xy_error_mm,grasp_s,transport_s,place_s,home_s,first_failure,trace
+0,True,,,1,10.6,12.8243472327001,5.4,1.55,3.65,0,,grasp:ok transport:ok place:ok
+1,True,,,1,8.65,0.9631376878137256,3.95,2.75,1.95,0,,grasp:ok transport:ok place:ok
+2,True,,,1,9.4,1.846765405813377,4.2,3.3,1.9,0,,grasp:ok transport:ok place:ok
+3,True,,,1,9.35,3.001418540427262,3.9,3.9,1.55,0,,grasp:ok transport:ok place:ok
+4,False,grasp,knocked_over; cube tipped over,2,33.0,,8.4,5.45,6.0,13.15,place:timeout,grasp:ok transport:ok place:timeout home:ok grasp:knocked_over home:ok
+5,True,,,1,11.35,12.629259383674176,5.25,1.9,4.2,0,,grasp:ok transport:ok place:ok
+6,True,,,1,10.5,18.870448432953765,4.15,3.2,3.15,0,,grasp:ok transport:ok place:ok
+7,True,,,1,9.9,2.7895530758830143,4.4,3.15,2.35,0,,grasp:ok transport:ok place:ok
+8,True,,,1,10.65,2.9371046866233916,4.1,3.75,2.8,0,,grasp:ok transport:ok place:ok
+9,True,,,1,12.3,9.459106325191772,5.45,4.6,2.25,0,,grasp:ok transport:ok place:ok
+10,True,,,1,13.3,14.511279335728718,6.45,2.65,4.2,0,,grasp:ok transport:ok place:ok
+11,True,,,1,12.4,16.070450823940018,6.15,1.7,4.55,0,,grasp:ok transport:ok place:ok
+12,True,,,1,13.9,5.873773675641331,4.2,3.7,6.0,0,,grasp:ok transport:ok place:ok
+13,True,,,1,10.05,7.2849706151654505,4.5,1.9,3.65,0,,grasp:ok transport:ok place:ok
+14,True,,,1,12.3,1.4054022871083138,5.7,4.3,2.3,0,,grasp:ok transport:ok place:ok
+15,True,,,1,12.1,13.61544943395529,4.5,4.3,3.3,0,,grasp:ok transport:ok place:ok
+16,True,,,1,13.2,18.679798601778067,5.7,4.25,3.25,0,,grasp:ok transport:ok place:ok
+17,True,,,1,17.4,2.212766780305465,10.95,2.55,3.9,0,,grasp:ok transport:ok place:ok
+18,True,,,1,8.25,2.4959857050378598,4.8,1.45,2.0,0,,grasp:ok transport:ok place:ok
+19,False,grasp,knocked_over; cube tipped over,1,12.05,,4.85,0,0,7.2,grasp:knocked_over,grasp:knocked_over home:ok
+20,True,,,1,7.45,1.061133335669881,4.5,1.55,1.4,0,,grasp:ok transport:ok place:ok
+21,True,,,1,9.3,1.268868228713304,4.85,2.65,1.8,0,,grasp:ok transport:ok place:ok
+22,True,,,1,8.5,1.7684506133196378,3.95,2.6,1.95,0,,grasp:ok transport:ok place:ok
+23,True,,,1,8.6,0.9972336684226332,4.2,2.0,2.4,0,,grasp:ok transport:ok place:ok
+24,True,,,2,21.35,1.2643419359209636,8.3,5.1,4.0,3.95,transport:lost_grip,grasp:ok transport:lost_grip home:ok grasp:ok transport:ok place:ok
+25,False,transport,lost_grip; cube tipped over,1,11.9,,5.55,3.2,0,3.15,transport:lost_grip,grasp:ok transport:lost_grip home:ok
+26,True,,,1,7.55,2.920969972273177,3.95,1.7,1.9,0,,grasp:ok transport:ok place:ok
+27,True,,,1,8.75,0.9281362745219368,4.3,2.8,1.65,0,,grasp:ok transport:ok place:ok
+28,True,,,1,9.85,2.4670804106864463,6.6,1.5,1.75,0,,grasp:ok transport:ok place:ok
+29,True,,,1,11.35,2.714222366736515,4.25,4.55,2.55,0,,grasp:ok transport:ok place:ok
+30,True,,,1,13.4,19.8484623971335,6.55,3.6,3.25,0,,grasp:ok transport:ok place:ok
+31,True,,,1,12.25,0.584906215699819,7.65,2.6,2.0,0,,grasp:ok transport:ok place:ok
+32,True,,,1,11.6,1.8627786685369647,4.1,4.5,3.0,0,,grasp:ok transport:ok place:ok
+33,True,,,1,10.0,1.8713722449120267,4.1,3.35,2.55,0,,grasp:ok transport:ok place:ok
+34,True,,,1,9.15,1.5442951057856822,4.6,2.3,2.25,0,,grasp:ok transport:ok place:ok
+35,False,grasp,timeout; out of attempts,3,63.65,,45.0,0,0,18.65,grasp:timeout,grasp:timeout home:ok grasp:timeout home:ok grasp:timeout home:ok
+36,False,grasp,knocked_over; cube tipped over,3,51.95,,25.9,1.85,3.25,20.95,place:dropped,grasp:ok transport:ok place:dropped home:ok grasp:timeout home:ok grasp:knocked_over home:ok
+37,True,,,2,32.9,1.19042459185632,24.85,1.9,1.35,4.8,grasp:timeout,grasp:timeout home:ok grasp:ok transport:ok place:ok
+38,True,,,1,9.4,0.9048781372148105,5.2,2.85,1.35,0,,grasp:ok transport:ok place:ok
+39,True,,,1,8.7,1.4926926363519084,4.65,2.5,1.55,0,,grasp:ok transport:ok place:ok
+40,False,grasp,knocked_over; cube tipped over,1,10.05,,3.8,0,0,6.25,grasp:knocked_over,grasp:knocked_over home:ok
+41,False,place,timeout; out of attempts,3,60.85,,16.05,7.4,18.0,19.4,place:timeout,grasp:ok transport:ok place:timeout home:ok grasp:ok transport:ok place:timeout home:ok grasp:ok transport:ok place:timeout home:ok
+42,True,,,1,9.4,4.62886904247476,4.25,2.35,2.8,0,,grasp:ok transport:ok place:ok
+43,True,,,1,8.95,1.458335595115506,4.95,1.9,2.1,0,,grasp:ok transport:ok place:ok
+44,False,place,toppled; cube tipped over,1,15.65,,5.2,3.6,1.05,5.8,place:toppled,grasp:ok transport:ok place:toppled home:ok
+45,True,,,1,7.1,1.3445060673595253,4.1,1.7,1.3,0,,grasp:ok transport:ok place:ok
+46,True,,,1,8.25,0.7988597970036828,4.0,1.9,2.35,0,,grasp:ok transport:ok place:ok
+47,True,,,3,58.95,2.5021639697426767,28.6,7.1,10.4,12.85,place:timeout,grasp:ok transport:ok place:timeout home:ok grasp:timeout home:ok grasp:ok transport:ok place:ok
+48,True,,,1,10.25,1.7225302648410301,4.9,3.75,1.6,0,,grasp:ok transport:ok place:ok
+49,True,,,1,8.1,2.754282990790007,4.75,2.1,1.25,0,,grasp:ok transport:ok place:ok
+50,True,,,1,9.4,1.0699152381450825,5.8,2.15,1.45,0,,grasp:ok transport:ok place:ok
+51,True,,,1,10.15,8.51836743633352,5.6,3.1,1.45,0,,grasp:ok transport:ok place:ok
+52,True,,,1,11.45,6.4568727917876165,5.6,2.05,3.8,0,,grasp:ok transport:ok place:ok
+53,False,grasp,timeout; out of attempts,3,62.85,,45.0,0,0,17.85,grasp:timeout,grasp:timeout home:ok grasp:timeout home:ok grasp:timeout home:ok
+54,True,,,1,12.4,17.03836010686955,5.2,3.95,3.25,0,,grasp:ok transport:ok place:ok
+55,True,,,1,9.75,2.9708230932184376,5.25,2.0,2.5,0,,grasp:ok transport:ok place:ok
+56,True,,,1,13.0,1.4450464731540698,4.2,4.8,4.0,0,,grasp:ok transport:ok place:ok
+57,True,,,1,12.15,18.539355336002362,4.15,4.95,3.05,0,,grasp:ok transport:ok place:ok
+58,True,,,1,10.05,3.2063535718378144,4.15,2.9,3.0,0,,grasp:ok transport:ok place:ok
+59,True,,,1,9.6,1.287058487236354,4.0,3.4,2.2,0,,grasp:ok transport:ok place:ok
+60,True,,,1,8.8,1.5424073358603263,5.05,2.1,1.65,0,,grasp:ok transport:ok place:ok
+61,True,,,1,9.8,0.7731166018369973,4.65,2.3,2.85,0,,grasp:ok transport:ok place:ok
+62,False,grasp,knocked_over; cube tipped over,1,10.4,,4.05,0,0,6.35,grasp:knocked_over,grasp:knocked_over home:ok
+63,True,,,1,10.7,1.7738338719661078,5.9,3.05,1.75,0,,grasp:ok transport:ok place:ok
+64,True,,,1,12.65,17.44476695982543,4.15,3.9,4.6,0,,grasp:ok transport:ok place:ok
+65,True,,,1,9.4,1.1795834780299157,4.85,3.15,1.4,0,,grasp:ok transport:ok place:ok
+66,True,,,1,10.55,0.9399190703035603,5.75,3.15,1.65,0,,grasp:ok transport:ok place:ok
+67,True,,,1,12.6,12.751544867823169,4.1,4.2,4.3,0,,grasp:ok transport:ok place:ok
+68,True,,,1,8.55,1.3914553043814082,4.0,2.05,2.5,0,,grasp:ok transport:ok place:ok
+69,True,,,2,26.9,1.2971715489166131,10.2,4.95,7.2,4.55,place:timeout,grasp:ok transport:ok place:timeout home:ok grasp:ok transport:ok place:ok
+70,True,,,1,11.1,10.466347265061755,4.4,2.75,3.95,0,,grasp:ok transport:ok place:ok
+71,True,,,1,10.65,11.844398032451346,4.35,1.95,4.35,0,,grasp:ok transport:ok place:ok
+72,True,,,1,8.25,1.3467653185821413,4.7,1.95,1.6,0,,grasp:ok transport:ok place:ok
+73,False,grasp,timeout; cube out of the workspace,1,21.95,,15.0,0,0,6.95,grasp:timeout,grasp:timeout home:ok
+74,True,,,1,11.05,1.733538085705759,5.1,3.95,2.0,0,,grasp:ok transport:ok place:ok
+75,False,grasp,knocked_over; cube tipped over,2,34.7,,11.5,3.5,6.0,13.7,place:timeout,grasp:ok transport:ok place:timeout home:ok grasp:knocked_over home:ok
+76,True,,,1,16.85,2.3085440153272208,11.85,2.4,2.6,0,,grasp:ok transport:ok place:ok
+77,True,,,1,11.1,11.845865655695128,4.25,1.3,5.55,0,,grasp:ok transport:ok place:ok
+78,True,,,1,10.35,1.6734289742765276,4.0,3.8,2.55,0,,grasp:ok transport:ok place:ok
+79,True,,,1,7.4,2.0781551155754876,4.3,1.9,1.2,0,,grasp:ok transport:ok place:ok
+80,True,,,1,11.25,10.522054556074588,4.2,4.3,2.75,0,,grasp:ok transport:ok place:ok
+81,True,,,1,11.8,14.005140121309338,6.0,2.7,3.1,0,,grasp:ok transport:ok place:ok
+82,False,grasp,timeout; out of attempts,3,66.85,,45.0,0,0,21.85,grasp:timeout,grasp:timeout home:ok grasp:timeout home:ok grasp:timeout home:ok
+83,True,,,1,9.45,1.5362402341906134,4.05,2.6,2.8,0,,grasp:ok transport:ok place:ok
+84,True,,,1,11.0,2.501626662020653,5.15,3.75,2.1,0,,grasp:ok transport:ok place:ok
+85,True,,,1,10.2,0.9347752640151755,5.55,2.8,1.85,0,,grasp:ok transport:ok place:ok
+86,True,,,1,10.15,17.899316905941706,3.85,3.15,3.15,0,,grasp:ok transport:ok place:ok
+87,True,,,3,52.75,1.8438866276047614,17.45,7.35,14.6,13.35,place:timeout,grasp:ok transport:ok place:timeout home:ok grasp:ok transport:ok place:timeout home:ok grasp:ok transport:ok place:ok
+88,True,,,1,12.1,2.7511484719787895,5.7,2.55,3.85,0,,grasp:ok transport:ok place:ok
+89,True,,,1,7.9,1.1039435969911473,3.95,2.4,1.55,0,,grasp:ok transport:ok place:ok
+90,True,,,1,10.4,0.5788539382108691,5.15,3.45,1.8,0,,grasp:ok transport:ok place:ok
+91,True,,,1,15.65,12.824090202524694,9.75,4.35,1.55,0,,grasp:ok transport:ok place:ok
+92,True,,,1,9.15,1.9064830130327137,5.0,2.0,2.15,0,,grasp:ok transport:ok place:ok
+93,False,grasp,knocked_over; cube tipped over,1,11.55,,4.55,0,0,7.0,grasp:knocked_over,grasp:knocked_over home:ok
+94,True,,,1,10.5,0.7902403367964376,4.05,3.85,2.6,0,,grasp:ok transport:ok place:ok
+95,True,,,1,10.8,1.619309447431106,4.15,2.05,4.6,0,,grasp:ok transport:ok place:ok
+96,True,,,2,31.85,1.4329569153401036,9.9,5.0,11.25,5.7,place:timeout,grasp:ok transport:ok place:timeout home:ok grasp:ok transport:ok place:ok
+97,False,grasp,timeout; out of attempts,3,65.15,,45.0,0,0,20.15,grasp:timeout,grasp:timeout home:ok grasp:timeout home:ok grasp:timeout home:ok
+98,True,,,1,9.6,1.5992453312583832,5.35,2.6,1.65,0,,grasp:ok transport:ok place:ok
+99,True,,,1,7.7,1.3748024657327997,4.45,2.05,1.2,0,,grasp:ok transport:ok place:ok
+100,True,,,1,11.55,9.504034281803802,5.5,2.65,3.4,0,,grasp:ok transport:ok place:ok
+101,False,place,toppled; cube tipped over,1,19.7,,6.3,3.3,4.0,6.1,place:toppled,grasp:ok transport:ok place:toppled home:ok
+102,True,,,1,12.5,15.59396903148472,5.8,3.9,2.8,0,,grasp:ok transport:ok place:ok
+103,False,place,timeout; out of attempts,3,62.25,,17.0,6.85,18.0,20.4,place:timeout,grasp:ok transport:ok place:timeout home:ok grasp:ok transport:ok place:timeout home:ok grasp:ok transport:ok place:timeout home:ok
+104,False,grasp,timeout; out of attempts,3,65.55,,45.0,0,0,20.55,grasp:timeout,grasp:timeout home:ok grasp:timeout home:ok grasp:timeout home:ok
+105,True,,,2,19.2,19.923597436315255,8.3,4.75,2.3,3.85,transport:lost_grip,grasp:ok transport:lost_grip home:ok grasp:ok transport:ok place:ok
+106,True,,,1,15.3,3.9217666903984276,10.0,2.05,3.25,0,,grasp:ok transport:ok place:ok
+107,True,,,1,7.85,1.0912902278097267,4.3,2.25,1.3,0,,grasp:ok transport:ok place:ok
+108,True,,,1,10.5,0.5740549045134103,5.45,2.6,2.45,0,,grasp:ok transport:ok place:ok
+109,True,,,2,18.2,2.2928157208117597,7.75,4.45,2.05,3.95,transport:lost_grip,grasp:ok transport:lost_grip home:ok grasp:ok transport:ok place:ok
+110,True,,,1,10.05,11.519085035753982,4.0,4.45,1.6,0,,grasp:ok transport:ok place:ok
+111,True,,,1,11.1,13.295289707614835,4.9,2.45,3.75,0,,grasp:ok transport:ok place:ok
+112,True,,,1,9.55,1.4232734641052394,4.25,3.75,1.55,0,,grasp:ok transport:ok place:ok
+113,True,,,1,7.95,2.7433834118886358,4.7,1.75,1.5,0,,grasp:ok transport:ok place:ok
+114,True,,,1,10.8,16.116152079056533,4.75,3.05,3.0,0,,grasp:ok transport:ok place:ok
+115,True,,,1,12.6,12.657338972999824,4.35,5.4,2.85,0,,grasp:ok transport:ok place:ok
+116,True,,,1,11.2,13.169108901875221,5.0,2.85,3.35,0,,grasp:ok transport:ok place:ok
+117,True,,,1,10.2,2.441081643581342,4.8,3.55,1.85,0,,grasp:ok transport:ok place:ok
+118,True,,,1,9.8,11.04721254762756,4.15,2.85,2.8,0,,grasp:ok transport:ok place:ok
+119,True,,,1,9.15,1.2504820584808156,5.3,2.4,1.45,0,,grasp:ok transport:ok place:ok
+120,True,,,1,14.6,1.4211782347363213,8.35,3.8,2.45,0,,grasp:ok transport:ok place:ok
+121,True,,,1,9.45,9.096087523877879,4.0,3.3,2.15,0,,grasp:ok transport:ok place:ok
+122,True,,,1,7.9,1.343077055230658,3.85,2.3,1.75,0,,grasp:ok transport:ok place:ok
+123,True,,,1,12.65,6.193549599294256,4.45,2.5,5.7,0,,grasp:ok transport:ok place:ok
+124,True,,,1,8.95,1.1737057787549785,4.75,2.95,1.25,0,,grasp:ok transport:ok place:ok
+125,False,grasp,knocked_over; cube tipped over,1,10.35,,5.5,0,0,4.85,grasp:knocked_over,grasp:knocked_over home:ok
+126,True,,,2,25.25,1.2728869323112186,9.6,4.5,7.2,3.95,place:timeout,grasp:ok transport:ok place:timeout home:ok grasp:ok transport:ok place:ok
+127,True,,,1,11.5,1.6430560414025512,4.55,3.2,3.75,0,,grasp:ok transport:ok place:ok
+128,True,,,1,8.3,1.3375202934706247,4.75,1.6,1.95,0,,grasp:ok transport:ok place:ok
+129,True,,,1,7.25,0.9665490818125183,4.4,1.65,1.2,0,,grasp:ok transport:ok place:ok
+130,True,,,1,9.7,1.2646285214563828,5.05,2.9,1.75,0,,grasp:ok transport:ok place:ok
+131,True,,,1,10.65,1.9308345307317154,5.65,3.3,1.7,0,,grasp:ok transport:ok place:ok
+132,True,,,1,9.9,1.7265444742342393,3.9,4.25,1.75,0,,grasp:ok transport:ok place:ok
+133,False,place,toppled; cube tipped over,1,13.95,,5.85,4.4,0.4,3.3,place:toppled,grasp:ok transport:ok place:toppled home:ok
+134,True,,,1,11.2,0.7254854441276236,4.2,4.4,2.6,0,,grasp:ok transport:ok place:ok
+135,True,,,1,11.9,17.078458772469304,3.9,3.65,4.35,0,,grasp:ok transport:ok place:ok
+136,True,,,1,12.0,3.817191211506,4.65,3.15,4.2,0,,grasp:ok transport:ok place:ok
+137,True,,,1,9.95,1.1313969031179276,5.35,3.2,1.4,0,,grasp:ok transport:ok place:ok
+138,True,,,1,11.4,1.7228538196827736,5.15,3.95,2.3,0,,grasp:ok transport:ok place:ok
+139,True,,,1,10.1,5.079653110063905,4.55,2.9,2.65,0,,grasp:ok transport:ok place:ok
+140,True,,,1,10.9,13.747294085226981,4.45,4.75,1.7,0,,grasp:ok transport:ok place:ok
+141,True,,,1,8.45,2.0376497890028578,4.35,2.35,1.75,0,,grasp:ok transport:ok place:ok
+142,True,,,1,9.05,1.3632188856788283,4.7,2.5,1.85,0,,grasp:ok transport:ok place:ok
+143,False,place,toppled; cube tipped over,1,19.35,,6.0,2.6,4.55,6.2,place:toppled,grasp:ok transport:ok place:toppled home:ok
+144,True,,,1,9.4,1.6063249547306864,5.2,2.15,2.05,0,,grasp:ok transport:ok place:ok
+145,True,,,1,9.45,1.970529738837069,4.0,2.55,2.9,0,,grasp:ok transport:ok place:ok
+146,True,,,1,9.6,0.9490491079884593,4.25,3.65,1.7,0,,grasp:ok transport:ok place:ok
+147,False,grasp,knocked_over; cube tipped over,1,12.1,,4.95,0,0,7.15,grasp:knocked_over,grasp:knocked_over home:ok
+148,True,,,1,9.85,1.7781313970552006,4.5,3.45,1.9,0,,grasp:ok transport:ok place:ok
+149,True,,,1,9.7,1.8268280877034144,4.9,3.45,1.35,0,,grasp:ok transport:ok place:ok
+150,True,,,1,9.4,1.9389126754523764,5.2,2.35,1.85,0,,grasp:ok transport:ok place:ok
+151,True,,,1,9.55,1.478932428186957,5.0,3.25,1.3,0,,grasp:ok transport:ok place:ok
+152,True,,,1,9.15,0.3638362607857332,4.0,3.1,2.05,0,,grasp:ok transport:ok place:ok
+153,True,,,1,7.75,1.2975784067950267,3.9,2.6,1.25,0,,grasp:ok transport:ok place:ok
+154,True,,,1,9.85,1.2262416943813537,6.4,2.15,1.3,0,,grasp:ok transport:ok place:ok
+155,True,,,1,11.4,2.241333603168534,5.35,2.15,3.9,0,,grasp:ok transport:ok place:ok
+156,True,,,1,10.4,8.12964157503364,4.05,2.8,3.55,0,,grasp:ok transport:ok place:ok
+157,False,grasp,knocked_over; cube tipped over,1,11.0,,4.35,0,0,6.65,grasp:knocked_over,grasp:knocked_over home:ok
+158,True,,,1,11.8,1.824959997801519,7.3,3.1,1.4,0,,grasp:ok transport:ok place:ok
+159,True,,,1,13.0,16.609772878807863,5.55,4.1,3.35,0,,grasp:ok transport:ok place:ok
+160,False,place,toppled; cube tipped over,1,17.95,,4.55,2.75,3.9,6.75,place:toppled,grasp:ok transport:ok place:toppled home:ok
+161,False,grasp,timeout; out of attempts,3,63.6,,45.0,0,0,18.6,grasp:timeout,grasp:timeout home:ok grasp:timeout home:ok grasp:timeout home:ok
+162,False,grasp,timeout; out of attempts,3,64.45,,45.0,0,0,19.45,grasp:timeout,grasp:timeout home:ok grasp:timeout home:ok grasp:timeout home:ok
+163,True,,,1,10.8,3.226587832791867,5.2,3.3,2.3,0,,grasp:ok transport:ok place:ok
+164,False,grasp,timeout; out of attempts,3,64.65,,45.0,0,0,19.65,grasp:timeout,grasp:timeout home:ok grasp:timeout home:ok grasp:timeout home:ok
+165,True,,,1,10.05,3.805783952520323,4.15,2.65,3.25,0,,grasp:ok transport:ok place:ok
+166,True,,,1,9.25,2.15531858987411,4.85,1.9,2.5,0,,grasp:ok transport:ok place:ok
+167,True,,,1,13.85,6.727052607778922,5.7,2.4,5.75,0,,grasp:ok transport:ok place:ok
+168,True,,,1,10.8,2.5660486240312417,4.25,4.7,1.85,0,,grasp:ok transport:ok place:ok
+169,False,grasp,knocked_over; cube tipped over,2,31.2,,9.0,3.6,6.0,12.6,place:timeout,grasp:ok transport:ok place:timeout home:ok grasp:knocked_over home:ok
+170,True,,,1,10.25,4.583375472079715,4.6,2.45,3.2,0,,grasp:ok transport:ok place:ok
+171,True,,,1,9.25,1.494531354537962,5.2,2.2,1.85,0,,grasp:ok transport:ok place:ok
+172,True,,,1,10.0,1.6146914687084666,5.2,2.05,2.75,0,,grasp:ok transport:ok place:ok
+173,True,,,1,10.55,14.561217367728853,4.3,3.2,3.05,0,,grasp:ok transport:ok place:ok
+174,True,,,1,7.7,0.9109433601485427,4.4,2.0,1.3,0,,grasp:ok transport:ok place:ok
+175,True,,,1,12.85,9.258130321580584,5.15,3.55,4.15,0,,grasp:ok transport:ok place:ok
+176,False,place,toppled; cube tipped over,1,16.5,,4.75,2.35,3.65,5.75,place:toppled,grasp:ok transport:ok place:toppled home:ok
+177,False,transport,lost_grip; cube tipped over,1,13.5,,4.85,3.15,0,5.5,transport:lost_grip,grasp:ok transport:lost_grip home:ok
+178,False,grasp,timeout; out of attempts,3,63.7,,45.0,0,0,18.7,grasp:timeout,grasp:timeout home:ok grasp:timeout home:ok grasp:timeout home:ok
+179,True,,,1,8.9,2.8121658713517457,3.95,3.35,1.6,0,,grasp:ok transport:ok place:ok
+180,True,,,1,7.95,1.5123285619736182,4.15,2.4,1.4,0,,grasp:ok transport:ok place:ok
+181,True,,,1,10.45,4.568720942804358,3.95,3.4,3.1,0,,grasp:ok transport:ok place:ok
+182,True,,,1,9.2,1.0533366295532693,3.95,2.55,2.7,0,,grasp:ok transport:ok place:ok
+183,True,,,2,26.95,1.7819194389226964,10.75,4.45,7.45,4.3,place:timeout,grasp:ok transport:ok place:timeout home:ok grasp:ok transport:ok place:ok
+184,True,,,1,8.9,3.1289347428324072,5.25,2.3,1.35,0,,grasp:ok transport:ok place:ok
+185,True,,,1,10.4,3.2000181214451224,4.6,2.65,3.15,0,,grasp:ok transport:ok place:ok
+186,True,,,2,30.1,0.5560604975162302,20.65,1.5,1.35,6.6,grasp:timeout,grasp:timeout home:ok grasp:ok transport:ok place:ok
+187,True,,,1,15.05,6.594637529602682,7.75,3.2,4.1,0,,grasp:ok transport:ok place:ok
+188,True,,,1,10.1,1.1684757540369317,5.95,2.9,1.25,0,,grasp:ok transport:ok place:ok
+189,True,,,1,10.85,16.427803222035195,5.65,2.45,2.75,0,,grasp:ok transport:ok place:ok
+190,False,grasp,knocked_over; cube tipped over,1,11.15,,4.55,0,0,6.6,grasp:knocked_over,grasp:knocked_over home:ok
+191,True,,,1,7.15,1.2818937571101896,4.35,1.55,1.25,0,,grasp:ok transport:ok place:ok
+192,False,place,timeout; out of attempts,3,65.15,,41.75,3.2,6.0,14.2,grasp:timeout,grasp:timeout home:ok grasp:timeout home:ok grasp:ok transport:ok place:timeout home:ok
+193,True,,,1,11.3,17.66706014722267,4.95,4.0,2.35,0,,grasp:ok transport:ok place:ok
+194,True,,,2,28.7,12.212167461458339,9.95,4.2,10.55,4.0,place:timeout,grasp:ok transport:ok place:timeout home:ok grasp:ok transport:ok place:ok
+195,True,,,1,9.4,1.5295883397034893,5.1,2.5,1.8,0,,grasp:ok transport:ok place:ok
+196,True,,,1,7.85,2.7514980513102887,5.0,1.4,1.45,0,,grasp:ok transport:ok place:ok
+197,True,,,1,14.4,11.353278333225068,6.3,5.9,2.2,0,,grasp:ok transport:ok place:ok
+198,True,,,2,29.1,2.1006019408870653,10.25,3.5,7.95,7.4,place:timeout,grasp:ok transport:ok place:timeout home:ok grasp:ok transport:ok place:ok
+199,False,grasp,timeout; out of attempts,3,65.5,,45.0,0,0,20.5,grasp:timeout,grasp:timeout home:ok grasp:timeout home:ok grasp:timeout home:ok

@@ -1,0 +1,72 @@
+{
+  "name": "grasp_v2yaw_seed1_selected_grasp_clutter_v1",
+  "policy": "PPO selected model from runs/grasp_v2yaw_seed1 (seed 1, 1,003,520 steps)",
+  "protocol": "GraspV2BlindClutterEnv, 15 s horizon",
+  "eval_set": {
+    "name": "grasp_clutter_v1",
+    "n": 200,
+    "digest": "4ffba3e2e598"
+  },
+  "created_utc": "2026-10-24T20:48:26+00:00",
+  "git": {
+    "commit": "cfa939a864a6f2bf2c7552471f885f5fade9e0e6",
+    "dirty": false
+  },
+  "versions": {
+    "python": "3.12.3",
+    "mujoco": "3.16.0",
+    "numpy": "2.5.4"
+  },
+  "summary": {
+    "episodes": 200,
+    "success_rate": 0.775,
+    "success_ci95": [
+      0.7122575346140798,
+      0.8273771621308439
+    ],
+    "first_success_s": {
+      "median": 4.45,
+      "p90": 5.63
+    },
+    "success_fraction_median": 0.6816666666666666,
+    "retry_rate": 0.0,
+    "max_cube_tilt_deg": {
+      "median": 16.19445204082276,
+      "max": 83.92907251801843
+    },
+    "final_lift_cm_median": 9.67241108504352,
+    "floor_contact_episode_rate": 0.1,
+    "return": {
+      "mean": 85.05054147856798,
+      "std": 46.984954060448004
+    },
+    "by_region": {
+      "far": {
+        "n": 121,
+        "success_rate": 0.8677685950413223,
+        "success_ci95": [
+          0.7959618575525519,
+          0.9169415336247478
+        ]
+      },
+      "near": {
+        "n": 79,
+        "success_rate": 0.6329113924050633,
+        "success_ci95": [
+          0.5227671409211199,
+          0.7307286872618222
+        ]
+      }
+    },
+    "failures": {
+      "knocked_over": 19,
+      "never_closed": 25,
+      "dropped": 1
+    },
+    "inference_latency_us": {
+      "median": 1000.9290001562476,
+      "p99": 8170.742479987908
+    },
+    "wall_clock_s": 384.7
+  }
+}
