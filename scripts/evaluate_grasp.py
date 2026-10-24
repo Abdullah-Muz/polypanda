@@ -31,6 +31,7 @@ from polypanda.evaluation.grasp import (
     evaluate_grasp_policy,
     evaluate_scripted_grasp,
 )
+from polypanda.evaluation.pickplace import grasp_env_for
 from polypanda.evaluation.sets import GraspEvalSet, generate_grasp_eval_set
 from polypanda.policies.loader import load_run
 
@@ -61,7 +62,7 @@ def run_env_protocol(args, eval_set: GraspEvalSet) -> None:
         run_dir, _, which = args.policy[4:].partition("@")
         policy = load_run(run_dir, which or "best")
         meta = policy.metadata
-        if meta["skill"] != "grasp":
+        if meta["skill"] not in ("grasp", "grasp_v2"):
             raise SystemExit(f"{run_dir} is a {meta['skill']} policy, not grasp")
         driver = PolicyDriver(policy)
         description = (f"{meta['algorithm']} {policy.which} model from {run_dir} "
@@ -70,8 +71,10 @@ def run_env_protocol(args, eval_set: GraspEvalSet) -> None:
     else:
         raise SystemExit(f"unknown policy {args.policy!r}; use scripted or run:DIR[@which]")
 
-    summary, episodes = evaluate_grasp_policy(driver, eval_set)
-    record = {"name": name, "policy": description, "protocol": "GraspEnv, 15 s horizon",
+    env = grasp_env_for(args.policy)  # the policy's own task env (GraspEnv or GraspV2Env)
+    summary, episodes = evaluate_grasp_policy(driver, eval_set, env=env)
+    record = {"name": name, "policy": description,
+              "protocol": f"{type(env).__name__}, 15 s horizon",
               "eval_set": {"name": eval_set.name, "n": len(eval_set), "digest": eval_set.digest},
               "created_utc": datetime.now(UTC).isoformat(timespec="seconds"),
               "git": git_state(),

@@ -310,9 +310,10 @@ def summarize_policy_grasp(results: list[GraspPolicyEpisode], latencies: list[fl
     }
 
 
-def evaluate_grasp_policy(driver, eval_set: GraspEvalSet, config: GraspConfig | None = None
-                          ) -> tuple[dict, list[GraspPolicyEpisode]]:
-    env = GraspEnv(config)
+def evaluate_grasp_policy(driver, eval_set: GraspEvalSet, config: GraspConfig | None = None,
+                          env: GraspEnv | None = None) -> tuple[dict, list[GraspPolicyEpisode]]:
+    """`env` overrides the default GraspEnv(config), e.g. a GraspV2Env for v2 policies."""
+    env = env or GraspEnv(config)
     start = time.perf_counter()
     results, latencies = [], []
     for i, (placement, region) in enumerate(zip(eval_set.placements, eval_set.regions,
