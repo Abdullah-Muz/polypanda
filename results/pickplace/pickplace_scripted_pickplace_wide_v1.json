@@ -1,0 +1,94 @@
+{
+  "name": "pickplace_scripted_pickplace_wide_v1",
+  "skills": {
+    "grasp": "scripted top-down grasp",
+    "grasp_provenance": {},
+    "transport": "scripted carry (closed-loop IK, gain 0.2)",
+    "place": "scripted place (upright correction, gated release)"
+  },
+  "supervisor": {
+    "max_grasp_attempts": 3,
+    "handoff_steps": 10,
+    "pre_place_height": 0.12,
+    "release_steps": 10,
+    "retreat_height": 0.1,
+    "retreat_steps": 40,
+    "home_tol": 0.02,
+    "home_timeout": 200,
+    "retry_max_tilt": 0.1745,
+    "retry_max_lift": 0.005,
+    "retry_margin": 0.03,
+    "retry_region": [
+      [
+        0.3,
+        0.7
+      ],
+      [
+        -0.3,
+        0.3
+      ]
+    ],
+    "time_budget_s": 90.0,
+    "timed_switching_s": null
+  },
+  "eval_set": {
+    "name": "pickplace_wide_v1",
+    "n": 200,
+    "digest": "f425f96980b7"
+  },
+  "created_utc": "2026-10-24T18:35:38+00:00",
+  "git": {
+    "commit": "81b43f47fa8cc020e98d3c6a0877377961b28436",
+    "dirty": false
+  },
+  "versions": {
+    "python": "3.12.3",
+    "mujoco": "3.16.0",
+    "numpy": "2.5.4",
+    "torch": "2.14.1+cpu"
+  },
+  "summary": {
+    "episodes": 200,
+    "success_rate": 0.985,
+    "success_ci95": [
+      0.9568335194437211,
+      0.9948858548155076
+    ],
+    "first_attempt_success_rate": 0.95,
+    "failures_by_stage": {
+      "place": 3
+    },
+    "failures": {
+      "timeout; out of attempts": 2,
+      "toppled; cube tipped over": 1
+    },
+    "first_failures": {
+      "place:timeout": 7,
+      "place:dropped": 2,
+      "place:toppled": 1
+    },
+    "retries": {
+      "episodes_with_retry": 9,
+      "recovered": 7,
+      "attempts": {
+        "1": 191,
+        "3": 3,
+        "2": 6
+      }
+    },
+    "time_s": {
+      "median": 13.05,
+      "p90": 16.240000000000002,
+      "by_stage_median": {
+        "grasp": 7.3,
+        "transport": 2.9,
+        "place": 2.25
+      }
+    },
+    "final_xy_error_mm": {
+      "median": 2.146186814103414,
+      "p95": 14.993910481932858
+    },
+    "wall_clock_s": 297.1
+  }
+}
