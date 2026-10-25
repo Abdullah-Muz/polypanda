@@ -42,6 +42,30 @@ def make_action_adapter(model: mujoco.MjModel, idx: PandaIndices, config):
     raise ValueError(f"unknown action space {config.space!r}; use 'joint' or 'cartesian'")
 
 
+ACTION_LIMIT = 5.0  # action-space bound while the bound penalty is on
+
+
+def action_limit(config) -> float:
+    """Action-space bound for an ActionConfig: 1, or ACTION_LIMIT with the bound penalty."""
+    return ACTION_LIMIT if config.bound_penalty > 0 else 1.0
+
+
+def bound_action(action, config) -> tuple[np.ndarray, dict]:
+    """Clip a policy output to [-1, 1]; with the bound penalty, also charge for the excess.
+
+    PPO's Gaussian mean can drift beyond the bounds, where every sample clips to the same
+    action and training gets no signal to bring it back (seen in the Cartesian transport
+    pilots). With bound_penalty > 0 the action space is widened to +-ACTION_LIMIT and outputs
+    beyond +-1 cost bound_penalty x squared excess (as rl_games' bounds loss), which gives that
+    signal. Returns (clipped action, extra reward terms).
+    """
+    a = np.asarray(action, dtype=np.float64)
+    clipped = np.clip(a, -1.0, 1.0)
+    if config.bound_penalty <= 0:
+        return clipped, {}
+    return clipped, {"action_bound": -config.bound_penalty * float(np.sum((a - clipped) ** 2))}
+
+
 def action_schema(config) -> str:
     """Action schema name recorded with a policy trained on this ActionConfig."""
     if config.space == "cartesian":

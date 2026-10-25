@@ -13,7 +13,11 @@ import numpy as np
 from gymnasium import spaces
 
 from polypanda.config import load_yaml
-from polypanda.control.action_adapter import make_action_adapter
+from polypanda.control.action_adapter import (
+    action_limit,
+    bound_action,
+    make_action_adapter,
+)
 from polypanda.environments.targets import ReachTargetSampler, WorkspaceConfig
 from polypanda.simulation.assets import load_panda_scene
 from polypanda.simulation.panda import ARM_JOINTS, PandaIndices, reset_to_home, tcp_position
@@ -49,6 +53,7 @@ class ActionConfig:
     max_lead: float | None = None
     space: str = "joint"        # "joint": 7 joint increments; "cartesian": hand motion through IK
     cartesian: CartesianConfig = field(default_factory=CartesianConfig)
+    bound_penalty: float = 0.0  # >0: outputs beyond +-1 cost this x squared excess (bound_action)
 
 
 @dataclass(frozen=True)
@@ -103,7 +108,8 @@ class ReachEnv(gym.Env):
         joint_ids = [self.model.joint(name).id for name in ARM_JOINTS]
         self._q_low, self._q_high = self.model.jnt_range[joint_ids].T
 
-        self.action_space = spaces.Box(-1.0, 1.0, shape=(self.adapter.action_dim,),
+        limit = action_limit(self.config.action)
+        self.action_space = spaces.Box(-limit, limit, shape=(self.adapter.action_dim,),
                                        dtype=np.float32)
         self.observation_space = spaces.Box(-np.inf, np.inf, shape=(OBS_DIM,), dtype=np.float32)
 
@@ -147,7 +153,7 @@ class ReachEnv(gym.Env):
 
     def step(self, action):
         cfg = self.config
-        a = np.clip(np.asarray(action, dtype=np.float64), -1.0, 1.0)
+        a, bound_terms = bound_action(action, self.config.action)
         self.adapter.step(self.data, a)
         self._steps += 1
 
@@ -172,6 +178,7 @@ class ReachEnv(gym.Env):
             "action": -cfg.reward.action * float(a @ a),
             "contact": -cfg.reward.contact if contact else 0.0,
             "joint_limit": -cfg.reward.joint_limit * joints_at_limit,
+            **bound_terms,
         }
         self._distance = distance
         terminated = success and cfg.success.terminate

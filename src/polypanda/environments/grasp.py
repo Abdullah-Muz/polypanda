@@ -16,7 +16,11 @@ import numpy as np
 from gymnasium import spaces
 
 from polypanda.config import load_yaml
-from polypanda.control.action_adapter import make_action_adapter
+from polypanda.control.action_adapter import (
+    action_limit,
+    bound_action,
+    make_action_adapter,
+)
 from polypanda.control.ik import PoseIK, closing_yaw, grasp_closing_yaw, top_down_quat
 from polypanda.environments.reach import ActionConfig
 from polypanda.simulation.grasp import GraspCheckConfig, GraspMonitor
@@ -173,7 +177,8 @@ class GraspEnv(gym.Env):
         self.adapter = make_action_adapter(self.model, self.arm, self.config.action)
         self.monitor = GraspMonitor(self.model, self.arm, self.cube, self.config.check)
         self._finger_qpos = [self.model.joint(f"finger_joint{i}").qposadr[0] for i in (1, 2)]
-        self.action_space = spaces.Box(-1.0, 1.0, shape=(self.adapter.action_dim,),
+        limit = action_limit(self.config.action)
+        self.action_space = spaces.Box(-limit, limit, shape=(self.adapter.action_dim,),
                                        dtype=np.float32)
         self.observation_space = spaces.Box(-np.inf, np.inf, shape=(OBS_DIM,), dtype=np.float32)
         self.closed = False
@@ -306,7 +311,7 @@ class GraspEnv(gym.Env):
 
     def step(self, action):
         cfg, r = self.config, self.config.reward
-        a = np.clip(np.asarray(action, dtype=np.float64), -1.0, 1.0)
+        a, bound_terms = bound_action(action, self.config.action)
         self.adapter.step(self.data, a)
         self._steps += 1
         if not (np.all(np.isfinite(self.data.qpos)) and np.all(np.isfinite(self.data.qvel))):
@@ -332,6 +337,7 @@ class GraspEnv(gym.Env):
             "gripper_tilt": -r.gripper_tilt * m["tilt"],
             "floor": -r.floor if floor else 0.0,
             "knocked_over": -r.knocked_over if knocked else 0.0,
+            **bound_terms,
         }
         self._prev = {"distance": m["distance"], "align": abs(m["align"]), "lift": lifted}
         terminated = knocked

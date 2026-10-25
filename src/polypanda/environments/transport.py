@@ -13,7 +13,12 @@ import numpy as np
 from gymnasium import spaces
 
 from polypanda.config import load_yaml
-from polypanda.control.action_adapter import ACTION_DIM, make_action_adapter
+from polypanda.control.action_adapter import (
+    ACTION_DIM,
+    action_limit,
+    bound_action,
+    make_action_adapter,
+)
 from polypanda.control.ik import PoseIK
 from polypanda.control.scripted_carry import carry_action, level_quat
 from polypanda.environments.grasp import GRIPPER_CLOSED, gripper_tilt
@@ -130,7 +135,8 @@ class TransportEnv(gym.Env):
         self.monitor = GraspMonitor(self.model, self.arm, self.cube, self.config.check)
         self.pool = HandoffPool.load(_resolve(self.config.start_pool), self.model)
         self._finger_qpos = [self.model.joint(f"finger_joint{i}").qposadr[0] for i in (1, 2)]
-        self.action_space = spaces.Box(-1.0, 1.0, shape=(self.adapter.action_dim,),
+        limit = action_limit(self.config.action)
+        self.action_space = spaces.Box(-limit, limit, shape=(self.adapter.action_dim,),
                                        dtype=np.float32)
         self.observation_space = spaces.Box(-np.inf, np.inf, shape=(OBS_DIM,), dtype=np.float32)
         self.goal = np.zeros(3)
@@ -141,6 +147,7 @@ class TransportEnv(gym.Env):
         self._slip = np.zeros(3)
         self._prev_action = np.zeros(self.adapter.action_dim)
         self._state = None
+        self._bound_terms = {}
 
     @property
     def elapsed_steps(self) -> int:
@@ -185,10 +192,11 @@ class TransportEnv(gym.Env):
         pass
 
     def _applied_action(self, action) -> np.ndarray:
-        return np.clip(np.asarray(action, dtype=np.float64), -1.0, 1.0)
+        a, self._bound_terms = bound_action(action, self.config.action)
+        return a
 
     def _extra_terms(self) -> dict:
-        return {}
+        return self._bound_terms
 
     def step(self, action):
         cfg, r = self.config, self.config.reward

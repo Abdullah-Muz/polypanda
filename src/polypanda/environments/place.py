@@ -16,7 +16,11 @@ import numpy as np
 from gymnasium import spaces
 
 from polypanda.config import load_yaml
-from polypanda.control.action_adapter import make_action_adapter
+from polypanda.control.action_adapter import (
+    action_limit,
+    bound_action,
+    make_action_adapter,
+)
 from polypanda.environments.grasp import GRIPPER_CLOSED, GRIPPER_OPEN, gripper_tilt
 from polypanda.environments.handoff import HandoffPool, restore_state
 from polypanda.environments.reach import ActionConfig
@@ -122,7 +126,8 @@ class PlaceEnv(gym.Env):
         path = Path(self.config.start_pool)
         self.pool = HandoffPool.load(path if path.exists() else REPO_ROOT / path, self.model)
         self._finger_qpos = [self.model.joint(f"finger_joint{i}").qposadr[0] for i in (1, 2)]
-        self.action_space = spaces.Box(-1.0, 1.0, shape=(self.adapter.action_dim,),
+        limit = action_limit(self.config.action)
+        self.action_space = spaces.Box(-limit, limit, shape=(self.adapter.action_dim,),
                                        dtype=np.float32)
         self.observation_space = spaces.Box(-np.inf, np.inf, shape=(OBS_DIM,), dtype=np.float32)
         self.target = np.zeros(3)   # cube-centre target: (x, y, resting height)
@@ -181,7 +186,7 @@ class PlaceEnv(gym.Env):
 
     def step(self, action):
         cfg, r = self.config, self.config.reward
-        a = np.clip(np.asarray(action, dtype=np.float64), -1.0, 1.0)
+        a, bound_terms = bound_action(action, self.config.action)
         self.adapter.step(self.data, a)
         self._steps += 1
         cube = cube_position(self.data, self.cube)
@@ -215,6 +220,7 @@ class PlaceEnv(gym.Env):
             "floor": -r.floor if floor else 0.0,
             "dropped": -r.dropped if dropped else 0.0,
             "toppled": -r.toppled if toppled else 0.0,
+            **bound_terms,
         }
         self._distance, self._rise, self._prev_action = distance, rise, a
         terminated = bool(dropped or toppled)

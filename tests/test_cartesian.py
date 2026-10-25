@@ -11,7 +11,9 @@ from gymnasium.utils.env_checker import check_env
 from polypanda.control.action_adapter import (
     CartesianActionAdapter,
     JointDeltaActionAdapter,
+    action_limit,
     action_schema,
+    bound_action,
     make_action_adapter,
 )
 from polypanda.control.ik import closing_yaw
@@ -135,6 +137,32 @@ def test_hand_off_from_joint_actions_does_not_jump():
     assert gripper_tilt(_R(data, idx)) < 0.03
 
 
+def test_bound_penalty_charges_only_outputs_beyond_the_bounds():
+    clipped, terms = bound_action([2.0, 0.5, -1.5], ActionConfig())
+    np.testing.assert_array_equal(clipped, [1.0, 0.5, -1.0])
+    assert terms == {} and action_limit(ActionConfig()) == 1.0
+    penalized = ActionConfig(bound_penalty=0.1)
+    clipped, terms = bound_action([2.0, 0.5, -1.5], penalized)
+    np.testing.assert_array_equal(clipped, [1.0, 0.5, -1.0])
+    assert terms["action_bound"] == pytest.approx(-0.1 * (1.0 + 0.25))
+    assert bound_action([0.9, -1.0, 0.0], penalized)[1]["action_bound"] == 0.0
+    assert action_limit(penalized) == 5.0
+
+
+def test_transport_with_bound_penalty_moves_as_clipped():
+    cart3 = ActionConfig(space="cartesian", cartesian=CartesianConfig(dof=3), bound_penalty=0.1)
+    envs = [TransportEnv(replace(TransportConfig(), action=action))
+            for action in (cart3, replace(cart3, bound_penalty=0.0))]
+    assert envs[0].action_space.high[0] == 5.0 and envs[1].action_space.high[0] == 1.0
+    infos = []
+    for env, action in zip(envs, ([3.0, 0.0, -0.5], [1.0, 0.0, -0.5]), strict=True):
+        env.reset(seed=3, options={"state_index": 3})
+        infos.append(env.step(np.array(action, dtype=np.float32))[4])
+    np.testing.assert_array_equal(envs[0].data.qpos, envs[1].data.qpos)
+    assert infos[0]["reward_terms"]["action_bound"] == pytest.approx(-0.1 * 4.0)
+    assert "action_bound" not in infos[1]["reward_terms"]
+
+
 def test_tasks_take_cartesian_actions():
     grasp = GraspV2Env(replace(GraspConfig(), action=CART))
     assert grasp.action_space.shape == (4,)
@@ -175,6 +203,13 @@ def test_milestone8_configs_change_only_the_action_interface(name, base, cls, do
     assert action_schema(cfg.action) == f"cartesian-v1-{dof}d"
     assert cfg.action.cartesian == CartesianConfig(dof=dof)
     assert replace(cfg, action=reference.action) == reference
+
+
+def test_transport_config_penalizes_out_of_bound_outputs():
+    configs = Path(__file__).parents[1] / "configs"
+    transport = TransportConfig.from_yaml(configs / "transport_cartesian.yaml")
+    grasp = GraspConfig.from_yaml(configs / "grasp_cartesian_curriculum.yaml")
+    assert transport.action.bound_penalty == 0.1 and grasp.action.bound_penalty == 0
 
 
 def test_three_dof_holds_the_wrist():

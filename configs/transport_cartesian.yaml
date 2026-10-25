@@ -20,6 +20,8 @@ action:                   # Milestone 8: hand-motion actions; IK turns them into
     box_high: [0.85, 0.5, 0.6]
     ik_iters: 2
     posture_gain: 0.02    # null-space pull toward the home posture
+  bound_penalty: 0.1      # outputs beyond +-1 cost 0.1 x excess^2: the 3-D pilot pushed its
+                          # Gaussian mean far past the bound (clipped: no signal to come back)
 
 goal:                     # cube-centre goals (m), uniform in this box
   x_range: [0.35, 0.65]
