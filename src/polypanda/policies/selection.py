@@ -15,7 +15,7 @@ import yaml
 
 from polypanda.evaluation.grasp import PolicyDriver, run_policy_episode
 from polypanda.evaluation.sets import GraspEvalSet
-from polypanda.policies.loader import ALGORITHMS, LoadedPolicy, check_compatible
+from polypanda.policies.loader import ALGORITHMS, LoadedPolicy, check_compatible, run_env_config
 
 
 def candidates(run_dir: Path) -> list[tuple[str, Path, Path]]:
@@ -35,11 +35,14 @@ def candidates(run_dir: Path) -> list[tuple[str, Path, Path]]:
 def load_candidate(run_dir: Path, model: Path, stats: Path) -> LoadedPolicy:
     from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 
+    from polypanda.control.action_adapter import action_schema
     from polypanda.environments.tasks import TASKS
     meta = yaml.safe_load((run_dir / "metadata.yaml").read_text())
-    check_compatible(meta)
+    config = run_env_config(run_dir, meta["skill"])
+    check_compatible(meta, action_schema(config.action))
     policy = ALGORITHMS[meta["algorithm"]].load(model, device="cpu")
-    norm = VecNormalize.load(str(stats), DummyVecEnv([TASKS[meta["skill"]].env_cls]))
+    env_cls = TASKS[meta["skill"]].env_cls
+    norm = VecNormalize.load(str(stats), DummyVecEnv([lambda: env_cls(config)]))
     norm.training, norm.norm_reward = False, False
     return LoadedPolicy(policy, norm, meta, model.stem)
 
@@ -58,8 +61,9 @@ def select(run_dir: Path, env, val_set: GraspEvalSet) -> dict:
     """Score every candidate, record the winner as "selected" (ties: the later checkpoint)."""
     scores = {label: score(env, load_candidate(run_dir, model, stats), val_set)
               for label, model, stats in candidates(run_dir)}
-    order = ["250k", "500k", "750k", "best", "final"]  # tie-break toward more training
-    winner = max(scores, key=lambda k: (scores[k], order.index(k) if k in order else -1))
+    def training(label: str) -> int:  # tie-break toward more training: 250k < ... < best < final
+        return {"best": 10**9, "final": 10**9 + 1}.get(label) or int(label.rstrip("k"))
+    winner = max(scores, key=lambda k: (scores[k], training(k)))
     label, model, stats = next(c for c in candidates(run_dir) if c[0] == winner)
     shutil.copyfile(model, run_dir / "selected_model.zip")
     shutil.copyfile(stats, run_dir / "selected_vecnormalize.pkl")

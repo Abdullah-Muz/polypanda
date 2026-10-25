@@ -76,14 +76,21 @@ class PoseIK:
         pos, R = self.forward(q)
         return np.asarray(target_pos) - pos, orientation_error(R, np.asarray(target_quat))
 
-    def step(self, q, target_pos, target_quat) -> np.ndarray:
-        """Full DLS joint step toward the target pose (not scaled or limited)."""
+    def step(self, q, target_pos, target_quat, secondary=None) -> np.ndarray:
+        """Full DLS joint step toward the target pose (not scaled or limited).
+
+        `secondary`: an optional joint motion pursued only in the task's null space,
+        dq = n + J^+ (e - J n), so it does not disturb the pose (up to damping).
+        """
         e_pos, e_rot = self.error(q, target_pos, target_quat)
         mujoco.mj_jacSite(self.model, self.data, self._jacp, self._jacr, self.idx.tcp_site)
         cols = self.idx.arm_qvel
         J = np.vstack([self._jacp[:, cols], self.rot_weight * self._jacr[:, cols]])
         e = np.concatenate([e_pos, self.rot_weight * e_rot])
-        return J.T @ np.linalg.solve(J @ J.T + self.damping**2 * np.eye(6), e)
+        if secondary is None:
+            return J.T @ np.linalg.solve(J @ J.T + self.damping**2 * np.eye(6), e)
+        n = np.asarray(secondary, dtype=float)
+        return n + J.T @ np.linalg.solve(J @ J.T + self.damping**2 * np.eye(6), e - J @ n)
 
     def solve(self, q0, target_pos, target_quat, iters: int = 400,
               pos_tol: float = 1e-4, rot_tol: float = 1e-3) -> tuple[np.ndarray, bool]:

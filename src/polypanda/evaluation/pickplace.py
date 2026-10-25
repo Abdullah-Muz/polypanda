@@ -15,11 +15,10 @@ import numpy as np
 import yaml
 
 from polypanda.environments.grasp import GraspEnv
-from polypanda.environments.tasks import TASKS
 from polypanda.evaluation.grasp import PolicyDriver, ScriptedDriver
 from polypanda.evaluation.reach import wilson_interval
 from polypanda.evaluation.sets import PickPlaceEvalSet
-from polypanda.policies.loader import load_run
+from polypanda.policies.loader import load_run, make_run_env
 from polypanda.supervisor.fsm import PickPlaceResult, PickPlaceSupervisor, SupervisorConfig
 
 
@@ -32,9 +31,7 @@ def grasp_env_for(spec: str):
     meta_file = run_dir / "metadata.yaml"
     skill = (yaml.safe_load(meta_file.read_text())["skill"] if meta_file.exists()
              else yaml.safe_load((run_dir / "config.yaml").read_text())["task"])
-    task = TASKS[skill]
-    config = task.config_cls.from_yaml(run_dir / "env_config.yaml").for_evaluation()
-    return task.env_cls(config)
+    return make_run_env(run_dir, skill)
 
 
 def grasp_driver_from_spec(spec: str):

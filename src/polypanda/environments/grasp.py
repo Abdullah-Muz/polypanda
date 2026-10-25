@@ -7,7 +7,7 @@ horizon (lesson from reach v1). Success: the verified grasp predicate holds with
 least `success.lift` above the table. Reward terms are returned in info["reward_terms"].
 """
 
-from dataclasses import asdict, dataclass, field, replace
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 import gymnasium as gym
@@ -16,7 +16,7 @@ import numpy as np
 from gymnasium import spaces
 
 from polypanda.config import load_yaml
-from polypanda.control.action_adapter import ACTION_DIM, JointDeltaActionAdapter
+from polypanda.control.action_adapter import make_action_adapter
 from polypanda.control.ik import PoseIK, closing_yaw, grasp_closing_yaw, top_down_quat
 from polypanda.environments.reach import ActionConfig
 from polypanda.simulation.grasp import GraspCheckConfig, GraspMonitor
@@ -170,10 +170,11 @@ class GraspEnv(gym.Env):
         self.model, self.data = load_pick_scene(distractors=self.distractor_slots)
         self.arm = PandaIndices.from_model(self.model)
         self.cube = CubeIndices.from_model(self.model)
-        self.adapter = JointDeltaActionAdapter(self.model, self.arm, **asdict(self.config.action))
+        self.adapter = make_action_adapter(self.model, self.arm, self.config.action)
         self.monitor = GraspMonitor(self.model, self.arm, self.cube, self.config.check)
         self._finger_qpos = [self.model.joint(f"finger_joint{i}").qposadr[0] for i in (1, 2)]
-        self.action_space = spaces.Box(-1.0, 1.0, shape=(ACTION_DIM,), dtype=np.float32)
+        self.action_space = spaces.Box(-1.0, 1.0, shape=(self.adapter.action_dim,),
+                                       dtype=np.float32)
         self.observation_space = spaces.Box(-np.inf, np.inf, shape=(OBS_DIM,), dtype=np.float32)
         self.closed = False
         self._dwell = self._empty = self._steps = 0

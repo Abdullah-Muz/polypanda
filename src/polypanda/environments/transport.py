@@ -5,7 +5,7 @@ by both scripted and learned grasp controllers, so transport sees the start dist
 receive in pick-and-place. The gripper stays closed; releasing belongs to the place skill.
 """
 
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import gymnasium as gym
@@ -13,7 +13,7 @@ import numpy as np
 from gymnasium import spaces
 
 from polypanda.config import load_yaml
-from polypanda.control.action_adapter import ACTION_DIM, JointDeltaActionAdapter
+from polypanda.control.action_adapter import ACTION_DIM, make_action_adapter
 from polypanda.control.ik import PoseIK
 from polypanda.control.scripted_carry import carry_action, level_quat
 from polypanda.environments.grasp import GRIPPER_CLOSED, gripper_tilt
@@ -126,11 +126,12 @@ class TransportEnv(gym.Env):
         self.model, self.data = load_pick_scene()
         self.arm = PandaIndices.from_model(self.model)
         self.cube = CubeIndices.from_model(self.model)
-        self.adapter = JointDeltaActionAdapter(self.model, self.arm, **asdict(self.config.action))
+        self.adapter = make_action_adapter(self.model, self.arm, self.config.action)
         self.monitor = GraspMonitor(self.model, self.arm, self.cube, self.config.check)
         self.pool = HandoffPool.load(_resolve(self.config.start_pool), self.model)
         self._finger_qpos = [self.model.joint(f"finger_joint{i}").qposadr[0] for i in (1, 2)]
-        self.action_space = spaces.Box(-1.0, 1.0, shape=(ACTION_DIM,), dtype=np.float32)
+        self.action_space = spaces.Box(-1.0, 1.0, shape=(self.adapter.action_dim,),
+                                       dtype=np.float32)
         self.observation_space = spaces.Box(-np.inf, np.inf, shape=(OBS_DIM,), dtype=np.float32)
         self.goal = np.zeros(3)
         self.start_index = 0
@@ -138,7 +139,7 @@ class TransportEnv(gym.Env):
         self._distance = 0.0
         self._p_rel = np.zeros(3)
         self._slip = np.zeros(3)
-        self._prev_action = np.zeros(ACTION_DIM)
+        self._prev_action = np.zeros(self.adapter.action_dim)
         self._state = None
 
     @property
@@ -173,7 +174,7 @@ class TransportEnv(gym.Env):
         self._distance = float(np.linalg.norm(self.goal - cube))
         self._p_rel = self._hand_frame_cube()
         self._slip = np.zeros(3)
-        self._prev_action = np.zeros(ACTION_DIM)
+        self._prev_action = np.zeros(self.adapter.action_dim)
         self._after_reset()
         source = self.pool.sources[self.start_index] if self.start_index >= 0 else "given"
         return self._observation(), {"goal": self.goal.copy(), "distance": self._distance,
@@ -298,6 +299,9 @@ class TransportResidualEnv(TransportEnv):
 
     def __init__(self, config: TransportConfig | None = None) -> None:
         super().__init__(config)
+        if self.config.action.space != "joint":
+            raise ValueError("residual transport adds to the scripted carry's joint actions; "
+                             "it needs action.space 'joint'")
         self.observation_space = spaces.Box(-np.inf, np.inf, shape=(OBS_DIM + ACTION_DIM,),
                                             dtype=np.float32)
         self._ik = PoseIK()

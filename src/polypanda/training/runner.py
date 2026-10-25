@@ -22,7 +22,7 @@ from stable_baselines3.common.callbacks import CallbackList, CheckpointCallback,
 from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecNormalize
 
-from polypanda.control.action_adapter import ACTION_SCHEMA
+from polypanda.control.action_adapter import action_schema
 from polypanda.environments.tasks import task_spec
 from polypanda.simulation.assets import MENAGERIE_COMMIT
 from polypanda.training.callbacks import RewardTermsCallback, SaveVecNormalizeCallback
@@ -126,7 +126,7 @@ def train(cfg: TrainConfig, env_config, run_dir: Path) -> Path:
         "algorithm": cfg.algorithm.upper(),
         "seed": cfg.seed,
         "observation_schema": task.obs_schema,
-        "action_schema": ACTION_SCHEMA,
+        "action_schema": action_schema(env_config.action),
         "robot_model_revision": MENAGERIE_COMMIT,
         "training_config": "config.yaml",
         "env_config": "env_config.yaml",

@@ -4,7 +4,7 @@ Observation (float32, world frame, schema "reach-v1-27d"); see OBS_LAYOUT for th
 Reward terms are returned individually in info["reward_terms"]; see docs/reach_task.md.
 """
 
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import gymnasium as gym
@@ -13,7 +13,7 @@ import numpy as np
 from gymnasium import spaces
 
 from polypanda.config import load_yaml
-from polypanda.control.action_adapter import ACTION_DIM, JointDeltaActionAdapter
+from polypanda.control.action_adapter import make_action_adapter
 from polypanda.environments.targets import ReachTargetSampler, WorkspaceConfig
 from polypanda.simulation.assets import load_panda_scene
 from polypanda.simulation.panda import ARM_JOINTS, PandaIndices, reset_to_home, tcp_position
@@ -29,10 +29,26 @@ OBS_SLICES = {
 
 
 @dataclass(frozen=True)
+class CartesianConfig:
+    """Hand-motion actions (Milestone 8), used when ActionConfig.space is "cartesian"."""
+    dof: int = 4                # 4: x, y, z, yaw (gripper pointing down); 6: x, y, z, rotation
+    max_step: float = 0.01      # m per policy step per axis (0.2 m/s at 20 Hz)
+    max_rot: float = 0.05       # rad per policy step per axis
+    max_tilt: float = 0.6       # rad: 6-D targets stay within this of pointing straight down
+    max_lead: float = 0.03      # m: target at most this far ahead of the commanded hand, per axis
+    box_low: tuple[float, float, float] = (0.15, -0.5, 0.01)   # TCP target bounds (m)
+    box_high: tuple[float, float, float] = (0.85, 0.5, 0.6)
+    ik_iters: int = 2           # damped least-squares iterations per policy step
+    posture_gain: float = 0.02  # null-space pull toward the home arm posture, per step
+
+
+@dataclass(frozen=True)
 class ActionConfig:
     max_delta: float = 0.015
     n_substeps: int = 25
     max_lead: float | None = None
+    space: str = "joint"        # "joint": 7 joint increments; "cartesian": hand motion through IK
+    cartesian: CartesianConfig = field(default_factory=CartesianConfig)
 
 
 @dataclass(frozen=True)
@@ -82,12 +98,13 @@ class ReachEnv(gym.Env):
         self.config = config or ReachConfig()
         self.model, self.data = load_panda_scene()
         self.idx = PandaIndices.from_model(self.model)
-        self.adapter = JointDeltaActionAdapter(self.model, self.idx, **asdict(self.config.action))
+        self.adapter = make_action_adapter(self.model, self.idx, self.config.action)
         self.sampler = ReachTargetSampler(self.model, self.idx, self.config.workspace)
         joint_ids = [self.model.joint(name).id for name in ARM_JOINTS]
         self._q_low, self._q_high = self.model.jnt_range[joint_ids].T
 
-        self.action_space = spaces.Box(-1.0, 1.0, shape=(ACTION_DIM,), dtype=np.float32)
+        self.action_space = spaces.Box(-1.0, 1.0, shape=(self.adapter.action_dim,),
+                                       dtype=np.float32)
         self.observation_space = spaces.Box(-np.inf, np.inf, shape=(OBS_DIM,), dtype=np.float32)
 
         self.target = np.zeros(3)

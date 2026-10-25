@@ -1,0 +1,31 @@
+# Milestone 8: PPO on the adopted grasp task (v2, committed yaw) with hand-motion actions. Everything
+# except the action interface matches configs/grasp_v2_yaw_ppo.yaml, apart from
+# 100-episode validation (Milestone 7 lesson).
+
+algorithm: ppo
+task: grasp_v2
+env_config: configs/grasp_cartesian_curriculum.yaml
+seed: 0
+n_envs: 8
+vec_env: subproc
+total_timesteps: 1000000
+normalize_obs: true
+normalize_reward: true
+eval_freq: 100000
+eval_episodes: 100        # 30 episodes picked lucky checkpoints (docs/generalization.md)
+eval_seed: 100000
+checkpoint_freq: 250000
+torch_threads: 1          # several runs in parallel
+
+ppo:
+  learning_rate: 0.0003
+  n_steps: 512
+  batch_size: 256
+  n_epochs: 10
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_range: 0.2
+  ent_coef: 0.005
+  vf_coef: 0.5
+  max_grad_norm: 0.5
+  net_arch: [128, 128]

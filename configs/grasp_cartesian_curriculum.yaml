@@ -1,0 +1,62 @@
+# Milestone 8: the adopted grasp training task (GraspV2Env with configs/
+# grasp_curriculum.yaml) with Cartesian (hand-motion) actions. Identical to
+# configs/grasp_curriculum.yaml except the action block.
+# GraspEnv TRAINING configuration: identical to configs/grasp.yaml (the task as evaluated) except
+# for the curriculum. 30 % of randomly placed episodes start with the cube already in the closed
+# gripper ("reset to helpful states"); validation and evaluation never use such starts.
+
+action:                   # Milestone 8: hand-motion actions; IK turns them into joint targets
+  max_delta: 0.015        # (joint actions only)
+  n_substeps: 25
+  max_lead: null          # (joint actions only)
+  space: cartesian
+  cartesian:
+    dof: 4                # x, y, z and wrist yaw; the gripper is kept pointing straight down
+    max_step: 0.01        # m per policy step per axis (0.2 m/s)
+    max_rot: 0.05         # rad per policy step
+    max_tilt: 0.6         # (6-D only)
+    max_lead: 0.03        # m: the target cannot wind up while the arm is blocked
+    box_low: [0.15, -0.5, 0.01]
+    box_high: [0.85, 0.5, 0.6]
+    ik_iters: 2
+    posture_gain: 0.02    # null-space pull toward the home posture
+
+placement:                # cube placement region (any yaw): top-down grasps feasible here
+  x_range: [0.35, 0.65]
+  y_range: [-0.25, 0.25]
+
+gate:                     # scripted finger closing
+  xy_tol: 0.01            # m, TCP to cube centre, horizontal
+  z_tol: 0.01             # m, vertical
+  align_tol: 0.15         # rad to the nearest cube face pair
+  tilt_tol: 0.15          # rad, gripper from straight down
+  dwell_steps: 2
+  reopen_gap: 0.02        # m: closed on nothing
+  reopen_steps: 10
+
+episode:
+  horizon: 300            # 15 s, always run to the end (no termination on success)
+  max_cube_tilt: 1.047    # rad: knocked over -> terminate
+
+success:
+  lift: 0.05              # m, with the verified grasp predicate
+
+reward:
+  approach: 20.0          # per m of TCP-to-cube distance reduced (telescoping)
+  align: 1.0              # per rad of alignment error reduced (telescoping)
+  lift: 20.0              # per m of cube height (telescoping; a drop gives it back)
+  lift_cap: 0.10
+  hold: 0.5               # per step while grasped and lifted >= success.lift
+  action: 0.005
+  gripper_tilt: 0.1
+  floor: 0.1
+  knocked_over: 5.0
+
+curriculum:               # training-only start states; the task as evaluated uses none
+  pregrasp_start_prob: 0.3   # see docs/grasp_task.md: the v1 pilot never discovered lifting
+
+check:                    # verified grasp predicate (polypanda.simulation.grasp)
+  min_lift: 0.02
+  window: 5
+  max_slip: 0.002
+  max_slip_rot: 0.05

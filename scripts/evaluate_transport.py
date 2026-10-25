@@ -26,7 +26,7 @@ from polypanda.evaluation.transport import (
     TransportEpisode,
     evaluate_transport,
 )
-from polypanda.policies.loader import load_run
+from polypanda.policies.loader import load_run, run_env_config
 
 
 def git_state() -> dict:
@@ -45,7 +45,7 @@ def main() -> None:
 
     eval_set = HandoffPool.load(args.set)
     set_name = args.set.stem
-    env_cls = TransportEnv
+    env_cls, config = TransportEnv, None
     if args.policy == "scripted":
         driver = ScriptedCarryDriver()
         description = "scripted closed-loop carry (PoseIK, privileged cube position, gain 0.2)"
@@ -57,15 +57,18 @@ def main() -> None:
         if meta["skill"] not in ("transport", "transport_residual"):
             raise SystemExit(f"{run_dir} is a {meta['skill']} policy, not transport")
         env_cls = task_spec(meta["skill"]).env_cls
+        config = run_env_config(run_dir, meta["skill"])  # e.g. the policy's action interface
         driver = PolicyDriver(policy)
         kind = "residual on scripted carry, " if meta["skill"] == "transport_residual" else ""
+        if config.action.space != "joint":
+            kind += f"{config.action.space} {config.action.cartesian.dof}-D actions, "
         description = (f"{meta['algorithm']} {kind}{policy.which} model from {run_dir} "
                        f"(seed {meta['seed']}, {meta['total_timesteps']:,} steps)")
         name = f"{meta['policy_id']}_{policy.which}_{set_name}"
     else:
         raise SystemExit(f"unknown policy {args.policy!r}")
 
-    summary, episodes = evaluate_transport(driver, eval_set, env_cls=env_cls)
+    summary, episodes = evaluate_transport(driver, eval_set, config=config, env_cls=env_cls)
     record = {"name": name, "policy": description, "protocol": "TransportEnv, 10 s horizon",
               "eval_set": {"name": set_name, "n": len(eval_set), "digest": eval_set.digest},
               "created_utc": datetime.now(UTC).isoformat(timespec="seconds"),

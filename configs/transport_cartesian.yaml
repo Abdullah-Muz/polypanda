@@ -1,0 +1,64 @@
+# Milestone 8: TransportEnv (task v2) with Cartesian (hand-motion) actions. Identical
+# to configs/transport.yaml except the action block; see docs/cartesian_actions.md.
+# TransportEnv configuration (task version v2: height-keeping signal and split failure labels;
+# v1 is configs/transport_v1.yaml). Keys map to
+# polypanda.environments.transport.TransportConfig, whose defaults match this file (tested);
+# unknown keys are rejected. Design rationale: docs/transport_task.md.
+
+action:                   # Milestone 8: hand-motion actions; IK turns them into joint targets
+  max_delta: 0.015        # (joint actions only)
+  n_substeps: 25
+  max_lead: null          # (joint actions only)
+  space: cartesian
+  cartesian:
+    dof: 4                # x, y, z and wrist yaw; the gripper is kept pointing straight down
+    max_step: 0.01        # m per policy step per axis (0.2 m/s)
+    max_rot: 0.05         # rad per policy step
+    max_tilt: 0.6         # (6-D only)
+    max_lead: 0.03        # m: the target cannot wind up while the arm is blocked
+    box_low: [0.15, -0.5, 0.01]
+    box_high: [0.85, 0.5, 0.6]
+    ik_iters: 2
+    posture_gain: 0.02    # null-space pull toward the home posture
+
+goal:                     # cube-centre goals (m), uniform in this box
+  x_range: [0.35, 0.65]
+  y_range: [-0.25, 0.25]
+  z_range: [0.10, 0.25]
+  min_distance: 0.15      # from the cube at handoff
+  max_tries: 1000
+
+episode:
+  horizon: 200            # 10 s, always run to the end (no termination on success)
+  drop_steps: 5           # steps without both finger contacts that count as a drop
+  max_cube_tilt: 1.4      # rad: cube fallen over in the hand counts as a drop
+
+success:
+  tolerance: 0.02         # m, cube centre to goal, with a verified grasp
+  dwell_steps: 5
+
+reward:
+  progress: 20.0          # per m of cube-to-goal distance reduced (telescoping)
+  hold: 0.5               # per step at the goal with a verified grasp, 1 -> 0 inside tolerance
+  action: 0.005           # x ||a||^2
+  action_rate: 0.05       # x ||a_t - a_{t-1}||^2 (smooth motion: less slip)
+  gripper_tilt: 0.1       # per rad
+  cube_tilt: 0.1          # per rad
+  floor: 0.1              # per step touching the floor
+  drop: 5.0               # once, lost grip (contacts lost or cube tipped); terminates
+  touchdown: 5.0          # once, cube lowered onto the table while held; terminates
+  safe_lift: 0.06         # v2: safe carrying height (m above the table)
+  low_height: 10.0        # v2: per m below safe_lift, per step (v1 pilot sank the cube)
+
+check:                    # verified grasp predicate
+  min_lift: 0.02
+  window: 5
+  max_slip: 0.002
+  max_slip_rot: 0.05
+
+residual:               # used by TransportResidualEnv (task transport_residual) only
+  scale: 0.3             # policy output added to the scripted carry action, x 0.3
+  base_gain: 0.2         # scripted carry IK gain, as for the baseline
+  penalty: 0.01          # x ||policy output||^2 per step
+
+start_pool: data/handoff/transport_train_v1.npz  # handoff states from 4 grasp controllers

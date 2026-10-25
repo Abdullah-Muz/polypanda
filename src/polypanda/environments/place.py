@@ -8,7 +8,7 @@ table) and over the target, mirroring GraspEnv's closing gate. Success is a veri
 end of the episode.
 """
 
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import gymnasium as gym
@@ -16,7 +16,7 @@ import numpy as np
 from gymnasium import spaces
 
 from polypanda.config import load_yaml
-from polypanda.control.action_adapter import ACTION_DIM, JointDeltaActionAdapter
+from polypanda.control.action_adapter import make_action_adapter
 from polypanda.environments.grasp import GRIPPER_CLOSED, GRIPPER_OPEN, gripper_tilt
 from polypanda.environments.handoff import HandoffPool, restore_state
 from polypanda.environments.reach import ActionConfig
@@ -117,18 +117,19 @@ class PlaceEnv(gym.Env):
         self.model, self.data = load_pick_scene()
         self.arm = PandaIndices.from_model(self.model)
         self.cube = CubeIndices.from_model(self.model)
-        self.adapter = JointDeltaActionAdapter(self.model, self.arm, **asdict(self.config.action))
+        self.adapter = make_action_adapter(self.model, self.arm, self.config.action)
         self.check = PlacedCheck(self.model, self.arm, self.cube, self.config.check)
         path = Path(self.config.start_pool)
         self.pool = HandoffPool.load(path if path.exists() else REPO_ROOT / path, self.model)
         self._finger_qpos = [self.model.joint(f"finger_joint{i}").qposadr[0] for i in (1, 2)]
-        self.action_space = spaces.Box(-1.0, 1.0, shape=(ACTION_DIM,), dtype=np.float32)
+        self.action_space = spaces.Box(-1.0, 1.0, shape=(self.adapter.action_dim,),
+                                       dtype=np.float32)
         self.observation_space = spaces.Box(-np.inf, np.inf, shape=(OBS_DIM,), dtype=np.float32)
         self.target = np.zeros(3)   # cube-centre target: (x, y, resting height)
         self.released = False
         self._steps = self._no_contact = 0
         self._distance = self._rise = 0.0
-        self._prev_action = np.zeros(ACTION_DIM)
+        self._prev_action = np.zeros(self.adapter.action_dim)
         self._contacts = (False, False)
 
     @property
@@ -172,7 +173,7 @@ class PlaceEnv(gym.Env):
         self._steps = self._no_contact = 0
         self._distance = float(np.linalg.norm(self.target - cube_position(self.data, self.cube)))
         self._rise = 0.0
-        self._prev_action = np.zeros(ACTION_DIM)
+        self._prev_action = np.zeros(self.adapter.action_dim)
         self._contacts = self._finger_contacts()
         source = self.pool.sources[self.start_index] if self.start_index >= 0 else "given"
         return self._observation(), {"target": self.target.copy(), "start_source": source,
