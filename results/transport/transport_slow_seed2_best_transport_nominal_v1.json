@@ -1,0 +1,99 @@
+{
+  "name": "transport_slow_seed2_best_transport_nominal_v1",
+  "policy": "PPO cartesian 3-D actions, best model from runs/transport_slow_seed2 (seed 2, 1,003,520 steps)",
+  "protocol": "TransportEnv, 10 s horizon",
+  "eval_set": {
+    "name": "transport_nominal_v1",
+    "n": 200,
+    "digest": "b3735acee710"
+  },
+  "created_utc": "2026-10-25T20:57:24+00:00",
+  "git": {
+    "commit": "9be3dfaa5266ee2148df75df913983e980fc5acf",
+    "dirty": false
+  },
+  "versions": {
+    "python": "3.12.3",
+    "mujoco": "3.16.0",
+    "numpy": "2.5.4"
+  },
+  "summary": {
+    "episodes": 200,
+    "success_rate": 0.92,
+    "success_ci95": [
+      0.8740095102048769,
+      0.9501598448237337
+    ],
+    "drop_rate": 0.08,
+    "touchdown_rate": 0.0,
+    "first_success_s": {
+      "median": 2.3000000000000003,
+      "p90": 3.135000000000001
+    },
+    "final_distance_mm": {
+      "median": 2.2927549702408614,
+      "p95": 179.2842708612532
+    },
+    "max_slip_speed_mm_s_median": 15.956172629678926,
+    "max_cube_tilt_deg": {
+      "median": 19.507833647864974,
+      "max": 80.20772454909306
+    },
+    "floor_contact_episode_rate": 0.0,
+    "action_jerk_median": 0.0027618936034319356,
+    "return": {
+      "mean": 60.81956743003595,
+      "std": 19.38969884101643
+    },
+    "by_source": {
+      "runs/grasp_ppo_curr_seed0": {
+        "n": 50,
+        "success_rate": 0.92,
+        "success_ci95": [
+          0.8116149745493629,
+          0.9684509967442093
+        ],
+        "drop_rate": 0.08,
+        "touchdown_rate": 0.0
+      },
+      "runs/grasp_ppo_curr_seed1": {
+        "n": 50,
+        "success_rate": 0.86,
+        "success_ci95": [
+          0.738135428014719,
+          0.9304925473797714
+        ],
+        "drop_rate": 0.14,
+        "touchdown_rate": 0.0
+      },
+      "runs/grasp_ppo_curr_seed2": {
+        "n": 50,
+        "success_rate": 0.9,
+        "success_ci95": [
+          0.7863950966521162,
+          0.956524876008429
+        ],
+        "drop_rate": 0.1,
+        "touchdown_rate": 0.0
+      },
+      "scripted": {
+        "n": 50,
+        "success_rate": 1.0,
+        "success_ci95": [
+          0.9286499658256813,
+          1.0
+        ],
+        "drop_rate": 0.0,
+        "touchdown_rate": 0.0
+      }
+    },
+    "failures": {
+      "lost_grip": 16
+    },
+    "inference_latency_us": {
+      "median": 822.2840006055776,
+      "p99": 2860.5365798102825
+    },
+    "wall_clock_s": 206.8
+  }
+}
