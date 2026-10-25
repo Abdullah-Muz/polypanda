@@ -2,6 +2,8 @@
 
 Usage: uv run python scripts/demo_pickplace.py [--grasp scripted] [--episodes 6]
        uv run python scripts/demo_pickplace.py --grasp run:runs/grasp_ppo_curr_seed1
+       uv run python scripts/demo_pickplace.py --grasp run:runs/grasp_cart_seed1 \
+           --transport run:runs/transport_cart_seed0 --place run:runs/place_cart_seed0
        uv run python scripts/demo_pickplace.py --scenes 62 178     # specific scenes (retries)
 The green disc on the table is the target spot (2 cm placement tolerance). The terminal prints
 each stage as the supervisor switches skills, including recoveries and re-grasps. Each skill
@@ -16,11 +18,9 @@ import mujoco
 import mujoco.viewer
 import numpy as np
 
-from polypanda.control.scripted_place import ScriptedPlace
 from polypanda.environments.handoff import capture_state, restore_state
-from polypanda.evaluation.pickplace import grasp_driver_from_spec, grasp_env_for
+from polypanda.evaluation.pickplace import grasp_driver_from_spec, grasp_env_for, skill_from_spec
 from polypanda.evaluation.sets import PickPlaceEvalSet
-from polypanda.evaluation.transport import ScriptedCarryDriver
 from polypanda.simulation.scenes import load_pick_scene
 from polypanda.supervisor.fsm import PickPlaceSupervisor, Stage
 from polypanda.visualization.viewer import fast_rendering
@@ -41,6 +41,8 @@ def draw_target(viewer, xy, radius: float) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--grasp", default="scripted", help="scripted | run:DIR[@best|final]")
+    parser.add_argument("--transport", default="scripted", help="scripted | run:DIR[@...]")
+    parser.add_argument("--place", default="scripted", help="scripted | run:DIR[@...]")
     parser.add_argument("--episodes", type=int, default=6)
     parser.add_argument("--scenes", type=int, nargs="*", help="scene indices to show")
     parser.add_argument("--speed", type=float, default=1.0, help="playback speed multiplier")
@@ -49,8 +51,10 @@ def main() -> None:
     args = parser.parse_args()
 
     grasp = grasp_driver_from_spec(args.grasp)[0]
-    supervisor = PickPlaceSupervisor(grasp, ScriptedCarryDriver(), ScriptedPlace(),
-                                     grasp_env=grasp_env_for(args.grasp))
+    transport, transport_env = skill_from_spec(args.transport, "transport")[:2]
+    place, place_env = skill_from_spec(args.place, "place")[:2]
+    supervisor = PickPlaceSupervisor(grasp, transport, place, grasp_env=grasp_env_for(args.grasp),
+                                     transport_env=transport_env, place_env=place_env)
     eval_set = PickPlaceEvalSet.load(args.set)
     model, data = load_pick_scene()  # display copy; mirrors the active skill's environment
     if not args.shadows:
