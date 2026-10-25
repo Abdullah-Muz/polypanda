@@ -180,3 +180,19 @@ Removing one supervisor design choice at a time; same 200 scenes, paired with th
 | No retries | 97.5 % | 83.3 % |
 | Timed switching instead of verified handoffs | 84.5 % | 71.2 % |
 | No upright correction before release | 97.0 % | 81.5 % |
+
+## Generalizing the grasp (Milestone 7)
+
+Can training make the learned grasp work across the whole table and among other cubes? Target: at least 85 % on a wide held-out set covering the whole feasible table, and at least 87 % on the original set. Full analysis: [generalization.md](generalization.md). All grasp numbers pool 3 seeds (600 episodes); checkpoints are chosen on 100-episode validation sets, never on test sets.
+
+| Grasp | Original grasp | Wide grasp | Clutter grasp (2 other cubes) | Pick-and-place original | Pick-and-place wide |
+|---|---|---|---|---|---|
+| **Scripted** | **100 %** | **100 %** | **100 %** | **100 %** | **98.5 %** |
+| PPO v2 (adopted), selected checkpoints | 89.8 % | 81.8 % | 78.8 % | 89.0 % | 81.2 % |
+| PPO trained on the wide region | 85.7 % | 81.3 % | 80.5 % | 86.8 % | 80.8 % |
+| PPO v3, trained among other cubes | 65.0 % | 56.2 % | 41.5 % | | |
+
+- **Target not met.** The best learned result on the wide set is 81.8 %.
+- **Better checkpoint selection mattered more than wider training.** Re-scoring saved checkpoints on 100 episodes instead of 30 raised the v2 grasp on the wide set from 76.2 % to 81.8 %, as much as training on the wide region did.
+- **Training among other cubes backfired:** the penalty for disturbing them taught hesitation (258 of 351 clutter failures never closed the fingers).
+- **Seeds disagree:** the same configuration gives 66–94 % (wide) and 21.5–67 % (v3) per seed.

@@ -39,3 +39,7 @@ uv run python scripts/evaluate.py --policy ppo:path/to/model.zip --name reach_pp
 ## Outputs
 
 `results/reach/<name>.json` holds the summary plus provenance: policy description, set name and digest, git commit with a dirty flag, library versions, and UTC time. `results/reach/<name>_episodes.csv` holds one row per episode. Published numbers must come from a clean commit (`dirty: false`).
+
+## Checkpoint selection (from Milestone 7)
+
+Choosing a checkpoint is part of training, so it never looks at a test set. Validation during training uses at least 100 episodes; with 30, the 95 % interval around an 85 % rate is about ±13 points and the "best" checkpoint is mostly the luckiest. `scripts/select_checkpoint.py` re-scores a finished run's saved checkpoints on a separate 100-episode validation set (`data/validation/`) and records the choice ([generalization.md](generalization.md#checkpoint-selection-the-30-episode-validation-was-the-bigger-problem)).

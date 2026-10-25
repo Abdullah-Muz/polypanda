@@ -267,3 +267,7 @@ Most failures were `never_closed`. In 80 diagnosed episodes, no gripper was alig
 **Decision:** the yaw-only policy beats v1 on both held-out tests, so it replaces v1 as the learned grasp in the pick-and-place system. The robustness suite and the supervisor ablations use it. The grasp improvement is statistically clear. The end-to-end improvement is consistent across seeds but within noise for 600 episodes.
 
 **Lesson:** changing three things at once cost a 3-seed training run and explained nothing. Isolating the one change the failure analysis actually pointed to took 40 minutes and produced the clearest result in the milestone.
+
+## Wide region and task v3 (Milestone 7)
+
+Training on the whole feasible table, and a task v3 with up to two other cubes on the table (`GraspV3Env`, task `grasp_v3`, schema `grasp-v3-49d`), are covered in [generalization.md](generalization.md). Neither was adopted; v2 with checkpoints selected on 100-episode validation remains the learned grasp.
