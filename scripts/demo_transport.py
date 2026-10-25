@@ -18,11 +18,10 @@ import mujoco.viewer
 import numpy as np
 
 from polypanda.environments.handoff import HandoffPool
-from polypanda.environments.tasks import task_spec
 from polypanda.environments.transport import TransportEnv
 from polypanda.evaluation.grasp import PolicyDriver
 from polypanda.evaluation.transport import ScriptedCarryDriver
-from polypanda.policies.loader import load_run
+from polypanda.policies.loader import load_run, make_run_env
 from polypanda.visualization.viewer import fast_rendering
 
 
@@ -45,17 +44,21 @@ def main() -> None:
     args = parser.parse_args()
 
     run_dir = None
-    env_cls = TransportEnv
     if args.policy == "scripted":
-        driver = ScriptedCarryDriver()
+        driver, env = ScriptedCarryDriver(), TransportEnv()
     elif args.policy.startswith("run:"):
         run_dir, _, which = args.policy[4:].partition("@")
+        if args.watch and not (Path(run_dir) / "best_model.zip").exists():
+            print("waiting for the run's first validated checkpoint...")
+            while not (Path(run_dir) / "best_model.zip").exists():
+                time.sleep(5)
+            time.sleep(2)  # let the normalization statistics finish writing
         policy = load_run(run_dir, which or "best")
-        env_cls = task_spec(policy.metadata["skill"]).env_cls  # residual policies need their env
         driver = PolicyDriver(policy)
+        # the run's own task and configuration (residual policies, hand-motion actions)
+        env = make_run_env(run_dir, policy.metadata["skill"])
     else:
         raise SystemExit(f"unknown policy {args.policy!r}")
-    env = env_cls()
     if not args.shadows:
         fast_rendering(env.model)
     eval_set = HandoffPool.load(args.set, env.model)
