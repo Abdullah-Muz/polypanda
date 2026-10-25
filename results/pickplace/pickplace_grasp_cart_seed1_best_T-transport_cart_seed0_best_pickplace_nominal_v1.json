@@ -1,0 +1,120 @@
+{
+  "name": "pickplace_grasp_cart_seed1_best_T-transport_cart_seed0_best_pickplace_nominal_v1",
+  "skills": {
+    "grasp": "PPO grasp policy grasp_cart_seed1",
+    "grasp_provenance": {
+      "run_dir": "runs/grasp_cart_seed1",
+      "checkpoint": "best",
+      "policy_id": "grasp_cart_seed1",
+      "trained_at": "9ae56da968d4da8f414a5435c87e94fe4f35ef52"
+    },
+    "transport": "PPO transport policy transport_cart_seed0",
+    "transport_provenance": {
+      "run_dir": "runs/transport_cart_seed0",
+      "checkpoint": "best",
+      "policy_id": "transport_cart_seed0",
+      "trained_at": "9ae56da968d4da8f414a5435c87e94fe4f35ef52"
+    },
+    "place": "scripted place (upright correction, gated release)",
+    "place_provenance": {}
+  },
+  "supervisor": {
+    "max_grasp_attempts": 3,
+    "handoff_steps": 10,
+    "pre_place_height": 0.12,
+    "release_steps": 10,
+    "retreat_height": 0.1,
+    "retreat_steps": 40,
+    "home_tol": 0.02,
+    "home_timeout": 200,
+    "retry_max_tilt": 0.1745,
+    "retry_max_lift": 0.005,
+    "retry_margin": 0.03,
+    "retry_region": [
+      [
+        0.35,
+        0.65
+      ],
+      [
+        -0.25,
+        0.25
+      ]
+    ],
+    "time_budget_s": 90.0,
+    "timed_switching_s": null
+  },
+  "eval_set": {
+    "name": "pickplace_nominal_v1",
+    "n": 200,
+    "digest": "439a38044438"
+  },
+  "created_utc": "2026-10-25T07:25:13+00:00",
+  "git": {
+    "commit": "81917e7c74ace7fe51ec2f573f338a2815469be2",
+    "dirty": false
+  },
+  "versions": {
+    "python": "3.12.3",
+    "mujoco": "3.16.0",
+    "numpy": "2.5.4",
+    "torch": "2.14.1+cpu"
+  },
+  "summary": {
+    "episodes": 200,
+    "success_rate": 0.91,
+    "success_ci95": [
+      0.8622332538615105,
+      0.9423130212854665
+    ],
+    "first_attempt_success_rate": 0.86,
+    "failures_by_stage": {
+      "grasp": 7,
+      "transport": 6,
+      "place": 5
+    },
+    "failures": {
+      "knocked_over; cube tipped over": 6,
+      "timeout; out of attempts": 1,
+      "lost_grip; cube tipped over": 3,
+      "toppled; cube tipped over": 5,
+      "timeout; cube tipped over": 3
+    },
+    "first_failures": {
+      "grasp:knocked_over": 4,
+      "grasp:timeout": 3,
+      "place:timeout": 9,
+      "transport:lost_grip": 3,
+      "transport:timeout": 6,
+      "place:toppled": 3
+    },
+    "retries": {
+      "episodes_with_retry": 15,
+      "recovered": 10,
+      "attempts": {
+        "1": 185,
+        "2": 13,
+        "3": 2
+      }
+    },
+    "time_s": {
+      "median": 8.4,
+      "p90": 11.540000000000001,
+      "by_stage_median": {
+        "grasp": 4.0,
+        "transport": 1.85,
+        "place": 2.175
+      }
+    },
+    "final_xy_error_mm": {
+      "median": 1.8510213140500706,
+      "p95": 11.618647925340376
+    },
+    "wall_clock_s": 163.0
+  },
+  "paired_comparison": {
+    "against": "results/pickplace/pickplace_scripted_pickplace_nominal_v1_episodes.csv",
+    "only_first": 0,
+    "only_second": 18,
+    "p_value": 7.62939453125e-06
+  }
+}
