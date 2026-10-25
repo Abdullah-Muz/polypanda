@@ -1,6 +1,7 @@
 """Evaluate a place driver on the held-out place set and archive the results.
 
 Usage: uv run python scripts/evaluate_place.py --policy scripted
+       uv run python scripts/evaluate_place.py --policy run:runs/<run_dir>[@final]
 Writes results/place/<name>.json (summary + provenance) and <name>_episodes.csv.
 """
 
@@ -18,7 +19,9 @@ import numpy as np
 
 from polypanda.control.scripted_place import ScriptedPlace
 from polypanda.environments.handoff import HandoffPool
+from polypanda.evaluation.grasp import PolicyDriver
 from polypanda.evaluation.place import PlaceEpisode, evaluate_place
+from polypanda.policies.loader import load_run, run_env_config
 
 
 def git_state() -> dict:
@@ -30,18 +33,32 @@ def git_state() -> dict:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--policy", default="scripted", help="scripted")
+    parser.add_argument("--policy", default="scripted", help="scripted | run:DIR[@best|final]")
     parser.add_argument("--set", type=Path, default=Path("eval_sets/place_nominal_v1.npz"))
     parser.add_argument("--out-dir", type=Path, default=Path("results/place"))
     args = parser.parse_args()
-    if args.policy != "scripted":
-        raise SystemExit("only the scripted place driver exists so far")
 
     eval_set = HandoffPool.load(args.set)
-    name = f"scripted_{args.set.stem}"
-    summary, episodes = evaluate_place(ScriptedPlace(), eval_set)
-    record = {"name": name, "policy": "scripted place (lower via closed-loop IK, gated release, "
-                                      "retreat 10 cm)",
+    if args.policy == "scripted":
+        driver, config = ScriptedPlace(), None
+        name = f"scripted_{args.set.stem}"
+        description = "scripted place (lower via closed-loop IK, gated release, retreat 10 cm)"
+    elif args.policy.startswith("run:"):
+        run_dir, _, which = args.policy[4:].partition("@")
+        policy = load_run(run_dir, which or "best")
+        meta = policy.metadata
+        if meta["skill"] != "place":
+            raise SystemExit(f"{run_dir} is a {meta['skill']} policy, not place")
+        driver = PolicyDriver(policy)
+        config = run_env_config(run_dir, "place")  # the policy's own task and action interface
+        name = f"{meta['policy_id']}_{policy.which}_{args.set.stem}"
+        description = (f"{meta['algorithm']} {policy.which} model from {run_dir} (seed "
+                       f"{meta['seed']}, {meta['total_timesteps']:,} steps, "
+                       f"{meta['action_schema']} actions)")
+    else:
+        raise SystemExit(f"unknown policy {args.policy!r}")
+    summary, episodes = evaluate_place(driver, eval_set, config)
+    record = {"name": name, "policy": description,
               "protocol": "PlaceEnv, 6 s horizon",
               "eval_set": {"name": args.set.stem, "n": len(eval_set), "digest": eval_set.digest},
               "created_utc": datetime.now(UTC).isoformat(timespec="seconds"),

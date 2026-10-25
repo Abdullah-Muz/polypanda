@@ -38,7 +38,7 @@ def test_pools_cover_all_grasp_sources():
 
 def test_spaces_and_check_env(env):
     obs, info = env.reset(seed=0)
-    assert obs.shape == (OBS_DIM,) == (45,) and env.observation_space.contains(obs)
+    assert obs.shape == (OBS_DIM,) == (48,) and env.observation_space.contains(obs)
     assert info["target"][2] == pytest.approx(env.cube.half_size[2])
     with warnings.catch_warnings():
         warnings.simplefilter("error")
@@ -92,3 +92,37 @@ def test_upright_quat_is_identity_correction_for_an_upright_cube(env):
     mujoco.mju_quat2Mat(R, q)
     R_cube_new = R.reshape(3, 3) @ (R_tcp.T @ R_cube)  # cube orientation under the new grip
     np.testing.assert_allclose(R_cube_new[:, 2], [0, 0, 1], atol=1e-9)  # stands upright
+
+
+def test_observation_includes_the_cube_up_axis(env):
+    from polypanda.environments.place import OBS_LAYOUT
+    obs, _ = env.reset(options={"state_index": 0})
+    start = sum(n for name, n in OBS_LAYOUT[:[k for k, _ in OBS_LAYOUT].index("cube_up")])
+    up = obs[start:start + 3]
+    np.testing.assert_allclose(up, env.data.xmat[env.cube.body].reshape(3, 3)[:, 2], atol=1e-6)
+    tilt = obs[start - 1]
+    assert np.degrees(np.arccos(np.clip(up[2], -1, 1))) == pytest.approx(np.degrees(tilt), abs=0.1)
+
+
+def test_learned_place_task_and_config():
+    from dataclasses import replace
+
+    from polypanda.environments.place import PlaceConfig
+    from polypanda.environments.tasks import task_spec
+    spec = task_spec("place")
+    assert spec.env_cls is PlaceEnv and spec.obs_schema == "place-v2-48d"
+    cfg = PlaceConfig.from_yaml(ROOT / "configs" / "place_cartesian.yaml")
+    assert cfg.action.space == "cartesian" and cfg.action.cartesian.dof == 6
+    assert cfg.reward.cube_tilt == 0.3 and cfg.action.bound_penalty == 0.1
+    # everything else is the scripted place's task
+    default = PlaceConfig()
+    assert replace(cfg, action=default.action,
+                   reward=replace(cfg.reward, cube_tilt=0.0)) == default
+    env = PlaceEnv(cfg)
+    assert env.action_space.shape == (6,)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        check_env(env, warn=False)
+    env.reset(options={"state_index": 0})
+    _, _, _, _, info = env.step(np.zeros(6, dtype=np.float32))
+    assert info["reward_terms"]["cube_tilt"] == pytest.approx(-0.3 * info["cube_tilt"])

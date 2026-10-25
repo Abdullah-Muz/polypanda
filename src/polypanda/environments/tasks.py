@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 
-from polypanda.environments import grasp, reach, transport
+from polypanda.environments import grasp, place, reach, transport
 
 
 @dataclass(frozen=True)
@@ -21,6 +21,7 @@ TASKS = {
                           transport.OBS_SCHEMA),
     "transport_residual": TaskSpec(transport.TransportResidualEnv, transport.TransportConfig,
                                    transport.RESIDUAL_OBS_SCHEMA),
+    "place": TaskSpec(place.PlaceEnv, place.PlaceConfig, place.OBS_SCHEMA),
 }
 
 

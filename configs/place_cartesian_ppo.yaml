@@ -1,0 +1,30 @@
+# Milestone 8: PPO on PlaceEnv with hand-motion actions (6-D): the first learned place. Same PPO
+# settings as the Cartesian grasp and transport runs (configs/transport_cartesian_ppo.yaml).
+
+algorithm: ppo
+task: place
+env_config: configs/place_cartesian.yaml
+seed: 0
+n_envs: 8
+vec_env: subproc
+total_timesteps: 1000000
+normalize_obs: true
+normalize_reward: true
+eval_freq: 100000
+eval_episodes: 100        # 30 episodes picked lucky checkpoints (docs/generalization.md)
+eval_seed: 100000
+checkpoint_freq: 250000
+torch_threads: 1          # several runs in parallel
+
+ppo:
+  learning_rate: 0.0003
+  n_steps: 512
+  batch_size: 256
+  n_epochs: 10
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_range: 0.2
+  ent_coef: 0.005
+  vf_coef: 0.5
+  max_grad_norm: 0.5
+  net_arch: [128, 128]

@@ -28,11 +28,13 @@ from polypanda.environments.transport import REPO_ROOT
 from polypanda.simulation.panda import PandaIndices, tcp_position
 from polypanda.simulation.scenes import CubeIndices, cube_position, cube_tilt, load_pick_scene
 
-OBS_SCHEMA = "place-v1-45d"
+# v2 (Milestone 8, before any place policy was trained): adds the cube's up axis, so a learned
+# policy can tell which way the cube leans in the grip (the scripted place uses its orientation).
+OBS_SCHEMA = "place-v2-48d"
 OBS_LAYOUT = (
     ("q", 7), ("dq", 7), ("q_cmd", 7),
     ("tcp", 3), ("tcp_rot6", 6), ("finger_gap", 1), ("gripper_open", 1),
-    ("cube_rel", 3), ("cube_height", 1), ("cube_tilt", 1), ("contacts", 2),
+    ("cube_rel", 3), ("cube_height", 1), ("cube_tilt", 1), ("cube_up", 3), ("contacts", 2),
     ("target", 3), ("target_error", 3),
 )
 OBS_DIM = sum(n for _, n in OBS_LAYOUT)
@@ -65,6 +67,7 @@ class PlaceRewardConfig:
     floor: float = 0.1
     dropped: float = 5.0             # lost before the gate opened; terminates
     toppled: float = 5.0             # cube fell over after release; terminates
+    cube_tilt: float = 0.0           # per rad of cube tilt per step while held (learned place)
 
 
 @dataclass(frozen=True)
@@ -218,6 +221,7 @@ class PlaceEnv(gym.Env):
             "action_rate": -r.action_rate * float(np.sum((a - self._prev_action) ** 2)),
             "gripper_tilt": -r.gripper_tilt * gripper_tilt(R),
             "floor": -r.floor if floor else 0.0,
+            "cube_tilt": 0.0 if self.released else -r.cube_tilt * cube_tilt(self.data, self.cube),
             "dropped": -r.dropped if dropped else 0.0,
             "toppled": -r.toppled if toppled else 0.0,
             **bound_terms,
@@ -252,6 +256,7 @@ class PlaceEnv(gym.Env):
             [sum(self.data.qpos[adr] for adr in self._finger_qpos), float(self.released)],
             cube - tcp,
             [cube[2] - self.cube.half_size[2], cube_tilt(self.data, self.cube)],
+            self.data.xmat[self.cube.body].reshape(3, 3)[:, 2],
             [float(self._contacts[0]), float(self._contacts[1])],
             self.target,
             self.target - cube,
