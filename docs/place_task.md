@@ -61,3 +61,12 @@ The upright correction also fixed most of the xy error: a tilted cube's centre i
 ## 5.4: RL for placing (not attempted)
 
 The approved plan made RL for placing conditional on the baseline leaving room to improve. At 97.5 % with five scattered failures it does not. Transport had already shown that a learned residual on a strong scripted controller can match it but not beat it. The effort went into the supervisor instead.
+
+## Milestone 8: learned place
+
+Placing was learned in Milestone 8, as part of the fully learned chain. The task needed two additions first:
+
+- **Observation v2** (`place-v2-48d`) adds the cube's up axis, so the policy can tell which way the cube leans.
+- **Optional cube-tilt penalty** while the cube is held.
+
+With 6-D hand-motion actions, PPO reaches 95.1 % over 3 seeds on the held-out place set and **99.5 % inside pick-and-place**. That is statistically indistinguishable from the scripted place (100 %), so the learned place is adopted. Details: [cartesian_actions.md](cartesian_actions.md#84-learned-place).

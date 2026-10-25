@@ -196,3 +196,26 @@ Can training make the learned grasp work across the whole table and among other 
 - **Better checkpoint selection mattered more than wider training.** Re-scoring saved checkpoints on 100 episodes instead of 30 raised the v2 grasp on the wide set from 76.2 % to 81.8 %, as much as training on the wide region did.
 - **Training among other cubes backfired:** the penalty for disturbing them taught hesitation (258 of 351 clutter failures never closed the fingers).
 - **Seeds disagree:** the same configuration gives 66–94 % (wide) and 21.5–67 % (v3) per seed.
+
+## Hand-motion actions and the fully learned chain (Milestone 8)
+
+Policies can command the hand (x, y, z, plus wrist yaw or full rotation) instead of seven joint increments; inverse kinematics turns the hand motion into joint targets. With this, PPO learned all three skills. Full analysis: [cartesian_actions.md](cartesian_actions.md). Learned numbers pool 3 seeds; the scripted controllers are the reference baselines.
+
+| Skill, held-out set | Learned (hand motion) | Scripted baseline |
+|---|---|---|
+| Grasp, original / wide / clutter | 91.3 / 85.0 / 84.7 % | 100 / 100 / 100 % |
+| Transport (200 cases) | 76.2 % (per seed 83.5 / 60.0 / 85.0) | 92.0 % |
+| Place (198 cases) | 95.1 % | 97.5 % |
+
+| Pick-and-place, 200 scenes | Original | Wide |
+|---|---|---|
+| **Fully learned chain** (grasp, transport and place all PPO) | **83.3 %** (per seed 77.0 / 81.5 / 91.5) | **70.7 %** |
+| Learned grasp only | 91.8 % | 86.7 % |
+| Learned transport only | 86.7 % | |
+| Learned place only | 99.5 % (not distinguishable from scripted: p = 0.5 / 1 / 1) | |
+| All scripted (baseline) | 100 % | 98.5 % |
+
+- **The hand-motion grasp meets the Milestone 7 target** (at least 85 % wide, at least 87 % original). Its gain over the joint-action grasp is significant in clutter (p = 0.004) and end to end on the wide scenes (p = 0.004).
+- **Transport was learned for the first time.** Two pilots failed first: one spun the wrist and flung the cube; in the other the policy's mean action drifted past its bounds, where clipping hid it from learning. The fixes were a 3-D action without wrist rotation and an out-of-bounds penalty.
+- **Learned place matches the scripted place inside the full task** and is adopted.
+- **The fully learned chain is about 40 % faster than scripted** (about 7 s vs 12.4 s per cube) and less precise (4–7 mm vs 1.7 mm).

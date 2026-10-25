@@ -135,3 +135,7 @@ Paired on the same 200 cases, both succeed in 183, **both fail in the same 14**,
 | Residual PPO on the scripted carry | 92.5 % (equivalent to the baseline, p = 1.0) |
 
 The scripted closed-loop carry is the transport skill used in pick-and-place: it is as reliable as the best learned variant, much smoother, and simpler. The learning results are reported as findings: plain PPO cannot discover smooth coordinated carrying under this weak grip at a 1M-step budget, and residual RL cannot fix failures that originate in the grasp.
+
+## Milestone 8: learned transport with hand-motion actions
+
+With hand-motion actions (x, y, z; the wrist held) and an out-of-bounds action penalty, plain PPO learns transport: 76.2 % over 3 seeds on the held-out set (83.5 / 60.0 / 85.0 %), against 92.0 % for the scripted carry. It is part of the fully learned chain. Details, including the two failed pilots: [cartesian_actions.md](cartesian_actions.md#83-learned-transport-two-pilots-and-two-fixes).
