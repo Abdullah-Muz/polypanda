@@ -1,0 +1,85 @@
+{
+  "name": "place_cart_seed2_best_place_nominal_v1",
+  "policy": "PPO best model from runs/place_cart_seed2 (seed 2, 1,003,520 steps, cartesian-v1-6d actions)",
+  "protocol": "PlaceEnv, 6 s horizon",
+  "eval_set": {
+    "name": "place_nominal_v1",
+    "n": 198,
+    "digest": "27394086fce3"
+  },
+  "created_utc": "2026-10-25T18:47:50+00:00",
+  "git": {
+    "commit": "8a67dc03239bef342e8d37574323678e362338d9",
+    "dirty": false
+  },
+  "versions": {
+    "python": "3.12.3",
+    "mujoco": "3.16.0",
+    "numpy": "2.5.4"
+  },
+  "summary": {
+    "episodes": 198,
+    "success_rate": 0.9090909090909091,
+    "success_ci95": [
+      0.8608872401641107,
+      0.9417223309054804
+    ],
+    "first_placed_s": {
+      "median": 1.1,
+      "p90": 1.25
+    },
+    "release_s_median": 0.4,
+    "final_xy_error_mm": {
+      "median": 7.756403125883697,
+      "p95": 22.647764453827907
+    },
+    "final_tilt_deg": {
+      "median": 0.0,
+      "max": 90.23412908396212
+    },
+    "floor_contact_episode_rate": 0.005050505050505051,
+    "return": {
+      "mean": 42.244007084258115
+    },
+    "by_source": {
+      "runs/grasp_ppo_curr_seed0": {
+        "n": 50,
+        "success_rate": 0.92,
+        "success_ci95": [
+          0.8116149745493629,
+          0.9684509967442093
+        ]
+      },
+      "runs/grasp_ppo_curr_seed1": {
+        "n": 50,
+        "success_rate": 0.94,
+        "success_ci95": [
+          0.8378265662912299,
+          0.9793854036353695
+        ]
+      },
+      "runs/grasp_ppo_curr_seed2": {
+        "n": 49,
+        "success_rate": 0.8367346938775511,
+        "success_ci95": [
+          0.7096339333048477,
+          0.9148740301179102
+        ]
+      },
+      "scripted": {
+        "n": 49,
+        "success_rate": 0.9387755102040817,
+        "success_ci95": [
+          0.8347925657791229,
+          0.9789602350444708
+        ]
+      }
+    },
+    "failures": {
+      "dropped": 8,
+      "off_target": 4,
+      "toppled": 6
+    },
+    "wall_clock_s": 64.9
+  }
+}

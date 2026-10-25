@@ -1,0 +1,84 @@
+{
+  "name": "place_cart_seed0_best_place_nominal_v1",
+  "policy": "PPO best model from runs/place_cart_seed0 (seed 0, 1,003,520 steps, cartesian-v1-6d actions)",
+  "protocol": "PlaceEnv, 6 s horizon",
+  "eval_set": {
+    "name": "place_nominal_v1",
+    "n": 198,
+    "digest": "27394086fce3"
+  },
+  "created_utc": "2026-10-25T18:47:52+00:00",
+  "git": {
+    "commit": "8a67dc03239bef342e8d37574323678e362338d9",
+    "dirty": false
+  },
+  "versions": {
+    "python": "3.12.3",
+    "mujoco": "3.16.0",
+    "numpy": "2.5.4"
+  },
+  "summary": {
+    "episodes": 198,
+    "success_rate": 0.9646464646464646,
+    "success_ci95": [
+      0.928834580484278,
+      0.9827713520885909
+    ],
+    "first_placed_s": {
+      "median": 1.1,
+      "p90": 1.25
+    },
+    "release_s_median": 0.4,
+    "final_xy_error_mm": {
+      "median": 5.994075433073062,
+      "p95": 15.339678022710547
+    },
+    "final_tilt_deg": {
+      "median": 8.537736462515939e-07,
+      "max": 55.02280306945523
+    },
+    "floor_contact_episode_rate": 0.0,
+    "return": {
+      "mean": 47.18758048614798
+    },
+    "by_source": {
+      "runs/grasp_ppo_curr_seed0": {
+        "n": 50,
+        "success_rate": 0.98,
+        "success_ci95": [
+          0.8950431352816304,
+          0.9964608319110235
+        ]
+      },
+      "runs/grasp_ppo_curr_seed1": {
+        "n": 50,
+        "success_rate": 0.96,
+        "success_ci95": [
+          0.8653966212204534,
+          0.9889613473391734
+        ]
+      },
+      "runs/grasp_ppo_curr_seed2": {
+        "n": 49,
+        "success_rate": 0.9387755102040817,
+        "success_ci95": [
+          0.8347925657791229,
+          0.9789602350444708
+        ]
+      },
+      "scripted": {
+        "n": 49,
+        "success_rate": 0.9795918367346939,
+        "success_ci95": [
+          0.8930623153224584,
+          0.9963884204614692
+        ]
+      }
+    },
+    "failures": {
+      "toppled": 5,
+      "off_target": 2
+    },
+    "wall_clock_s": 67.2
+  }
+}

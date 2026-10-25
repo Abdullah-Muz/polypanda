@@ -1,0 +1,84 @@
+{
+  "name": "place_cart_seed1_best_place_nominal_v1",
+  "policy": "PPO best model from runs/place_cart_seed1 (seed 1, 1,003,520 steps, cartesian-v1-6d actions)",
+  "protocol": "PlaceEnv, 6 s horizon",
+  "eval_set": {
+    "name": "place_nominal_v1",
+    "n": 198,
+    "digest": "27394086fce3"
+  },
+  "created_utc": "2026-10-25T18:47:54+00:00",
+  "git": {
+    "commit": "8a67dc03239bef342e8d37574323678e362338d9",
+    "dirty": false
+  },
+  "versions": {
+    "python": "3.12.3",
+    "mujoco": "3.16.0",
+    "numpy": "2.5.4"
+  },
+  "summary": {
+    "episodes": 198,
+    "success_rate": 0.9797979797979798,
+    "success_ci95": [
+      0.9492156201692783,
+      0.9921165928135756
+    ],
+    "first_placed_s": {
+      "median": 1.1500000000000001,
+      "p90": 1.25
+    },
+    "release_s_median": 0.45,
+    "final_xy_error_mm": {
+      "median": 4.539057771224307,
+      "p95": 12.047627414737658
+    },
+    "final_tilt_deg": {
+      "median": 0.0,
+      "max": 90.01433185721325
+    },
+    "floor_contact_episode_rate": 0.010101010101010102,
+    "return": {
+      "mean": 47.829156627196426
+    },
+    "by_source": {
+      "runs/grasp_ppo_curr_seed0": {
+        "n": 50,
+        "success_rate": 0.98,
+        "success_ci95": [
+          0.8950431352816304,
+          0.9964608319110235
+        ]
+      },
+      "runs/grasp_ppo_curr_seed1": {
+        "n": 50,
+        "success_rate": 0.98,
+        "success_ci95": [
+          0.8950431352816304,
+          0.9964608319110235
+        ]
+      },
+      "runs/grasp_ppo_curr_seed2": {
+        "n": 49,
+        "success_rate": 0.9591836734693877,
+        "success_ci95": [
+          0.8628671652316889,
+          0.9887346030720717
+        ]
+      },
+      "scripted": {
+        "n": 49,
+        "success_rate": 1.0,
+        "success_ci95": [
+          0.9272997032640949,
+          0.9999999999999999
+        ]
+      }
+    },
+    "failures": {
+      "dropped": 3,
+      "toppled": 1
+    },
+    "wall_clock_s": 69.1
+  }
+}
