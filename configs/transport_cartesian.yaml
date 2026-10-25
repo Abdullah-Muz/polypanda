@@ -11,7 +11,7 @@ action:                   # Milestone 8: hand-motion actions; IK turns them into
   max_lead: null          # (joint actions only)
   space: cartesian
   cartesian:
-    dof: 4                # x, y, z and wrist yaw; the gripper is kept pointing straight down
+    dof: 3                # x, y, z; wrist held (a 4-D pilot spun the wrist and flung the cube)
     max_step: 0.01        # m per policy step per axis (0.2 m/s)
     max_rot: 0.05         # rad per policy step
     max_tilt: 0.6         # (6-D only)

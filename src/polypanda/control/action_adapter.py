@@ -25,7 +25,7 @@ from polypanda.simulation.panda import PandaIndices
 
 ACTION_DIM = 7
 ACTION_SCHEMA = "joint-increment-v1-7d"
-CARTESIAN_SCHEMAS = {4: "cartesian-v1-4d", 6: "cartesian-v1-6d"}
+CARTESIAN_SCHEMAS = {3: "cartesian-v1-3d", 4: "cartesian-v1-4d", 6: "cartesian-v1-6d"}
 
 
 def make_action_adapter(model: mujoco.MjModel, idx: PandaIndices, config):
@@ -149,6 +149,9 @@ class CartesianActionAdapter:
                             its closing direction turns by max_rot * a[3] about world z. A hand
                             that starts tilted (e.g. at a hand-off) is levelled by up to max_rot
                             per step, so the joint targets never jump.
+        3-D (x, y, z):      as 4-D with the wrist's yaw held, for tasks that never need to turn
+                            it (transport: a 4-D policy learned to spin the wrist and fling the
+                            cube out of the weak grip).
         6-D (x, y, z, rx, ry, rz): position as above; orientation turns by the world-frame
                             rotation vector max_rot * a[3:], kept within max_tilt of pointing
                             down.
@@ -178,7 +181,7 @@ class CartesianActionAdapter:
         posture_gain: float = 0.02,
     ) -> None:
         if dof not in CARTESIAN_SCHEMAS:
-            raise ValueError(f"dof must be 4 or 6, got {dof}")
+            raise ValueError(f"dof must be 3, 4 or 6, got {dof}")
         if min(max_step, max_rot, max_lead) <= 0 or n_substeps < 1 or ik_iters < 1:
             raise ValueError("max_step, max_rot, max_lead must be > 0; n_substeps, ik_iters >= 1")
         self.model = model
@@ -235,8 +238,9 @@ class CartesianActionAdapter:
         pos = np.clip(self.target_pos + self.max_step * a[:3],
                       commanded - self.max_lead, commanded + self.max_lead)
         self.target_pos = np.clip(pos, self.box_low, self.box_high)
-        if self.dof == 4:
-            R = _rotation(np.array([0.0, 0.0, self.max_rot * a[3]])) @ self.target_R
+        if self.dof in (3, 4):
+            yaw = self.max_rot * a[3] if self.dof == 4 else 0.0
+            R = _rotation(np.array([0.0, 0.0, yaw])) @ self.target_R
             self.target_R = _limit_tilt(R, max(_tilt(R) - self.max_rot, 0.0))
         else:
             self.target_R = _limit_tilt(_rotation(self.max_rot * a[3:]) @ self.target_R,

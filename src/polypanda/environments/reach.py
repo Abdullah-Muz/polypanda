@@ -31,7 +31,7 @@ OBS_SLICES = {
 @dataclass(frozen=True)
 class CartesianConfig:
     """Hand-motion actions (Milestone 8), used when ActionConfig.space is "cartesian"."""
-    dof: int = 4                # 4: x, y, z, yaw (gripper pointing down); 6: x, y, z, rotation
+    dof: int = 4                # 4: x, y, z, yaw (gripper down); 3: wrist held; 6: full rotation
     max_step: float = 0.01      # m per policy step per axis (0.2 m/s at 20 Hz)
     max_rot: float = 0.05       # rad per policy step per axis
     max_tilt: float = 0.6       # rad: 6-D targets stay within this of pointing straight down

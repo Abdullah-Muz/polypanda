@@ -150,13 +150,14 @@ def test_tasks_take_cartesian_actions():
 def test_hand_motion_carries_a_cube():
     """A one-line rule (move the cube toward the goal) is enough: the interface makes carrying
     easy, unlike joint increments (plain PPO: 0 %)."""
-    env = TransportEnv(replace(TransportConfig(), action=CART))
+    cart3 = ActionConfig(space="cartesian", cartesian=CartesianConfig(dof=3))
+    env = TransportEnv(replace(TransportConfig(), action=cart3))
     wins = 0
     for i in (0, 50, 100, 150):
         env.reset(seed=i, options={"state_index": i})
         for _ in range(200):
             err = env.goal - cube_position(env.data, env.cube)
-            action = np.append(np.clip(err / 0.02, -1, 1), 0.0).astype(np.float32)
+            action = np.clip(err / 0.02, -1, 1).astype(np.float32)
             _, _, terminated, truncated, info = env.step(action)
             if terminated or truncated:
                 break
@@ -164,16 +165,27 @@ def test_hand_motion_carries_a_cube():
     assert wins >= 3
 
 
-@pytest.mark.parametrize("name,base,cls", [
-    ("transport_cartesian.yaml", "transport.yaml", TransportConfig),
-    ("grasp_cartesian_curriculum.yaml", "grasp_curriculum.yaml", GraspConfig),
+@pytest.mark.parametrize("name,base,cls,dof", [
+    ("transport_cartesian.yaml", "transport.yaml", TransportConfig, 3),
+    ("grasp_cartesian_curriculum.yaml", "grasp_curriculum.yaml", GraspConfig, 4),
 ])
-def test_milestone8_configs_change_only_the_action_interface(name, base, cls):
+def test_milestone8_configs_change_only_the_action_interface(name, base, cls, dof):
     configs = Path(__file__).parents[1] / "configs"
     cfg, reference = cls.from_yaml(configs / name), cls.from_yaml(configs / base)
-    assert action_schema(cfg.action) == "cartesian-v1-4d"
-    assert cfg.action.cartesian == CartesianConfig()
+    assert action_schema(cfg.action) == f"cartesian-v1-{dof}d"
+    assert cfg.action.cartesian == CartesianConfig(dof=dof)
     assert replace(cfg, action=reference.action) == reference
+
+
+def test_three_dof_holds_the_wrist():
+    _, data, idx, adapter = _panda(ActionConfig(space="cartesian",
+                                                cartesian=CartesianConfig(dof=3)))
+    assert adapter.schema == "cartesian-v1-3d"
+    yaw = closing_yaw(_R(data, idx))
+    _run(adapter, data, [1.0, -1.0, -1.0], 10)
+    _run(adapter, data, np.zeros(3), 10)
+    assert closing_yaw(_R(data, idx)) == pytest.approx(yaw, abs=0.01)
+    assert gripper_tilt(_R(data, idx)) < 0.03
 
 
 def test_runs_record_and_check_their_action_schema(tmp_path):
