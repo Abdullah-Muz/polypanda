@@ -65,7 +65,10 @@ def main() -> None:
                     print(f"--- loaded newer best checkpoint "
                           f"({time.strftime('%H:%M:%S', time.localtime(mtime))})")
             x, y, yaw = eval_set.placements[i]
-            obs, _ = env.reset(options={"cube": (x, y, yaw)})
+            options = {"cube": (x, y, yaw)}
+            if eval_set.distractors is not None and env.distractor_slots:
+                options["distractors"] = [tuple(d) for d in eval_set.distractors[i]]
+            obs, _ = env.reset(options=options)
             driver.reset(env)
             viewer.sync()
             time.sleep(0.5 / args.speed)
