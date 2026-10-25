@@ -38,7 +38,8 @@ def make_action_adapter(model: mujoco.MjModel, idx: PandaIndices, config):
         return CartesianActionAdapter(
             model, idx, n_substeps=config.n_substeps, dof=c.dof, max_step=c.max_step,
             max_rot=c.max_rot, max_tilt=c.max_tilt, max_lead=c.max_lead, box_low=c.box_low,
-            box_high=c.box_high, ik_iters=c.ik_iters, posture_gain=c.posture_gain)
+            box_high=c.box_high, ik_iters=c.ik_iters, posture_gain=c.posture_gain,
+            max_accel=c.max_accel)
     raise ValueError(f"unknown action space {config.space!r}; use 'joint' or 'cartesian'")
 
 
@@ -180,6 +181,10 @@ class CartesianActionAdapter:
                             rotation vector max_rot * a[3:], kept within max_tilt of pointing
                             down.
 
+    Optional max_accel (m/s^2) limits how much the target's velocity may change per step, as
+    industrial arms limit Cartesian acceleration: sudden starts and stops shake a weakly held
+    cube loose (Milestone 8 transport diagnosis).
+
     The target stays within max_lead (per axis) of the hand pose the current joint targets
     command, and inside a box, so it cannot wind up while the arm is blocked. Each step,
     ik_iters damped least-squares iterations (PoseIK, exact kinematics on a private model) move
@@ -203,7 +208,10 @@ class CartesianActionAdapter:
         box_high=(0.85, 0.5, 0.6),
         ik_iters: int = 2,
         posture_gain: float = 0.02,
+        max_accel: float | None = None,
     ) -> None:
+        if max_accel is not None and max_accel <= 0:
+            raise ValueError("max_accel must be > 0 or None")
         if dof not in CARTESIAN_SCHEMAS:
             raise ValueError(f"dof must be 3, 4 or 6, got {dof}")
         if min(max_step, max_rot, max_lead) <= 0 or n_substeps < 1 or ik_iters < 1:
@@ -218,6 +226,8 @@ class CartesianActionAdapter:
         self.max_lead = max_lead
         self.box_low, self.box_high = np.asarray(box_low, float), np.asarray(box_high, float)
         self.ik_iters, self.posture_gain = ik_iters, posture_gain
+        self.max_accel = max_accel
+        self._velocity_step = np.zeros(3)  # last step's target displacement (m)
         self.low, self.high = model.actuator_ctrlrange[idx.arm_actuators].T.copy()
         self.ik = PoseIK()
         self.q_home = self.ik.data.qpos[self.ik.idx.arm_qpos].copy()  # PoseIK starts at home
@@ -238,6 +248,7 @@ class CartesianActionAdapter:
     def _sync_target(self) -> None:
         """Target pose := the pose the joint targets command (no lead, so nothing jumps)."""
         self.target_pos, self.target_R = self.ik.forward(self.q_cmd)
+        self._velocity_step = np.zeros(3)  # start from rest
 
     def reset_to_measured(self, data: mujoco.MjData) -> None:
         """Episode start: joint targets become the measured joints; the hand target follows."""
@@ -259,9 +270,17 @@ class CartesianActionAdapter:
             raise ValueError(f"action contains non-finite values: {a}")
         a = np.clip(a, -1.0, 1.0)
         commanded, _ = self.ik.forward(self.q_cmd)
-        pos = np.clip(self.target_pos + self.max_step * a[:3],
-                      commanded - self.max_lead, commanded + self.max_lead)
-        self.target_pos = np.clip(pos, self.box_low, self.box_high)
+        move = self.max_step * a[:3]
+        if self.max_accel is not None:  # bound the change of velocity per step
+            dv = move - self._velocity_step
+            limit = self.max_accel * self.control_dt ** 2
+            norm = float(np.linalg.norm(dv))
+            if norm > limit:
+                move = self._velocity_step + dv * (limit / norm)
+        pos = np.clip(self.target_pos + move, commanded - self.max_lead, commanded + self.max_lead)
+        pos = np.clip(pos, self.box_low, self.box_high)
+        self._velocity_step = pos - self.target_pos
+        self.target_pos = pos
         if self.dof in (3, 4):
             yaw = self.max_rot * a[3] if self.dof == 4 else 0.0
             R = _rotation(np.array([0.0, 0.0, yaw])) @ self.target_R

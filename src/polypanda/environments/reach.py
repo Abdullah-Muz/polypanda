@@ -44,6 +44,7 @@ class CartesianConfig:
     box_high: tuple[float, float, float] = (0.85, 0.5, 0.6)
     ik_iters: int = 2           # damped least-squares iterations per policy step
     posture_gain: float = 0.02  # null-space pull toward the home arm posture, per step
+    max_accel: float | None = None  # m/s^2 limit on the hand target's change of velocity
 
 
 @dataclass(frozen=True)

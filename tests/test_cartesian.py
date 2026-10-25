@@ -111,6 +111,30 @@ def test_target_cannot_wind_up_or_leave_its_box():
     assert adapter.target_pos[2] >= low + 0.025
 
 
+def test_acceleration_limit_bounds_the_change_of_velocity():
+    limited = ActionConfig(space="cartesian", cartesian=CartesianConfig(max_accel=1.0))
+    _, data, _, adapter = _panda(limited)
+    previous = adapter.target_pos.copy()
+    steps = []
+    for _ in range(6):
+        adapter.apply(data, [1.0, 0, 0, 0])
+        steps.append(adapter.target_pos[0] - previous[0])
+        previous = adapter.target_pos.copy()
+    # 1 m/s^2 x (0.05 s)^2 = 2.5 mm more per step, up to the 1 cm top speed
+    np.testing.assert_allclose(steps, [0.0025, 0.005, 0.0075, 0.01, 0.01, 0.01], atol=1e-9)
+    unlimited = _panda()[3]
+    assert unlimited.max_accel is None
+
+
+def test_slow_transport_config_changes_only_the_speed():
+    configs = Path(__file__).parents[1] / "configs"
+    slow = TransportConfig.from_yaml(configs / "transport_cartesian_slow.yaml")
+    base = TransportConfig.from_yaml(configs / "transport_cartesian.yaml")
+    assert slow.action.cartesian.max_step == 0.006
+    assert replace(slow, action=base.action) == base
+    assert replace(slow.action.cartesian, max_step=0.01) == base.action.cartesian
+
+
 def test_six_dof_tilt_is_limited():
     _, data, idx, adapter = _panda(CART6)
     _run(adapter, data, [0, 0, 0, 1.0, 0, 0], 40)  # 2 rad of roll commands
