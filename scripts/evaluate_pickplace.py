@@ -4,9 +4,10 @@ Usage:
   uv run python scripts/evaluate_pickplace.py --make-set               # (re)generate the scenes
   uv run python scripts/evaluate_pickplace.py --grasp scripted         # all-scripted
   uv run python scripts/evaluate_pickplace.py --grasp run:runs/<run_dir>[@final]
+  ... --transport run:runs/<run_dir>  --place run:runs/<run_dir>      # learned later stages
   ... --compare results/pickplace/<other>_episodes.csv                 # paired McNemar test
-Transport is always the scripted carry and place the scripted place (the skills each stage's
-evaluation selected). Writes results/pickplace/<name>.json (summary + provenance) and
+Transport and place default to the scripted carry and scripted place; a learned skill runs in
+its own task configuration. Writes results/pickplace/<name>.json (summary + provenance) and
 <name>_episodes.csv.
 """
 
@@ -23,16 +24,15 @@ import mujoco
 import numpy as np
 import torch
 
-from polypanda.control.scripted_place import ScriptedPlace
 from polypanda.evaluation.pickplace import (
     PickPlaceEpisode,
     evaluate_pickplace,
     grasp_driver_from_spec,
     grasp_env_for,
     mcnemar_exact,
+    skill_from_spec,
 )
 from polypanda.evaluation.sets import PickPlaceEvalSet, generate_pickplace_eval_set
-from polypanda.evaluation.transport import ScriptedCarryDriver
 from polypanda.simulation.scenes import WIDE_X_RANGE, WIDE_Y_RANGE
 from polypanda.supervisor.fsm import SupervisorConfig
 
@@ -49,6 +49,8 @@ def git_state() -> dict:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--grasp", default="scripted")
+    parser.add_argument("--transport", default="scripted")
+    parser.add_argument("--place", default="scripted")
     parser.add_argument("--set", type=Path, default=DEFAULT_SET)
     parser.add_argument("--make-set", action="store_true")
     parser.add_argument("--n", type=int, default=200)
@@ -72,15 +74,20 @@ def main() -> None:
 
     eval_set = PickPlaceEvalSet.load(args.set)
     driver, description, tag, provenance = grasp_driver_from_spec(args.grasp)
+    t_driver, t_env, t_description, t_tag, t_provenance = skill_from_spec(args.transport,
+                                                                          "transport")
+    p_driver, p_env, p_description, p_tag, p_provenance = skill_from_spec(args.place, "place")
     # re-grasp anywhere in the scenes' own workspace (+ margin)
     config = SupervisorConfig(retry_region=(eval_set.x_range, eval_set.y_range))
-    name = f"pickplace_{tag}_{eval_set.name}"
-    summary, episodes = evaluate_pickplace(driver, ScriptedCarryDriver(), ScriptedPlace(),
-                                           eval_set, config, grasp_env_for(args.grasp))
+    later = "".join(f"_{stage}-{t}" for stage, t in (("T", t_tag), ("P", p_tag))
+                    if t != "scripted")  # all-scripted later stages keep the original names
+    name = f"pickplace_{tag}{later}_{eval_set.name}"
+    summary, episodes = evaluate_pickplace(driver, t_driver, p_driver, eval_set, config,
+                                           grasp_env_for(args.grasp), t_env, p_env)
     record = {"name": name,
               "skills": {"grasp": description, "grasp_provenance": provenance,
-                         "transport": "scripted carry (closed-loop IK, gain 0.2)",
-                         "place": "scripted place (upright correction, gated release)"},
+                         "transport": t_description, "transport_provenance": t_provenance,
+                         "place": p_description, "place_provenance": p_provenance},
               "supervisor": asdict(config),
               "eval_set": {"name": eval_set.name, "n": len(eval_set), "digest": eval_set.digest},
               "created_utc": datetime.now(UTC).isoformat(timespec="seconds"),

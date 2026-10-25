@@ -23,6 +23,7 @@ from enum import Enum
 
 import numpy as np
 
+from polypanda.control.action_adapter import JointDeltaActionAdapter
 from polypanda.control.ik import PoseIK
 from polypanda.control.scripted_carry import level_quat
 from polypanda.environments.grasp import GRIPPER_OPEN, GraspEnv
@@ -89,12 +90,16 @@ class PickPlaceResult:
 
 class PickPlaceSupervisor:
     def __init__(self, grasp_driver, transport_driver, place_driver,
-                 config: SupervisorConfig | None = None, grasp_env: GraspEnv | None = None
+                 config: SupervisorConfig | None = None, grasp_env: GraspEnv | None = None,
+                 transport_env: TransportEnv | None = None, place_env: PlaceEnv | None = None
                  ) -> None:
-        """`grasp_env` is the environment the grasp skill was built for (default: GraspEnv)."""
+        """`grasp_env`, `transport_env`, `place_env`: the environment each skill was built for,
+        e.g. a learned skill's own task configuration and action interface (defaults: the
+        scripted skills' GraspEnv, TransportEnv, PlaceEnv)."""
         self.config = config or SupervisorConfig()
-        self.envs = {Stage.GRASP: grasp_env or GraspEnv(), Stage.TRANSPORT: TransportEnv(),
-                     Stage.PLACE: PlaceEnv()}
+        self.envs = {Stage.GRASP: grasp_env or GraspEnv(),
+                     Stage.TRANSPORT: transport_env or TransportEnv(),
+                     Stage.PLACE: place_env or PlaceEnv()}
         self.drivers = {Stage.GRASP: grasp_driver, Stage.TRANSPORT: transport_driver,
                         Stage.PLACE: place_driver}
         self.dt = self.envs[Stage.GRASP].adapter.control_dt
@@ -124,8 +129,12 @@ class PickPlaceSupervisor:
 
     def _go_home(self, env, home_q: np.ndarray, horizon: int) -> int:
         """Recovery: open the fingers and hold still, lift the hand straight up so it clears
-        the cube, then drive the arm back to its home configuration in joint space."""
-        cfg, adapter = self.config, env.adapter
+        the cube, then drive the arm back to its home configuration in joint space.
+
+        Recovery has its own joint-increment controller, continuing from the failed skill's
+        commands, whatever action interface that skill's policy uses."""
+        cfg = self.config
+        adapter = JointDeltaActionAdapter(env.model, env.arm, n_substeps=env.adapter.n_substeps)
         if self._ik is None:
             self._ik = PoseIK()
         env.data.ctrl[env.arm.gripper_actuator] = GRIPPER_OPEN

@@ -14,10 +14,12 @@ from pathlib import Path
 import numpy as np
 import yaml
 
+from polypanda.control.scripted_place import ScriptedPlace
 from polypanda.environments.grasp import GraspEnv
 from polypanda.evaluation.grasp import PolicyDriver, ScriptedDriver
 from polypanda.evaluation.reach import wilson_interval
 from polypanda.evaluation.sets import PickPlaceEvalSet
+from polypanda.evaluation.transport import ScriptedCarryDriver
 from polypanda.policies.loader import load_run, make_run_env
 from polypanda.supervisor.fsm import PickPlaceResult, PickPlaceSupervisor, SupervisorConfig
 
@@ -47,6 +49,33 @@ def grasp_driver_from_spec(spec: str):
             f"{Path(run_dir).name}_{policy.which}",
             {"run_dir": run_dir, "checkpoint": policy.which, "policy_id": meta["policy_id"],
              # runs still training have provisional metadata without a git record
+             "trained_at": meta.get("git", {}).get("commit", "in progress")})
+
+
+SCRIPTED_SKILLS = {
+    "transport": (ScriptedCarryDriver, "scripted carry (closed-loop IK, gain 0.2)"),
+    "place": (ScriptedPlace, "scripted place (upright correction, gated release)"),
+}
+
+
+def skill_from_spec(spec: str, stage: str):
+    """A transport or place skill, 'scripted' or 'run:<run_dir>[@best|final|selected]' ->
+    (driver, env, description, tag, provenance). env is None for the scripted skill (the
+    supervisor's default environment); a trained run gets its own task configuration."""
+    if spec == "scripted":
+        driver_cls, description = SCRIPTED_SKILLS[stage]
+        return driver_cls(), None, description, "scripted", {}
+    if not spec.startswith("run:"):
+        raise ValueError(f"{stage} must be 'scripted' or 'run:<run_dir>[@best|final|selected]'")
+    run_dir, _, which = spec[4:].partition("@")
+    policy = load_run(run_dir, which or "best")
+    meta = policy.metadata
+    if not meta["skill"].startswith(stage):
+        raise ValueError(f"{run_dir} is a {meta['skill']} policy, not {stage}")
+    return (PolicyDriver(policy), make_run_env(run_dir, meta["skill"]),
+            f"{meta['algorithm']} {stage} policy {meta['policy_id']}",
+            f"{Path(run_dir).name}_{policy.which}",
+            {"run_dir": run_dir, "checkpoint": policy.which, "policy_id": meta["policy_id"],
              "trained_at": meta.get("git", {}).get("commit", "in progress")})
 
 
@@ -122,9 +151,10 @@ def summarize_pickplace(results: list[PickPlaceEpisode]) -> dict:
 
 def evaluate_pickplace(grasp_driver, transport_driver, place_driver,
                        eval_set: PickPlaceEvalSet, config: SupervisorConfig | None = None,
-                       grasp_env=None) -> tuple[dict, list[PickPlaceEpisode]]:
+                       grasp_env=None, transport_env=None, place_env=None
+                       ) -> tuple[dict, list[PickPlaceEpisode]]:
     supervisor = PickPlaceSupervisor(grasp_driver, transport_driver, place_driver, config,
-                                     grasp_env)
+                                     grasp_env, transport_env, place_env)
     start = time.perf_counter()
     results = [episode_from_result(i, supervisor.run(p, t), supervisor.dt)
                for i, (p, t) in enumerate(zip(eval_set.placements, eval_set.targets,
