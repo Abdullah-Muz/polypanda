@@ -3,8 +3,8 @@
 Until Milestone 8 every policy commanded seven joint increments. Learned grasping worked (about 90 %), but plain PPO never learned to carry a cube (0 % in Milestone 4), and the scripted carry succeeded precisely because it plans in hand coordinates. Milestone 8 gives policies that option and uses it to learn all three skills.
 
 **Outcome:**
-- **Every skill is now learned.** The learned grasp and the learned place match or beat their earlier versions, and transport is learned for the first time.
-- **The fully learned chain** (grasp, transport and place all trained with PPO) completes **83.3 %** of the 200 held-out pick-and-place scenes; its best seed completes 91.5 %. It is about 40 % faster than the scripted chain.
+- **Every skill is now learned.** The learned grasp beats the earlier learned grasp, transport is learned for the first time, and learned transport and learned place are statistically indistinguishable from their scripted versions inside the full task.
+- **The fully learned chain** (grasp, transport and place all trained with PPO) completes **88.5 %** of the 200 held-out pick-and-place scenes, and 96 % for its best seed. That equals the v1.0 system, which had only a learned grasp (89.0 %, paired p = 0.84). It is about 40 % faster than the scripted chain.
 - **Scripted baselines.** The scripted controllers are reported next to every result as reference baselines; the all-scripted chain completes 100 %.
 
 ## 8.1 The interface (`polypanda.control.action_adapter.CartesianActionAdapter`)
@@ -64,6 +64,39 @@ A one-line rule, "move the cube toward the goal", carries 15 of 20 cubes with ha
 - **The weak grip is the limit, as in Milestone 4.** Cubes held off-centre creep out of the fingers. The learned carry is faster and less gentle than the scripted one.
 - **Effect of the bound penalty on grasp: unknown.** The grasp policy also saturates its vertical action (78 % of steps), but there "full speed down, then full speed up" is roughly right, and grasp learned well without the penalty. Its effect on grasp is untested.
 
+### Follow-up: a lower top speed (adopted)
+
+Failure analysis of the 0.2 m/s policies:
+
+- **Where cubes were lost.** Cubes lost while holding at the goal matched the scripted carry (12–16 per seed against 11): this is the weak grip's slow creep. The extra losses came *while carrying*: 13–47 per seed against 4 for the scripted carry, early in the episode (median 2.5–3.6 s against 6.2 s).
+- **Not grasp quality.** The learned carry also failed with clean scripted handoffs (29–45 of 50 against 49 of 50).
+- **What the hand did.** Traces of the failed carries showed two behaviours:
+  - **Seed 1 took large detours upward** (median height range 33 cm against 8 cm for the scripted carry on the same cases). The telescoping progress reward pays back on the return leg whatever a detour costs, so detours are free.
+  - **All seeds carried about 1.8× faster than the scripted carry** (0.25 against 0.14 m/s at peak).
+
+Two mechanism checks on the existing policies, without retraining:
+
+| Change at test time (3 seeds pooled) | Transport success |
+|---|---|
+| None (0.2 m/s) | 76.2 % |
+| Acceleration limit 2 / 1 / 0.5 m/s² (`cartesian.max_accel`) | 76.7 / 77.2 / 76.8 %: no effect |
+| Top speed 0.16 / **0.12** / 0.08 m/s | 82.2 / **84.7** / 85.8 % |
+
+Sudden starts and stops were therefore not the cause; the sustained speed was. The acceleration limit stays available but off.
+
+`configs/transport_cartesian_slow_ppo.yaml` retrains with a top speed of 0.12 m/s, about the scripted carry's pace, and nothing else changed. 3 seeds, trained and evaluated at `9be3dfa` (clean):
+
+| | Learned, 0.12 m/s | Learned, 0.2 m/s | Scripted carry |
+|---|---|---|---|
+| Held-out transport (200 cases) | **90.2 %** (87.5–92.3 %); 89.0 / 89.5 / 92.0 | 76.2 % | 92.0 % |
+| Paired test | vs 0.2 m/s: p = 2.5 × 10⁻²⁰ | | vs learned 0.12 m/s: **p = 0.16** |
+| Time to first success, median | 2.2–2.3 s | 1.7–2.0 s | 2.05 s |
+| Inside pick-and-place (learned transport only) | **99.5 %** (597 / 600; p = 0.25 vs 100 %) | 86.7 % | 100 % |
+
+- **The seeds now agree.** All three learned quickly, reaching 71–75 % by 200k steps except seed 0, and peaked at 95–97 % in validation; seed 1 is no longer a slow starter.
+- **The detours disappeared without a reward change.** All remaining failures are the grip's slow creep, as for the scripted carry. The detour loophole in the progress reward is real, but it no longer costs anything measurable.
+- **The 0.12 m/s transport is the learned transport from here on.**
+
 ## 8.4 Learned place
 
 The place task existed as an environment with a gated release; RL for placing had not been attempted. Changes before the first training run:
@@ -85,25 +118,27 @@ The place set is harder than what place sees in pick-and-place, where the script
 
 ## 8.5 The fully learned chain
 
-The supervisor now takes a learned skill for every stage, each running in its own task configuration (`scripts/evaluate_pickplace.py --grasp ... --transport ... --place ...`). Seed *s* of each skill forms chain *s*. Evaluated at `8a67dc0` (clean), 200 scenes per seed:
+The supervisor now takes a learned skill for every stage, each running in its own task configuration (`scripts/evaluate_pickplace.py --grasp ... --transport ... --place ...`). Seed *s* of each skill forms chain *s*. 200 scenes per seed; the chain with the 0.12 m/s transport was evaluated at `9be3dfa`, the others at `8a67dc0` (clean):
 
 | System | Original scenes | Wide scenes | Time to placed, median | Final xy error, median |
 |---|---|---|---|---|
-| **Fully learned** (3 seeds pooled) | **83.3 %** (80.1–86.1 %); 77.0 / 81.5 / 91.5 | 70.7 % (66.9–74.2 %); 75.0 / 56.0 / 81.0 | 7.0–7.8 s | 4–7 mm |
+| **Fully learned** (0.12 m/s transport; 3 seeds pooled) | **88.5 %** (85.7–90.8 %); 78.5 / 96.0 / 91.0 | **80.8 %** (77.5–83.8 %); 71.0 / 86.5 / 85.0 | 7.3–7.6 s | 4–7 mm |
+| Fully learned, first transport (0.2 m/s) | 83.3 %; 77.0 / 81.5 / 91.5 | 70.7 % | 7.0–7.8 s | 4–7 mm |
 | Learned grasp + scripted transport and place | 91.8 % | 86.7 % | | |
-| Learned transport only | 86.7 %; 90.5 / 78.0 / 91.5 | | | |
+| Learned transport only (0.12 m/s) | 99.5 % | | | |
 | Learned place only | 99.5 % | | | |
 | **All scripted (baseline)** | **100 %** | **98.5 %** | 12.4 s | 1.7 mm |
 | v1.0 system (joint-action learned grasp, selected checkpoints, + scripted transport and place) | 89.0 % | 81.2 % | | |
 
-- **Where the chain loses.** Of the 100 failed scenes on the original set, the final attempt failed at the grasp in 46, transport in 31 and place in 23. The supervisor's retries recover part of the losses: first-attempt success is 70.5 / 71.5 / 88.5 % per seed.
-- **Speed.** It is faster than scripted (about 7 s against 12.4 s), mostly because the learned grasp takes about 4 s against 7.8 s. It is less precise (4–7 mm against 1.7 mm), well within the 2 cm tolerance.
-- **The wide scenes are harder** (70.7 %): transport and place were trained only on the original region.
-- **Against the v1.0 system** (one learned skill), the fully learned chain is 5.7 points lower (83.3 % vs 89.0 %, paired p = 0.003). That is the cost of making transport learned too. Its best seed (91.5 %) is above the v1.0 system.
+- **The fully learned chain equals the v1.0 system**, which had only one learned skill: 531 vs 534 of 600 on the original scenes (paired p = 0.84) and 485 vs 487 on the wide scenes (p = 0.93). The slower transport added 5.2 points on the original scenes (p = 3 × 10⁻⁶) and 10.1 on the wide ones.
+- **The grasp is now the weakest link.** The most common final failure is a cube knocked over during the grasp (32 of 69), and the weakest chain seed is the one with the weakest grasp (grasp seed 0: 81.5 %).
+- **Speed and precision.** About 7.5 s per cube against 12.4 s for scripted, mostly because the learned grasp takes about 4 s against 7.8 s. Less precise (4–7 mm against 1.7 mm), well within the 2 cm tolerance.
+- **The wide scenes are harder** (80.8 %): transport and place were trained only on the original region.
 
 ## What Milestone 8 showed
 
 1. **The action interface mattered more than the reward or the training region.** The same PPO settings that could not learn transport with joint increments learned it with hand-motion actions, and the grasp improved most where the task was hardest.
-2. **Two failure diagnoses were needed before transport learned, each from looking at what the policy actually did.** First the wrist spin, then a policy mean stuck outside the action bounds. The second fix (the bound penalty) is a general PPO remedy, now available to every task.
-3. **Seed-to-seed variation remains the main weakness of the learned skills** (transport 60–85 %, chain 77–91.5 %). Reporting 3 seeds is essential.
-4. **Next:** improve transport, the weakest learned link, then multi-cube stacking (Milestone 9).
+2. **Three failure diagnoses got transport from 0 % to the scripted level, each from looking at what the policy actually did:** the wrist spin, a policy mean stuck outside the action bounds, and carrying too fast. The bound penalty is a general PPO remedy, now available to every task.
+3. **Cheap test-time checks before retraining paid off.** Running the existing policies with a changed controller ruled out acceleration and confirmed speed in about 20 minutes, before a 1.5-hour retraining.
+4. **A forgiving task makes seeds agree.** At 0.2 m/s the transport seeds spread from 60 to 85 %; at 0.12 m/s from 89 to 92 %. Reporting 3 seeds is what showed it.
+5. **Next:** multi-cube stacking (Milestone 9). The grasp is now the weakest learned skill.

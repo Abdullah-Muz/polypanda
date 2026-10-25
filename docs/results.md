@@ -204,18 +204,20 @@ Policies can command the hand (x, y, z, plus wrist yaw or full rotation) instead
 | Skill, held-out set | Learned (hand motion) | Scripted baseline |
 |---|---|---|
 | Grasp, original / wide / clutter | 91.3 / 85.0 / 84.7 % | 100 / 100 / 100 % |
-| Transport (200 cases) | 76.2 % (per seed 83.5 / 60.0 / 85.0) | 92.0 % |
+| Transport (200 cases), top speed 0.12 m/s | 90.2 % (per seed 89.0 / 89.5 / 92.0; p = 0.16 vs scripted) | 92.0 % |
+| Transport, first version at 0.2 m/s | 76.2 % (per seed 83.5 / 60.0 / 85.0) | |
 | Place (198 cases) | 95.1 % | 97.5 % |
 
 | Pick-and-place, 200 scenes | Original | Wide |
 |---|---|---|
-| **Fully learned chain** (grasp, transport and place all PPO) | **83.3 %** (per seed 77.0 / 81.5 / 91.5) | **70.7 %** |
+| **Fully learned chain** (grasp, transport and place all PPO) | **88.5 %** (per seed 78.5 / 96.0 / 91.0) | **80.8 %** |
 | Learned grasp only | 91.8 % | 86.7 % |
-| Learned transport only | 86.7 % | |
-| Learned place only | 99.5 % (not distinguishable from scripted: p = 0.5 / 1 / 1) | |
+| Learned transport only | 99.5 % (p = 0.25 vs scripted) | |
+| Learned place only | 99.5 % (p = 0.5 / 1 / 1 vs scripted) | |
 | All scripted (baseline) | 100 % | 98.5 % |
+| v1.0 system (learned grasp only, joint actions) | 89.0 % | 81.2 % |
 
 - **The hand-motion grasp meets the Milestone 7 target** (at least 85 % wide, at least 87 % original). Its gain over the joint-action grasp is significant in clutter (p = 0.004) and end to end on the wide scenes (p = 0.004).
-- **Transport was learned for the first time.** Two pilots failed first: one spun the wrist and flung the cube; in the other the policy's mean action drifted past its bounds, where clipping hid it from learning. The fixes were a 3-D action without wrist rotation and an out-of-bounds penalty.
-- **Learned place matches the scripted place inside the full task** and is adopted.
-- **The fully learned chain is about 40 % faster than scripted** (about 7 s vs 12.4 s per cube) and less precise (4–7 mm vs 1.7 mm).
+- **Transport was learned for the first time.** Two pilots failed first: one spun the wrist and flung the cube; in the other the policy's mean action drifted past its bounds, where clipping hid it from learning. The fixes were a 3-D action without wrist rotation and an out-of-bounds penalty. Failure analysis then showed the first learned transport carried too fast: test-time checks ruled out acceleration and confirmed speed. Retrained at 0.12 m/s, it matches the scripted carry.
+- **Learned transport and learned place match their scripted versions inside the full task.**
+- **The fully learned chain equals the v1.0 system** (paired p = 0.84 original, 0.93 wide), which had only one learned skill. It is about 40 % faster than scripted (about 7.5 s vs 12.4 s per cube) and less precise (4–7 mm vs 1.7 mm). Its weakest link is now the grasp.
