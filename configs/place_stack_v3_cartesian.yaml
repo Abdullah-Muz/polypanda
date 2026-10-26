@@ -3,6 +3,7 @@
 # rather than the cube below, and the errors added up into overhangs. v3 rewards precision as
 # well as gentleness: it aims at the top tower cube, counts a placement only within 1 cm (2 cm
 # before), charges the distance from the target after release, and keeps a softer nudge penalty.
+# The release gate stays at 2 cm (see gate).
 # Keys map to polypanda.environments.place.PlaceConfig.
 
 action:
@@ -24,7 +25,10 @@ action:
 
 gate:
   release_height: 0.01
-  xy_tol: 0.01            # the fingers open only within 1 cm of the target (v1, v2: 2 cm)
+  xy_tol: 0.02            # (as v1, v2) a first v3 run opened the fingers only within 1 cm: no
+                          # seed learned to release at all (0 % validation after 0.5M steps),
+                          # since exploring policies rarely get that close; precision is asked
+                          # of the outcome (check, centring) instead
 
 check:
   max_rest_height: 0.003

@@ -171,7 +171,7 @@ def test_knocking_the_tower_fails(stack_env):
 def test_v3_aims_at_the_top_cube_and_rewards_centring():
     from polypanda.environments.place import PlaceConfig
     cfg = PlaceConfig.from_yaml(ROOT / "configs" / "place_stack_v3_cartesian.yaml")
-    assert cfg.stack.aim_at_top and cfg.check.tolerance == 0.01 and cfg.gate.xy_tol == 0.01
+    assert cfg.stack.aim_at_top and cfg.check.tolerance == 0.01 and cfg.gate.xy_tol == 0.02
     assert cfg.reward.centring == 20.0 and cfg.stack.disturb_penalty == 300.0
     env = PlaceEnv(cfg)
     env.reset(seed=3, options={"state_index": 5, "level": 2})
