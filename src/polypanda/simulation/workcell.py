@@ -6,7 +6,7 @@ rotation of the base (joint 1), and every cycle swings the base widely:
     infeed pick point     +90 deg   (left)        an indexing conveyor brings one cube at a time
     towers A / B / C   -40 / -90 / -140 deg       each with a recipe sign behind it
     reject bin           +150 deg   (rear-left)   for cubes that cannot be used
-    buffer slots 1-3  +10 / +35 / +60 deg (front-left)  cubes needed later (Layer 2)
+    buffer slots 1-3  -10 / +10 / +30 deg (front)  cubes needed later (Layer 2)
 
 Work orders: each tower has a recipe (colours from bottom to top), shown on its sign as a column
 of coloured squares. Cubes come in four colours. Cubes wait hidden in a parts hopper next to the
@@ -51,7 +51,9 @@ class WorkcellConfig:
     infeed_angle: float = 90.0        # deg, about the base axis, from the robot's front (+x)
     tower_angles: tuple[float, float, float] = (-40.0, -90.0, -140.0)
     reject_angle: float = 150.0
-    buffer_angles: tuple[float, ...] = (10.0, 35.0, 60.0)  # parking slots on the bench (Layer 2)
+    # Parking slots on the bench (Layer 2), clear of the belt: at +60 deg a parked cube overhung
+    # the belt's edge, was dragged along by it and knocked over the next arriving cube.
+    buffer_angles: tuple[float, ...] = (-10.0, 10.0, 30.0)
     n_cubes: int = 12                 # cube bodies in the model (3 towers x up to 4; Layer 2: 14)
     max_height: int = 6               # squares on each recipe sign
     batch: int = 3                    # cubes loaded onto the belt at a time

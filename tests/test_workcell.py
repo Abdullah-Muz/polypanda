@@ -18,6 +18,7 @@ from polypanda.simulation.workcell import (
     Workcell,
     WorkcellConfig,
     WorkOrder,
+    belt_direction,
     queue_xy,
     station_xy,
 )
@@ -224,6 +225,28 @@ def test_scripted_cell_fulfils_work_orders():
     assert ctl.check(towers) == [True, True, True]
     assert ctl.ik_failures == 0
     assert not any(cell.attached(c) for c in cell.cubes)  # everything released
+
+
+def test_parked_cubes_stay_clear_of_the_belt():
+    cell = Workcell.build()
+    cfg = cell.config
+    travel = belt_direction(cfg)
+    normal = np.array([-travel[1], travel[0]])
+    for s in range(len(cfg.buffer_angles)):  # footprint (incl. a turned cube) off the belt
+        lateral = abs((cell.buffer_xy(s) - cell.pick_xy) @ normal)
+        assert lateral > cfg.belt_width / 2 + 0.03 + 0.03, s
+    order = WorkOrder((("red", "blue"), ("green",), ("yellow",)),
+                      (("red", 0), ("blue", 0), ("green", 1), ("yellow", 2)))
+    cell.reset(order)
+    parked = cell.cubes[6:6 + len(cfg.buffer_angles)]  # spare cubes stand in the slots
+    for s, cube in enumerate(parked):
+        cell.data.qpos[cube.qpos:cube.qpos + 3] = [*cell.buffer_xy(s), cube.half_size[2]]
+    mujoco.mj_forward(cell.model, cell.data)
+    start = [cell.data.xpos[c.body].copy() for c in parked]
+    cell.conveyor.index()
+    assert _run_belt(cell)  # a batch rides past to the pick point
+    for cube, p0 in zip(parked, start, strict=True):
+        assert np.linalg.norm(cell.data.xpos[cube.body] - p0) < 0.002
 
 
 def test_scripted_cell_routes_cubes_through_the_buffer_and_the_reject_bin():
