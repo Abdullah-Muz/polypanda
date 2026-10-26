@@ -1,7 +1,6 @@
 """Milestone 9 work-order cell: layout, recipes and signs, conveyor feeding, reach, grip,
 factory dressing, and a scripted work order."""
 
-import importlib.util
 from pathlib import Path
 
 import mujoco
@@ -9,6 +8,7 @@ import numpy as np
 import pytest
 
 from polypanda.control.ik import PoseIK, top_down_quat
+from polypanda.control.scripted_cell import ScriptedCell
 from polypanda.simulation.panda import PandaIndices
 from polypanda.simulation.workcell import (
     BELT_CONTACT,
@@ -178,25 +178,47 @@ def test_queue_positions_follow_the_belt():
         cfg.first_cube)
 
 
-def test_scripted_preview_fulfils_a_work_order():
-    spec = importlib.util.spec_from_file_location("view_workcell",
-                                                  ROOT / "scripts" / "view_workcell.py")
-    view = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(view)
-
-    class Headless:
-        def is_running(self):
-            return True
-
-        def sync(self):
-            pass
-
+def test_grasp_assist_attaches_only_a_verified_grip():
     cell = Workcell.build()
-    preview = view.Preview(cell, Headless(), speed=1e9)
-    # Up to 3 cubes per tower: 4-cube towers still drop cubes in the scripted preview (the
-    # cube is picked ~12 mm off-centre; under investigation).
-    order = WorkOrder(recipes=(("red", "blue"), ("yellow", "green", "yellow"), ("blue",)),
-                      arrivals=(("yellow", 1), ("red", 0), ("green", 1), ("blue", 2),
-                                ("blue", 0), ("yellow", 1)))
-    towers = preview.run_order(order, np.random.default_rng(3), jitter=False)
-    assert preview.check(towers) == [True, True, True]
+    order = WorkOrder(recipes=(("red",), ("blue",), ("green",)),
+                      arrivals=(("red", 0), ("blue", 1), ("green", 2)))
+    cell.reset(order)
+    cube = cell.cubes[0]
+    assert not cell.attach(cube) and not cell.attached(cube)  # nothing is holding it
+    ctl = ScriptedCell(cell)
+    cell.conveyor.index()
+    ctl.to_carry()
+    ctl.swing_to(np.radians(cell.config.infeed_angle))
+    while not cell.conveyor.ready:
+        ctl.step()
+    ctl.pick(cube)
+    assert cell.attached(cube) and cell.grasp_verified(cube)
+    cell.detach(cube)
+    ctl.grip = 255.0  # open: the released cube falls back to the table
+    ctl.step(40)
+    assert not cell.attached(cube)
+    assert cell.data.xpos[cube.body][2] < 0.05
+
+
+def test_grasp_assist_can_be_switched_off():
+    from dataclasses import replace
+
+    cell = Workcell.build(replace(WorkcellConfig(), grasp_assist=False))
+    cell.reset(WorkOrder.random(np.random.default_rng(0)))
+    assert not cell.attach(cell.cubes[0])
+    names = [cell.model.equality(i).name for i in range(cell.model.neq)]
+    assert not any(n.startswith("assist") for n in names)  # (the finger coupling remains)
+
+
+def test_scripted_cell_fulfils_work_orders():
+    cell = Workcell.build()
+    ctl = ScriptedCell(cell)
+    rng = np.random.default_rng(3)
+    order = WorkOrder(recipes=(("red", "blue", "green", "yellow"), ("yellow", "green"),
+                               ("blue",)),
+                      arrivals=(("red", 0), ("yellow", 1), ("blue", 0), ("blue", 2),
+                                ("green", 0), ("green", 1), ("yellow", 0)))
+    towers = ctl.run_order(order, rng, lateral=0.015, yaw=np.radians(15))
+    assert ctl.check(towers) == [True, True, True]
+    assert ctl.ik_failures == 0
+    assert not any(cell.attached(c) for c in cell.cubes)  # everything released

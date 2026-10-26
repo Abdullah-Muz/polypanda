@@ -69,6 +69,17 @@ class WorkcellConfig:
     # to hold it through a 200 deg base swing (it slides out; measured). 1000 N/m gives ~20 N;
     # a real Franka Hand grasps with up to 70 N. User decision for Milestone 9 on.
     finger_stiffness: float = 1000.0
+    # Cube contacts with torsional friction (condim 4; the cube's coefficient, 0.03 m as in
+    # Menagerie, is otherwise unused): without it nothing resists the cube turning about the
+    # finger axis, and over a long carry it slowly twists out of the grip (measured).
+    torsional_friction: bool = True
+    # Grasp assist (a disclosed simulation simplification): once a grasp is verified (both
+    # fingers pressing on the cube), the cube is welded to the hand until just before the fingers
+    # open. In this model a firmly held cube slides along the finger pads whenever the arm moves
+    # (17 mm per lift, out of the hand within a few long swings), whatever the grip force, swing
+    # speed, grip direction, friction model, contact stiffness, solver settings, finger damping
+    # or pad size (all measured, Milestone 9). Grasping and releasing stay fully physical.
+    grasp_assist: bool = True
 
 
 def station_xy(angle_deg: float, radius: float) -> np.ndarray:
@@ -277,6 +288,12 @@ def build_workcell_spec(cfg: WorkcellConfig | None = None, cube: CubeSpec | None
     for k, xy in enumerate(hopper_xy(cfg)):
         add_cube(spec, cube, xy=tuple(xy), name=CUBE_NAME.format(k), rgba=(0.5, 0.5, 0.5, 1.0))
         spec.geom(CUBE_NAME.format(k)).conaffinity = 1 | BELT_CONTACT  # rides on the belt
+        if cfg.torsional_friction:
+            spec.geom(CUBE_NAME.format(k)).condim = 4
+        if cfg.grasp_assist:  # inactive until Workcell.attach()
+            spec.add_equality(name=f"assist{k}", type=mujoco.mjtEq.mjEQ_WELD,
+                              objtype=mujoco.mjtObj.mjOBJ_BODY, name1="hand",
+                              name2=CUBE_NAME.format(k), active=False)
     spec.visual.global_.azimuth = 200
     spec.visual.global_.elevation = -32
     spec.visual.global_.offwidth, spec.visual.global_.offheight = 1920, 1080  # renders, video
@@ -347,6 +364,7 @@ class Workcell:
         if len(order.arrivals) > cfg.n_cubes:
             raise ValueError(f"order needs {len(order.arrivals)} cubes, the cell has {cfg.n_cubes}")
         reset_to_home(self.model, self.data, PandaIndices.from_model(self.model))
+        self.detach()
         self.data.qpos[self.model.joint("belt").qposadr[0]] = 0.0
         self.data.qvel[self.model.joint("belt").dofadr[0]] = 0.0
         self.data.ctrl[self.model.actuator("belt").id] = 0.0
@@ -365,6 +383,53 @@ class Workcell:
         self.order = order
         self.conveyor.reset(rng, lateral, yaw)
         mujoco.mj_forward(self.model, self.data)
+
+    # --- grasp assist ---------------------------------------------------------------------
+    def grasp_verified(self, cube: CubeIndices, min_force: float = 2.0) -> bool:
+        """Both fingers press on the cube (normal force each above `min_force` N)."""
+        m, d = self.model, self.data
+        force = {m.body("left_finger").id: 0.0, m.body("right_finger").id: 0.0}
+        f6 = np.zeros(6)
+        for i in range(d.ncon):
+            con = d.contact[i]
+            if cube.geom in (con.geom1, con.geom2):
+                other = m.geom_bodyid[con.geom2 if con.geom1 == cube.geom else con.geom1]
+                if other in force:
+                    mujoco.mj_contactForce(m, d, i, f6)
+                    force[other] += f6[0]
+        return all(f > min_force for f in force.values())
+
+    def attach(self, cube: CubeIndices) -> bool:
+        """Grasp assist: weld the cube to the hand where it is now, if the grasp is verified.
+        Returns whether it was attached (False when assist is off or the grasp is not held)."""
+        if not self.config.grasp_assist or not self.grasp_verified(cube):
+            return False
+        m, d = self.model, self.data
+        eq = m.equality(f"assist{self.cubes.index(cube)}").id
+        hand = m.body("hand").id
+        R_hand = d.xmat[hand].reshape(3, 3)
+        rel_pos = R_hand.T @ (d.xpos[cube.body] - d.xpos[hand])
+        rel_quat, inv = np.zeros(4), np.zeros(4)
+        mujoco.mju_negQuat(inv, d.xquat[hand])
+        mujoco.mju_mulQuat(rel_quat, inv, d.xquat[cube.body])
+        m.eq_data[eq, :3] = 0.0           # anchor at the cube's centre
+        m.eq_data[eq, 3:6] = rel_pos       # cube pose relative to the hand
+        m.eq_data[eq, 6:10] = rel_quat
+        m.eq_data[eq, 10] = 1.0            # torque scale
+        d.eq_active[eq] = 1
+        return True
+
+    def detach(self, cube: CubeIndices | None = None) -> None:
+        """Release the grasp assist (one cube, or all)."""
+        if not self.config.grasp_assist:
+            return
+        for k, c in enumerate(self.cubes):
+            if cube is None or c is cube:
+                self.data.eq_active[self.model.equality(f"assist{k}").id] = 0
+
+    def attached(self, cube: CubeIndices) -> bool:
+        return bool(self.config.grasp_assist and self.data.eq_active[
+            self.model.equality(f"assist{self.cubes.index(cube)}").id])
 
     def set_stack_light(self, *on: str) -> None:
         for name in STACK_LIGHT:
