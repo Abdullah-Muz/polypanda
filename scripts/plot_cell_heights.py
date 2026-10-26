@@ -45,6 +45,8 @@ def load(results: Path) -> dict:
                                   "heights": defaultdict(lambda: [0, 0])})
     for path in sorted(results.glob("*.json")):
         record = json.loads(path.read_text())
+        if record["eval"].get("mixed"):
+            continue  # Layer 1 orders only (Layer 2 adds routing through the buffer)
         skills, summary = record["skills"], record["summary"]
         key = (bool(skills["pick_provenance"]), family(skills["place_provenance"]))
         entry = pooled[key]

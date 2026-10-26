@@ -46,7 +46,8 @@ def test_stations_sit_on_the_circle_around_the_base(cell):
     cfg = cell.config
     mujoco.mj_forward(cell.model, cell.data)
     stations = [(cell.pick_xy, cfg.infeed_angle), (cell.reject_xy, cfg.reject_angle)] + [
-        (cell.tower_xy(t), a) for t, a in enumerate(cfg.tower_angles)]
+        (cell.tower_xy(t), a) for t, a in enumerate(cfg.tower_angles)] + [
+        (cell.buffer_xy(s), a) for s, a in enumerate(cfg.buffer_angles)]
     for xy, angle in stations:
         assert np.linalg.norm(xy) == pytest.approx(cfg.radius)
         assert np.degrees(np.arctan2(xy[1], xy[0])) == pytest.approx(angle)
@@ -151,7 +152,8 @@ def test_every_station_is_reachable_top_down_facing_it(cell):
     ik = PoseIK()
     home = ik.data.qpos[ik.idx.arm_qpos].copy()
     targets = [(cell.pick_xy, 0.032), (cell.reject_xy, 0.15)] + [
-        (cell.tower_xy(t), z) for t in range(3) for z in (0.03, 0.21, 0.36)]
+        (cell.tower_xy(t), z) for t in range(3) for z in (0.03, 0.21, 0.36)] + [
+        (cell.buffer_xy(s), 0.03) for s in range(3)]
     for xy, z in targets:
         angle = np.arctan2(xy[1], xy[0])
         seed = home.copy()
@@ -222,3 +224,21 @@ def test_scripted_cell_fulfils_work_orders():
     assert ctl.check(towers) == [True, True, True]
     assert ctl.ik_failures == 0
     assert not any(cell.attached(c) for c in cell.cubes)  # everything released
+
+
+def test_scripted_cell_routes_cubes_through_the_buffer_and_the_reject_bin():
+    cell = Workcell.build()
+    ctl = ScriptedCell(cell)
+    # green arrives before the red it goes on (buffer), the last red is surplus (reject bin)
+    order = WorkOrder((("red", "green"), ("blue",), ("yellow",)),
+                      (("green", None), ("yellow", None), ("red", None), ("blue", None),
+                       ("red", None)))
+    log = []
+    towers = ctl.run_mixed_order(order, np.random.default_rng(0), lateral=0.015,
+                                 yaw=np.radians(15), log=log.append)
+    assert towers == [[2, 0], [3], [1]] and ctl.check(towers) == [True, True, True]
+    assert ctl.stats == {"buffered": 1, "from_buffer": 1, "rejected": 1, "needed_rejected": 0}
+    assert any("buffer slot 1" in line for line in log)
+    surplus = cell.data.xpos[cell.cubes[4].body]
+    assert np.abs(surplus[:2] - cell.reject_xy).max() < cell.config.bin_size / 2  # in the bin
+    assert ctl.ik_failures == 0

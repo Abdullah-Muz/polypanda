@@ -6,8 +6,14 @@ be compared order by order (exact McNemar, evaluation.pickplace.mcnemar_exact).
 
 An order succeeds when every tower is complete and correct (ScriptedCell.check: every cube
 upright, at its level, on the fixture, in recipe order). Failures are attributed to the first
-failing learned skill ("pick:<reason>", "place:<reason>"), the conveyor, or the final tower check
+failing learned skill ("pick:<reason>", "place:<reason>"), the planner having to reject a cube
+that was still needed ("planner:buffer_full", Layer 2), the conveyor, or the final tower check
 ("tower").
+
+Layer 2 (`mixed`): cubes arrive in random order with 0-2 surplus cubes and are routed by the
+greedy planner (supervisor.planner) to a tower, a buffer slot or the reject bin. Orders are
+generated solvable with `solvable_with` slots; running them with fewer `slots` measures what the
+buffer is worth.
 """
 
 import time
@@ -19,8 +25,9 @@ import numpy as np
 
 from polypanda.evaluation.pickplace import _pct
 from polypanda.evaluation.reach import wilson_interval
-from polypanda.simulation.workcell import Workcell, WorkOrder
+from polypanda.simulation.workcell import Workcell, WorkcellConfig, WorkOrder
 from polypanda.supervisor.cell import LearnedCell, LearnedSkill
+from polypanda.supervisor.planner import mixed_order
 
 
 @dataclass(frozen=True)
@@ -30,6 +37,16 @@ class CellEvalConfig:
     heights: tuple[int, int] = (1, 4)
     lateral: float = 0.015          # m, infeed jitter either way
     yaw: float = float(np.radians(15))  # rad, infeed jitter either way
+    # Layer 2: random arrival order with surplus cubes, routed by the greedy planner
+    mixed: bool = False
+    surplus: tuple[int, int] = (0, 2)
+    solvable_with: int = 3          # orders are generated solvable with this many buffer slots
+    slots: int = 3                  # buffer slots the controller may use (ablation: 0, 1, 3)
+
+    @property
+    def n_cubes(self) -> int:
+        """Cube bodies the cell needs (never fewer than Layer 1's original 12-cube model)."""
+        return max(12, 3 * self.heights[1] + (self.surplus[1] if self.mixed else 0))
 
 
 @dataclass(frozen=True)
@@ -44,6 +61,9 @@ class CellEpisode:
     place_failures: int
     ik_failures: int
     sim_s: float                 # simulated time for the whole order
+    buffered: int = 0            # Layer 2: cubes parked in the buffer,
+    rejected: int = 0            # sent to the reject bin,
+    needed_rejected: int = 0     # of which still needed (buffer full)
 
 
 def skill_from_spec(spec: str, stage: str):
@@ -66,7 +86,10 @@ def skill_from_spec(spec: str, stage: str):
 
 def run_cell_order(ctl: LearnedCell, config: CellEvalConfig, index: int) -> CellEpisode:
     rng = np.random.default_rng([config.seed, index])
-    order = WorkOrder.random(rng, heights=config.heights)
+    if config.mixed:
+        order, _ = mixed_order(rng, config.heights, config.surplus, config.solvable_with)
+    else:
+        order = WorkOrder.random(rng, heights=config.heights)
     picks, places, steps, log = len(ctl.picks), len(ctl.places), [0], []
 
     def count():
@@ -74,10 +97,15 @@ def run_cell_order(ctl: LearnedCell, config: CellEvalConfig, index: int) -> Cell
 
     viewer, ctl.on_step = ctl.on_step, count
     try:
-        towers = ctl.run_order(order, rng, lateral=config.lateral, yaw=config.yaw,
-                               log=log.append)
+        if config.mixed:
+            towers = ctl.run_mixed_order(order, rng, lateral=config.lateral, yaw=config.yaw,
+                                         slots=config.slots, log=log.append)
+        else:
+            towers = ctl.run_order(order, rng, lateral=config.lateral, yaw=config.yaw,
+                                   log=log.append)
     finally:
         ctl.on_step = viewer
+    stats = ctl.stats if config.mixed else {}
     ok = ctl.check(towers)
     new_picks, new_places = ctl.picks[picks:], ctl.places[places:]
     failure = None
@@ -87,6 +115,8 @@ def run_cell_order(ctl: LearnedCell, config: CellEvalConfig, index: int) -> Cell
                                                   for r in new_places if not r["success"]]
         if skill_failures:
             failure = skill_failures[0]
+        elif stats.get("needed_rejected"):
+            failure = "planner:buffer_full"
         elif any("did not arrive" in line for line in log):
             failure = "conveyor"
         else:
@@ -97,7 +127,9 @@ def run_cell_order(ctl: LearnedCell, config: CellEvalConfig, index: int) -> Cell
         towers_ok="".join(str(int(x)) for x in ok), cubes=len(order.arrivals),
         pick_failures=sum(not r["success"] for r in new_picks),
         place_failures=sum(not r["success"] for r in new_places),
-        ik_failures=ctl.ik_failures, sim_s=round(steps[0] * ctl.dt, 2))
+        ik_failures=ctl.ik_failures, sim_s=round(steps[0] * ctl.dt, 2),
+        buffered=stats.get("buffered", 0), rejected=stats.get("rejected", 0),
+        needed_rejected=stats.get("needed_rejected", 0))
 
 
 def summarize_cell(episodes: list[CellEpisode], ctl: LearnedCell) -> dict:
@@ -137,6 +169,12 @@ def summarize_cell(episodes: list[CellEpisode], ctl: LearnedCell) -> dict:
         "learned_place": skill(ctl.places, key="level"),
         "ik_failures": sum(e.ik_failures for e in episodes),
         "sim_s_per_cube": sum(e.sim_s for e in episodes) / cubes,
+        "sim_s_per_order": {"median": _pct([e.sim_s for e in episodes], 50),
+                            "p90": _pct([e.sim_s for e in episodes], 90)},
+        "buffer": {"cubes_buffered": sum(e.buffered for e in episodes),
+                   "orders_using_buffer": sum(e.buffered > 0 for e in episodes),
+                   "rejected": sum(e.rejected for e in episodes),
+                   "needed_rejected": sum(e.needed_rejected for e in episodes)},
     }
 
 
@@ -144,7 +182,8 @@ def evaluate_cell(grasp: LearnedSkill | None, place: LearnedSkill | None,
                   config: CellEvalConfig | None = None, progress=None
                   ) -> tuple[dict, list[CellEpisode]]:
     config = config or CellEvalConfig()
-    ctl = LearnedCell(Workcell.build(), grasp=grasp, place=place)
+    cell = Workcell.build(WorkcellConfig(n_cubes=config.n_cubes))
+    ctl = LearnedCell(cell, grasp=grasp, place=place)
     start, episodes = time.time(), []
     for i in range(config.n):
         episodes.append(run_cell_order(ctl, config, i))

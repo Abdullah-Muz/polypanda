@@ -6,6 +6,7 @@ rotation of the base (joint 1), and every cycle swings the base widely:
     infeed pick point     +90 deg   (left)        an indexing conveyor brings one cube at a time
     towers A / B / C   -40 / -90 / -140 deg       each with a recipe sign behind it
     reject bin           +150 deg   (rear-left)   for cubes that cannot be used
+    buffer slots 1-3  +10 / +35 / +60 deg (front-left)  cubes needed later (Layer 2)
 
 Work orders: each tower has a recipe (colours from bottom to top), shown on its sign as a column
 of coloured squares. Cubes come in four colours. Cubes wait hidden in a parts hopper next to the
@@ -50,7 +51,8 @@ class WorkcellConfig:
     infeed_angle: float = 90.0        # deg, about the base axis, from the robot's front (+x)
     tower_angles: tuple[float, float, float] = (-40.0, -90.0, -140.0)
     reject_angle: float = 150.0
-    n_cubes: int = 12                 # cube bodies in the model (3 towers x up to 4)
+    buffer_angles: tuple[float, ...] = (10.0, 35.0, 60.0)  # parking slots on the bench (Layer 2)
+    n_cubes: int = 12                 # cube bodies in the model (3 towers x up to 4; Layer 2: 14)
     max_height: int = 6               # squares on each recipe sign
     batch: int = 3                    # cubes loaded onto the belt at a time
     cube_spacing: float = 0.12        # m between cubes queued on the belt
@@ -210,6 +212,19 @@ def _add_tower(spec: mujoco.MjSpec, cfg: WorkcellConfig, t: int) -> None:
                 size=[0.003, 0.032, 0.032], pos=[-0.008, 0, 0.15 + 0.072 * k], rgba=list(_SIGN_OFF))
 
 
+def _add_buffer(spec: mujoco.MjSpec, cfg: WorkcellConfig) -> None:
+    """Buffer slots: painted squares on the bench (visual only; cubes stand on the table)."""
+    for s, angle in enumerate(cfg.buffer_angles):
+        body = spec.worldbody.add_body(name=f"buffer{s}", pos=[*station_xy(angle, cfg.radius), 0],
+                                       quat=_yaw_quat(np.radians(angle)))
+        _visual(body, type=mujoco.mjtGeom.mjGEOM_BOX, size=[0.045, 0.045, 0.0005],
+                pos=[0, 0, 0.0005], rgba=[0.15, 0.15, 0.17, 1.0])
+        for sx, sy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            size = [0.026, 0.002, 0.0008] if sx == 0 else [0.002, 0.026, 0.0008]
+            _visual(body, type=mujoco.mjtGeom.mjGEOM_BOX, size=size,
+                    pos=[0.026 * sx, 0.026 * sy, 0.0011], rgba=[0.85, 0.87, 0.9, 1.0])
+
+
 def _add_reject_bin(spec: mujoco.MjSpec, cfg: WorkcellConfig) -> None:
     xy = station_xy(cfg.reject_angle, cfg.radius)
     body = spec.worldbody.add_body(name="reject_bin", pos=[*xy, 0.0],
@@ -294,6 +309,7 @@ def build_workcell_spec(cfg: WorkcellConfig | None = None, cube: CubeSpec | None
             spec.add_equality(name=f"assist{k}", type=mujoco.mjtEq.mjEQ_WELD,
                               objtype=mujoco.mjtObj.mjOBJ_BODY, name1="hand",
                               name2=CUBE_NAME.format(k), active=False)
+    _add_buffer(spec, cfg)  # added last: every earlier body and geom keeps its index (Layer 1)
     spec.visual.global_.azimuth = 200
     spec.visual.global_.elevation = -32
     spec.visual.global_.offwidth, spec.visual.global_.offheight = 1920, 1080  # renders, video
@@ -303,10 +319,12 @@ def build_workcell_spec(cfg: WorkcellConfig | None = None, cube: CubeSpec | None
 @dataclass(frozen=True)
 class WorkOrder:
     """Recipes for the three towers (colours bottom to top) and the cubes' arrival order, as
-    (colour, tower index) pairs. Layer 1: every arriving cube can go straight onto its tower."""
+    (colour, tower index) pairs. Layer 1: every arriving cube can go straight onto its tower.
+    Layer 2 (supervisor.planner.mixed_order): random order with surplus cubes, tower None (the
+    planner routes each cube)."""
 
     recipes: tuple[tuple[str, ...], ...]
-    arrivals: tuple[tuple[str, int], ...]
+    arrivals: tuple[tuple[str, int | None], ...]
 
     @classmethod
     def random(cls, rng: np.random.Generator, heights: tuple[int, int] = (1, 4),
@@ -353,6 +371,9 @@ class Workcell:
     @property
     def reject_xy(self) -> np.ndarray:
         return station_xy(self.config.reject_angle, self.config.radius)
+
+    def buffer_xy(self, slot: int) -> np.ndarray:
+        return station_xy(self.config.buffer_angles[slot], self.config.radius)
 
     def reset(self, order: WorkOrder, rng: np.random.Generator | None = None,
               lateral: float = 0.0, yaw: float = 0.0) -> None:

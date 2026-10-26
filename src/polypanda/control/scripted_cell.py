@@ -21,6 +21,11 @@ Design (each rule comes from a measured failure of the first, sketch-like contro
 
 The controller drives the cell through `step()`, one 0.05 s control step at a time; an optional
 callback runs after every step (a viewer, a recorder).
+
+Work orders: `run_order` (Layer 1) stacks cubes that arrive in an always-placeable order;
+`run_mixed_order` (Layer 2) takes cubes in random order, with surplus ones, and lets the greedy
+planner (supervisor.planner) send each to a tower, a buffer slot or the reject bin. Picking from
+a buffer slot and placing onto one are the same pick and place as at the infeed and the towers.
 """
 
 from collections.abc import Callable
@@ -34,6 +39,7 @@ from polypanda.environments.grasp import GRIPPER_CLOSED, GRIPPER_OPEN
 from polypanda.simulation.panda import PandaIndices
 from polypanda.simulation.scenes import CubeIndices, cube_yaw
 from polypanda.simulation.workcell import Workcell, WorkOrder
+from polypanda.supervisor.planner import BUFFER, TOWER, GreedyPlanner
 
 CUBE_HEIGHT = 0.06
 
@@ -62,6 +68,7 @@ class ScriptedCell:
         self.q_cmd = self.home.copy()
         self.grip = GRIPPER_OPEN
         self.ik_failures = 0
+        self.stats: dict[str, int] = {}  # per order (run_mixed_order)
         self.carry = self._carry_posture()
 
     # --- primitives -----------------------------------------------------------------------
@@ -205,6 +212,21 @@ class ScriptedCell:
         self.vertical(self.d.site_xpos[self.arm.tcp_site][:2].copy(), self.config.carry_height,
                       yaw)
 
+    def reject(self, cube: CubeIndices) -> None:
+        """From the carry posture over the reject bin: lower the cube into the bin's mouth, let
+        go, and rise back."""
+        xy = self.cell.reject_xy
+        yaw = self.carry_yaw(np.arctan2(xy[1], xy[0]))
+        tcp = self.d.site_xpos[self.arm.tcp_site]
+        offset = tcp[2] - self.d.xpos[cube.body][2]
+        drop = self.cell.config.bin_height + 0.05 + CUBE_HEIGHT / 2  # cube bottom 5 cm over walls
+        self.vertical(xy, drop + offset, yaw)
+        self.cell.detach(cube)
+        self.grip = GRIPPER_OPEN
+        self.step(self.config.grip_steps)
+        self.vertical(self.d.site_xpos[self.arm.tcp_site][:2].copy(), self.config.carry_height,
+                      yaw)
+
     # --- work orders ---------------------------------------------------------------------------
     def run_order(self, order: WorkOrder, rng=None, lateral: float = 0.0, yaw: float = 0.0,
                   log: Callable[[str], None] | None = None) -> list[list[int]]:
@@ -236,6 +258,76 @@ class ScriptedCell:
             self.swing_to(np.radians(cfg.tower_angles[t]))
             self.place(cube, cell.tower_xy(t), len(towers[t]))
             towers[t].append(k)
+        self.swing_to(0.0)
+        self.move_joints(self.home)
+        self.step(20)
+        return towers
+
+    def run_mixed_order(self, order: WorkOrder, rng=None, lateral: float = 0.0,
+                        yaw: float = 0.0, slots: int = 3,
+                        log: Callable[[str], None] | None = None) -> list[list[int]]:
+        """Fulfil a Layer 2 work order (random arrival order, surplus cubes) with the greedy
+        planner (supervisor.planner) and `slots` buffer slots; returns per tower the arrival
+        indices of the cubes placed on it. Counts are left in `self.stats`."""
+        cell, cfg = self.cell, self.cell.config
+        cell.reset(order, rng, lateral=lateral, yaw=yaw)
+        self.q_cmd, self.grip = self.home.copy(), GRIPPER_OPEN
+        self.ik_failures = 0
+        planner = GreedyPlanner(order.recipes, slots=slots)
+        self.stats = {"buffered": 0, "from_buffer": 0, "rejected": 0, "needed_rejected": 0}
+        cell.conveyor.index()
+        self.to_carry()
+        towers: list[list[int]] = [[] for _ in order.recipes]
+        parked: list[int | None] = [None] * slots   # arrival index per buffer slot
+
+        def stack(k: int, t: int) -> None:
+            self.swing_to(np.radians(cfg.tower_angles[t]))
+            self.place(cell.cubes[k], cell.tower_xy(t), len(towers[t]))
+            towers[t].append(k)
+
+        for k, (colour, _) in enumerate(order.arrivals):
+            self.swing_to(np.radians(cfg.infeed_angle))
+            for _ in range(int(self.config.belt_timeout / self.dt)):
+                if cell.conveyor.ready:
+                    break
+                self.step()
+            cube = cell.conveyor.lead()
+            if cube is None or cell.cubes.index(cube) != k:
+                if log:
+                    log(f"cube {k} ({colour}) did not arrive")
+                break
+            self.pick(cube)
+            cell.conveyor.index()  # the belt brings the next cube while the arm is away
+            kind, where = planner.decide(colour)
+            if kind == TOWER:
+                if log:
+                    log(f"{colour} cube -> tower {'ABC'[where]}, level {len(towers[where]) + 1}")
+                stack(k, where)
+                while (move := planner.next_buffer_move()) is not None:
+                    slot, t = move
+                    if log:
+                        log(f"  buffer slot {slot + 1} ({order.arrivals[parked[slot]][0]}) -> "
+                            f"tower {'ABC'[t]}, level {len(towers[t]) + 1}")
+                    self.swing_to(np.radians(cfg.buffer_angles[slot]))
+                    self.pick(cell.cubes[parked[slot]])
+                    stack(parked[slot], t)
+                    parked[slot] = None
+                    self.stats["from_buffer"] += 1
+            elif kind == BUFFER:
+                if log:
+                    log(f"{colour} cube -> buffer slot {where + 1} (needed later)")
+                self.swing_to(np.radians(cfg.buffer_angles[where]))
+                self.place(cube, cell.buffer_xy(where), 0)
+                parked[where] = k
+                self.stats["buffered"] += 1
+            else:
+                needed = planner.needed_rejected > self.stats["needed_rejected"]
+                if log:
+                    log(f"{colour} cube -> reject bin ({'buffer full' if needed else 'surplus'})")
+                self.swing_to(np.radians(cfg.reject_angle))
+                self.reject(cube)
+                self.stats["rejected"] += 1
+                self.stats["needed_rejected"] = planner.needed_rejected
         self.swing_to(0.0)
         self.move_joints(self.home)
         self.step(20)
