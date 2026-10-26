@@ -9,10 +9,18 @@ Milestones 1–8 picked one cube and placed it on an open table in front of the 
 | Cell, work orders, conveyor feeding | done |
 | Scripted cell controller (baseline) | done: 60/60 towers on 20 orders |
 | Station frames (front-trained skills at any station) | done |
-| Learned grasp at the infeed | works without retraining (preliminary: 100 % of 1128 picks) |
-| Learned place on towers | retraining for stack heights |
-| Learned work-order chain vs scripted, 200 orders | to do |
-| Random arrival order with a buffer and planner; heights 5–6 stress test | later layers |
+| Learned grasp at the infeed | done, without retraining: 4545/4545 picks |
+| Learned place on towers | retrained for stack heights: 4544/4545 placements |
+| **Learned skills vs scripted cell, 200 orders** | **done: 599/600 orders (3 seeds) vs 200/200** |
+| Random arrival order with a buffer and planner (Layer 2) | approved, next |
+| Heights 5–6 stress test (Layer 3) | later; needs a higher carry posture |
+
+**Headline:** grasp and place policies trained with PPO run the whole work-order cell:
+- the grasp transfers without retraining; the place was retrained with towers;
+- the moves between stations are scripted;
+- they complete **99.8 % of 600 held-out orders** (3 seeds, 1800 towers, 4545 cubes);
+- the scripted cell completes 100 % of the same orders. The difference is one order and not significant (exact McNemar p = 1).
+- The learned cell is slightly faster: 19.4–19.9 s of simulated time per cube, against 20.5 s scripted.
 
 ## The cell (`polypanda.simulation.workcell`)
 
@@ -70,18 +78,31 @@ The cell is symmetric about the robot's base axis. Rotating the whole scene by a
 - **Learned pick:** the arm starts in its home pose turned to face the infeed, as in training. The policy runs until its own success check holds: a verified grasp with the cube 5 cm up. Then the grasp assist engages and the arm rises to the carry posture.
 - **Learned place:** a scripted descent brings the cube to where place episodes start in training, 9 cm above the top of the stack. The policy then sets it down. The assist is released the moment the policy's gate opens the fingers.
 
-**Learned grasp at the infeed** (preliminary development runs: 50 orders with jittered infeed; the 200-order evaluation will replace them). These are the Milestone 8 hand-motion grasp policies, unchanged:
+### Results: 200 held-out work orders
 
-| Pick | Cubes picked | Towers correct | Orders complete |
-|---|---|---|---|
-| Scripted | n/a | 150/150 | 50/50 |
-| PPO grasp, seed 0 | 376/376 | 150/150 | 50/50 |
-| PPO grasp, seed 1 | 376/376 | 150/150 | 50/50 |
-| PPO grasp, seed 2 | 376/376 | 150/150 | 50/50 |
+All configurations get the same 200 orders: heights 1–4, 1515 cubes, ±1.5 cm / ±15° infeed jitter. They were produced by `scripts/evaluate_cell.py` and are stored in [`results/cell/`](../results/cell/).
 
-A learned pick takes a median of 60–67 policy steps (about 3 s). The grasp was trained on a plain table in front of the robot. It transfers to a conveyor 90° to the side through the station frame, a stiffer gripper and a 2 mm higher surface, without retraining.
+| Pick | Place | Orders complete | Towers correct | Learned skill success | Simulated time per cube |
+|---|---|---|---|---|---|
+| scripted | scripted | **200/200** (95 % CI 98.1–100 %) | 600/600 | n/a | 20.5 s |
+| PPO grasp (seed 1) | scripted | **200/200** | 600/600 | picks 1515/1515 | 20.2 s |
+| PPO grasp (seed 0) | PPO stacking place (seed 0) | **200/200** | 600/600 | picks 1515/1515, places 1514/1515 | 19.5 s |
+| PPO grasp (seed 1) | PPO stacking place (seed 1) | **199/200** | 599/600 | picks 1515/1515, places 1515/1515 | 19.4 s |
+| PPO grasp (seed 2) | PPO stacking place (seed 2) | **200/200** | 600/600 | picks 1515/1515, places 1515/1515 | 19.9 s |
+| **Fully learned, 3 seeds pooled** | | **599/600 = 99.8 %** (99.1–100 %) | 1799/1800 | picks 100 %, places 99.98 % | |
 
-**Learned place on towers:** the Milestone 8 place policy was trained only to set cubes down on the table. Unchanged, it fails on taller towers. These are preliminary development runs; levels count from the table, so a cube placed at level 3 lands on a 2-cube tower:
+- **Learned grasp:** these are the Milestone 8 hand-motion policies, unchanged, and a pick takes a median of 60–67 policy steps (about 3 s). They were trained on a plain table in front of the robot. Through the station frame they transfer without retraining to a conveyor 90° to the side, a stiffer gripper and a 2 mm higher surface.
+- **Learned place:** a median of 22 steps (about 1 s) per cube.
+  - Seed 0's one unsuccessful placement was a timeout (the policy's own placed check did not hold within its horizon). The cube still ended correctly on its tower.
+- **Paired with the scripted cell,** order by order, the only discordant order is seed 1's order 79 (exact McNemar p = 1).
+
+**The one failure (seed 1, order 79, tower C of a 4-4-4 order)** was replayed and traced (the cell is deterministic):
+1. While setting the 4th cube on tower C, the place policy nudged the stack below by about 3 mm. That placement took 29 policy steps, against a median of 22. The placed cube itself landed 0.7 mm from centre, and the skill's own checks passed.
+2. No part of the robot touched the tower again. Even so, the slightly offset stack crept sideways on its own, at 0.08 mm/s rising to 0.5 mm/s. Over the next 2 minutes of simulated time its top drifted 22 mm, past the check's 20 mm.
+
+Part 2 is a simulator effect: MuJoCo's soft contacts let an offset stack creep. A real stack offset by a few millimetres is statically stable, with its centre of mass well inside the 4 cm footprint. Part 1 is real, though: the scripted place never nudges the stack. So the order is counted as a learned-chain failure.
+
+**Learned place on towers: why it had to be retrained.** The Milestone 8 place policy was trained only to set cubes down on the table. Unchanged, it fails on taller towers. These are development runs, and levels count from the table, so a cube placed at level 3 lands on a 2-cube tower:
 
 | Placed at level | In the cell | Training scene, 20 tries per level |
 |---|---|---|
@@ -97,7 +118,7 @@ Most failures knock the tower over. The retrained place adds towers to the place
 - it starts from the same handoff states, raised by IK by the tower's height (hand and cube together, so the grip is unchanged);
 - moving a tower cube by more than 1 cm ends the episode as a failure.
 
-Training is under way with three seeds.
+Three seeds were trained with PPO for 2M steps each, about 2 h in parallel on CPU. Their best validation success over towers of 0–5 cubes was 93 %, 96 % and 93 %, against 41 % (49 of 120 development episodes, table above) for the Milestone 8 place on the same mix. The best checkpoint was selected on a separate validation stream, as for every earlier skill. In the cell (heights 1–4) they placed 4544 of 4545 cubes.
 
 ## Evaluating the cell
 

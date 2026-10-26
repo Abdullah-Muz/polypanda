@@ -2,9 +2,10 @@
 
 Usage: uv run python scripts/plot_cell_heights.py [--results results/cell] [--out ...]
 Reads every results/cell/*.json written by scripts/evaluate_cell.py. Runs of the same
-configuration (scripted or learned pick x scripted or learned place) are pooled: over seeds,
-and over height ranges, so a 1-4 main evaluation and a 5-6 stress test form one series. Bars
-show the share of towers built correctly at each height with 95 % Wilson intervals.
+configuration (scripted or learned pick x scripted place or a place policy family) are pooled:
+over seeds, and over height ranges, so a 1-4 main evaluation and a 5-6 stress test form one
+series. Bars show the share of towers built correctly at each height with 95 % Wilson
+intervals.
 Writes docs/figures/cell_heights.png.
 """
 
@@ -21,23 +22,30 @@ import numpy as np  # noqa: E402
 
 from polypanda.evaluation.reach import wilson_interval  # noqa: E402
 
-SERIES = {  # (learned pick, learned place) -> label, colour
-    (False, False): ("Scripted cell (baseline)", "0.6"),
-    (True, False): ("Learned pick, scripted place", plt.cm.tab10(9)),
-    (False, True): ("Scripted pick, learned place", plt.cm.tab10(1)),
-    (True, True): ("Fully learned skills", plt.cm.tab10(0)),
+SERIES = {  # (learned pick, place policy family or None) -> label, colour
+    (False, None): ("Scripted cell (baseline)", "0.6"),
+    (True, None): ("Learned pick, scripted place", plt.cm.tab10(9)),
+    (True, "place_cart"): ("Learned pick, M8 place (trained on the table only)",
+                           plt.cm.tab10(1)),
+    (True, "place_stack"): ("Fully learned skills", plt.cm.tab10(0)),
 }
+
+
+def family(provenance: dict) -> str | None:
+    """'place_stack_seed1' -> 'place_stack'; None for a scripted skill."""
+    policy = provenance.get("policy_id")
+    return policy.rsplit("_seed", 1)[0] if policy else None
 MAIN_MAX_HEIGHT = 4  # heights 1-4: main evaluation; above: stress test
 
 
 def load(results: Path) -> dict:
-    """(learned pick, learned place) -> {"runs": set, "orders": int, "heights": {h: [ok, n]}}"""
+    """(learned pick, place family) -> {"runs": set, "orders": int, "heights": {h: [ok, n]}}"""
     pooled = defaultdict(lambda: {"runs": set(), "orders": 0,
                                   "heights": defaultdict(lambda: [0, 0])})
     for path in sorted(results.glob("*.json")):
         record = json.loads(path.read_text())
         skills, summary = record["skills"], record["summary"]
-        key = (bool(skills["pick_provenance"]), bool(skills["place_provenance"]))
+        key = (bool(skills["pick_provenance"]), family(skills["place_provenance"]))
         entry = pooled[key]
         entry["runs"].add((skills["pick_provenance"].get("policy_id"),
                            skills["place_provenance"].get("policy_id")))
@@ -56,6 +64,9 @@ def main() -> None:
     pooled = load(args.results)
     if not pooled:
         raise SystemExit(f"no results in {args.results}")
+    for key in pooled:
+        if key not in SERIES:
+            SERIES[key] = (f"pick {'learned' if key[0] else 'scripted'}, place {key[1]}", None)
     keys = [k for k in SERIES if k in pooled]
     heights = sorted({h for k in keys for h in pooled[k]["heights"]})
     width = 0.8 / len(keys)
