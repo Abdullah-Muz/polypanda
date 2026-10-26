@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import gymnasium as gym
+import mujoco
 import numpy as np
 from gymnasium import spaces
 
@@ -21,6 +22,7 @@ from polypanda.control.action_adapter import (
     bound_action,
     make_action_adapter,
 )
+from polypanda.control.ik import PoseIK
 from polypanda.environments.grasp import GRIPPER_CLOSED, GRIPPER_OPEN, gripper_tilt
 from polypanda.environments.handoff import HandoffPool, restore_state
 from polypanda.environments.reach import ActionConfig
@@ -71,11 +73,26 @@ class PlaceRewardConfig:
 
 
 @dataclass(frozen=True)
+class StackConfig:
+    # Milestone 9: set the cube down on a tower of `level` cubes (0: the table, as in M8),
+    # drawn uniformly from 0..max_level per pool episode. The tower's cubes stand at the target
+    # with small random offsets; the pool start is raised by level x cube height (hand and cube
+    # together, by IK, so the grip is unchanged). Moving a tower cube more than `disturb_tol`
+    # ends the episode (failure `tower_knocked`, penalty reward.toppled); success also needs the
+    # tower intact.
+    max_level: int = 0
+    jitter: float = 0.004        # m, each tower cube's offset from the target, per axis
+    yaw_jitter: float = 0.26     # rad (15 deg), each tower cube's yaw, either way
+    disturb_tol: float = 0.01    # m
+
+
+@dataclass(frozen=True)
 class PlaceConfig:
     action: ActionConfig = field(default_factory=ActionConfig)
     gate: PlaceGateConfig = field(default_factory=PlaceGateConfig)
     check: PlacedCheckConfig = field(default_factory=PlacedCheckConfig)
     reward: PlaceRewardConfig = field(default_factory=PlaceRewardConfig)
+    stack: StackConfig = field(default_factory=StackConfig)
     horizon: int = 120               # policy steps (6 s); no termination on success
     drop_steps: int = 5              # steps without both finger contacts before release = dropped
     topple_tilt: float = 0.785       # rad (45 deg) after release = toppled
@@ -126,13 +143,21 @@ class PlaceEnv(gym.Env):
         named `cube`, starting from its current state (reset option "continue"); by default the
         env builds its own scene and starts from the handoff pool."""
         self.config = config or PlaceConfig()
-        self.model, self.data = scene or load_pick_scene()
+        levels = self.config.stack.max_level if scene is None else 0
+        self.model, self.data = scene or load_pick_scene(distractors=levels)
         self.arm = PandaIndices.from_model(self.model)
         self.cube = CubeIndices.from_model(self.model, cube)
         self.adapter = make_action_adapter(self.model, self.arm, self.config.action)
         self.check = PlacedCheck(self.model, self.arm, self.cube, self.config.check)
+        # Stacking: the pool's states are restored into a plain scene and copied over (the
+        # tower cubes come after the arm and the cube in the state vectors).
+        self.tower = CubeIndices.distractors(self.model) if levels else []
+        self._base = load_pick_scene() if levels else (self.model, self.data)
+        self._ik = PoseIK() if levels else None
+        self.level = 0
+        self._tower_xy = np.zeros((0, 2))
         path = Path(self.config.start_pool)
-        self.pool = (HandoffPool.load(path if path.exists() else REPO_ROOT / path, self.model)
+        self.pool = (HandoffPool.load(path if path.exists() else REPO_ROOT / path, self._base[0])
                      if scene is None else None)
         self._finger_qpos = [self.model.joint(f"finger_joint{i}").qposadr[0] for i in (1, 2)]
         limit = action_limit(self.config.action)
@@ -172,6 +197,7 @@ class PlaceEnv(gym.Env):
         options = options or {}
         # The target is the cube-centre resting point: (x, y) on the table, or (x, y, z) when
         # the cube is to be set down on something (e.g. a tower: z = level height + half cube).
+        self.level = 0
         if options.get("continue"):  # from the scene as it is (a skill inside a larger task)
             self.start_index = -1
             target = np.asarray(options["target"], dtype=float)
@@ -182,8 +208,13 @@ class PlaceEnv(gym.Env):
         else:
             self.start_index = int(options.get("state_index",
                                                self.np_random.integers(len(self.pool))))
-            restore_state(self.model, self.data, self.pool.states[self.start_index])
             target = self.pool.goals[self.start_index][:2]
+            if self.tower:  # (no extra draws without stacking: M8 episodes are unchanged)
+                level = int(options.get("level", self.np_random.integers(len(self.tower) + 1)))
+                self._start_on_tower(self.pool.states[self.start_index], target, level)
+                target = np.array([*target, self.cube.half_size[2] * (2 * self.level + 1)])
+            else:
+                restore_state(self.model, self.data, self.pool.states[self.start_index])
         self.data.ctrl[self.arm.gripper_actuator] = GRIPPER_CLOSED
         self.adapter.adopt_ctrl(self.data)
         rest = float(target[2]) if len(target) > 2 else float(self.cube.half_size[2])
@@ -197,7 +228,47 @@ class PlaceEnv(gym.Env):
         self._contacts = self._finger_contacts()
         source = self.pool.sources[self.start_index] if self.start_index >= 0 else "given"
         return self._observation(), {"target": self.target.copy(), "start_source": source,
-                                     "distance": self._distance}
+                                     "distance": self._distance, "level": self.level}
+
+    def _start_on_tower(self, state: np.ndarray, xy: np.ndarray, level: int) -> None:
+        """A pool start raised by `level` cubes, over a tower of `level` cubes at `xy`."""
+        m0, d0 = self._base
+        restore_state(m0, d0, state)
+        m, d, arm, h = self.model, self.data, self.arm, 2 * self.cube.half_size[2]
+        mujoco.mj_resetDataKeyframe(m, d, arm.home_key)  # tower cubes parked
+        d.time = d0.time
+        d.qpos[:m0.nq], d.qvel[:m0.nv], d.ctrl[:] = d0.qpos, d0.qvel, d0.ctrl
+        mujoco.mj_forward(m, d)
+        if level:
+            q0 = d.qpos[arm.arm_qpos].copy()
+            quat = np.zeros(4)
+            mujoco.mju_mat2Quat(quat, d.site_xmat[arm.tcp_site])
+            q, ok = self._ik.solve(q0, tcp_position(d, arm) + [0.0, 0.0, level * h], quat)
+            if not ok:
+                level = 0
+            else:
+                d.qpos[arm.arm_qpos] = q
+                d.ctrl[arm.arm_actuators] += q - q0  # same tracking offset (sag) as before
+                d.qpos[self.cube.qpos + 2] += level * h
+                d.qvel[arm.arm_qvel] = 0.0
+                d.qvel[self.cube.qvel:self.cube.qvel + 6] = 0.0
+        s = self.config.stack
+        for k, t in enumerate(self.tower[:level]):
+            x, y = np.asarray(xy) + self.np_random.uniform(-s.jitter, s.jitter, 2)
+            yaw = self.np_random.uniform(-s.yaw_jitter, s.yaw_jitter)
+            d.qpos[t.qpos:t.qpos + 7] = [x, y, h * (k + 0.5), np.cos(yaw / 2), 0, 0,
+                                         np.sin(yaw / 2)]
+            d.qvel[t.qvel:t.qvel + 6] = 0.0
+        mujoco.mj_forward(m, d)
+        self.level = level
+        self._tower_pos = np.array([d.xpos[t.body] for t in self.tower[:level]]).reshape(-1, 3)
+
+    def _tower_moved(self) -> float:
+        """Largest displacement (m) of a tower cube since the start."""
+        if not self.level:
+            return 0.0
+        now = np.array([self.data.xpos[t.body] for t in self.tower[:self.level]])
+        return float(np.linalg.norm(now - self._tower_pos, axis=1).max())
 
     def step(self, action):
         cfg, r = self.config, self.config.reward
@@ -216,7 +287,8 @@ class PlaceEnv(gym.Env):
                 self.data.ctrl[self.arm.gripper_actuator] = GRIPPER_OPEN
         dropped = (not self.released) and self._no_contact >= cfg.drop_steps
         toppled = self.released and cube_tilt(self.data, self.cube) > cfg.topple_tilt
-        placed = self.check.update(self.data, self.target[:2], self.target[2])
+        knocked = self._tower_moved() > cfg.stack.disturb_tol
+        placed = self.check.update(self.data, self.target[:2], self.target[2]) and not knocked
         distance = float(np.linalg.norm(self.target - cube))
         rise = self._hand_rise() if self.released else 0.0
         R = self.data.site_xmat[self.arm.tcp_site].reshape(3, 3)
@@ -236,14 +308,18 @@ class PlaceEnv(gym.Env):
             "cube_tilt": 0.0 if self.released else -r.cube_tilt * cube_tilt(self.data, self.cube),
             "dropped": -r.dropped if dropped else 0.0,
             "toppled": -r.toppled if toppled else 0.0,
+            **({"tower": -r.toppled if knocked else 0.0} if self.tower else {}),
             **bound_terms,
         }
         self._distance, self._rise, self._prev_action = distance, rise, a
-        terminated = bool(dropped or toppled)
+        terminated = bool(dropped or toppled or knocked)
         truncated = not terminated and self._steps >= cfg.horizon
+        failure = ("dropped" if dropped else "toppled" if toppled
+                   else "tower_knocked" if knocked else None)
         info = {
             "is_success": placed,
-            "failure": "dropped" if dropped else "toppled" if toppled else None,
+            "failure": failure,
+            "level": self.level,
             "released": self.released,
             "distance": distance,
             "xy_error": xy_err,

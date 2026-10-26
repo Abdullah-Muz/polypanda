@@ -126,3 +126,42 @@ def test_learned_place_task_and_config():
     env.reset(options={"state_index": 0})
     _, _, _, _, info = env.step(np.zeros(6, dtype=np.float32))
     assert info["reward_terms"]["cube_tilt"] == pytest.approx(-0.3 * info["cube_tilt"])
+
+
+@pytest.fixture(scope="module")
+def stack_env():
+    from dataclasses import replace
+
+    from polypanda.environments.place import PlaceConfig
+    cfg = PlaceConfig.from_yaml(ROOT / "configs" / "place_stack_cartesian.yaml")
+    base = PlaceConfig.from_yaml(ROOT / "configs" / "place_cartesian.yaml")
+    assert cfg.stack.max_level == 5 and replace(cfg, stack=base.stack) == base  # only towers added
+    return PlaceEnv(cfg)
+
+
+@pytest.mark.parametrize("level", [0, 1, 3, 5])
+def test_stacking_starts_over_a_tower(stack_env, level):
+    env, h = stack_env, 0.06
+    _, info = env.reset(seed=level, options={"state_index": 5, "level": level})
+    assert info["level"] == level
+    assert env.target[2] == pytest.approx(h * (level + 0.5))
+    assert env.data.xpos[env.cube.body][2] - env.target[2] == pytest.approx(0.09, abs=0.003)
+    for k, t in enumerate(env.tower[:level]):  # a straight-ish tower at the target
+        p = env.data.xpos[t.body]
+        assert np.abs(p[:2] - env.target[:2]).max() <= 0.004 + 1e-9
+        assert p[2] == pytest.approx(h * (k + 0.5), abs=1e-3)
+    for _ in range(10):  # holding still: nothing falls, the tower stands
+        _, _, terminated, _, info = env.step(np.zeros(6, dtype=np.float32))
+        assert not terminated and not info["released"]
+    assert env._tower_moved() < 0.002
+
+
+def test_knocking_the_tower_fails(stack_env):
+    env = stack_env
+    env.reset(seed=0, options={"state_index": 5, "level": 2})
+    top = env.tower[1]
+    env.data.qpos[top.qpos] += 0.03  # the top tower cube pushed off
+    mujoco.mj_forward(env.model, env.data)
+    _, _, terminated, _, info = env.step(np.zeros(6, dtype=np.float32))
+    assert terminated and info["failure"] == "tower_knocked" and not info["is_success"]
+    assert info["reward_terms"]["tower"] == -5.0
