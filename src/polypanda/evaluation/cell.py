@@ -1,0 +1,155 @@
+"""Evaluate the Milestone 9 work-order cell: whole work orders, scripted or learned skills.
+
+Each order is generated from its own random stream (seed, index), which also draws the infeed
+jitter, so every configuration sees exactly the same orders and cube poses and the results can
+be compared order by order (exact McNemar, evaluation.pickplace.mcnemar_exact).
+
+An order succeeds when every tower is complete and correct (ScriptedCell.check: every cube
+upright, at its level, on the fixture, in recipe order). Failures are attributed to the first
+failing learned skill ("pick:<reason>", "place:<reason>"), the conveyor, or the final tower check
+("tower").
+"""
+
+import time
+from collections import Counter
+from dataclasses import dataclass
+from pathlib import Path
+
+import numpy as np
+
+from polypanda.evaluation.pickplace import _pct
+from polypanda.evaluation.reach import wilson_interval
+from polypanda.simulation.workcell import Workcell, WorkOrder
+from polypanda.supervisor.cell import LearnedCell, LearnedSkill
+
+
+@dataclass(frozen=True)
+class CellEvalConfig:
+    n: int = 200
+    seed: int = 20261026
+    heights: tuple[int, int] = (1, 4)
+    lateral: float = 0.015          # m, infeed jitter either way
+    yaw: float = float(np.radians(15))  # rad, infeed jitter either way
+
+
+@dataclass(frozen=True)
+class CellEpisode:
+    index: int
+    success: bool
+    failure: str | None
+    heights: str                 # tower heights, e.g. "3-1-4"
+    towers_ok: str               # per tower, e.g. "110"
+    cubes: int
+    pick_failures: int           # learned skills only
+    place_failures: int
+    ik_failures: int
+    sim_s: float                 # simulated time for the whole order
+
+
+def skill_from_spec(spec: str, stage: str):
+    """'scripted' or 'run:<run_dir>[@best|final]' -> (LearnedSkill | None, description, tag,
+    provenance)."""
+    if spec == "scripted":
+        return None, f"scripted {stage}", "scripted", {}
+    if not spec.startswith("run:"):
+        raise ValueError(f"{stage} must be 'scripted' or 'run:<run_dir>[@best|final]'")
+    run_dir, _, which = spec[4:].partition("@")
+    skill = LearnedSkill(run_dir, which or "best")
+    meta = skill.policy.metadata
+    if not meta["skill"].startswith({"pick": "grasp"}.get(stage, stage)):
+        raise ValueError(f"{run_dir} is a {meta['skill']} policy, not a {stage} policy")
+    return (skill, f"{meta['algorithm']} {meta['skill']} policy {meta['policy_id']}",
+            f"{Path(run_dir).name}_{skill.policy.which}",
+            {"run_dir": run_dir, "checkpoint": skill.policy.which, "policy_id": meta["policy_id"],
+             "trained_at": meta.get("git", {}).get("commit", "in progress")})
+
+
+def run_cell_order(ctl: LearnedCell, config: CellEvalConfig, index: int) -> CellEpisode:
+    rng = np.random.default_rng([config.seed, index])
+    order = WorkOrder.random(rng, heights=config.heights)
+    picks, places, steps, log = len(ctl.picks), len(ctl.places), [0], []
+
+    def count():
+        steps[0] += 1
+
+    viewer, ctl.on_step = ctl.on_step, count
+    try:
+        towers = ctl.run_order(order, rng, lateral=config.lateral, yaw=config.yaw,
+                               log=log.append)
+    finally:
+        ctl.on_step = viewer
+    ok = ctl.check(towers)
+    new_picks, new_places = ctl.picks[picks:], ctl.places[places:]
+    failure = None
+    if not all(ok):
+        skill_failures = [(f"pick:{r['failure'] or 'timeout'}") for r in new_picks
+                          if not r["success"]] + [(f"place:{r['failure'] or 'timeout'}")
+                                                  for r in new_places if not r["success"]]
+        if skill_failures:
+            failure = skill_failures[0]
+        elif any("did not arrive" in line for line in log):
+            failure = "conveyor"
+        else:
+            failure = "tower"
+    return CellEpisode(
+        index=index, success=all(ok), failure=failure,
+        heights="-".join(str(len(r)) for r in order.recipes),
+        towers_ok="".join(str(int(x)) for x in ok), cubes=len(order.arrivals),
+        pick_failures=sum(not r["success"] for r in new_picks),
+        place_failures=sum(not r["success"] for r in new_places),
+        ik_failures=ctl.ik_failures, sim_s=round(steps[0] * ctl.dt, 2))
+
+
+def summarize_cell(episodes: list[CellEpisode], ctl: LearnedCell) -> dict:
+    n = len(episodes)
+    wins = sum(e.success for e in episodes)
+    towers = [(int(h), ok == "1") for e in episodes
+              for h, ok in zip(e.heights.split("-"), e.towers_ok, strict=True)]
+    by_height = {}
+    for h in sorted({h for h, _ in towers}):
+        good = [ok for hh, ok in towers if hh == h]
+        by_height[h] = {"towers": len(good), "success_rate": sum(good) / len(good)}
+
+    def skill(rows, key=None):
+        if not rows:
+            return None
+        out = {"attempts": len(rows), "success_rate": sum(r["success"] for r in rows) / len(rows),
+               "median_steps": _pct([r["steps"] for r in rows if r["success"]], 50),
+               "failures": dict(Counter(r["failure"] or "timeout" for r in rows
+                                        if not r["success"]))}
+        if key:
+            out["by_level"] = {lv + 1: sum(r["success"] for r in rows if r[key] == lv)
+                               / sum(r[key] == lv for r in rows)
+                               for lv in sorted({r[key] for r in rows})}
+        return out
+
+    cubes = sum(e.cubes for e in episodes)
+    return {
+        "orders": n,
+        "success_rate": wins / n,
+        "success_ci95": list(wilson_interval(wins, n)),
+        "towers": len(towers),
+        "tower_success_rate": sum(ok for _, ok in towers) / len(towers),
+        "tower_success_by_height": by_height,
+        "cubes": cubes,
+        "failures": dict(Counter(e.failure for e in episodes if not e.success)),
+        "learned_pick": skill(ctl.picks),
+        "learned_place": skill(ctl.places, key="level"),
+        "ik_failures": sum(e.ik_failures for e in episodes),
+        "sim_s_per_cube": sum(e.sim_s for e in episodes) / cubes,
+    }
+
+
+def evaluate_cell(grasp: LearnedSkill | None, place: LearnedSkill | None,
+                  config: CellEvalConfig | None = None, progress=None
+                  ) -> tuple[dict, list[CellEpisode]]:
+    config = config or CellEvalConfig()
+    ctl = LearnedCell(Workcell.build(), grasp=grasp, place=place)
+    start, episodes = time.time(), []
+    for i in range(config.n):
+        episodes.append(run_cell_order(ctl, config, i))
+        if progress:
+            progress(episodes[-1])
+    summary = summarize_cell(episodes, ctl)
+    summary["wall_clock_s"] = round(time.time() - start, 1)
+    return summary, episodes
