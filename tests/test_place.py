@@ -172,8 +172,10 @@ def test_v3_aims_at_the_top_cube_and_rewards_centring():
     from polypanda.environments.place import PlaceConfig
     cfg = PlaceConfig.from_yaml(ROOT / "configs" / "place_stack_v3_cartesian.yaml")
     assert cfg.stack.aim_at_top and cfg.check.tolerance == 0.02 and cfg.gate.xy_tol == 0.02
-    assert cfg.reward.centring == 20.0 and cfg.stack.disturb_penalty == 300.0
+    assert cfg.reward.centring == 0.0 and cfg.stack.disturb_penalty == 300.0
     assert cfg.reward.precise == 0.5 and cfg.reward.precise_tol == 0.01
+    from dataclasses import replace
+    cfg = replace(cfg, reward=replace(cfg.reward, centring=20.0))  # (the term itself)
     env = PlaceEnv(cfg)
     env.reset(seed=3, options={"state_index": 5, "level": 2})
     top = env.data.xpos[env.tower[1].body]
