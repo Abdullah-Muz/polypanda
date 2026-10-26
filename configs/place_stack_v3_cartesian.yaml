@@ -1,9 +1,10 @@
 # Milestone 9: the learned stacking place, v3. v2 (a penalty for nudging the tower) made the
 # policies gentler but less precise: cubes landed 9-13 mm off centre, each aimed at the fixture
 # rather than the cube below, and the errors added up into overhangs. v3 rewards precision as
-# well as gentleness: it aims at the top tower cube, counts a placement only within 1 cm (2 cm
-# before), charges the distance from the target after release, and keeps a softer nudge penalty.
-# The release gate stays at 2 cm (see gate).
+# well as gentleness: it aims at the top tower cube, doubles the placed reward within 1 cm,
+# charges the distance from the target after release, and keeps a softer nudge penalty. The
+# release gate and the placed check stay at 2 cm: two first attempts that required 1 cm there
+# did not learn (see gate, check).
 # Keys map to polypanda.environments.place.PlaceConfig.
 
 action:
@@ -33,7 +34,10 @@ gate:
 check:
   max_rest_height: 0.003
   max_tilt: 0.1745
-  tolerance: 0.01         # placed only within 1 cm of the target (v1, v2: 2 cm)
+  tolerance: 0.02         # (as v1, v2) with placed only within 1 cm, a second v3 run learned to
+                          # drop the cube to end episodes early (0 % validation, episodes 33 ->
+                          # 16 steps): without the placed reward every step only costs, and a
+                          # drop costs less; 1 cm is rewarded on top instead (reward.precise)
   max_speed: 0.01
   window: 10
 
@@ -50,6 +54,8 @@ reward:
   toppled: 5.0            # also charged for knocking the tower
   cube_tilt: 0.3
   centring: 20.0          # per metre off the target, per step after release (5 mm: 0.1 per step)
+  precise: 0.5            # per step placed within 1 cm, on top of placed (0.5 within 2 cm)
+  precise_tol: 0.01
 
 stack:
   max_level: 5            # towers of 0-5 cubes under the target, drawn uniformly

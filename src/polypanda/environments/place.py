@@ -71,6 +71,8 @@ class PlaceRewardConfig:
     toppled: float = 5.0             # cube fell over after release; terminates
     cube_tilt: float = 0.0           # per rad of cube tilt per step while held (learned place)
     centring: float = 0.0            # per metre of cube-to-target xy error, per step after release
+    precise: float = 0.0             # extra per step while placed AND within precise_tol of target
+    precise_tol: float = 0.01        # m
 
 
 @dataclass(frozen=True)
@@ -324,6 +326,8 @@ class PlaceEnv(gym.Env):
             "toppled": -r.toppled if toppled else 0.0,
             **({"centring": -r.centring * xy_err if self.released else 0.0}
                if r.centring else {}),
+            **({"precise": r.precise if placed and xy_err < r.precise_tol else 0.0}
+               if r.precise else {}),
             **({"tower": -r.toppled if knocked else 0.0,
                 "tower_disturb": -cfg.stack.disturb_penalty * (moved - self._moved)}
                if self.tower else {}),
