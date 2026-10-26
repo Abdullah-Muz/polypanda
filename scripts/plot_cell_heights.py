@@ -73,8 +73,8 @@ def main() -> None:
             a, b = wilson_interval(ok, n)
             xs.append(j + (i - (len(keys) - 1) / 2) * width)
             ps.append(ok / n)
-            lo.append(ok / n - a)
-            hi.append(b - ok / n)
+            lo.append(max(0.0, ok / n - a))  # (rounding can put a bound a hair past p)
+            hi.append(max(0.0, b - ok / n))
             print(f"{label}, height {h}: {ok}/{n} = {ok / n:.1%} (95% CI {a:.1%}-{b:.1%})")
         ax.bar(xs, ps, width * 0.9, yerr=[lo, hi], capsize=3, color=colour, ecolor="0.25",
                label=label + (f" ({seeds} seeds pooled)" if seeds > 1 else ""))

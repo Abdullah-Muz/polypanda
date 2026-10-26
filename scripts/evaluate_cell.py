@@ -49,6 +49,7 @@ def main() -> None:
     args = parser.parse_args()
     torch.set_num_threads(1)
 
+    git = git_state()  # recorded before evaluating, so later commits cannot mislabel the run
     config = CellEvalConfig(n=args.n, seed=args.seed, heights=tuple(args.heights))
     pick, pick_desc, pick_tag, pick_prov = skill_from_spec(args.pick, "pick")
     place, place_desc, place_tag, place_prov = skill_from_spec(args.place, "place")
@@ -68,7 +69,7 @@ def main() -> None:
               "eval": asdict(config),
               "cell": asdict(WorkcellConfig()),
               "created_utc": datetime.now(UTC).isoformat(timespec="seconds"),
-              "git": git_state(),
+              "git": git,
               "versions": {"python": platform.python_version(), "mujoco": mujoco.__version__,
                            "numpy": np.__version__, "torch": torch.__version__},
               "summary": summary}
