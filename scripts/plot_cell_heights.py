@@ -27,7 +27,8 @@ SERIES = {  # (learned pick, place policy family or None) -> label, colour
     (True, None): ("Learned pick, scripted place", plt.cm.tab10(9)),
     (True, "place_cart"): ("Learned pick, M8 place (trained on the table only)",
                            plt.cm.tab10(1)),
-    (True, "place_stack"): ("Fully learned skills", plt.cm.tab10(0)),
+    (True, "place_stack"): ("Learned pick, stacking place (retrained for towers)",
+                            plt.cm.tab10(0)),
 }
 
 

@@ -91,6 +91,10 @@ All configurations get the same 200 orders: heights 1–4, 1515 cubes, ±1.5 cm 
 | PPO grasp (seed 2) | PPO stacking place (seed 2) | **200/200** | 600/600 | picks 1515/1515, places 1515/1515 | 19.9 s |
 | **Fully learned, 3 seeds pooled** | | **599/600 = 99.8 %** (99.1–100 %) | 1799/1800 | picks 100 %, places 99.98 % | |
 
+![Tower success by height in the cell](figures/cell_heights.png)
+
+*Tower success by tower height on the same orders (95 % Wilson intervals; `scripts/plot_cell_heights.py`). The orange series is the Milestone 8 place policy, trained only on the table, on the first 50 of the orders. It builds every 1-high tower, but none taller.*
+
 - **Learned grasp:** these are the Milestone 8 hand-motion policies, unchanged, and a pick takes a median of 60–67 policy steps (about 3 s). They were trained on a plain table in front of the robot. Through the station frame they transfer without retraining to a conveyor 90° to the side, a stiffer gripper and a 2 mm higher surface.
 - **Learned place:** a median of 22 steps (about 1 s) per cube.
   - Seed 0's one unsuccessful placement was a timeout (the policy's own placed check did not hold within its horizon). The cube still ended correctly on its tower.
@@ -113,7 +117,7 @@ Part 2 is a simulator effect: MuJoCo's soft contacts let an offset stack creep. 
 | 5 | n/a | 0/20 |
 | 6 | n/a | 0/20 |
 
-Most failures knock the tower over. The retrained place adds towers to the place task (`PlaceConfig.stack`, `configs/place_stack_cartesian.yaml`):
+Most failures knock the tower over. On the first 50 evaluation orders, the learned grasp with this unchanged place completes 1 order. It builds 38/38 one-high towers and 0 of 112 taller ones: every cube set onto another cube toppled. (With learned grasps, even level 2 fails; in the development check above with scripted grasps it held.) The retrained place adds towers to the place task (`PlaceConfig.stack`, `configs/place_stack_cartesian.yaml`):
 - each episode sets the cube on a tower of 0–5 cubes at the target;
 - it starts from the same handoff states, raised by IK by the tower's height (hand and cube together, so the grip is unchanged);
 - moving a tower cube by more than 1 cm ends the episode as a failure.
