@@ -105,9 +105,11 @@ class PlacedCheck:
                 return True
         return False
 
-    def update(self, data, target_xy: np.ndarray) -> bool:
+    def update(self, data, target_xy: np.ndarray, rest: float | None = None) -> bool:
+        """`rest`: the cube-centre height when set down (default: on the table)."""
         cfg, c = self.config, cube_position(data, self.cube)
-        ok = (c[2] - self.cube.half_size[2] < cfg.max_rest_height
+        rest = self.cube.half_size[2] if rest is None else rest
+        ok = (c[2] - rest < cfg.max_rest_height
               and cube_tilt(data, self.cube) < cfg.max_tilt
               and np.linalg.norm(c[:2] - target_xy) < cfg.tolerance
               and np.abs(data.qvel[self.cube.qvel:self.cube.qvel + 6]).max() < cfg.max_speed
@@ -119,15 +121,19 @@ class PlacedCheck:
 class PlaceEnv(gym.Env):
     metadata = {"render_modes": []}
 
-    def __init__(self, config: PlaceConfig | None = None) -> None:
+    def __init__(self, config: PlaceConfig | None = None, scene=None, cube: str = "cube") -> None:
+        """`scene` (model, data): run in an existing scene (e.g. the workcell) on the cube body
+        named `cube`, starting from its current state (reset option "continue"); by default the
+        env builds its own scene and starts from the handoff pool."""
         self.config = config or PlaceConfig()
-        self.model, self.data = load_pick_scene()
+        self.model, self.data = scene or load_pick_scene()
         self.arm = PandaIndices.from_model(self.model)
-        self.cube = CubeIndices.from_model(self.model)
+        self.cube = CubeIndices.from_model(self.model, cube)
         self.adapter = make_action_adapter(self.model, self.arm, self.config.action)
         self.check = PlacedCheck(self.model, self.arm, self.cube, self.config.check)
         path = Path(self.config.start_pool)
-        self.pool = HandoffPool.load(path if path.exists() else REPO_ROOT / path, self.model)
+        self.pool = (HandoffPool.load(path if path.exists() else REPO_ROOT / path, self.model)
+                     if scene is None else None)
         self._finger_qpos = [self.model.joint(f"finger_joint{i}").qposadr[0] for i in (1, 2)]
         limit = action_limit(self.config.action)
         self.action_space = spaces.Box(-limit, limit, shape=(self.adapter.action_dim,),
@@ -164,18 +170,24 @@ class PlaceEnv(gym.Env):
     def reset(self, *, seed: int | None = None, options: dict | None = None):
         super().reset(seed=seed)
         options = options or {}
-        if "state" in options:
-            state, self.start_index = np.asarray(options["state"], dtype=float), -1
-            target_xy = np.asarray(options["target"], dtype=float)[:2]
+        # The target is the cube-centre resting point: (x, y) on the table, or (x, y, z) when
+        # the cube is to be set down on something (e.g. a tower: z = level height + half cube).
+        if options.get("continue"):  # from the scene as it is (a skill inside a larger task)
+            self.start_index = -1
+            target = np.asarray(options["target"], dtype=float)
+        elif "state" in options:
+            self.start_index = -1
+            restore_state(self.model, self.data, np.asarray(options["state"], dtype=float))
+            target = np.asarray(options["target"], dtype=float)
         else:
             self.start_index = int(options.get("state_index",
                                                self.np_random.integers(len(self.pool))))
-            state = self.pool.states[self.start_index]
-            target_xy = self.pool.goals[self.start_index][:2]
-        restore_state(self.model, self.data, state)
+            restore_state(self.model, self.data, self.pool.states[self.start_index])
+            target = self.pool.goals[self.start_index][:2]
         self.data.ctrl[self.arm.gripper_actuator] = GRIPPER_CLOSED
         self.adapter.adopt_ctrl(self.data)
-        self.target = np.array([*target_xy, self.cube.half_size[2]])
+        rest = float(target[2]) if len(target) > 2 else float(self.cube.half_size[2])
+        self.target = np.array([target[0], target[1], rest])
         self.released = False
         self.check.reset()
         self._steps = self._no_contact = 0
@@ -193,7 +205,7 @@ class PlaceEnv(gym.Env):
         self.adapter.step(self.data, a)
         self._steps += 1
         cube = cube_position(self.data, self.cube)
-        lift = cube[2] - self.cube.half_size[2]
+        lift = cube[2] - self.target[2]  # above its resting height (the table, or a tower top)
         self._contacts = self._finger_contacts()
         both = all(self._contacts)
         xy_err = float(np.linalg.norm(cube[:2] - self.target[:2]))
@@ -204,7 +216,7 @@ class PlaceEnv(gym.Env):
                 self.data.ctrl[self.arm.gripper_actuator] = GRIPPER_OPEN
         dropped = (not self.released) and self._no_contact >= cfg.drop_steps
         toppled = self.released and cube_tilt(self.data, self.cube) > cfg.topple_tilt
-        placed = self.check.update(self.data, self.target[:2])
+        placed = self.check.update(self.data, self.target[:2], self.target[2])
         distance = float(np.linalg.norm(self.target - cube))
         rise = self._hand_rise() if self.released else 0.0
         R = self.data.site_xmat[self.arm.tcp_site].reshape(3, 3)

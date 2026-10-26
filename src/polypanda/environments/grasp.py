@@ -169,11 +169,13 @@ class GraspEnv(gym.Env):
     metadata = {"render_modes": []}
     distractor_slots = 0  # extra cubes in the scene (GraspV3Env)
 
-    def __init__(self, config: GraspConfig | None = None) -> None:
+    def __init__(self, config: GraspConfig | None = None, scene=None, cube: str = "cube") -> None:
+        """`scene` (model, data): run in an existing scene, e.g. the Milestone 9 workcell, on the
+        cube body named `cube`; by default the env builds its own pick scene."""
         self.config = config or GraspConfig()
-        self.model, self.data = load_pick_scene(distractors=self.distractor_slots)
+        self.model, self.data = scene or load_pick_scene(distractors=self.distractor_slots)
         self.arm = PandaIndices.from_model(self.model)
-        self.cube = CubeIndices.from_model(self.model)
+        self.cube = CubeIndices.from_model(self.model, cube)
         self.adapter = make_action_adapter(self.model, self.arm, self.config.action)
         self.monitor = GraspMonitor(self.model, self.arm, self.cube, self.config.check)
         self._finger_qpos = [self.model.joint(f"finger_joint{i}").qposadr[0] for i in (1, 2)]
@@ -230,6 +232,8 @@ class GraspEnv(gym.Env):
     def reset(self, *, seed: int | None = None, options: dict | None = None):
         super().reset(seed=seed)
         options = options or {}
+        if options.get("continue"):  # start from the scene as it is (a skill inside a larger task)
+            return self._continue()
         cfg = self.config.placement
         reset_to_home(self.model, self.data, self.arm)
         if "arm_offset" in options:  # robustness tests: start away from the exact home pose
@@ -270,6 +274,23 @@ class GraspEnv(gym.Env):
         info = {"cube": (x, y, yaw), "distance": m["distance"],
                 "start": "pregrasp" if pregrasp else "home"}
         return self._observation(m), info
+
+    def _continue(self):
+        """Begin an episode from the current physics state: the arm keeps its commands (no
+        jump), the fingers open, the cube stays where it is."""
+        self.adapter.adopt_ctrl(self.data)
+        self.data.ctrl[self.arm.gripper_actuator] = GRIPPER_OPEN
+        self.monitor.reset()
+        self._state = self.monitor.update(self.data)
+        self.closed = False
+        self._dwell = self._empty = self._steps = 0
+        m = self._measure()
+        self._prev = {"distance": m["distance"], "align": abs(m["align"]),
+                      "lift": min(m["lift"], self.config.reward.lift_cap)}
+        c = cube_position(self.data, self.cube)
+        return self._observation(m), {"cube": (float(c[0]), float(c[1]),
+                                               cube_yaw(self.data, self.cube)),
+                                      "distance": m["distance"], "start": "continue"}
 
     def _pregrasp_start(self, settle_steps: int = 100) -> bool:
         """Training curriculum: arm at the IK grasp pose, fingers closed on the cube.

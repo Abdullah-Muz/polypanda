@@ -126,14 +126,19 @@ def _resolve(path: str) -> Path:
 class TransportEnv(gym.Env):
     metadata = {"render_modes": []}
 
-    def __init__(self, config: TransportConfig | None = None) -> None:
+    def __init__(self, config: TransportConfig | None = None, scene=None,
+                 cube: str = "cube") -> None:
+        """`scene` (model, data): run in an existing scene (e.g. the workcell) on the cube body
+        named `cube`, starting from its current state (reset option "continue"); by default the
+        env builds its own scene and starts from the handoff pool."""
         self.config = config or TransportConfig()
-        self.model, self.data = load_pick_scene()
+        self.model, self.data = scene or load_pick_scene()
         self.arm = PandaIndices.from_model(self.model)
-        self.cube = CubeIndices.from_model(self.model)
+        self.cube = CubeIndices.from_model(self.model, cube)
         self.adapter = make_action_adapter(self.model, self.arm, self.config.action)
         self.monitor = GraspMonitor(self.model, self.arm, self.cube, self.config.check)
-        self.pool = HandoffPool.load(_resolve(self.config.start_pool), self.model)
+        self.pool = (HandoffPool.load(_resolve(self.config.start_pool), self.model)
+                     if scene is None else None)
         self._finger_qpos = [self.model.joint(f"finger_joint{i}").qposadr[0] for i in (1, 2)]
         limit = action_limit(self.config.action)
         self.action_space = spaces.Box(-limit, limit, shape=(self.adapter.action_dim,),
@@ -161,13 +166,15 @@ class TransportEnv(gym.Env):
     def reset(self, *, seed: int | None = None, options: dict | None = None):
         super().reset(seed=seed)
         options = options or {}
-        if "state" in options:
+        if options.get("continue"):  # from the scene as it is (a skill inside a larger task)
+            self.start_index = -1
+        elif "state" in options:
             state, self.start_index = np.asarray(options["state"], dtype=float), -1
+            restore_state(self.model, self.data, state)
         else:
             self.start_index = int(options.get("state_index",
                                                self.np_random.integers(len(self.pool))))
-            state = self.pool.states[self.start_index]
-        restore_state(self.model, self.data, state)
+            restore_state(self.model, self.data, self.pool.states[self.start_index])
         self.data.ctrl[self.arm.gripper_actuator] = GRIPPER_CLOSED
         self.adapter.adopt_ctrl(self.data)  # continue from the grasp skill's commands: no jump
         cube = cube_position(self.data, self.cube)

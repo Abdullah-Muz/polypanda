@@ -161,7 +161,10 @@ def _limit_tilt(R: np.ndarray, max_tilt: float) -> np.ndarray:
     if tilt <= max_tilt:
         return R
     axis = np.cross(R[:, 2], [0.0, 0.0, -1.0])
-    return _rotation(axis / np.linalg.norm(axis) * (tilt - max_tilt)) @ R
+    norm = np.linalg.norm(axis)
+    if norm < 1e-9:  # pointing straight up: any horizontal axis tips it back
+        axis, norm = np.array([R[0, 0], R[1, 0], 0.0]), np.hypot(R[0, 0], R[1, 0]) or 1.0
+    return _rotation(axis / norm * (tilt - max_tilt)) @ R
 
 
 class CartesianActionAdapter:
@@ -227,6 +230,7 @@ class CartesianActionAdapter:
         self.box_low, self.box_high = np.asarray(box_low, float), np.asarray(box_high, float)
         self.ik_iters, self.posture_gain = ik_iters, posture_gain
         self.max_accel = max_accel
+        self.frame = 0.0  # station frame angle (rad); see set_frame()
         self._velocity_step = np.zeros(3)  # last step's target displacement (m)
         self.low, self.high = model.actuator_ctrlrange[idx.arm_actuators].T.copy()
         self.ik = PoseIK()
@@ -244,6 +248,17 @@ class CartesianActionAdapter:
     def at_limit(self) -> np.ndarray:
         """Per-joint mask of targets sitting on a ctrlrange bound."""
         return (self.q_cmd <= self.low) | (self.q_cmd >= self.high)
+
+    def set_frame(self, angle: float) -> None:
+        """Station frame, for a skill trained in front of the robot used at a station at this
+        angle about the base axis (polypanda.supervisor.stations): actions are read in that
+        frame and turned into the world, and the box and lead bounds hold in it."""
+        self.frame = float(angle)
+
+    def _frame_rotations(self) -> tuple[np.ndarray, np.ndarray]:
+        c, s = np.cos(self.frame), np.sin(self.frame)
+        from_frame = np.array([[c, -s, 0.0], [s, c, 0.0], [0.0, 0.0, 1.0]])
+        return from_frame.T, from_frame
 
     def _sync_target(self) -> None:
         """Target pose := the pose the joint targets command (no lead, so nothing jumps)."""
@@ -270,24 +285,28 @@ class CartesianActionAdapter:
             raise ValueError(f"action contains non-finite values: {a}")
         a = np.clip(a, -1.0, 1.0)
         commanded, _ = self.ik.forward(self.q_cmd)
-        move = self.max_step * a[:3]
+        to_frame, from_frame = self._frame_rotations()
+        move = from_frame @ (self.max_step * a[:3])  # actions are in the station frame
         if self.max_accel is not None:  # bound the change of velocity per step
             dv = move - self._velocity_step
             limit = self.max_accel * self.control_dt ** 2
             norm = float(np.linalg.norm(dv))
             if norm > limit:
                 move = self._velocity_step + dv * (limit / norm)
-        pos = np.clip(self.target_pos + move, commanded - self.max_lead, commanded + self.max_lead)
-        pos = np.clip(pos, self.box_low, self.box_high)
+        # The lead and box bounds hold in the station frame (identity unless set_frame()).
+        pos = to_frame @ (self.target_pos + move)
+        com = to_frame @ commanded
+        pos = np.clip(pos, com - self.max_lead, com + self.max_lead)
+        pos = from_frame @ np.clip(pos, self.box_low, self.box_high)
         self._velocity_step = pos - self.target_pos
         self.target_pos = pos
         if self.dof in (3, 4):
             yaw = self.max_rot * a[3] if self.dof == 4 else 0.0
             R = _rotation(np.array([0.0, 0.0, yaw])) @ self.target_R
             self.target_R = _limit_tilt(R, max(_tilt(R) - self.max_rot, 0.0))
-        else:
-            self.target_R = _limit_tilt(_rotation(self.max_rot * a[3:]) @ self.target_R,
-                                        self.max_tilt)
+        else:  # (a rotation about the vertical commutes with the frame; tilts rotate with it)
+            self.target_R = _limit_tilt(_rotation(from_frame @ (self.max_rot * a[3:]))
+                                        @ self.target_R, self.max_tilt)
         self.q_cmd = np.clip(self._solve(self.q_cmd), self.low, self.high)
         data.ctrl[self.idx.arm_actuators] = self.q_cmd
         return self.q_cmd.copy()
@@ -295,8 +314,10 @@ class CartesianActionAdapter:
     def _solve(self, q: np.ndarray) -> np.ndarray:
         ik, quat = self.ik, np.zeros(4)
         mujoco.mju_mat2Quat(quat, self.target_R.flatten())
+        home = self.q_home.copy()
+        home[0] += self.frame  # the home posture faces the station
         for k in range(self.ik_iters):
-            posture = self.posture_gain * (self.q_home - q) if k == 0 else None
+            posture = self.posture_gain * (home - q) if k == 0 else None
             q = np.clip(q + ik.step(q, self.target_pos, quat, posture), ik.q_low, ik.q_high)
         return q
 
