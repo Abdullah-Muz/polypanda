@@ -168,6 +168,26 @@ def test_knocking_the_tower_fails(stack_env):
     assert info["reward_terms"]["tower_disturb"] == 0.0  # v1: no charge below the limit
 
 
+def test_v3_aims_at_the_top_cube_and_rewards_centring():
+    from polypanda.environments.place import PlaceConfig
+    cfg = PlaceConfig.from_yaml(ROOT / "configs" / "place_stack_v3_cartesian.yaml")
+    assert cfg.stack.aim_at_top and cfg.check.tolerance == 0.01 and cfg.gate.xy_tol == 0.01
+    assert cfg.reward.centring == 20.0 and cfg.stack.disturb_penalty == 300.0
+    env = PlaceEnv(cfg)
+    env.reset(seed=3, options={"state_index": 5, "level": 2})
+    top = env.data.xpos[env.tower[1].body]
+    np.testing.assert_allclose(env.target[:2], top[:2])          # the cube below, not the pool goal
+    assert env.target[2] == pytest.approx(0.06 * 2.5)
+    assert np.linalg.norm(env.target[:2] - env.pool.goals[5][:2]) > 1e-4  # (the tower is jittered)
+    _, _, _, _, info = env.step(np.zeros(6, dtype=np.float32))
+    assert info["reward_terms"]["centring"] == 0.0                 # charged only after release
+    env.released = True
+    _, _, _, _, info = env.step(np.zeros(6, dtype=np.float32))
+    assert info["reward_terms"]["centring"] == pytest.approx(-20.0 * info["xy_error"])
+    env.reset(seed=3, options={"state_index": 5, "level": 0})   # on the table: the pool goal
+    np.testing.assert_allclose(env.target[:2], env.pool.goals[5][:2])
+
+
 def test_v2_charges_every_millimetre_a_tower_cube_moves():
     from dataclasses import replace
 

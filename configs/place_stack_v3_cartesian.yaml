@@ -1,0 +1,61 @@
+# Milestone 9: the learned stacking place, v3. v2 (a penalty for nudging the tower) made the
+# policies gentler but less precise: cubes landed 9-13 mm off centre, each aimed at the fixture
+# rather than the cube below, and the errors added up into overhangs. v3 rewards precision as
+# well as gentleness: it aims at the top tower cube, counts a placement only within 1 cm (2 cm
+# before), charges the distance from the target after release, and keeps a softer nudge penalty.
+# Keys map to polypanda.environments.place.PlaceConfig.
+
+action:
+  max_delta: 0.015
+  n_substeps: 25
+  max_lead: null
+  space: cartesian
+  cartesian:
+    dof: 6
+    max_step: 0.01
+    max_rot: 0.05
+    max_tilt: 0.6
+    max_lead: 0.03
+    box_low: [0.15, -0.5, 0.01]
+    box_high: [0.85, 0.5, 0.6]
+    ik_iters: 2
+    posture_gain: 0.02
+  bound_penalty: 0.1
+
+gate:
+  release_height: 0.01
+  xy_tol: 0.01            # the fingers open only within 1 cm of the target (v1, v2: 2 cm)
+
+check:
+  max_rest_height: 0.003
+  max_tilt: 0.1745
+  tolerance: 0.01         # placed only within 1 cm of the target (v1, v2: 2 cm)
+  max_speed: 0.01
+  window: 10
+
+reward:
+  progress: 20.0
+  retreat: 5.0
+  retreat_cap: 0.10
+  placed: 0.5
+  action: 0.005
+  action_rate: 0.05
+  gripper_tilt: 0.1
+  floor: 0.1
+  dropped: 5.0
+  toppled: 5.0            # also charged for knocking the tower
+  cube_tilt: 0.3
+  centring: 20.0          # per metre off the target, per step after release (5 mm: 0.1 per step)
+
+stack:
+  max_level: 5            # towers of 0-5 cubes under the target, drawn uniformly
+  jitter: 0.004           # m, tower cube offsets (a learned stack is not perfectly straight)
+  yaw_jitter: 0.26        # rad
+  disturb_tol: 0.01       # m a tower cube may move (as v1; v2: 5 mm)
+  disturb_penalty: 300.0  # per metre a tower cube is moved, however little (v2: 1000)
+  aim_at_top: true        # target: the top tower cube's actual position (v1, v2: the fixture)
+
+horizon: 120
+drop_steps: 5
+topple_tilt: 0.785
+start_pool: data/handoff/place_train_v1.npz

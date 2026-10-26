@@ -31,6 +31,29 @@ def test_mixed_orders_report_buffer_use():
     assert summary["buffer"]["rejected"] == e.rejected
 
 
+def test_a_place_trained_to_aim_at_the_stack_aims_at_its_top_cube():
+    from types import SimpleNamespace
+
+    import mujoco
+
+    from polypanda.environments.place import PlaceConfig, StackConfig
+    from polypanda.simulation.workcell import Workcell
+    from polypanda.supervisor.cell import LearnedCell
+
+    cell = Workcell.build()
+    cell.reset(WorkOrder.random(np.random.default_rng(0)))
+    xy = cell.tower_xy(1)
+    below = cell.cubes[0]  # a cube standing 6 mm off the fixture centre, as level 1
+    cell.data.qpos[below.qpos:below.qpos + 3] = [xy[0] + 0.006, xy[1], below.half_size[2]]
+    mujoco.mj_forward(cell.model, cell.data)
+    stack = LearnedCell(cell, place=SimpleNamespace(
+        config=PlaceConfig(stack=StackConfig(aim_at_top=True))))
+    fixture = LearnedCell(cell, place=SimpleNamespace(config=PlaceConfig()))
+    np.testing.assert_allclose(stack._aim(xy, 1), [xy[0] + 0.006, xy[1]], atol=1e-6)
+    np.testing.assert_allclose(stack._aim(xy, 0), xy)       # first cube: the fixture itself
+    np.testing.assert_allclose(fixture._aim(xy, 1), xy)     # v1/v2 policies: the fixture
+
+
 def test_skill_specs():
     assert skill_from_spec("scripted", "pick")[0] is None
     with pytest.raises(ValueError):

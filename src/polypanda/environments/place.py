@@ -70,6 +70,7 @@ class PlaceRewardConfig:
     dropped: float = 5.0             # lost before the gate opened; terminates
     toppled: float = 5.0             # cube fell over after release; terminates
     cube_tilt: float = 0.0           # per rad of cube tilt per step while held (learned place)
+    centring: float = 0.0            # per metre of cube-to-target xy error, per step after release
 
 
 @dataclass(frozen=True)
@@ -82,12 +83,16 @@ class StackConfig:
     # tower intact. `disturb_penalty` (v2) charges every metre a tower cube is moved, however
     # little: v1 policies, free to nudge a tower by up to 1 cm, sometimes left a 4-high stack
     # offset by a few millimetres, and in simulation such a stack creeps until it falls
-    # (Milestone 9, Layer 2 evaluation).
+    # (Milestone 9, Layer 2 evaluation). `aim_at_top` (v3): the target is the top tower cube's
+    # actual position, not the fixture's centre (v2 aimed every cube at the fixture, so placing
+    # errors added up into overhangs); a learned place trained so aims at the stack in the cell
+    # too (supervisor.cell).
     max_level: int = 0
     jitter: float = 0.004        # m, each tower cube's offset from the target, per axis
     yaw_jitter: float = 0.26     # rad (15 deg), each tower cube's yaw, either way
     disturb_tol: float = 0.01    # m
     disturb_penalty: float = 0.0  # per metre of the largest tower-cube displacement (telescoping)
+    aim_at_top: bool = False
 
 
 @dataclass(frozen=True)
@@ -217,6 +222,8 @@ class PlaceEnv(gym.Env):
             if self.tower:  # (no extra draws without stacking: M8 episodes are unchanged)
                 level = int(options.get("level", self.np_random.integers(len(self.tower) + 1)))
                 self._start_on_tower(self.pool.states[self.start_index], target, level)
+                if self.config.stack.aim_at_top and self.level:
+                    target = self.data.xpos[self.tower[self.level - 1].body][:2].copy()
                 target = np.array([*target, self.cube.half_size[2] * (2 * self.level + 1)])
             else:
                 restore_state(self.model, self.data, self.pool.states[self.start_index])
@@ -315,6 +322,8 @@ class PlaceEnv(gym.Env):
             "cube_tilt": 0.0 if self.released else -r.cube_tilt * cube_tilt(self.data, self.cube),
             "dropped": -r.dropped if dropped else 0.0,
             "toppled": -r.toppled if toppled else 0.0,
+            **({"centring": -r.centring * xy_err if self.released else 0.0}
+               if r.centring else {}),
             **({"tower": -r.toppled if knocked else 0.0,
                 "tower_disturb": -cfg.stack.disturb_penalty * (moved - self._moved)}
                if self.tower else {}),

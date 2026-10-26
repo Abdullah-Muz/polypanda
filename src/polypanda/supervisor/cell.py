@@ -91,6 +91,21 @@ class LearnedCell(ScriptedCell):
             self.cell.attach(cube)
         self.to_carry()
 
+    def _aim(self, xy, level: int) -> np.ndarray:
+        """Where the learned place should set the cube down: the fixture (or slot) centre, or,
+        for a policy trained to aim at the stack (PlaceConfig.stack.aim_at_top), the top cube's
+        actual position."""
+        xy = np.asarray(xy, dtype=float)
+        stack = getattr(self.placer.config, "stack", None)
+        if not level or not (stack and stack.aim_at_top):
+            return xy
+        z = CUBE_HEIGHT * (level - 0.5)
+        for c in self.cell.cubes:
+            p = self.d.xpos[c.body]
+            if abs(p[2] - z) < 0.01 and np.linalg.norm(p[:2] - xy) < 0.03:
+                return p[:2].copy()
+        return xy
+
     def place(self, cube: CubeIndices, xy, level: int) -> None:
         """From the carry posture over a tower: lower the cube to where the place skill's
         episodes start (its bottom `handoff_gap` above the stack), then the policy sets it down.
@@ -98,6 +113,7 @@ class LearnedCell(ScriptedCell):
         if self.placer is None:
             return super().place(cube, xy, level)
         rest = CUBE_HEIGHT * (level + 0.5)
+        xy = self._aim(xy, level)
         tcp = self.d.site_xpos[self.arm.tcp_site]
         offset = tcp[2] - self.d.xpos[cube.body][2]
         angle = float(np.arctan2(xy[1], xy[0]))
