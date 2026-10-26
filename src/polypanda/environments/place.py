@@ -79,11 +79,15 @@ class StackConfig:
     # with small random offsets; the pool start is raised by level x cube height (hand and cube
     # together, by IK, so the grip is unchanged). Moving a tower cube more than `disturb_tol`
     # ends the episode (failure `tower_knocked`, penalty reward.toppled); success also needs the
-    # tower intact.
+    # tower intact. `disturb_penalty` (v2) charges every metre a tower cube is moved, however
+    # little: v1 policies, free to nudge a tower by up to 1 cm, sometimes left a 4-high stack
+    # offset by a few millimetres, and in simulation such a stack creeps until it falls
+    # (Milestone 9, Layer 2 evaluation).
     max_level: int = 0
     jitter: float = 0.004        # m, each tower cube's offset from the target, per axis
     yaw_jitter: float = 0.26     # rad (15 deg), each tower cube's yaw, either way
     disturb_tol: float = 0.01    # m
+    disturb_penalty: float = 0.0  # per metre of the largest tower-cube displacement (telescoping)
 
 
 @dataclass(frozen=True)
@@ -156,6 +160,7 @@ class PlaceEnv(gym.Env):
         self._ik = PoseIK() if levels else None
         self.level = 0
         self._tower_xy = np.zeros((0, 2))
+        self._moved = 0.0
         path = Path(self.config.start_pool)
         self.pool = (HandoffPool.load(path if path.exists() else REPO_ROOT / path, self._base[0])
                      if scene is None else None)
@@ -222,6 +227,7 @@ class PlaceEnv(gym.Env):
         self.released = False
         self.check.reset()
         self._steps = self._no_contact = 0
+        self._moved = 0.0
         self._distance = float(np.linalg.norm(self.target - cube_position(self.data, self.cube)))
         self._rise = 0.0
         self._prev_action = np.zeros(self.adapter.action_dim)
@@ -287,7 +293,8 @@ class PlaceEnv(gym.Env):
                 self.data.ctrl[self.arm.gripper_actuator] = GRIPPER_OPEN
         dropped = (not self.released) and self._no_contact >= cfg.drop_steps
         toppled = self.released and cube_tilt(self.data, self.cube) > cfg.topple_tilt
-        knocked = self._tower_moved() > cfg.stack.disturb_tol
+        moved = self._tower_moved()
+        knocked = moved > cfg.stack.disturb_tol
         placed = self.check.update(self.data, self.target[:2], self.target[2]) and not knocked
         distance = float(np.linalg.norm(self.target - cube))
         rise = self._hand_rise() if self.released else 0.0
@@ -308,10 +315,13 @@ class PlaceEnv(gym.Env):
             "cube_tilt": 0.0 if self.released else -r.cube_tilt * cube_tilt(self.data, self.cube),
             "dropped": -r.dropped if dropped else 0.0,
             "toppled": -r.toppled if toppled else 0.0,
-            **({"tower": -r.toppled if knocked else 0.0} if self.tower else {}),
+            **({"tower": -r.toppled if knocked else 0.0,
+                "tower_disturb": -cfg.stack.disturb_penalty * (moved - self._moved)}
+               if self.tower else {}),
             **bound_terms,
         }
         self._distance, self._rise, self._prev_action = distance, rise, a
+        self._moved = moved
         terminated = bool(dropped or toppled or knocked)
         truncated = not terminated and self._steps >= cfg.horizon
         failure = ("dropped" if dropped else "toppled" if toppled
@@ -320,6 +330,7 @@ class PlaceEnv(gym.Env):
             "is_success": placed,
             "failure": failure,
             "level": self.level,
+            "tower_moved": moved,
             "released": self.released,
             "distance": distance,
             "xy_error": xy_err,

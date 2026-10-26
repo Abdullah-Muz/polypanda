@@ -165,3 +165,24 @@ def test_knocking_the_tower_fails(stack_env):
     _, _, terminated, _, info = env.step(np.zeros(6, dtype=np.float32))
     assert terminated and info["failure"] == "tower_knocked" and not info["is_success"]
     assert info["reward_terms"]["tower"] == -5.0
+    assert info["reward_terms"]["tower_disturb"] == 0.0  # v1: no charge below the limit
+
+
+def test_v2_charges_every_millimetre_a_tower_cube_moves():
+    from dataclasses import replace
+
+    from polypanda.environments.place import PlaceConfig
+    cfg = PlaceConfig.from_yaml(ROOT / "configs" / "place_stack_v2_cartesian.yaml")
+    v1 = PlaceConfig.from_yaml(ROOT / "configs" / "place_stack_cartesian.yaml")
+    assert cfg.stack.disturb_penalty == 1000.0 and cfg.stack.disturb_tol == 0.005
+    assert replace(cfg, stack=replace(cfg.stack, disturb_penalty=0.0, disturb_tol=0.01)) == v1
+    env = PlaceEnv(cfg)
+    env.reset(seed=0, options={"state_index": 5, "level": 2})
+    _, _, _, _, info = env.step(np.zeros(6, dtype=np.float32))
+    before = info["tower_moved"]
+    env.data.qpos[env.tower[1].qpos] += 0.003  # a 3 mm nudge: within the limit, but charged
+    mujoco.mj_forward(env.model, env.data)
+    _, _, terminated, _, info = env.step(np.zeros(6, dtype=np.float32))
+    assert not terminated and info["tower_moved"] == pytest.approx(0.003, abs=5e-4)
+    assert info["reward_terms"]["tower_disturb"] == pytest.approx(
+        -1000.0 * (info["tower_moved"] - before))
