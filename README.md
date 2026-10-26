@@ -6,7 +6,7 @@ Autonomous pick-and-place with a simulated Franka Panda: reinforcement-learned a
 
 *From the home pose, the robot grasps a cube with a learned PPO policy, carries it, and stands it upright on the green target. Each stage is chosen by the supervisor and verified before the next starts (`scripts/record_demo.py`; [full video](https://github.com/Abdullah-Muz/polypanda/releases)).*
 
-> **Status: complete** (Milestones 1–6). Simulation only: nothing here has been run on a real robot.
+> **Status:** Milestones 1–8 complete (results below are from v1.0, Milestones 1–6). Milestone 9, a work-order cell, is in progress. Simulation only: nothing here has been run on a real robot.
 
 ## What it does
 
@@ -133,6 +133,7 @@ Every result file in [`results/`](results/) records the git commit (and whether 
 | [robustness.md](docs/robustness.md) | perturbation suite |
 | [evaluation_protocol.md](docs/evaluation_protocol.md), [results.md](docs/results.md) | protocol and every result table |
 | [model_cards.md](docs/model_cards.md) | the published policies, their scope and limitations |
+| [workcell.md](docs/workcell.md) | the Milestone 9 work-order cell, grasp assist, station frames (in progress) |
 
 ## Limitations
 
@@ -140,6 +141,7 @@ Every result file in [`results/`](results/) records the git commit (and whether 
 - **One object, one gripper.** A 4 × 4 × 6 cm cube on an open table, no obstacles or clutter, the Panda's standard parallel gripper.
 - **The scripted skills use privileged state** (the true cube pose); the learned grasp uses its observation vector, which includes the cube's position relative to the hand. Neither uses vision.
 - **The learned grasp is narrow.** It is trained on a 30 × 50 cm placement region and falls to 58 % just outside it. It remains well below the scripted grasp (89 % against 100 % end to end).
+- **Grasp assist in the work-order cell (Milestone 9).** In the simulator, a firmly held cube slides along the finger pads whenever the arm moves, whatever the grip force or contact settings. So in the cell, a verified grip (both fingers pressing at least 2 N) welds the cube to the hand while it is carried, for learned and scripted skills alike. Grasping and releasing stay physical, and cell results do not measure grip retention. Details: [workcell.md](docs/workcell.md#grasp-assist-a-disclosed-simplification).
 
 ## Roadmap
 
@@ -151,6 +153,9 @@ Every result file in [`results/`](results/) records the git commit (and whether 
 | 4 | Grasp and transport skills | Done ([grasp](docs/grasp_task.md), [transport](docs/transport_task.md)) |
 | 5 | Place skill, FSM supervisor and full pick-and-place | Done ([place](docs/place_task.md), [pick-and-place](docs/pick_and_place.md)) |
 | 6 | Robustness, grasp v2, ablations, model release, demo video | Done ([robustness](docs/robustness.md), [ablations](docs/pick_and_place.md#ablations-milestone-63-what-each-supervisor-design-choice-is-worth), [models](docs/model_cards.md)) |
+| 7 | Generalizing the learned grasp to the whole table | Done, target not met ([generalization](docs/generalization.md)) |
+| 8 | Hand-motion actions; learned transport and place; fully learned chain | Done ([cartesian actions](docs/cartesian_actions.md)) |
+| 9 | Work-order cell: infeed conveyor, three recipe towers, learned skills at every station | In progress ([workcell](docs/workcell.md)) |
 
 ## Acknowledgements and references
 
