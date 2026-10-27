@@ -22,6 +22,7 @@ def test_tilt_and_up_axis_either_way_up():
         z = data.xmat[cube.body].reshape(3, 3)[:, 2]
         if z[2] >= 0:
             assert cube_tilt(data, cube) == float(np.arccos(np.clip(z[2], -1.0, 1.0)))
+        if z[2] >= -0.5:                             # continuous through lying on a side
             assert np.array_equal(cube_up(data, cube), z)
     _set(model, data, cube, [0.0, 1.0, 0.0, 0.0])                     # upside down
     assert cube_tilt(data, cube) < 1e-9 and cube_up(data, cube)[2] > 0.999

@@ -118,6 +118,8 @@ def cube_tilt(data: mujoco.MjData, cube: CubeIndices) -> float:
 
 
 def cube_up(data: mujoco.MjData, cube: CubeIndices) -> np.ndarray:
-    """The cube's z axis, turned to point upward (see cube_tilt)."""
+    """The cube's z axis, turned round when the cube is clearly upside down (more than 120 deg
+    from upright; see cube_tilt). Turning it round at 90 deg would make the reading jump for a
+    cube held lying on its side (tests/test_stations.py); no cube in training ever passed 45."""
     up = data.xmat[cube.body].reshape(3, 3)[:, 2].copy()
-    return up if up[2] >= 0 else -up
+    return up if up[2] >= -0.5 else -up
