@@ -17,15 +17,19 @@ The rules are the project's usual ones: held-out evaluation sets that training n
 
 ## A1: learned planner
 
-The planner chooses a tower, a buffer slot or the reject bin for each arriving cube. It sees the recipes, the towers' progress, the buffer and the cubes visible on the conveyor.
+*Amended on 2026-10-26, before any v3 training or v3 code. The original A1 targets asked the learned planner to beat the greedy planner at 0 or 1 buffer slots. An analysis of the routing decisions on the 200 orders, with no learning involved, showed this cannot be a meaningful RL result. Even a planner that knew every future arrival could complete at most 3–9 points more orders than greedy. Letting the robot pick any of the 3 cubes on the belt (batch choice) completes far more orders without a buffer (53 % instead of 32 %), but a simple hand-written rule already gets that gain, within 3–6.5 points of perfect planning, and within about 3 s of the fastest possible order time. Routine routing is nearly solved by simple rules in this cell. The decisions that are hard for rules, with uncertain outcomes, come with recovery, so the learned planner runs the whole cell, recovery included, and its targets are set against the best hand-written rules.*
+
+The planner chooses which cube on the belt to take next, and where it goes: a tower, a buffer slot or the reject bin. After a disturbance it also decides which fallen cubes to recover, in what order, and what to reject. It sees the recipes, the towers as they are (A2), the buffer and the cubes on the belt.
+
+**Baselines:** the v2 greedy planner (front cube only) and a hand-written rule with batch choice (take a cube some tower needs next if the belt has one; otherwise route as greedy does). Under disturbances, the scripted recovery rules (A3).
 
 | Target | Measured on |
 |---|---|
-| Not significantly worse than the greedy planner at any buffer size | routing orders, symbolic simulation and physics cell |
-| **Significantly better than greedy (p < 0.05) at 0 or 1 buffer slots** | routing orders, symbolic simulation |
-| At 3 slots in the physics cell, with the learned grasp and place: at least 99 % of orders | routing orders |
+| Routine orders (D0): not significantly worse than the hand-written batch rule at 0, 1 or 3 buffer slots | routing orders, symbolic simulation and physics cell |
+| Routine orders at 3 slots in the physics cell, with the learned skills: at least 99 % | routing orders |
+| **Under disturbances (D1–D3 pooled): significantly more orders completed (p < 0.05) than the scripted recovery rules, with the same skills** | disturbance suite, physics cell |
 
-**Ablations** (reported, no target): the planner trained without the conveyor look-ahead, and without seeing the towers.
+**Ablations** (reported, no target): the planner trained without seeing the cubes on the belt, without seeing the towers, and with skill outcomes assumed always successful in training.
 
 ## A2: closed loop
 
