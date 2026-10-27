@@ -1,6 +1,10 @@
 {
   "seed": 1,
   "knocks_per_push": 60,
+  "git": {
+    "commit": "17ee328f3f88c349b30e69265c4ba2f503abaff2",
+    "dirty": false
+  },
   "outcomes": {
     "shove_top -> D1": 48,
     "shove_top -> D2": 9,
