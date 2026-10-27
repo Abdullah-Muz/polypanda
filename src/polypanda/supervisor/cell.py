@@ -48,10 +48,10 @@ class LearnedSkill:
 class LearnedCell(ScriptedCell):
     def __init__(self, cell: Workcell, grasp: LearnedSkill | None = None,
                  place: LearnedSkill | None = None, config: CellControllerConfig | None = None,
-                 on_step: Callable[[], None] | None = None, aim: str = "config") -> None:
+                 on_step: Callable[[], None] | None = None, aim: str = "fixture") -> None:
         super().__init__(cell, config, on_step)
-        if aim not in ("config", "fixture"):
-            raise ValueError(f"aim must be 'config' or 'fixture', not {aim!r}")
+        if aim not in ("fixture", "trained"):
+            raise ValueError(f"aim must be 'fixture' or 'trained', not {aim!r}")
         self.grasp, self.placer, self.aim = grasp, place, aim
         self.picks: list[dict] = []    # per learned pick: success, steps, failure
         self.places: list[dict] = []   # per learned place: level, success, steps, failure
@@ -93,21 +93,34 @@ class LearnedCell(ScriptedCell):
             self.cell.attach(cube)
         self.to_carry()
 
-    def _aim(self, xy, level: int) -> np.ndarray:
-        """Where the learned place should set the cube down: the fixture (or slot) centre, or,
-        for a policy trained to aim at the stack (PlaceConfig.stack.aim_at_top), the top cube's
-        actual position. `aim="fixture"` always aims at the fixture: aiming at the cube below
-        lets a small one-sided placement error add up level by level (a staircase)."""
-        xy = np.asarray(xy, dtype=float)
-        stack = getattr(self.placer.config, "stack", None)
-        if not level or self.aim == "fixture" or not (stack and stack.aim_at_top):
-            return xy
+    @property
+    def trained_at_top(self) -> bool:
+        """Whether the place policy was trained to aim at the top tower cube (stacking v3)."""
+        stack = getattr(getattr(self.placer, "config", None), "stack", None)
+        return bool(stack and stack.aim_at_top)
+
+    def top_cube(self, xy, level: int) -> CubeIndices | None:
+        """The cube standing at `level` - 1 of the stack at `xy`, if any."""
         z = CUBE_HEIGHT * (level - 0.5)
         for c in self.cell.cubes:
             p = self.d.xpos[c.body]
             if abs(p[2] - z) < 0.01 and np.linalg.norm(p[:2] - xy) < 0.03:
-                return p[:2].copy()
-        return xy
+                return c
+        return None
+
+    def _aim(self, xy, level: int) -> np.ndarray:
+        """Where the learned place should set the cube down: the fixture (or slot) centre.
+
+        `aim="trained"` keeps the target a v3 stacking place was trained with, the top cube's
+        actual position. In the cell that lets each policy's small, repeatable placement error
+        (a few mm, the same every time) add up level by level into a staircase, which the
+        simulator's contact creep then slides further until the tower fails the check or falls
+        (docs/workcell.md). Aiming every cube at the fixture keeps the errors from adding up."""
+        xy = np.asarray(xy, dtype=float)
+        if not level or self.aim == "fixture" or not self.trained_at_top:
+            return xy
+        top = self.top_cube(xy, level)
+        return xy if top is None else self.d.xpos[top.body][:2].copy()
 
     def place(self, cube: CubeIndices, xy, level: int) -> None:
         """From the carry posture over a tower: lower the cube to where the place skill's

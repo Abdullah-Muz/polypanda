@@ -31,7 +31,7 @@ def test_mixed_orders_report_buffer_use():
     assert summary["buffer"]["rejected"] == e.rejected
 
 
-def test_a_place_trained_to_aim_at_the_stack_aims_at_its_top_cube():
+def test_the_cell_aims_every_place_at_the_fixture_unless_told_otherwise():
     from types import SimpleNamespace
 
     import mujoco
@@ -46,16 +46,20 @@ def test_a_place_trained_to_aim_at_the_stack_aims_at_its_top_cube():
     below = cell.cubes[0]  # a cube standing 6 mm off the fixture centre, as level 1
     cell.data.qpos[below.qpos:below.qpos + 3] = [xy[0] + 0.006, xy[1], below.half_size[2]]
     mujoco.mj_forward(cell.model, cell.data)
-    stack = LearnedCell(cell, place=SimpleNamespace(
-        config=PlaceConfig(stack=StackConfig(aim_at_top=True))))
-    fixture = LearnedCell(cell, place=SimpleNamespace(config=PlaceConfig()))
-    np.testing.assert_allclose(stack._aim(xy, 1), [xy[0] + 0.006, xy[1]], atol=1e-6)
-    np.testing.assert_allclose(stack._aim(xy, 0), xy)       # first cube: the fixture itself
-    np.testing.assert_allclose(fixture._aim(xy, 1), xy)     # v1/v2 policies: the fixture
-    override = LearnedCell(cell, place=stack.placer, aim="fixture")
-    np.testing.assert_allclose(override._aim(xy, 1), xy)    # v3 told to aim at the fixture
+    v3 = SimpleNamespace(config=PlaceConfig(stack=StackConfig(aim_at_top=True)))
+    # by default even a policy trained to aim at the top cube aims at the fixture: aiming at
+    # the cube below lets a repeatable few-mm error add up into a staircase
+    default = LearnedCell(cell, place=v3)
+    assert default.aim == "fixture" and default.trained_at_top
+    np.testing.assert_allclose(default._aim(xy, 1), xy)
+    assert default.top_cube(xy, 1) is below and default.top_cube(xy, 2) is None
+    trained = LearnedCell(cell, place=v3, aim="trained")
+    np.testing.assert_allclose(trained._aim(xy, 1), [xy[0] + 0.006, xy[1]], atol=1e-6)
+    np.testing.assert_allclose(trained._aim(xy, 0), xy)      # first cube: the fixture itself
+    v1 = LearnedCell(cell, place=SimpleNamespace(config=PlaceConfig()), aim="trained")
+    np.testing.assert_allclose(v1._aim(xy, 1), xy)           # v1/v2 were trained on the fixture
     with pytest.raises(ValueError):
-        LearnedCell(cell, place=stack.placer, aim="top")
+        LearnedCell(cell, place=v3, aim="top")
 
 
 def test_skill_specs():

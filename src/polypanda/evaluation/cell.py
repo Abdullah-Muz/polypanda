@@ -42,7 +42,7 @@ class CellEvalConfig:
     surplus: tuple[int, int] = (0, 2)
     solvable_with: int = 3          # orders are generated solvable with this many buffer slots
     slots: int = 3                  # buffer slots the controller may use (ablation: 0, 1, 3)
-    aim: str = "config"             # learned place target: as trained, or always the fixture
+    aim: str = "fixture"            # learned place target: the fixture, or as trained (v3: top)
 
     @property
     def n_cubes(self) -> int:
@@ -93,10 +93,14 @@ def run_cell_order(ctl: LearnedCell, config: CellEvalConfig, index: int) -> Cell
         order = WorkOrder.random(rng, heights=config.heights)
     picks, places, steps, log = len(ctl.picks), len(ctl.places), [0], []
 
+    viewer = ctl.on_step  # (a viewer or a diagnostic hook still sees every step)
+
     def count():
         steps[0] += 1
+        if viewer:
+            viewer()
 
-    viewer, ctl.on_step = ctl.on_step, count
+    ctl.on_step = count
     try:
         if config.mixed:
             towers = ctl.run_mixed_order(order, rng, lateral=config.lateral, yaw=config.yaw,
