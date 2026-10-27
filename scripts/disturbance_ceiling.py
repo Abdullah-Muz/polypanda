@@ -11,6 +11,7 @@ policy is involved; the arm stands at home. Writes results/disturbances/ceiling.
 
 import argparse
 import json
+import subprocess
 from collections import Counter, defaultdict
 from pathlib import Path
 
@@ -35,6 +36,12 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--out", type=Path, default=Path("results/disturbances/ceiling.json"))
     args = parser.parse_args()
+
+    def run(*cmd):
+        return subprocess.run(cmd, capture_output=True, text=True, check=False).stdout.strip()
+
+    git = {"commit": run("git", "rev-parse", "HEAD"),
+           "dirty": bool(run("git", "status", "--porcelain", "--untracked-files=no"))}
     cell = Workcell.build(WorkcellConfig(dressing=False))
     m, d = cell.model, cell.data
     order = WorkOrder((("red",) * 4,) * 3, tuple(("red", 0) for _ in range(12)))
@@ -69,7 +76,8 @@ def main() -> None:
             s["poses"].update(x["pose"] for x in out["states"])
             s["reachable"] += sum(x["reachable"] for x in out["states"])
             s["fallen"] += len(out["states"])
-    result = {"seed": args.seed, "knocks_per_push": args.n, "outcomes": dict(by_push), "kinds": {}}
+    result = {"seed": args.seed, "knocks_per_push": args.n, "git": git,
+              "outcomes": dict(by_push), "kinds": {}}
     for kind in ("D1", "D2", "D3"):
         s = stats[kind]
         n = s["knocks"]
