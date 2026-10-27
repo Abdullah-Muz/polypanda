@@ -8,6 +8,7 @@ import numpy as np
 import pytest
 
 from polypanda.environments.grasp import OBS_SLICES, GraspConfig, GraspV2Env, GraspV4Env
+from polypanda.simulation.workcell import MENAGERIE_FINGER_STIFFNESS, WorkcellConfig
 
 ROOT = Path(__file__).parents[1]
 CFG = GraspConfig.from_yaml(ROOT / "configs" / "grasp_anypose_cartesian.yaml")
@@ -111,6 +112,46 @@ def test_the_lying_height_window_reaches_lower():
     round1 = GraspV4Env(CFG.for_evaluation())                        # no window: symmetric
     round1.reset(seed=0, options={"cube": (0.5, 0.0, 0.0), "lying": True})
     assert not round1._height_ok(0.013)
+
+
+CFG4 = GraspConfig.from_yaml(ROOT / "configs" / "grasp_anypose4_cartesian.yaml")
+
+
+def test_round4_trains_in_the_workcells_gripper_and_the_default_is_menageries():
+    menagerie, round4 = GraspV4Env(CFG2), GraspV4Env(CFG4)
+    a = menagerie.arm.gripper_actuator
+    assert menagerie.model.geom_condim[menagerie.cube.geom] == 3
+    assert menagerie.model.actuator_biasprm[a, 1] == -MENAGERIE_FINGER_STIFFNESS
+    cell = WorkcellConfig()
+    assert round4.model.geom_condim[round4.cube.geom] == 4 and cell.torsional_friction
+    assert round4.model.actuator_biasprm[a, 1] == pytest.approx(-cell.finger_stiffness)
+    ratio = round4.model.actuator_gainprm[a, 0] / menagerie.model.actuator_gainprm[a, 0]
+    assert ratio == pytest.approx(cell.finger_stiffness / MENAGERIE_FINGER_STIFFNESS)
+
+
+def test_the_grasp_check_measures_lift_from_the_cubes_resting_height():
+    env = GraspV4Env(CFG4.for_evaluation())
+    env.reset(seed=0, options={"cube": (0.5, 0.0, 0.0), "lying": True})
+    assert env.monitor.rest_z == pytest.approx(env.cube.half_size[0])   # 2 cm, lying
+    env.reset(seed=0, options={"cube": (0.5, 0.0, 0.0)})
+    assert env.monitor.rest_z == pytest.approx(env.cube.half_size[2])   # 3 cm, standing
+
+
+@pytest.mark.parametrize("seed", [3, 4])
+def test_a_full_speed_lift_holds_a_lying_cube_in_the_workcells_gripper(seed):
+    cfg = replace(CFG4, curriculum=replace(CFG4.curriculum, pregrasp_start_prob=1.0),
+                  resting=replace(CFG4.resting, lying_prob=1.0))
+    env = GraspV4Env(cfg)
+    _, info = env.reset(seed=seed)
+    assert info["start"] == "pregrasp" and info["lying"]
+    up = np.zeros(env.action_space.shape, dtype=np.float32)
+    up[2] = 1.0
+    success = False
+    for _ in range(40):
+        _, _, terminated, _, info = env.step(up)
+        assert not terminated
+        success |= info["is_success"]
+    assert success and info["lift"] > 0.05
 
 
 def test_v2_is_unchanged_by_the_v4_hooks():

@@ -36,6 +36,7 @@ from polypanda.simulation.scenes import (
     load_pick_scene,
     set_cube_pose,
 )
+from polypanda.simulation.workcell import MENAGERIE_FINGER_STIFFNESS
 
 GRIPPER_OPEN, GRIPPER_CLOSED = 255.0, 0.0
 
@@ -150,6 +151,17 @@ class RestingConfig:
 
 
 @dataclass(frozen=True)
+class GripperConfig:
+    # The pick scene's gripper physics; a scene passed in keeps its own. The defaults are
+    # Menagerie's, as trained up to v3 step d1 round 3. The workcell (simulation.workcell)
+    # squeezes harder and gives cube contacts torsional friction; with Menagerie's, a lying cube
+    # held across its width swings in the fingers when lifted at full speed (3/25 such lifts
+    # succeed, 22/25 with the workcell's; measured round 4).
+    finger_stiffness: float | None = None  # N/m; None keeps Menagerie's 100
+    torsional_friction: bool = False       # the cube's contacts get condim 4
+
+
+@dataclass(frozen=True)
 class GraspConfig:
     action: ActionConfig = field(default_factory=ActionConfig)
     placement: PlacementConfig = field(default_factory=PlacementConfig)
@@ -162,6 +174,7 @@ class GraspConfig:
     randomization: RandomizationConfig = field(default_factory=RandomizationConfig)
     distractors: DistractorConfig = field(default_factory=DistractorConfig)
     resting: RestingConfig = field(default_factory=RestingConfig)
+    gripper: GripperConfig = field(default_factory=GripperConfig)
 
     @classmethod
     def from_yaml(cls, path: str | Path) -> "GraspConfig":
@@ -196,6 +209,8 @@ class GraspEnv(gym.Env):
         self.arm = PandaIndices.from_model(self.model)
         self.cube = CubeIndices.from_model(self.model, cube)
         self.adapter = make_action_adapter(self.model, self.arm, self.config.action)
+        if scene is None:
+            self._set_gripper_physics(self.config.gripper)
         self.monitor = GraspMonitor(self.model, self.arm, self.cube, self.config.check)
         self._finger_qpos = [self.model.joint(f"finger_joint{i}").qposadr[0] for i in (1, 2)]
         limit = action_limit(self.config.action)
@@ -213,6 +228,14 @@ class GraspEnv(gym.Env):
     @property
     def elapsed_steps(self) -> int:
         return self._steps
+
+    def _set_gripper_physics(self, g: GripperConfig) -> None:
+        if g.finger_stiffness is not None:  # as workcell.set_finger_stiffness, on the model
+            scale = g.finger_stiffness / MENAGERIE_FINGER_STIFFNESS
+            self.model.actuator_gainprm[self.arm.gripper_actuator, 0] *= scale
+            self.model.actuator_biasprm[self.arm.gripper_actuator, 1] *= scale
+        if g.torsional_friction:
+            self.model.geom_condim[self.cube.geom] = 4
 
     def _randomize(self, mass: float, friction: float) -> None:
         if self._physics is None:
@@ -694,6 +717,7 @@ class GraspV4Env(GraspV2Env):
         """Record how the cube rests now: lying or upright, and its resting height."""
         self._lying = cube_tilt(self.data, self.cube) > np.pi / 4
         self._rest_z = self.cube.half_size[0] if self._lying else self.cube.half_size[2]
+        self.monitor.rest_z = float(self._rest_z)  # (the grasp check's lift, as the env's)
 
     def _continue(self):
         self._target_yaw = self._lying_target = None

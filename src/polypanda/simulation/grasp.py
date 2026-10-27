@@ -52,6 +52,9 @@ class GraspMonitor:
         self._window: deque[tuple[np.ndarray, np.ndarray]] = deque(maxlen=self.config.window)
         self._held = 0
         self._force = np.zeros(6)
+        # Height of the cube's centre at rest, from which lift is measured: standing, by
+        # default (GraspV4Env sets it for a cube lying on a side)
+        self.rest_z = float(cube.half_size[2])
 
     def reset(self) -> None:
         self._window.clear()
@@ -74,7 +77,7 @@ class GraspMonitor:
         cfg = self.config
         left_f, right_f = self._finger_forces(data)
         left, right = left_f > 0.0, right_f > 0.0
-        lift = float(cube_position(data, self.cube)[2] - self.cube.half_size[2])
+        lift = float(cube_position(data, self.cube)[2] - self.rest_z)
 
         if left and right and lift >= cfg.min_lift:
             R_tcp = data.site_xmat[self.arm.tcp_site].reshape(3, 3)
