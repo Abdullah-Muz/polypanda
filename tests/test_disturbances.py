@@ -76,6 +76,21 @@ def test_rest_states(cell):
     assert s["pose"] == "leaning" and not s["recoverable"]
 
 
+def test_a_suite_knocks_towers_that_will_be_tall_enough(tmp_path):
+    from polypanda.simulation.disturbances import load_suite, make_suite, save_suite
+    rng = np.random.default_rng(0)
+    recipes = [(("red",) * int(rng.integers(1, 5)), ("blue",), ("green", "red"))
+               for _ in range(300)]
+    recipes.append((("red",), ("blue",), ("green",)))  # nothing 2 tall: always a control
+    suite = make_suite(recipes, np.random.default_rng(1), no_knock=0.2)
+    assert suite[-1] is None and 0.1 < sum(s is None for s in suite) / len(suite) < 0.3
+    for r, s in zip(recipes, suite, strict=True):
+        if s is not None:
+            assert len(r[s.tower]) >= 2 and 2 <= s.height <= len(r[s.tower])
+    save_suite(tmp_path / "suite.json", suite, {"seed": 1})
+    assert load_suite(tmp_path / "suite.json") == suite
+
+
 def test_knock_sampling_covers_every_push_within_its_range():
     rng = np.random.default_rng(0)
     knocks = [Knock.sample(rng) for _ in range(300)]

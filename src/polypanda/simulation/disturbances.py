@@ -12,8 +12,10 @@ some but not all, D3 all of them. A knock is recoverable when every fallen cube 
 axis and inside its base rotation range, and is not on the belt or in the reject bin.
 """
 
+import json
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
+from pathlib import Path
 
 import numpy as np
 
@@ -47,6 +49,43 @@ class Knock:
     def target(self, tower: list[CubeIndices]) -> CubeIndices:
         """The cube pushed (`tower` bottom first)."""
         return tower[len(tower) // 2] if self.push == "shove_middle" else tower[-1]
+
+
+@dataclass(frozen=True)
+class Disturbance:
+    """Knock tower `tower` right after it reaches `height` cubes during an order."""
+    tower: int
+    height: int
+    knock: Knock
+
+
+def make_suite(recipes_per_order: list, rng: np.random.Generator, no_knock: float = 0.2
+               ) -> list[Disturbance | None]:
+    """One disturbance per order (None: a no-knock control, D0): a tower that will be at least
+    2 cubes tall, a height from 2 to its full height, and a sampled knock."""
+    suite: list[Disturbance | None] = []
+    for recipes in recipes_per_order:
+        tall = [t for t, r in enumerate(recipes) if len(r) >= 2]
+        if not tall or rng.random() < no_knock:
+            suite.append(None)
+            continue
+        t = int(rng.choice(tall))
+        suite.append(Disturbance(t, int(rng.integers(2, len(recipes[t]) + 1)), Knock.sample(rng)))
+    return suite
+
+
+def save_suite(path: Path, suite: list[Disturbance | None], meta: dict) -> None:
+    rows = [None if s is None else {"tower": s.tower, "height": s.height, **asdict(s.knock)}
+            for s in suite]
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({"meta": meta, "orders": rows}, indent=1) + "\n")
+
+
+def load_suite(path: Path) -> list[Disturbance | None]:
+    rows = json.loads(Path(path).read_text())["orders"]
+    return [None if r is None else Disturbance(r["tower"], r["height"],
+                                               Knock(r["push"], r["angle"], r["strength"]))
+            for r in rows]
 
 
 def stand_tower(cell: Workcell, t: int, cubes: list[CubeIndices], rng: np.random.Generator,

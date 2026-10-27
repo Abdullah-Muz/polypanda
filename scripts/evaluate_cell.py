@@ -7,6 +7,7 @@ Usage:
   ... --heights 5 6                                                       # stress test
   ... --mixed [--slots 3]               # Layer 2: random arrivals, surplus, buffer and planner
   ... --mixed --batch-choice            # v3: take any cube on the belt
+  ... --mixed --disturbances eval_sets/disturbance_suite_v1.json  # v3: one knock per order
   ... --aim trained                     # v3 place aims at the top tower cube, as trained
   ... --compare results/cell/<other>_episodes.csv                         # paired McNemar test
 The moves between stations are scripted in every configuration; --pick and --place choose a
@@ -52,6 +53,8 @@ def main() -> None:
                         help="with --mixed: buffer slots the controller may use")
     parser.add_argument("--batch-choice", action="store_true",
                         help="with --mixed: take any cube on the belt, not only the front one")
+    parser.add_argument("--disturbances", type=Path,
+                        help="with --mixed: a disturbance suite (eval_sets/), one knock per order")
     parser.add_argument("--aim", choices=("fixture", "trained"), default=CellEvalConfig.aim,
                         help="learned place target: the fixture centre, or as trained (v3: the "
                              "top tower cube)")
@@ -64,11 +67,13 @@ def main() -> None:
     git = git_state()  # recorded before evaluating, so later commits cannot mislabel the run
     config = CellEvalConfig(n=args.n, seed=args.seed, heights=tuple(args.heights),
                             mixed=args.mixed, slots=args.slots, aim=args.aim,
-                            batch_choice=args.batch_choice)
+                            batch_choice=args.batch_choice,
+                            disturbances=str(args.disturbances) if args.disturbances else None)
     pick, pick_desc, pick_tag, pick_prov = skill_from_spec(args.pick, "pick")
     place, place_desc, place_tag, place_prov = skill_from_spec(args.place, "place")
     lo_h, hi_h = config.heights
     layer = (f"_mixed-s{config.slots}{'-batch' if config.batch_choice else ''}"
+             f"{'_' + Path(config.disturbances).stem if config.disturbances else ''}"
              if config.mixed else "")
     stack = getattr(getattr(place, "config", None), "stack", None)
     # flagged when the place runs with a target other than the one it was trained with
@@ -118,6 +123,11 @@ def main() -> None:
         b = s["buffer"]
         print(f"  buffer: {b['cubes_buffered']} cubes parked in {b['orders_using_buffer']} orders; "
               f"{b['rejected']} rejected, {b['needed_rejected']} of them still needed")
+    for kind, v in s.get("disturbances", {}).items():
+        rec = v["success_rate_recoverable"]
+        print(f"  {kind}: {v['success_rate']:.1%} of {v['orders']} orders"
+              + (f"; recoverable {v['recoverable']}, of which {rec:.1%} completed"
+                 if rec is not None else ""))
     for stage in ("learned_pick", "learned_place"):
         if s[stage]:
             k = s[stage]

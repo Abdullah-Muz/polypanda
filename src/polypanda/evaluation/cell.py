@@ -14,17 +14,23 @@ Layer 2 (`mixed`): cubes arrive in random order with 0-2 surplus cubes and are r
 greedy planner (supervisor.planner) to a tower, a buffer slot or the reject bin. Orders are
 generated solvable with `solvable_with` slots; running them with fewer `slots` measures what the
 buffer is worth.
+
+v3: `disturbances` names a suite (eval_sets/, simulation.disturbances) with one knock (or none,
+D0) per order; each episode records the outcome (D1/D2/D3, or "none" when nothing fell) and
+whether it was recoverable, and failures caused by it are labelled "knock:<kind>".
 """
 
 import time
 from collections import Counter
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 
 import numpy as np
 
 from polypanda.evaluation.pickplace import _pct
 from polypanda.evaluation.reach import wilson_interval
+from polypanda.simulation.disturbances import load_suite
 from polypanda.simulation.workcell import Workcell, WorkcellConfig, WorkOrder
 from polypanda.supervisor.cell import LearnedCell, LearnedSkill
 from polypanda.supervisor.planner import mixed_order
@@ -44,6 +50,7 @@ class CellEvalConfig:
     slots: int = 3                  # buffer slots the controller may use (ablation: 0, 1, 3)
     aim: str = "fixture"            # learned place target: the fixture, or as trained (v3: top)
     batch_choice: bool = False      # v3: take any cube on the belt, not only the front one
+    disturbances: str | None = None  # v3: a disturbance suite (eval_sets/), one per order
 
     @property
     def n_cubes(self) -> int:
@@ -66,6 +73,9 @@ class CellEpisode:
     buffered: int = 0            # Layer 2: cubes parked in the buffer,
     rejected: int = 0            # sent to the reject bin,
     needed_rejected: int = 0     # of which still needed (buffer full)
+    disturbance: str = ""        # v3: "D0" no knock, "none" nothing fell, or D1/D2/D3
+    recoverable: bool = False    # every cube the knock threw off could physically be recovered
+    fallen: int = 0              # cubes the knock threw off the tower
 
 
 def skill_from_spec(spec: str, stage: str):
@@ -86,6 +96,11 @@ def skill_from_spec(spec: str, stage: str):
              "trained_at": meta.get("git", {}).get("commit", "in progress")})
 
 
+@lru_cache(maxsize=4)
+def _suite(path: str) -> list:
+    return load_suite(Path(path))
+
+
 def run_cell_order(ctl: LearnedCell, config: CellEvalConfig, index: int) -> CellEpisode:
     rng = np.random.default_rng([config.seed, index])
     if config.mixed:
@@ -104,15 +119,17 @@ def run_cell_order(ctl: LearnedCell, config: CellEvalConfig, index: int) -> Cell
     ctl.on_step = count
     try:
         if config.mixed:
+            disturbance = _suite(config.disturbances)[index] if config.disturbances else None
             towers = ctl.run_mixed_order(order, rng, lateral=config.lateral, yaw=config.yaw,
                                          slots=config.slots, batch_choice=config.batch_choice,
-                                         log=log.append)
+                                         disturbance=disturbance, log=log.append)
         else:
             towers = ctl.run_order(order, rng, lateral=config.lateral, yaw=config.yaw,
                                    log=log.append)
     finally:
         ctl.on_step = viewer
     stats = ctl.stats if config.mixed else {}
+    knocked = ctl.disturbance_outcome if config.mixed and config.disturbances else None
     ok = ctl.check(towers)
     new_picks, new_places = ctl.picks[picks:], ctl.places[places:]
     failure = None
@@ -126,8 +143,16 @@ def run_cell_order(ctl: LearnedCell, config: CellEvalConfig, index: int) -> Cell
             failure = "planner:buffer_full"
         elif any("did not arrive" in line for line in log):
             failure = "conveyor"
+        elif knocked and knocked["fallen"]:
+            failure = f"knock:{knocked['kind']}"
         else:
             failure = "tower"
+    if config.mixed and config.disturbances:
+        kind = "D0" if knocked is None else knocked["kind"]
+        extra = {"disturbance": kind, "recoverable": bool(knocked and knocked["recoverable"]),
+                 "fallen": len(knocked["fallen"]) if knocked else 0}
+    else:
+        extra = {}
     return CellEpisode(
         index=index, success=all(ok), failure=failure,
         heights="-".join(str(len(r)) for r in order.recipes),
@@ -136,7 +161,7 @@ def run_cell_order(ctl: LearnedCell, config: CellEvalConfig, index: int) -> Cell
         place_failures=sum(not r["success"] for r in new_places),
         ik_failures=ctl.ik_failures, sim_s=round(steps[0] * ctl.dt, 2),
         buffered=stats.get("buffered", 0), rejected=stats.get("rejected", 0),
-        needed_rejected=stats.get("needed_rejected", 0))
+        needed_rejected=stats.get("needed_rejected", 0), **extra)
 
 
 def summarize_cell(episodes: list[CellEpisode], ctl: LearnedCell) -> dict:
@@ -163,6 +188,16 @@ def summarize_cell(episodes: list[CellEpisode], ctl: LearnedCell) -> dict:
         return out
 
     cubes = sum(e.cubes for e in episodes)
+    disturbances = {}
+    for kind in ("D0", "none", "D1", "D2", "D3"):
+        rows = [e for e in episodes if e.disturbance == kind]
+        if rows:
+            rec = [e for e in rows if e.recoverable]
+            disturbances[kind] = {
+                "orders": len(rows), "success_rate": sum(e.success for e in rows) / len(rows),
+                "recoverable": len(rec),
+                "success_rate_recoverable": (sum(e.success for e in rec) / len(rec)
+                                             if rec else None)}
     return {
         "orders": n,
         "success_rate": wins / n,
@@ -182,6 +217,7 @@ def summarize_cell(episodes: list[CellEpisode], ctl: LearnedCell) -> dict:
                    "orders_using_buffer": sum(e.buffered > 0 for e in episodes),
                    "rejected": sum(e.rejected for e in episodes),
                    "needed_rejected": sum(e.needed_rejected for e in episodes)},
+        **({"disturbances": disturbances} if disturbances else {}),
     }
 
 

@@ -36,6 +36,7 @@ import numpy as np
 
 from polypanda.control.ik import PoseIK, closing_yaw, grasp_closing_yaw, top_down_quat
 from polypanda.environments.grasp import GRIPPER_CLOSED, GRIPPER_OPEN
+from polypanda.simulation.disturbances import Knock, apply_knock, knock_outcome
 from polypanda.simulation.panda import PandaIndices
 from polypanda.simulation.scenes import CubeIndices, cube_yaw
 from polypanda.simulation.workcell import Workcell, WorkOrder
@@ -69,6 +70,7 @@ class ScriptedCell:
         self.grip = GRIPPER_OPEN
         self.ik_failures = 0
         self.stats: dict[str, int] = {}  # per order (run_mixed_order)
+        self.disturbance_outcome: dict | None = None  # the order's knock, if any
         self.carry = self._carry_posture()
 
     # --- primitives -----------------------------------------------------------------------
@@ -227,6 +229,22 @@ class ScriptedCell:
         self.vertical(self.d.site_xpos[self.arm.tcp_site][:2].copy(), self.config.carry_height,
                       yaw)
 
+    def knock(self, tower: list[int], knock: Knock, log: Callable[[str], None] | None = None
+              ) -> None:
+        """A disturbance for testing recovery: knock a tower (cube indices, bottom first) and let
+        it settle with the arm holding still. The outcome goes to `self.disturbance_outcome`."""
+        cubes = [self.cell.cubes[k] for k in tower]
+        before = [self.d.xpos[c.body].copy() for c in cubes]
+        apply_knock(self.cell, cubes, knock, self.step)
+        out = knock_outcome(self.cell, cubes, before)
+        self.disturbance_outcome = {
+            "kind": out["kind"] or "none", "recoverable": out["recoverable"],
+            "fallen": [self.cell.cubes.index(c) for c in out["fallen"]]}
+        if log:
+            log(f"knock ({knock.push}): {self.disturbance_outcome['kind']}, "
+                f"{len(out['fallen'])} cubes fell, "
+                f"{'recoverable' if out['recoverable'] else 'not recoverable'}")
+
     # --- work orders ---------------------------------------------------------------------------
     def run_order(self, order: WorkOrder, rng=None, lateral: float = 0.0, yaw: float = 0.0,
                   log: Callable[[str], None] | None = None) -> list[list[int]]:
@@ -265,12 +283,15 @@ class ScriptedCell:
 
     def run_mixed_order(self, order: WorkOrder, rng=None, lateral: float = 0.0,
                         yaw: float = 0.0, slots: int = 3, batch_choice: bool = False,
+                        disturbance=None,
                         log: Callable[[str], None] | None = None) -> list[list[int]]:
         """Fulfil a Layer 2 work order (random arrival order, surplus cubes) with the greedy
         planner (supervisor.planner) and `slots` buffer slots; returns per tower the arrival
         indices of the cubes placed on it. Counts are left in `self.stats`. With `batch_choice`
         the robot may take any cube on the belt (GreedyPlanner.choose), not only the one at the
-        pick point; the others wait 12 and 24 cm upstream, within reach."""
+        pick point; the others wait 12 and 24 cm upstream, within reach. A `disturbance`
+        (simulation.disturbances.Disturbance) knocks a tower right after it reaches the given
+        height; its outcome is left in `self.disturbance_outcome`."""
         cell, cfg = self.cell, self.cell.config
         cell.reset(order, rng, lateral=lateral, yaw=yaw)
         self.q_cmd, self.grip = self.home.copy(), GRIPPER_OPEN
@@ -282,11 +303,15 @@ class ScriptedCell:
         self.to_carry()
         towers: list[list[int]] = [[] for _ in order.recipes]
         parked: list[int | None] = [None] * slots   # arrival index per buffer slot
+        self.disturbance_outcome = None
 
         def stack(k: int, t: int) -> None:
             self.swing_to(np.radians(cfg.tower_angles[t]))
             self.place(cell.cubes[k], cell.tower_xy(t), len(towers[t]))
             towers[t].append(k)
+            if (disturbance is not None and self.disturbance_outcome is None
+                    and t == disturbance.tower and len(towers[t]) == disturbance.height):
+                self.knock(towers[t], disturbance.knock, log)
 
         handled: set[int] = set()
         for n in range(len(order.arrivals)):
