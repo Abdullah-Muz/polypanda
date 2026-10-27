@@ -59,6 +59,10 @@ class TrainConfig:
     # Warm start: reset the policy's action noise (log std, every action) to this value. A
     # trained policy's noise is small (std 0.1-0.5), too small to explore a new behaviour.
     init_log_std: float | None = None
+    # Warm start: re-measure the observation normalization on the new task over this many
+    # transitions and adjust the network to match, preserving its function (0: keep the
+    # source's normalization; runner.renormalize_inputs).
+    init_renormalize_steps: int = 0
     ppo: PPOParams = field(default_factory=PPOParams)
     sac: SACParams = field(default_factory=SACParams)
 

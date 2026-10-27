@@ -1,0 +1,39 @@
+# v3 step d1, round 3: round 2 (configs/grasp_anypose2_cartesian_ppo.yaml, same task) plus
+# input renormalization at the warm start. Rounds 1-2 inherited grasp_cart's observation
+# normalization, fitted to upright cubes only: a lying cube's tilt read 10.9 sigma (clipped at
+# 10), and as the statistics drifted during training, what the network saw changed for every
+# input (upright success fell from about 73 % to 50-63 %). Here the statistics are re-measured
+# on the new task over 20k transitions before training, and the network's first layers are
+# adjusted to compute exactly the same function under them (runner.renormalize_inputs).
+
+algorithm: ppo
+task: grasp_v4
+env_config: configs/grasp_anypose2_cartesian.yaml
+seed: 0
+n_envs: 8
+vec_env: subproc
+total_timesteps: 2000000
+normalize_obs: true
+normalize_reward: true
+eval_freq: 100000
+eval_episodes: 100
+eval_seed: 100000
+checkpoint_freq: 250000
+torch_threads: 1
+init_from: runs/grasp_cart_seed{seed}
+init_checkpoint: best
+init_log_std: -0.5
+init_renormalize_steps: 20000
+
+ppo:
+  learning_rate: 0.0003
+  n_steps: 512
+  batch_size: 256
+  n_epochs: 10
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_range: 0.2
+  ent_coef: 0.01
+  vf_coef: 0.5
+  max_grad_norm: 0.5
+  net_arch: [128, 128]

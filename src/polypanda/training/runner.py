@@ -16,11 +16,13 @@ import time
 from datetime import UTC, datetime
 from pathlib import Path
 
+import numpy as np
 import torch
 import yaml
 from stable_baselines3 import PPO, SAC
 from stable_baselines3.common.callbacks import CallbackList, CheckpointCallback, EvalCallback
 from stable_baselines3.common.env_util import make_vec_env
+from stable_baselines3.common.running_mean_std import RunningMeanStd
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecNormalize
 
 from polypanda.control.action_adapter import action_schema
@@ -75,10 +77,46 @@ def build_model(cfg: TrainConfig, env, tensorboard_log: str | None):
                **common, **params)
 
 
-def _warm_start(cfg: TrainConfig, model, env: VecNormalize) -> dict:
+def renormalize_inputs(policy, old_rms, new_rms, epsilon: float) -> None:
+    """Make a policy expect observations normalized with `new_rms` instead of `old_rms`, without
+    changing the function it computes (for inputs inside the clipping range): with
+    x_old = (x - mu_old) / s_old and x = s_new * x_new + mu_new, each first layer W x_old + b
+    becomes W diag(s_new / s_old) x_new + b + W (mu_new - mu_old) / s_old. Applied to the policy
+    and value networks' first layers (separate MLPs on a flatten extractor)."""
+    s_old = np.sqrt(old_rms.var + epsilon)
+    scale = torch.as_tensor(np.sqrt(new_rms.var + epsilon) / s_old, dtype=torch.float32)
+    shift = torch.as_tensor((new_rms.mean - old_rms.mean) / s_old, dtype=torch.float32)
+    with torch.no_grad():
+        for net in (policy.mlp_extractor.policy_net, policy.mlp_extractor.value_net):
+            layer = net[0]
+            layer.bias += layer.weight @ shift
+            layer.weight *= scale
+
+
+def _observe(cfg: TrainConfig, env_cls: type, env_config, model, rms, clip: float,
+             epsilon: float, steps: int) -> RunningMeanStd:
+    """Observation statistics of the new task as the warm-started policy (with its training
+    noise) meets it: `steps` transitions over cfg.n_envs envs (training starts included)."""
+    venv = _vec_env(env_cls, env_config, cfg.n_envs, cfg.seed + 7919, "dummy")
+    stats = RunningMeanStd(shape=rms.mean.shape)
+    obs = venv.reset()
+    for _ in range(max(1, steps // cfg.n_envs)):
+        stats.update(obs)
+        normalized = np.clip((obs - rms.mean) / np.sqrt(rms.var + epsilon), -clip, clip)
+        action, _ = model.predict(normalized, deterministic=False)
+        obs, _, _, _ = venv.step(action)
+    venv.close()
+    return stats
+
+
+def _warm_start(cfg: TrainConfig, model, env: VecNormalize, env_cls: type, env_config) -> dict:
     """Start from another run: its network weights and its observation and return
     normalization (the weights expect inputs scaled as in their own training). The source must
-    have the same observation and action sizes."""
+    have the same observation and action sizes. With cfg.init_renormalize_steps the observation
+    normalization is first re-measured on the new task and the network adjusted to match
+    (renormalize_inputs): inputs the source never saw vary (a lying cube's tilt read 10.9
+    sigma, clipped, for the upright-only grasp), and statistics drifting during training would
+    otherwise change what the network sees for every input."""
     source = Path(cfg.init_from.format(seed=cfg.seed))
     which = cfg.init_checkpoint
     loaded = type(model).load(source / f"{which}_model.zip", device="cpu")
@@ -92,8 +130,16 @@ def _warm_start(cfg: TrainConfig, model, env: VecNormalize) -> dict:
         stats = pickle.load(f)
     env.obs_rms, env.ret_rms = stats.obs_rms, stats.ret_rms
     meta = yaml.safe_load((source / "metadata.yaml").read_text())
-    return {"run": str(source), "checkpoint": which, "policy_id": meta["policy_id"],
+    info = {"run": str(source), "checkpoint": which, "policy_id": meta["policy_id"],
             "git": meta.get("git", {}).get("commit"), "log_std": cfg.init_log_std}
+    if cfg.init_renormalize_steps:
+        new = _observe(cfg, env_cls, env_config, model, stats.obs_rms, env.clip_obs,
+                       env.epsilon, cfg.init_renormalize_steps)
+        renormalize_inputs(model.policy, stats.obs_rms, new, env.epsilon)
+        new.count = stats.obs_rms.count  # as settled as the source's: little further drift
+        env.obs_rms = new
+        info["renormalized_on_steps"] = cfg.init_renormalize_steps
+    return info
 
 
 def train(cfg: TrainConfig, env_config, run_dir: Path) -> Path:
@@ -118,7 +164,7 @@ def train(cfg: TrainConfig, env_config, run_dir: Path) -> Path:
     eval_env = VecNormalize(_vec_env(task.env_cls, eval_config, 1, cfg.eval_seed, "dummy"),
                             norm_obs=cfg.normalize_obs, norm_reward=False, training=False)
     model = build_model(cfg, env, str(run_dir / "tb"))
-    init = _warm_start(cfg, model, env) if cfg.init_from else None
+    init = _warm_start(cfg, model, env, task.env_cls, env_config) if cfg.init_from else None
     git = _git_state()  # recorded before training, so later edits cannot mislabel the run
 
     per_env = lambda steps: max(1, steps // cfg.n_envs)  # noqa: E731  callbacks count env.step calls

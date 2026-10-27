@@ -132,3 +132,44 @@ def test_unsupported_algorithm_rejected(tmp_path):
     with pytest.raises(ValueError, match="unsupported"):
         train(replace(TrainConfig(), algorithm="a2c", vec_env="dummy", n_envs=1,
                       total_timesteps=1), ReachConfig(), tmp_path / "x")
+
+
+def test_renormalize_inputs_preserves_what_the_network_computes():
+    import torch
+    from stable_baselines3 import PPO
+    from stable_baselines3.common.running_mean_std import RunningMeanStd
+
+    from polypanda.environments.reach import ReachEnv
+    from polypanda.training.runner import renormalize_inputs
+    model = PPO("MlpPolicy", ReachEnv(), device="cpu",
+                policy_kwargs={"net_arch": {"pi": [32, 32], "vf": [32, 32]}})
+    rng = np.random.default_rng(0)
+    dim, eps = model.observation_space.shape[0], 1e-8
+    old, new = RunningMeanStd(shape=(dim,)), RunningMeanStd(shape=(dim,))
+    old.mean, old.var = rng.normal(size=dim), rng.uniform(0.01, 1.0, dim)
+    new.mean, new.var = rng.normal(size=dim), rng.uniform(0.01, 4.0, dim)
+    raw = old.mean + rng.normal(size=(64, dim)) * np.sqrt(old.var)
+
+    def outputs(rms):
+        x = torch.as_tensor((raw - rms.mean) / np.sqrt(rms.var + eps), dtype=torch.float32)
+        with torch.no_grad():
+            return (model.policy.get_distribution(x).distribution.mean.numpy(),
+                    model.policy.predict_values(x).numpy())
+
+    before = outputs(old)
+    renormalize_inputs(model.policy, old, new, eps)
+    after = outputs(new)
+    np.testing.assert_allclose(after[0], before[0], atol=1e-4)
+    np.testing.assert_allclose(after[1], before[1], atol=1e-4)
+
+
+def test_a_warm_start_loads_weights_resets_noise_and_renormalizes(run_dir, tmp_path):
+    cfg = TrainConfig(n_envs=2, vec_env="dummy", total_timesteps=256, eval_freq=512,
+                      eval_episodes=2, checkpoint_freq=512,
+                      ppo=PPOParams(n_steps=128, batch_size=64, n_epochs=1),
+                      init_from=str(run_dir), init_checkpoint="final", init_log_std=-0.5,
+                      init_renormalize_steps=128)
+    warm = train(cfg, ReachConfig(), tmp_path / "warm")
+    init = yaml.safe_load((warm / "metadata.yaml").read_text())["init_from"]
+    assert init["run"] == str(run_dir) and init["log_std"] == -0.5
+    assert init["renormalized_on_steps"] == 128
