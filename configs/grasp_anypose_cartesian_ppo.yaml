@@ -1,0 +1,34 @@
+# v3 step d1: PPO on the any-pose grasp (configs/grasp_anypose_cartesian.yaml), warm-started from
+# the hand-motion grasp of the same seed (grasp_cart, Milestone 8): same observation layout and
+# actions, so it starts as a policy that grasps upright cubes and learns lying ones and the wider
+# region. Otherwise the settings of configs/grasp_cartesian_ppo.yaml.
+
+algorithm: ppo
+task: grasp_v4
+env_config: configs/grasp_anypose_cartesian.yaml
+seed: 0
+n_envs: 8
+vec_env: subproc
+total_timesteps: 1500000
+normalize_obs: true
+normalize_reward: true
+eval_freq: 100000
+eval_episodes: 100
+eval_seed: 100000
+checkpoint_freq: 250000
+torch_threads: 1
+init_from: runs/grasp_cart_seed{seed}
+init_checkpoint: best
+
+ppo:
+  learning_rate: 0.0003
+  n_steps: 512
+  batch_size: 256
+  n_epochs: 10
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_range: 0.2
+  ent_coef: 0.005
+  vf_coef: 0.5
+  max_grad_norm: 0.5
+  net_arch: [128, 128]

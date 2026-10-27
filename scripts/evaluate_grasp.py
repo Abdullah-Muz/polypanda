@@ -64,7 +64,7 @@ def run_env_protocol(args, eval_set: GraspEvalSet) -> None:
         run_dir, _, which = args.policy[4:].partition("@")
         policy = load_run(run_dir, which or "best")
         meta = policy.metadata
-        if meta["skill"] not in ("grasp", "grasp_v2", "grasp_v3"):
+        if meta["skill"] not in ("grasp", "grasp_v2", "grasp_v3", "grasp_v4"):
             raise SystemExit(f"{run_dir} is a {meta['skill']} policy, not grasp")
         driver = PolicyDriver(policy)
         description = (f"{meta['algorithm']} {policy.which} model from {run_dir} "
@@ -122,6 +122,12 @@ def main() -> None:
                         help="with --make-set: placements over the wide (fully reachable) region")
     parser.add_argument("--distractors", type=int, default=0,
                         help="with --make-set: other cubes per placement (clutter set)")
+    parser.add_argument("--lying", action="store_true",
+                        help="with --make-set: cubes lying on a side (v4 any-pose grasp)")
+    parser.add_argument("--x-range", type=float, nargs=2,
+                        help="with --make-set: placement x range (m), overrides --wide")
+    parser.add_argument("--y-range", type=float, nargs=2,
+                        help="with --make-set: placement y range (m), overrides --wide")
     parser.add_argument("--n", type=int, default=200)
     parser.add_argument("--seed", type=int, default=20261022)
     parser.add_argument("--out-dir", type=Path, default=Path("results/grasp"))
@@ -129,8 +135,12 @@ def main() -> None:
 
     if args.make_set:
         ranges = ({"x_range": WIDE_X_RANGE, "y_range": WIDE_Y_RANGE} if args.wide else {})
+        if args.x_range:
+            ranges["x_range"] = tuple(args.x_range)
+        if args.y_range:
+            ranges["y_range"] = tuple(args.y_range)
         eval_set = generate_grasp_eval_set(args.set.stem, args.n, args.seed, **ranges,
-                                           distractors=args.distractors)
+                                           distractors=args.distractors, lying=args.lying)
         eval_set.save(args.set)
         print(f"wrote {args.set}: {len(eval_set)} placements, digest {eval_set.digest}, "
               f"regions {dict(Counter(eval_set.regions))}")

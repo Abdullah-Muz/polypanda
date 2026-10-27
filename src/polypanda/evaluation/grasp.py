@@ -229,8 +229,11 @@ class GraspPolicyEpisode:
 
 
 def run_policy_episode(env: GraspEnv, driver, placement, index: int, region: str,
-                       distractors=None) -> tuple[GraspPolicyEpisode, list[float]]:
+                       distractors=None, lying: bool = False
+                       ) -> tuple[GraspPolicyEpisode, list[float]]:
     options = {"cube": tuple(placement)}
+    if lying:
+        options["lying"] = True  # (GraspV4Env)
     if distractors is not None:
         options["distractors"] = [tuple(d) for d in distractors]
     obs, _ = env.reset(options=options)
@@ -321,10 +324,13 @@ def evaluate_grasp_policy(driver, eval_set: GraspEvalSet, config: GraspConfig | 
     results, latencies = [], []
     if eval_set.distractors is not None and env.distractor_slots < eval_set.distractors.shape[1]:
         raise ValueError(f"{type(env).__name__} has no room for the set's distractor cubes")
+    if eval_set.lying and not hasattr(env, "_lying"):
+        raise ValueError(f"{type(env).__name__} cannot lay cubes down (lying sets need v4)")
     for i, (placement, region) in enumerate(zip(eval_set.placements, eval_set.regions,
                                                 strict=True)):
         others = None if eval_set.distractors is None else eval_set.distractors[i]
-        result, lat = run_policy_episode(env, driver, placement, i, region, others)
+        result, lat = run_policy_episode(env, driver, placement, i, region, others,
+                                         lying=eval_set.lying)
         results.append(result)
         latencies.extend(lat)
     summary = summarize_policy_grasp(results, latencies)

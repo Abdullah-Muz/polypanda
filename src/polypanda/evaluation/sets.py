@@ -135,6 +135,7 @@ class GraspEvalSet:
     y_range: tuple[float, float] = CUBE_Y_RANGE
     menagerie_commit: str = MENAGERIE_COMMIT
     distractors: np.ndarray | None = None  # (n, k, 3): other cubes' x, y, yaw (clutter sets)
+    lying: bool = False  # v4: every cube lies on a side, its long axis along `yaw`
 
     def __len__(self) -> int:
         return len(self.placements)
@@ -143,12 +144,14 @@ class GraspEvalSet:
     def digest(self) -> str:
         data = self.placements if self.distractors is None else np.concatenate(
             [self.placements.ravel(), self.distractors.ravel()])
-        return hashlib.sha256(np.ascontiguousarray(data).tobytes()).hexdigest()[:12]
+        raw = np.ascontiguousarray(data).tobytes() + (b"lying" if self.lying else b"")
+        return hashlib.sha256(raw).hexdigest()[:12]
 
     def subset(self, n: int) -> "GraspEvalSet":
         return GraspEvalSet(self.name, self.seed, self.placements[:n], self.regions[:n],
                             self.x_range, self.y_range, self.menagerie_commit,
-                            None if self.distractors is None else self.distractors[:n])
+                            None if self.distractors is None else self.distractors[:n],
+                            self.lying)
 
     def save(self, path: str | Path) -> None:
         payload = {
@@ -159,6 +162,9 @@ class GraspEvalSet:
             "placements": [{"x": p[0], "y": p[1], "yaw": p[2], "region": r}
                            for p, r in zip(self.placements.tolist(), self.regions, strict=True)],
         }
+        if self.lying:
+            payload["lying"] = True
+            payload["start"] = "home keyframe, cube lying on a side at rest, long axis along yaw"
         if self.distractors is not None:
             payload["start"] += "; other cubes (distractors) upright at rest"
             for entry, others in zip(payload["placements"], self.distractors.tolist(),
@@ -179,6 +185,7 @@ class GraspEvalSet:
             menagerie_commit=payload["menagerie_commit"],
             distractors=(np.array([e["distractors"] for e in entries])
                          if "distractors" in entries[0] else None),
+            lying=bool(payload.get("lying", False)),
         )
         if loaded.digest != payload["digest"]:
             raise ValueError(f"{path}: placement digest mismatch (file edited or corrupted)")
@@ -188,7 +195,7 @@ class GraspEvalSet:
 def generate_grasp_eval_set(name: str, n: int, seed: int,
                             x_range: tuple[float, float] = CUBE_X_RANGE,
                             y_range: tuple[float, float] = CUBE_Y_RANGE, distractors: int = 0,
-                            min_separation: float = 0.10) -> GraspEvalSet:
+                            min_separation: float = 0.10, lying: bool = False) -> GraspEvalSet:
     """Uniform placements; with `distractors`, each also gets that many other cubes, at least
     `min_separation` (centre to centre) from the target and each other, drawn afterwards."""
     rng = np.random.default_rng(np.random.SeedSequence(seed, spawn_key=(GRASP_SPAWN_KEY,)))
@@ -208,7 +215,8 @@ def generate_grasp_eval_set(name: str, n: int, seed: int,
                 others[i, k] = [*xy, rng.uniform(-np.pi, np.pi)]
     return GraspEvalSet(name=name, seed=seed, placements=placements,
                         regions=tuple(grasp_region_of(p[:2]) for p in placements),
-                        x_range=tuple(x_range), y_range=tuple(y_range), distractors=others)
+                        x_range=tuple(x_range), y_range=tuple(y_range), distractors=others,
+                        lying=lying)
 
 
 PICKPLACE_SPAWN_KEY = 0x7B1C  # distinct from the reach and grasp streams

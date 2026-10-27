@@ -52,6 +52,10 @@ class TrainConfig:
     eval_seed: int = 100_000         # validation target stream; never the held-out test set
     checkpoint_freq: int = 100_000   # env transitions between checkpoints
     torch_threads: int | None = None  # trainer's PyTorch threads; None = PyTorch default
+    # Warm start (v3): begin from another run's network weights and observation/return
+    # normalization ("{seed}" is replaced by this run's seed), e.g. runs/grasp_cart_seed{seed}.
+    init_from: str | None = None
+    init_checkpoint: str = "best"    # "best" or "final"
     ppo: PPOParams = field(default_factory=PPOParams)
     sac: SACParams = field(default_factory=SACParams)
 

@@ -132,6 +132,15 @@ class DistractorConfig:
 
 
 @dataclass(frozen=True)
+class RestingConfig:
+    # v4 (GraspV4Env) only: how randomly placed cubes rest. This fraction lie on a side (long
+    # axis horizontal, any direction), as knocked cubes mostly do (v3 recovery); the rest stand.
+    lying_prob: float = 0.0
+    max_lying_turn: float = 0.52  # rad: a lying cube whose long axis tilts further out of
+    #                               horizontal is knocked
+
+
+@dataclass(frozen=True)
 class GraspConfig:
     action: ActionConfig = field(default_factory=ActionConfig)
     placement: PlacementConfig = field(default_factory=PlacementConfig)
@@ -143,6 +152,7 @@ class GraspConfig:
     curriculum: CurriculumConfig = field(default_factory=CurriculumConfig)
     randomization: RandomizationConfig = field(default_factory=RandomizationConfig)
     distractors: DistractorConfig = field(default_factory=DistractorConfig)
+    resting: RestingConfig = field(default_factory=RestingConfig)
 
     @classmethod
     def from_yaml(cls, path: str | Path) -> "GraspConfig":
@@ -256,7 +266,7 @@ class GraspEnv(gym.Env):
                                 friction=float(self.np_random.uniform(*rnd.friction_scale)))
         if "cube" in options and self._physics is not None:
             self._randomize(mass=1.0, friction=1.0)  # explicit placements use the nominal cube
-        set_cube_pose(self.model, self.data, self.cube, (x, y), yaw)
+        self._place_cube(x, y, yaw, options)
         if pregrasp:
             pregrasp = self._pregrasp_start()
         if pregrasp:
@@ -274,6 +284,14 @@ class GraspEnv(gym.Env):
         info = {"cube": (x, y, yaw), "distance": m["distance"],
                 "start": "pregrasp" if pregrasp else "home"}
         return self._observation(m), info
+
+    def _place_cube(self, x: float, y: float, yaw: float, options: dict) -> None:
+        """Set the cube down at the start of an episode (upright; GraspV4Env may lay it down)."""
+        set_cube_pose(self.model, self.data, self.cube, (x, y), yaw)
+
+    def _knocked(self, m: dict) -> bool:
+        """Whether the cube has been knocked over (the episode then ends)."""
+        return m["cube_tilt"] > self.config.episode.max_cube_tilt
 
     def _continue(self):
         """Begin an episode from the current physics state: the arm keeps its commands (no
@@ -347,7 +365,7 @@ class GraspEnv(gym.Env):
         lifted = min(m["lift"], r.lift_cap)
         success = bool(state.grasped and m["lift"] >= cfg.success.lift)
         floor = self._floor_contact()
-        knocked = m["cube_tilt"] > cfg.episode.max_cube_tilt
+        knocked = self._knocked(m)
 
         terms = {
             "approach": r.approach * (self._prev["distance"] - m["distance"]),
@@ -563,3 +581,109 @@ class GraspV2BlindClutterEnv(GraspV3Env):
 
     def _observation(self, m: dict | None = None) -> np.ndarray:
         return GraspV2Env._observation(self, m)
+
+
+OBS_SCHEMA_V4 = "grasp-v4-41d"  # v2 layout; lift from the cube's resting height; lying cubes
+
+
+class GraspV4Env(GraspV2Env):
+    """Grasp task v4 (v3 recovery): v2 with the cube resting either upright or lying on a side.
+
+    Knocked cubes mostly come to rest lying on a side (scripts/disturbance_ceiling.py), and a cube
+    lying on a side can only be stood up again if it is gripped across its 4 cm width, the
+    fingers closing across its long axis. So for a lying cube the committed closing direction is
+    across the long axis (symmetric every pi, not pi/2), and the gate requires that alignment.
+    `resting.lying_prob` of the randomly placed episodes start lying (long axis horizontal, any
+    direction); explicit placements pass options["lying"]. Whether the cube lies is read from its
+    pose at the start of the episode, so the env also works on a cube already in a scene
+    (options["continue"], the work-order cell).
+
+    Lift and success are measured from the cube's own resting height (2 cm lying, 3 cm upright),
+    so "lifted 5 cm" means the same either way, and the observation's cube height slot holds it.
+    A lying cube is knocked when its long axis tilts further than resting.max_lying_turn out of
+    horizontal (it may turn or roll on the table); an upright cube, as in v2, when it tilts past
+    episode.max_cube_tilt. The
+    observation layout is v2's (the cube tilt slot reads pi/2 for a lying cube), so a v4 policy
+    can start from a v2 policy's weights.
+    """
+
+    def reset(self, *, seed: int | None = None, options: dict | None = None):
+        self._lying, self._lying_target = False, None
+        self._rest_z = self.cube.half_size[2]
+        obs, info = super().reset(seed=seed, options=options)
+        info["lying"] = self._lying
+        return obs, info
+
+    def _place_cube(self, x: float, y: float, yaw: float, options: dict) -> None:
+        if "cube" in options:
+            lying = bool(options.get("lying", False))
+        else:
+            p = self.config.resting.lying_prob
+            lying = p > 0 and self.np_random.uniform() < p  # no draw when disabled
+        if not lying:
+            super()._place_cube(x, y, yaw, options)
+        else:  # long axis along `yaw`: the cube's z axis turned down to horizontal
+            q_yaw = np.array([np.cos(yaw / 2), 0.0, 0.0, np.sin(yaw / 2)])
+            q_down = np.array([np.cos(np.pi / 4), 0.0, np.sin(np.pi / 4), 0.0])  # 90 deg about y
+            quat = np.zeros(4)
+            mujoco.mju_mulQuat(quat, q_yaw, q_down)
+            self.data.qpos[self.cube.qpos:self.cube.qpos + 7] = [x, y, self.cube.half_size[0],
+                                                                 *quat]
+            self.data.qvel[self.cube.qvel:self.cube.qvel + 6] = 0.0
+            mujoco.mj_forward(self.model, self.data)
+        self._start_rest()
+
+    def _start_rest(self) -> None:
+        """Record how the cube rests now: lying or upright, and its resting height."""
+        self._lying = cube_tilt(self.data, self.cube) > np.pi / 4
+        self._rest_z = self.cube.half_size[0] if self._lying else self.cube.half_size[2]
+
+    def _continue(self):
+        self._target_yaw = self._lying_target = None
+        self._start_rest()
+        return super()._continue()
+
+    def _long_axis_yaw(self) -> float:
+        axis = self.data.xmat[self.cube.body].reshape(3, 3)[:, 2]
+        return float(np.arctan2(axis[1], axis[0]))
+
+    def _measure(self) -> dict:
+        m = super()._measure()  # v2: the committed face pair (upright)
+        m["lift"] = float(cube_position(self.data, self.cube)[2] - self._rest_z)
+        if self._lying:
+            current = closing_yaw(self._tcp_R())
+            across = self._long_axis_yaw() + np.pi / 2
+            reference = current if self._lying_target is None else self._lying_target
+            self._lying_target = grasp_closing_yaw(across, reference, symmetry=np.pi)
+            error = self._lying_target - current
+            m["align"] = float((error + np.pi / 2) % np.pi - np.pi / 2)
+            self._target_yaw = self._lying_target
+        return m
+
+    def _knocked(self, m: dict) -> bool:
+        if not self._lying:
+            return super()._knocked(m)
+        axis = self.data.xmat[self.cube.body].reshape(3, 3)[:, 2]   # (turning on the table is
+        out_of_lying = np.arcsin(min(1.0, abs(float(axis[2]))))      # fine, as for an upright
+        return out_of_lying > self.config.resting.max_lying_turn    # cube turning on its base)
+
+    def _pregrasp_start(self, settle_steps: int = 100) -> bool:
+        if not self._lying:
+            return super()._pregrasp_start(settle_steps)
+        if self._ik is None:
+            self._ik = PoseIK()
+        yaw = grasp_closing_yaw(self._long_axis_yaw() + np.pi / 2, closing_yaw(self._tcp_R()),
+                                symmetry=np.pi)
+        q, ok = self._ik.solve(self.data.qpos[self.arm.arm_qpos],
+                               cube_position(self.data, self.cube), top_down_quat(yaw))
+        if not ok:
+            return False
+        self.data.qpos[self.arm.arm_qpos] = q
+        self.data.ctrl[self.arm.arm_actuators] = q
+        for adr in self._finger_qpos:
+            self.data.qpos[adr] = self.cube.half_size[0]  # across the 4 cm width
+        self.data.ctrl[self.arm.gripper_actuator] = GRIPPER_CLOSED
+        self.data.qvel[:] = 0.0
+        mujoco.mj_forward(self.model, self.data)
+        mujoco.mj_step(self.model, self.data, nstep=settle_steps)
+        return True

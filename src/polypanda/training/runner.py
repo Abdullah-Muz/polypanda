@@ -10,6 +10,7 @@ Run directory layout:
 
 import dataclasses
 import hashlib
+import pickle
 import subprocess
 import time
 from datetime import UTC, datetime
@@ -74,6 +75,25 @@ def build_model(cfg: TrainConfig, env, tensorboard_log: str | None):
                **common, **params)
 
 
+def _warm_start(cfg: TrainConfig, model, env: VecNormalize) -> dict:
+    """Start from another run: its network weights and its observation and return
+    normalization (the weights expect inputs scaled as in their own training). The source must
+    have the same observation and action sizes."""
+    source = Path(cfg.init_from.format(seed=cfg.seed))
+    which = cfg.init_checkpoint
+    loaded = type(model).load(source / f"{which}_model.zip", device="cpu")
+    if (loaded.observation_space.shape != model.observation_space.shape
+            or loaded.action_space.shape != model.action_space.shape):
+        raise ValueError(f"{source}: observation/action sizes differ from this task's")
+    model.policy.load_state_dict(loaded.policy.state_dict())
+    with open(source / f"{which}_vecnormalize.pkl", "rb") as f:
+        stats = pickle.load(f)
+    env.obs_rms, env.ret_rms = stats.obs_rms, stats.ret_rms
+    meta = yaml.safe_load((source / "metadata.yaml").read_text())
+    return {"run": str(source), "checkpoint": which, "policy_id": meta["policy_id"],
+            "git": meta.get("git", {}).get("commit")}
+
+
 def train(cfg: TrainConfig, env_config, run_dir: Path) -> Path:
     gamma = cfg.algo_params.gamma  # also rejects unsupported algorithms before any setup
     task = task_spec(cfg.task)
@@ -96,6 +116,7 @@ def train(cfg: TrainConfig, env_config, run_dir: Path) -> Path:
     eval_env = VecNormalize(_vec_env(task.env_cls, eval_config, 1, cfg.eval_seed, "dummy"),
                             norm_obs=cfg.normalize_obs, norm_reward=False, training=False)
     model = build_model(cfg, env, str(run_dir / "tb"))
+    init = _warm_start(cfg, model, env) if cfg.init_from else None
     git = _git_state()  # recorded before training, so later edits cannot mislabel the run
 
     per_env = lambda steps: max(1, steps // cfg.n_envs)  # noqa: E731  callbacks count env.step calls
@@ -140,6 +161,7 @@ def train(cfg: TrainConfig, env_config, run_dir: Path) -> Path:
         "package_lock_hash": _lock_hash(),
         "git": git,
         "created_utc": datetime.now(UTC).isoformat(timespec="seconds"),
+        **({"init_from": init} if init else {}),
     }
     (run_dir / "metadata.yaml").write_text(yaml.safe_dump(metadata, sort_keys=False))
     return run_dir
