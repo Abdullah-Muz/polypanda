@@ -15,7 +15,7 @@ import json
 import platform
 import subprocess
 from collections import Counter
-from dataclasses import asdict, fields
+from dataclasses import asdict, fields, replace
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -23,7 +23,12 @@ import mujoco
 import numpy as np
 
 from polypanda.control.scripted_grasp import ScriptedGraspConfig
-from polypanda.environments.grasp import GraspV2BlindClutterEnv, GraspV2Env, GraspV3Env
+from polypanda.environments.grasp import (
+    GraspConfig,
+    GraspV2BlindClutterEnv,
+    GraspV2Env,
+    GraspV3Env,
+)
 from polypanda.evaluation.grasp import (
     GraspEpisodeResult,
     GraspPolicyEpisode,
@@ -74,6 +79,9 @@ def run_env_protocol(args, eval_set: GraspEvalSet) -> None:
         raise SystemExit(f"unknown policy {args.policy!r}; use scripted or run:DIR[@which]")
 
     env = grasp_env_for(args.policy)  # the policy's own task env (GraspEnv, V2 or V3)
+    if args.gripper:  # e.g. an earlier policy in the gripper a later task trains in
+        env = type(env)(replace(env.config, gripper=GraspConfig.from_yaml(args.gripper).gripper))
+        name += f"_gripper-{args.gripper.stem}"
     if eval_set.distractors is not None and env.distractor_slots == 0:
         # clutter set: put the other cubes in the scene even if the skill cannot observe them
         if args.policy == "scripted":
@@ -85,6 +93,7 @@ def run_env_protocol(args, eval_set: GraspEvalSet) -> None:
     summary, episodes = evaluate_grasp_policy(driver, eval_set, env=env)
     record = {"name": name, "policy": description,
               "protocol": f"{type(env).__name__}, 15 s horizon",
+              "gripper": asdict(env.config.gripper),
               "eval_set": {"name": eval_set.name, "n": len(eval_set), "digest": eval_set.digest},
               "created_utc": datetime.now(UTC).isoformat(timespec="seconds"),
               "git": git_state(),
@@ -128,6 +137,8 @@ def main() -> None:
                         help="with --make-set: placement x range (m), overrides --wide")
     parser.add_argument("--y-range", type=float, nargs=2,
                         help="with --make-set: placement y range (m), overrides --wide")
+    parser.add_argument("--gripper", type=Path,
+                        help="with --policy: evaluate in this grasp config's gripper physics")
     parser.add_argument("--n", type=int, default=200)
     parser.add_argument("--seed", type=int, default=20261022)
     parser.add_argument("--out-dir", type=Path, default=Path("results/grasp"))
