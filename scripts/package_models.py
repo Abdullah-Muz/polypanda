@@ -1,10 +1,12 @@
 """Package trained runs for a GitHub Release: policies, normalization statistics and provenance.
 
-Usage: uv run python scripts/package_models.py --tag v1.0
+Usage: uv run python scripts/package_models.py --tag v2.0
 Writes dist/polypanda-models-<tag>.tar.gz containing runs/<name>/ for every run listed in RUNS
 (only what loading and auditing need: metadata, configs, best and final checkpoints with their
 observation normalization, validation history and learning curves; no TensorBoard logs or
-intermediate checkpoints), plus runs/MANIFEST.json with a SHA-256 per file. Prints the archive's
+intermediate checkpoints), plus runs/MANIFEST.json with a SHA-256 per file. Runs in STOPPED were
+stopped early, so they have no metadata or final checkpoint: only their configs and validation
+history are packaged, as evidence for what the docs report about them. Prints the archive's
 SHA-256 for scripts/fetch_models.sh.
 """
 
@@ -24,10 +26,19 @@ RUNS = [
     "grasp_ppo_curr_seed2", "grasp_v2_seed0", "grasp_v2_seed1", "grasp_v2_seed2",
     "grasp_v2yaw_seed0", "grasp_v2yaw_seed1", "grasp_v2yaw_seed2",
     "transport_ppo_pilot_seed0", "transport_ppo_v2_seed0", "transport_residual_seed0",
+    # v2.0: Milestones 7-9
+    *(f"{name}_seed{s}" for name in (
+        "grasp_wide", "grasp_v3", "grasp_cart", "transport_cart", "transport_slow",
+        "place_cart", "place_stack", "place_stack_v2", "place_stack_v3") for s in range(3)),
+    "transport_cart3d_nopenalty_seed0",
 ]
+# Stopped early (docs/workcell.md: the three v3 attempts that did not learn)
+STOPPED = [f"place_stack_v3{attempt}_seed{s}" for attempt in ("gate1cm", "check1cm", "centring")
+           for s in range(3)]
 FILES = ["metadata.yaml", "config.yaml", "env_config.yaml", "best_model.zip",
          "best_vecnormalize.pkl", "final_model.zip", "final_vecnormalize.pkl",
          "learning_curves.png", "eval/evaluations.npz"]
+STOPPED_FILES = ["config.yaml", "env_config.yaml", "eval/evaluations.npz"]
 
 
 def sha256(data: bytes) -> str:
@@ -36,7 +47,7 @@ def sha256(data: bytes) -> str:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--tag", default="v1.0")
+    parser.add_argument("--tag", default="v2.0")
     parser.add_argument("--runs-dir", type=Path, default=Path("runs"))
     parser.add_argument("--out-dir", type=Path, default=Path("dist"))
     args = parser.parse_args()
@@ -45,11 +56,13 @@ def main() -> None:
     out = args.out_dir / f"polypanda-models-{args.tag}.tar.gz"
     manifest = {"tag": args.tag, "files": {}}
     with tarfile.open(out, "w:gz") as tar:
-        for run in RUNS:
+        for run, files in [(r, FILES) for r in RUNS] + [(r, STOPPED_FILES) for r in STOPPED]:
             run_dir = args.runs_dir / run
-            if not (run_dir / "metadata.yaml").exists():
+            if files is FILES and not (run_dir / "metadata.yaml").exists():
                 raise SystemExit(f"{run_dir}: missing or unfinished run")
-            for name in FILES:
+            if not (run_dir / "eval" / "evaluations.npz").exists():
+                raise SystemExit(f"{run_dir}: no validation history")
+            for name in files:
                 path = run_dir / name
                 if not path.exists():
                     continue
@@ -62,7 +75,8 @@ def main() -> None:
         info.size = len(blob)
         tar.addfile(info, io.BytesIO(blob))
     digest = sha256(out.read_bytes())
-    print(f"wrote {out}: {len(RUNS)} runs, {len(manifest['files'])} files, "
+    print(f"wrote {out}: {len(RUNS)} runs and {len(STOPPED)} stopped, "
+          f"{len(manifest['files'])} files, "
           f"{out.stat().st_size / 1e6:.1f} MB")
     print(f"sha256 {digest}")
 

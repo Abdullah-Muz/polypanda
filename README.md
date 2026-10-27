@@ -1,83 +1,73 @@
 # PolyPanda
 
-Autonomous pick-and-place with a simulated Franka Panda: reinforcement-learned and classical skills coordinated by a finite-state-machine supervisor, in MuJoCo, with every result measured on held-out sets and reproducible from a clean commit.
+Reinforcement-learned manipulation skills for a simulated Franka Panda in MuJoCo: from picking and placing one cube to building towers to work orders in a small production cell. Every learned skill is measured on held-out sets, next to a scripted baseline on the same cases, and every result is reproducible from a clean commit.
 
-![PolyPanda picking and placing a cube with a learned grasp policy](docs/figures/pickplace.gif)
+![The work-order cell: learned grasp and place policies building three towers](docs/figures/workcell.gif)
 
-*From the home pose, the robot grasps a cube with a learned PPO policy, carries it, and stands it upright on the green target. Each stage is chosen by the supervisor and verified before the next starts (`scripts/record_demo.py`; [full video](https://github.com/Abdullah-Muz/polypanda/releases)).*
+*A Layer 2 work order (`scripts/record_cell.py`). Cubes arrive on the conveyor in random order, including one no tower needs. A PPO grasp policy picks each cube, and a PPO place policy sets it on a tower or parks it in a buffer slot until its tower is ready. The planner, the swings between stations and the drop into the reject bin are scripted. [Full video](https://github.com/Abdullah-Muz/polypanda/releases).*
 
-> **Status:** Milestones 1–8 complete (results below are from v1.0, Milestones 1–6). Milestone 9, a work-order cell, is in progress (Layers 1 and 2 done). Simulation only: nothing here has been run on a real robot.
-
-## What it does
-
-```mermaid
-flowchart LR
-    S([home]) --> G[GRASP<br/>PPO policy]
-    G -- "verified grasp, 0.5 s" --> T[TRANSPORT<br/>scripted closed-loop carry]
-    T -- "held over target, 0.5 s" --> P[PLACE<br/>scripted: stand upright, lower, release]
-    P -- "placed check passes" --> OK([success])
-    G & T & P -- "failure: knocked over, lost grip, toppled, timeout" --> H[HOME<br/>release, lift clear, return]
-    H -- "cube upright and reachable (≤ 2 retries)" --> G
-    H -- "otherwise" --> F([labelled failure])
-```
-
-- **One environment per skill** (`GraspEnv`, `TransportEnv`, `PlaceEnv`), so each skill sees exactly the observations, gates and success checks it was built and evaluated with. At every handoff the supervisor moves the **exact physics state** (`mj_getState`/`mj_setState`) to the next skill's environment.
-- **Transitions are verified predicates, never timers**: a grasp counts only with both fingers in contact, the cube lifted and not slipping. A placement counts only when the cube rests upright within 2 cm of the target, is still and is released. Switching on fixed timers instead costs 18 points (see the ablations below).
-- **Each skill was chosen by evaluation, not assumption.** Learned PPO policies won at reaching and grasping. For transport and place, carefully designed scripted controllers were as good or better than RL, which was tried and documented.
+> **Status:** v2.0. Milestones 1–8 complete; Milestone 9, the work-order cell, has Layers 1 and 2 done. Simulation only: nothing here has been run on a real robot.
 
 ## Results
 
-All numbers come from held-out sets that training never touched, with 95 % Wilson intervals; learned policies are pooled over 3 seeds. Full tables: [docs/results.md](docs/results.md).
+Held-out sets that training never touched, 95 % Wilson intervals, learned policies pooled over 3 seeds and compared with the scripted baseline case by case (exact McNemar tests). Full tables: [docs/results.md](docs/results.md), [docs/workcell.md](docs/workcell.md), [docs/cartesian_actions.md](docs/cartesian_actions.md).
 
-**Full pick-and-place** (200 scenes: random cube pose, random target ≥ 10 cm away, every episode from home):
+**The work-order cell** (Milestone 9; 200 held-out orders per configuration, 3 towers of 1–4 cubes each). Grasp and place are PPO policies. The planner, the moves between stations, the descent to the stack, the finger gates, the IK and the grasp assist are scripted:
 
-| Grasp skill (transport and place scripted) | Success | First attempt | Time to verified placement (median) |
-|---|---|---|---|
-| Scripted grasp (IK from the true cube pose) | **100 %** (98.1–100 %) | 97.5 % | 12.4 s |
-| **PPO grasp v2** (learned, from observations) | **89.2 %** (86.4–91.4 %) | 83.3 % | 9.8 s |
-| PPO grasp v1 | 86.0 % (83.0–88.5 %) | 78.3 % | 9.5 s |
-
-**Skills on their own:**
-
-| Skill | Learned | Classical baseline |
+| Grasp and place | Layer 1: cubes arrive in a buildable order | Layer 2: random order, surplus cubes, 3-slot buffer |
 |---|---|---|
-| Reach (hold the tool point within 2 cm of a target) | PPO **100 %**, 1.5 mm; SAC 63.2 % | Jacobian IK 100 %, < 0.001 mm |
-| Grasp (any cube pose, lift ≥ 5 cm with a verified grasp) | PPO v2 **87.0 %**, 4.4 s | scripted 100 %, 7.0 s |
-| Transport (carry a held cube to a 3-D goal) | PPO 0 %; residual PPO 92.5 % (no gain) | **closed-loop carry 92.0 %** |
-| Place (stand the cube upright on a target) | not needed | **scripted with upright correction 97.5 %** |
+| **Learned (PPO), stacking place v3 aimed at the fixture** | **599/600 orders = 99.8 %** (99.1–100 %) | **595/600 = 99.2 %** (98.1–99.6 %) |
+| Learned (PPO), stacking place v1 | 599/600 | 587/600 = 97.8 % |
+| Scripted (baseline) | 200/200 | 200/200 |
 
-**Supervisor ablations** (same 200 scenes, PPO grasp v2):
+The learned grasp was trained once, on a plain table in front of the robot. It runs at the conveyor and the buffer through station frames, unchanged: 2010 of 2010 picks per seed in Layer 2. Every failed order is a 4-high tower that, in the cases replayed, crept out of tolerance in the simulator after a placement a few millimetres off.
 
-| Full system | No retries | Timed switching instead of verified handoffs | No upright correction |
-|---|---|---|---|
-| **89.2 %** | 83.3 % | 71.2 % | 81.5 % |
+**Pick-and-place** (Milestone 8; 200 held-out scenes: random cube pose, random target, from the home pose):
 
-**Robustness** (no training on any of these; [details and plot](docs/robustness.md)):
-
-| Condition | Scripted grasp | PPO grasp v2 |
+| System | Success | Time to placed |
 |---|---|---|
-| Cube mass × 0.5–2 | 84.5 % | 74.3 % |
-| Contact friction × 0.5–1.5 | 88.5 % | 79.7 % |
-| Cube size ± 15 % | 99.5 % | 89.2 % |
-| Arm start pose ± 0.1 rad per joint | 100 % | 86.5 % |
-| Push of 0–2 N during transport | 66.0 % | 64.8 % |
-| Cube outside the training region | 99.0 % | 58.0 % |
+| **Fully learned chain**: PPO grasp, transport and place; scripted supervisor | **88.5 %** (85.7–90.8 %); best seed 96.0 % | 7.5 s |
+| v1.0 system: PPO grasp (joint actions), scripted transport and place | 89.0 % (paired p = 0.84) | |
+| All scripted (baseline) | 100 % | 12.4 s |
+
+**Each learned skill against its scripted baseline:**
+
+| Skill | Learned (PPO, 3 seeds) | Scripted baseline |
+|---|---|---|
+| Reach and hold a 3-D target | **100 %**, 1.5 mm | IK 100 % |
+| Grasp any cube pose, lift 5 cm (hand motion) | **91.3 %**; whole table 85.0 %; among other cubes 84.7 % | 100 % |
+| Transport a held cube to a 3-D goal | **90.2 %** | 92.0 % (p = 0.16) |
+| Stand a cube upright on a table target | 95.1 %; **99.5 %** inside pick-and-place | 97.5 %; 100 % |
+| Set a cube on a tower or a buffer slot (in the cell, stacking v3) | **4543/4545** placements in Layer 1, **5369/5373** in Layer 2 | scripted cell: every order |
 
 ## What I learned
 
-1. **Episode design can teach the wrong skill.** Reach v1 ended episodes on success, so PPO learned to pass through targets (14.5 % held). Running every episode to the horizon with a hold reward fixed it (100 %). [reach_task.md](docs/reach_task.md)
-2. **Exploration, not reward, was the grasping bottleneck.** Plain PPO learned to close on the cube but never to lift it (0 %). Starting 30 % of *training* episodes with the cube already in hand ("reset to helpful states") produced 80.5 % from home. [grasp_task.md](docs/grasp_task.md)
-3. **Diagnose before changing things.** The v1 grasp failed at 45° because two grasps were equally good. Fixing only that tie gave 87.0 % (p = 0.002). An earlier version that also penalized pushing the cube collapsed to 4–26 %: it learned to hover just short of touching. [grasp_task.md](docs/grasp_task.md#task-v2-milestone-62)
-4. **RL is not always the right tool.** For transport, plain PPO never learned to carry (0 %), and learned residual corrections on the scripted carry changed nothing (the same 14 failures). The remaining failures came from grasp quality, not from the carry. [transport_task.md](docs/transport_task.md)
-5. **Physics sets the ceiling.** The Panda gripper squeezes with about 1 N per finger, so cubes pivot in the hand. A cube released tilted more than 34° falls over, which is why the place skill first stands it upright (90.4 % → 97.5 %). Heavy or slippery cubes and pushes above about 1 N slip out whatever the grasp. [place_task.md](docs/place_task.md), [robustness.md](docs/robustness.md)
-6. **Learned policies interpolate; planners extrapolate.** Inside its training region the PPO grasp handles physical variation reasonably well. Just outside it, success falls to 58 %, while the IK grasp stays at 99 %.
+1. **The action interface mattered more than the reward.** PPO with joint increments never learned to carry a cube (0 %). With actions that move the hand, plus two fixes below, it carries at nearly the scripted level (90.2 % against 92.0 %), and the grasp improved most where the task was hardest. [cartesian_actions.md](docs/cartesian_actions.md)
+2. **Look at what the policy does before changing the reward.** Learned transport went from 0 % to the scripted level through three diagnoses: the wrist spinning, a policy mean stuck outside the action bounds (fixed by an action bound penalty), and carrying too fast.
+3. **Exploration, not reward, was the grasping bottleneck.** Plain PPO learned to close on the cube but never to lift it. Starting 30 % of training episodes with the cube already in hand fixed it. [grasp_task.md](docs/grasp_task.md)
+4. **Episode design can teach the wrong skill.** Reach v1 ended episodes on success, so PPO learned to pass through targets (14.5 % held). Running every episode to the horizon with a hold reward fixed it. [reach_task.md](docs/reach_task.md)
+5. **A shaping cost must stay smaller than the failure it guards against.** Three stacking-place attempts never learned: an unbounded cost after release made losing the cube the cheapest outcome. [workcell.md](docs/workcell.md#v3-reward-precision-as-well)
+6. **A validation score covers the situation it was measured in.** In the cell, a deterministic place policy fed near-identical starts repeats the same 2–3 mm error. Aimed at the cube below, those errors added up into leaning towers (12 % of Layer 1 and 31 % of Layer 2 orders failed). Aimed at the fixture, the same policy became the best one: a fix in the supervisor, not in training. [workcell.md](docs/workcell.md#v3-in-the-cell-a-root-cause-analysis)
+7. **Seeds and validation noise decide conclusions.** One configuration produced grasp policies from 66 % to 94 %, and 30-episode validation picked "luckiest", not "best". Everything here reports 3 seeds and validates on 100 episodes. [generalization.md](docs/generalization.md)
+8. **Keep the scripted baseline honest and in view.** Learned policies interpolate; the IK grasp extrapolates (99 % just outside the training region against 58 %). For transport in Milestone 4, residual RL on the scripted carry changed nothing. [robustness.md](docs/robustness.md), [transport_task.md](docs/transport_task.md)
 
-Other measured engineering lessons:
-- three PPO runs in parallel were 9× slower until PyTorch was limited to one thread each;
-- a recovery bug knocked cubes over on the way home;
-- SAC's entropy collapse.
+## How it works
 
-All three are written up where they happened.
+```mermaid
+flowchart LR
+    I([conveyor]) --> G[GRASP<br/>PPO policy]
+    G --> P{planner<br/>scripted}
+    P -- "a tower needs it next" --> T[PLACE on tower<br/>PPO policy]
+    P -- "needed later, slot free" --> B[PLACE in buffer<br/>PPO policy]
+    P -- "surplus or buffer full" --> R[reject bin<br/>scripted]
+    B -. "when its tower is ready" .-> G
+    T --> C([final tower check])
+```
+
+- **One environment per skill**, each with its own observations, success checks and gates. Skills trained in front of the robot run at any station through **station frames**: the scene is rotated into the frame the skill was trained in, and its hand motions are rotated back. [workcell.md](docs/workcell.md)
+- **Transitions are verified predicates, never timers.** A grasp counts only with both fingers in contact and the cube lifted and not slipping. In pick-and-place, switching on timers instead costs 18 points. [pick_and_place.md](docs/pick_and_place.md)
+- **Pick-and-place** runs under a finite-state-machine supervisor with verified handoffs, exact physics-state transfer between skill environments, and recovery (release, lift clear, return home, retry up to twice).
+- **Disclosed simplification:** in the simulator a firmly held cube slides out of the fingers during long carries, whatever the grip settings. In the cell, a verified grip is therefore welded to the hand while carrying, for learned and scripted skills alike. [workcell.md](docs/workcell.md#grasp-assist-a-disclosed-simplification)
 
 ## Quickstart
 
@@ -96,19 +86,22 @@ scripts/fetch_models.sh                  # trained policies from the GitHub Rele
 Watch it (opens the MuJoCo viewer):
 
 ```bash
-uv run python scripts/demo_pickplace.py --grasp run:runs/grasp_v2yaw_seed1   # learned grasp
-uv run python scripts/demo_pickplace.py                                      # all scripted
-uv run python scripts/demo_grasp.py --policy run:runs/grasp_v2yaw_seed2      # grasp skill only
+uv run python scripts/view_workcell.py --mixed --jitter \
+    --pick run:runs/grasp_cart_seed2 --place run:runs/place_stack_v3_seed2   # the cell, learned
+uv run python scripts/view_workcell.py --mixed                              # the cell, scripted
+uv run python scripts/demo_pickplace.py --grasp run:runs/grasp_v2yaw_seed1   # pick-and-place
 ```
 
 Reproduce a headline number:
 
 ```bash
-uv run python scripts/evaluate_pickplace.py --grasp run:runs/grasp_v2yaw_seed1  # end to end
-uv run python scripts/evaluate_grasp.py --policy run:runs/grasp_v2yaw_seed1     # grasp skill
-uv run python scripts/evaluate_robustness.py --grasp scripted                   # robustness suite
-uv run python scripts/evaluate_ablations.py --grasp scripted                    # ablations
-uv run python scripts/train.py --config configs/grasp_v2_yaw_ppo.yaml --seed 0  # retrain (~40 min)
+uv run python scripts/evaluate_cell.py --mixed \
+    --pick run:runs/grasp_cart_seed1 --place run:runs/place_stack_v3_seed1  # Layer 2, one seed
+uv run python scripts/evaluate_pickplace.py --grasp run:runs/grasp_cart_seed1 \
+    --transport run:runs/transport_slow_seed1 --place run:runs/place_cart_seed1  # learned chain
+uv run python scripts/diagnose_cell_order.py --pick run:runs/grasp_cart_seed1 \
+    --place run:runs/place_stack_v3_seed1 --mixed --index 59 --watch A  # replay one order
+uv run python scripts/train.py --config configs/place_stack_v3_cartesian_ppo.yaml --seed 0
 ```
 
 Every result file in [`results/`](results/) records the git commit (and whether the tree was clean), package versions and the evaluation set's digest.
@@ -118,44 +111,41 @@ Every result file in [`results/`](results/) records the git commit (and whether 
 | Layer | Contents |
 |---|---|
 | Simulation | MuJoCo 3.16; Panda from [MuJoCo Menagerie](https://github.com/google-deepmind/mujoco_menagerie) at a pinned commit, never modified (scenes are composed in memory with `MjSpec`) |
-| Control | 7-D joint-increment actions on the Panda's position servos (20 Hz); damped-least-squares Jacobian IK for the classical baselines |
-| Environments | Gymnasium envs per skill with versioned observation schemas, verified success predicates and gated finger actuation |
-| Learning | Stable-Baselines3 PPO and SAC on CPU PyTorch; YAML configs; TensorBoard logs; best checkpoint selected on a separate validation stream |
-| Evaluation | versioned held-out sets drawn from dedicated random streams; Wilson intervals; exact McNemar tests for paired comparisons; per-stage failure labels |
+| Control | position servos at 20 Hz; actions are joint increments or hand motions turned into joint targets by damped least-squares IK |
+| Environments | Gymnasium envs per skill with versioned observation and action schemas, verified success predicates and gated finger actuation |
+| Learning | Stable-Baselines3 PPO (and SAC for comparison) on CPU PyTorch; YAML configs; best checkpoint selected on a separate validation stream |
+| Supervision | finite-state machine for pick-and-place; greedy planner, station frames and scripted moves for the cell |
+| Evaluation | versioned held-out sets from dedicated random streams; Wilson intervals; exact McNemar tests; per-stage failure labels; a replay tool that logs and films any evaluation order |
 | Engineering | `uv.lock`; Ruff; pytest; GitHub Actions CI; run metadata with git commit and schema checks on load |
 
 | Docs | |
 |---|---|
-| [environment.md](docs/environment.md) | simulator setup, model contract |
-| [control_design.md](docs/control_design.md) | action interface and servo behaviour |
+| [workcell.md](docs/workcell.md) | the work-order cell: grasp assist, station frames, buffer and planner, stacking place v1–v3, a root-cause analysis |
+| [cartesian_actions.md](docs/cartesian_actions.md) | hand-motion actions and the fully learned pick-and-place chain |
+| [generalization.md](docs/generalization.md) | wide-region and cluttered grasping, checkpoint selection |
 | [reach_task.md](docs/reach_task.md), [grasp_task.md](docs/grasp_task.md), [transport_task.md](docs/transport_task.md), [place_task.md](docs/place_task.md) | each skill: task design, baselines, training, failure analysis |
-| [pick_and_place.md](docs/pick_and_place.md) | supervisor, end-to-end evaluation, ablations |
-| [robustness.md](docs/robustness.md) | perturbation suite |
-| [evaluation_protocol.md](docs/evaluation_protocol.md), [results.md](docs/results.md) | protocol and every result table |
-| [model_cards.md](docs/model_cards.md) | the published policies, their scope and limitations |
-| [workcell.md](docs/workcell.md) | the Milestone 9 work-order cell: grasp assist, station frames, buffer and planner, stacking place v1–v3 and a root-cause analysis (in progress) |
+| [pick_and_place.md](docs/pick_and_place.md), [robustness.md](docs/robustness.md) | supervisor, end-to-end evaluation, ablations, perturbation suite |
+| [evaluation_protocol.md](docs/evaluation_protocol.md), [results.md](docs/results.md) | protocol and result tables |
+| [model_cards.md](docs/model_cards.md) | every published policy, its scope and limitations |
+| [environment.md](docs/environment.md), [control_design.md](docs/control_design.md) | simulator setup, action interfaces |
 
 ## Limitations
 
-- **Simulation only.** No sim-to-real claim is made; the policies have never controlled hardware.
-- **One object, one gripper.** A 4 × 4 × 6 cm cube on an open table, no obstacles or clutter, the Panda's standard parallel gripper.
-- **The scripted skills use privileged state** (the true cube pose); the learned grasp uses its observation vector, which includes the cube's position relative to the hand. Neither uses vision.
-- **The learned grasp is narrow.** It is trained on a 30 × 50 cm placement region and falls to 58 % just outside it. It remains well below the scripted grasp (89 % against 100 % end to end).
-- **Grasp assist in the work-order cell (Milestone 9).** In the simulator, a firmly held cube slides along the finger pads whenever the arm moves, whatever the grip force or contact settings. So in the cell, a verified grip (both fingers pressing at least 2 N) welds the cube to the hand while it is carried, for learned and scripted skills alike. Grasping and releasing stay physical, and cell results do not measure grip retention. Details: [workcell.md](docs/workcell.md#grasp-assist-a-disclosed-simplification).
+- **Simulation only.** No sim-to-real claim is made; the policies have never controlled hardware, and none uses vision. Observations include the cube's position relative to the hand.
+- **Cubes only.** 4 × 4 × 6 cm cubes, the Panda's standard parallel gripper, an open table or the cell's fixed stations.
+- **The cell is partly scripted.** Only grasping and placing are learned there; planning, moves between stations and rejection are scripted. The grasp assist means cell results do not measure grip retention.
+- **Simulator effects set the ceiling.** The gripper holds weakly in the simulator, and slightly offset stacks creep over minutes of simulated time. Every learned failure in the cell traced so far ends in that creep.
+- **The scripted baselines are still ahead.** They reach 100 % in pick-and-place and in the cell; the learned skills come close but do not match them everywhere.
 
 ## Roadmap
 
 | Milestone | Scope | Status |
 |---|---|---|
-| 1 | Reproducible environment, pinned Panda model, headless simulation, tests | Done ([details](docs/environment.md)) |
-| 2 | Custom reaching environment and classical IK baseline | Done ([task](docs/reach_task.md)) |
-| 3 | PPO and SAC reaching policies with benchmark | Done ([results](docs/results.md)) |
-| 4 | Grasp and transport skills | Done ([grasp](docs/grasp_task.md), [transport](docs/transport_task.md)) |
-| 5 | Place skill, FSM supervisor and full pick-and-place | Done ([place](docs/place_task.md), [pick-and-place](docs/pick_and_place.md)) |
-| 6 | Robustness, grasp v2, ablations, model release, demo video | Done ([robustness](docs/robustness.md), [ablations](docs/pick_and_place.md#ablations-milestone-63-what-each-supervisor-design-choice-is-worth), [models](docs/model_cards.md)) |
-| 7 | Generalizing the learned grasp to the whole table | Done, target not met ([generalization](docs/generalization.md)) |
+| 1–3 | Reproducible environment; reaching task, IK baseline, PPO and SAC | Done ([environment](docs/environment.md), [reach](docs/reach_task.md)) |
+| 4–6 | Grasp, transport and place skills, FSM supervisor, robustness, ablations; v1.0 release | Done ([pick-and-place](docs/pick_and_place.md), [results](docs/results.md)) |
+| 7 | Generalizing the learned grasp to the whole table | Done, target not met with joint actions ([generalization](docs/generalization.md)) |
 | 8 | Hand-motion actions; learned transport and place; fully learned chain | Done ([cartesian actions](docs/cartesian_actions.md)) |
-| 9 | Work-order cell: infeed conveyor, three recipe towers, learned skills at every station; random arrivals with a buffer and planner | In progress: Layers 1–2 done; learned grasp and place complete 99.8 % and 99.2 % of held-out orders ([workcell](docs/workcell.md)) |
+| 9 | Work-order cell: conveyor, recipe towers, buffer and planner, learned grasp and place at every station | Layers 1–2 done (v2.0); Layer 3, towers of 5–6, later ([workcell](docs/workcell.md)) |
 
 ## Acknowledgements and references
 
