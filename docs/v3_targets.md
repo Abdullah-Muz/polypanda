@@ -40,13 +40,25 @@ The planner observes the towers as they physically are, not as planned.
 
 ## A3: recovery
 
+*Amended on 2026-10-26, before any recovery code or training. A physical check, with no robot policy involved, knocked towers of 2–4 cubes over with realistic disturbances and classified where every fallen cube came to rest. The robot can only recover a cube that lies within its reach and rests flat. Even a perfect robot could recover every fallen cube after only about 68 % of single-cube knocks, 73 % of partial topples and 63 % of full topples. Cubes slide out of reach (inward under the arm, or beyond 0.78 m), land leaning on something, or land touching other cubes. A low rim around each tower did not help. So the targets below count the orders where recovery is physically possible. The orders where it is not are still run, and are reported separately.*
+
+**Disturbances** (each knock is classified by its outcome, after everything has settled):
+- a shove on the top cube, or on a middle cube, at 0.6–1.5 m/s in a random direction;
+- a steady push of 1.0–2.5 N on the top cube in a random direction, as a hand would push, stopping once the cube has moved 3 cm.
+
+Outcome: **D1** exactly one cube leaves the tower, **D2** some but not all, **D3** all of them. A knock is **recoverable** when every fallen cube rests flat (upright, or lying on a side, not leaning on anything), lies 0.30–0.78 m from the robot's base axis within its base rotation range, and is not on the belt or in the reject bin. Whether a knock is recoverable is decided by the simulation when it happens, before the robot acts.
+
 **Baseline:** scripted recovery rules (re-pick fallen cubes, rebuild in recipe order, reject what cannot be used), with the same skills.
 
-| Disturbance | Target: orders completed (3 seeds pooled) |
+| Disturbance | Target: orders completed, of the recoverable knocks (3 seeds pooled) |
 |---|---|
 | D1 single cube | at least 90 %, and not significantly worse than the scripted recovery |
 | D2 partial topple | at least 85 %, and not significantly worse than the scripted recovery |
 | D3 full topple | at least 80 %, and not significantly worse than the scripted recovery |
+
+Also reported, with no target: orders completed over all knocks, recoverable or not, and the share of knocks that were recoverable.
+
+*A possible extension, not a target: scrap and replace. Cubes that cannot be recovered are written off, and a limited stock of spares can be called up the conveyor, which would let the planner choose between rescuing a hard cube and spending time and a spare on a replacement.*
 
 **New skills** (trained with randomized cube mass, friction and size):
 
