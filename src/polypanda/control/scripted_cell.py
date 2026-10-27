@@ -56,10 +56,11 @@ class CellControllerConfig:
     grip_steps: int = 12            # control steps to close or open the fingers (0.6 s)
     servo_gain: float = 0.5         # closed-loop correction per step
     belt_timeout: float = 20.0      # s to wait for the conveyor
-    # Recovery (v3): fallen cubes within `clear_radius` of a tower are first moved to staging
-    # spots on an inner ring (between the stations, clear of towers, slots and belt), so the
-    # hand never reaches down beside a tower it has just rebuilt (measured: it knocked them over).
-    clear_radius: float = 0.15
+    # Recovery (v3): fallen cubes within `clear_radius` of a tower, and every lying cube (stood
+    # up there), are first moved to staging spots on an inner ring (between the stations, clear
+    # of towers, slots and belt), so the hand never reaches down beside a tower it has just
+    # rebuilt, and no regrip happens next to one (measured: both knocked rebuilt towers over).
+    clear_radius: float = 0.20
     staging: tuple[tuple[float, float], ...] = ((0.36, -65.0), (0.36, -115.0), (0.36, -15.0),
                                                 (0.36, 60.0), (0.36, 15.0))
 
@@ -255,10 +256,11 @@ class ScriptedCell:
 
     def stand_up(self, cube: CubeIndices, spot) -> None:
         """Stand a cube lying on its side upright at `spot` on the table (a regrip): grip it
-        from above across its 4 cm width, lift, turn the hand to point sideways along the station
-        circle (the cube's long axis turns vertical), lower it over the spot and let go 1.5 cm
-        above the table (measured: any lower and the hand touches the table; the cube drops
-        flat), back the hand out sideways and return to the carry posture over the spot.
+        from above across its 4 cm width, lift, carry it over the spot, turn the hand up high to
+        point sideways along the station circle (the cube's long axis turns vertical; fingers
+        toward the nearest tower, so palm and wrist stay clear of it), lower it and let go
+        1.5 cm above the table (measured: any lower and the hand touches the table; the cube
+        drops flat), back the hand out sideways and return to the carry posture over the spot.
         Pointing the hand toward or away from the robot is out of reach (measured)."""
         cfg = self.config
         c = self.d.xpos[cube.body].copy()
@@ -280,9 +282,18 @@ class ScriptedCell:
         rel = R_tcp.T @ (self.d.xpos[cube.body] - tcp)              # the cube in the hand
         R_rel = R_tcp.T @ self.d.xmat[cube.body].reshape(3, 3)
         a = float(np.arctan2(spot[1], spot[0]))
+        # carry the lying cube over the spot first, so the hand turns sideways up high there
+        # and never sweeps low past a tower (measured: it knocked rebuilt towers over)
+        self.swing_to(a)
+        self.move_joints(self._solve([spot[0], spot[1], cfg.carry_height], top_down_quat(yaw
+                         + a - float(np.arctan2(c[1], c[0]))), self.q_cmd))
         tangent = np.array([-np.sin(a), np.cos(a), 0.0])
         rest = np.array([spot[0], spot[1], cube.half_size[2] + 0.015])
-        for z_axis in (tangent, -tangent):
+        towers = [self.cell.tower_xy(t) for t in range(len(self.cell.config.tower_angles))]
+        nearest = min(towers, key=lambda xy: np.linalg.norm(xy - spot)) - spot
+        # point the fingers toward the nearest tower, so the palm and wrist stay away from it
+        signs = sorted((tangent, -tangent), key=lambda z: -float(z[:2] @ nearest))
+        for z_axis in signs:
             y_axis = np.cross([0.0, 0.0, 1.0], z_axis)
             R = np.column_stack([np.cross(y_axis, z_axis), y_axis, z_axis])
             if abs((R @ R_rel)[2, 2]) < 0.95:
@@ -290,19 +301,21 @@ class ScriptedCell:
             quat = np.zeros(4)
             mujoco.mju_mat2Quat(quat, R.flatten())
             goal = rest - R @ rel
-            q, ok = self.ik.solve(self.q_cmd, goal + [0.0, 0.0, 0.10], quat)
+            q, ok = self.ik.solve(self.q_cmd, goal + [0.0, 0.0, 0.18], quat)
             if ok:
                 break
-        else:  # no sideways pose reachable: set the cube back down where it lay
+        else:  # no sideways pose reachable: set the cube down over the spot as it is
             self.ik_failures += 1
-            self.vertical(c[:2], c[2] + 0.002, yaw)
+            here = self.d.site_xpos[self.arm.tcp_site][:2].copy()
+            self.vertical(here, c[2] + 0.002, closing_yaw(self.d.site_xmat[
+                self.arm.tcp_site].reshape(3, 3)))
             self.cell.detach(cube)
             self.grip = GRIPPER_OPEN
             self.step(cfg.grip_steps)
-            self.vertical(c[:2], cfg.carry_height, yaw)
+            self.to_carry()
             return
         self.move_joints(q, rate=1.0)
-        self.line(goal + [0.0, 0.0, 0.10], goal, quat)
+        self.line(goal + [0.0, 0.0, 0.18], goal, quat)
         self.cell.detach(cube)
         self.grip = GRIPPER_OPEN
         self.step(cfg.grip_steps)
@@ -448,10 +461,10 @@ class ScriptedCell:
                     if log:
                         log(f"  buffer slot {slot + 1} ({order.arrivals[parked[slot]][0]}) -> "
                             f"tower {'ABC'[t]}, level {len(towers[t]) + 1}")
-                    self.swing_to(np.radians(cfg.buffer_angles[slot]))
-                    self.pick(cell.cubes[parked[slot]])
-                    stack(parked[slot], t)
-                    parked[slot] = None
+                    k_slot, parked[slot] = parked[slot], None  # (before stacking: a knock there
+                    self.swing_to(np.radians(cfg.buffer_angles[slot]))  # may refill the slot)
+                    self.pick(cell.cubes[k_slot])
+                    stack(k_slot, t)
                     self.stats["from_buffer"] += 1
             elif kind == BUFFER:
                 if log:
@@ -498,8 +511,9 @@ class ScriptedCell:
                 if not usable:
                     return
                 xy = {k: self.d.xpos[cell.cubes[k].body][:2].copy() for k in usable}
-                near = [k for k in usable if min(np.linalg.norm(xy[k] - cell.tower_xy(t))
-                                                 for t in range(len(towers))) < cfg_c.clear_radius]
+                near = [k for k in usable if view.loose[k]["pose"] == "lying"  # (stood up first)
+                        or min(np.linalg.norm(xy[k] - cell.tower_xy(t))
+                               for t in range(len(towers))) < cfg_c.clear_radius]
                 spot = self.free_staging_spot()
                 if near and spot is not None:  # clear the site first
                     k = near[0]
