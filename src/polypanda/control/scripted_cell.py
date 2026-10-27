@@ -36,10 +36,10 @@ import numpy as np
 
 from polypanda.control.ik import PoseIK, closing_yaw, grasp_closing_yaw, top_down_quat
 from polypanda.environments.grasp import GRIPPER_CLOSED, GRIPPER_OPEN
-from polypanda.simulation.disturbances import Knock, apply_knock, knock_outcome
+from polypanda.simulation.disturbances import Knock, apply_knock, knock_outcome, rest_state
 from polypanda.simulation.panda import PandaIndices
 from polypanda.simulation.scenes import CubeIndices, cube_yaw
-from polypanda.simulation.workcell import Workcell, WorkOrder
+from polypanda.simulation.workcell import Workcell, WorkOrder, station_xy
 from polypanda.supervisor.observe import observe
 from polypanda.supervisor.planner import BUFFER, TOWER, GreedyPlanner
 
@@ -56,11 +56,17 @@ class CellControllerConfig:
     grip_steps: int = 12            # control steps to close or open the fingers (0.6 s)
     servo_gain: float = 0.5         # closed-loop correction per step
     belt_timeout: float = 20.0      # s to wait for the conveyor
+    # Recovery (v3): fallen cubes within `clear_radius` of a tower are first moved to staging
+    # spots on an inner ring (between the stations, clear of towers, slots and belt), so the
+    # hand never reaches down beside a tower it has just rebuilt (measured: it knocked them over).
+    clear_radius: float = 0.15
+    staging: tuple[tuple[float, float], ...] = ((0.36, -65.0), (0.36, -115.0), (0.36, -15.0),
+                                                (0.36, 60.0), (0.36, 15.0))
 
 
 class ScriptedCell:
     # loose cubes this controller can recover, by how they rest (supervisor.observe)
-    recoverable_poses: tuple[str, ...] = ("upright",)
+    recoverable_poses: tuple[str, ...] = ("upright", "lying")
 
     def __init__(self, cell: Workcell, config: CellControllerConfig | None = None,
                  on_step: Callable[[], None] | None = None) -> None:
@@ -204,10 +210,107 @@ class ScriptedCell:
         q[0] += angle
         self.move_joints(q, rate=1.0)  # wrist back to the carry yaw
 
-    def pick_loose(self, cube: CubeIndices) -> None:
+    def pick_loose(self, cube: CubeIndices, pose: str = "upright", spot=None) -> None:
         """Pick a cube lying loose on the table (after a knock), from the carry posture over it:
-        an upright cube as at any station."""
+        an upright cube as at any station; a cube lying on a side is first stood upright at
+        `spot` (stand_up), then picked there. If it does not end up upright, it is not picked."""
+        if pose == "lying":
+            self.stand_up(cube, self.d.xpos[cube.body][:2].copy() if spot is None else spot)
+            if self.cell.attached(cube) or rest_state(self.cell, cube)["pose"] != "upright":
+                return
         self.pick(cube)
+
+    def staging_xy(self, s: int) -> np.ndarray:
+        r, a = self.config.staging[s]
+        return station_xy(a, r)
+
+    def free_staging_spot(self) -> np.ndarray | None:
+        """A staging spot with no cube within 8 cm of it, if any."""
+        for s in range(len(self.config.staging)):
+            xy = self.staging_xy(s)
+            if all(np.linalg.norm(self.d.xpos[c.body][:2] - xy) > 0.08 for c in self.cell.cubes):
+                return xy
+        return None
+
+    def stage(self, cube: CubeIndices, pose: str, spot) -> None:
+        """Move a loose cube to a staging spot, standing it up there if it lies on a side."""
+        if pose == "lying":
+            self.stand_up(cube, spot)
+            return
+        self.pick(cube)
+        if not self.cell.attached(cube):
+            return
+        self.swing_to(float(np.arctan2(spot[1], spot[0])))
+        self.place(cube, spot, 0)
+
+    def line(self, start, end, quat, speed: float | None = None) -> None:
+        """Straight move of the hand from `start` to `end` with a fixed orientation `quat`."""
+        start, end = np.asarray(start, dtype=float), np.asarray(end, dtype=float)
+        speed = speed or self.config.vertical_speed
+        n = max(5, int(np.linalg.norm(end - start) / speed / self.dt))
+        for k in range(1, n + 1):
+            s = (1 - np.cos(np.pi * k / n)) / 2
+            self.q_cmd = self._solve(start + (end - start) * s, quat, self.q_cmd)
+            self.step()
+
+    def stand_up(self, cube: CubeIndices, spot) -> None:
+        """Stand a cube lying on its side upright at `spot` on the table (a regrip): grip it
+        from above across its 4 cm width, lift, turn the hand to point sideways along the station
+        circle (the cube's long axis turns vertical), lower it over the spot and let go 1.5 cm
+        above the table (measured: any lower and the hand touches the table; the cube drops
+        flat), back the hand out sideways and return to the carry posture over the spot.
+        Pointing the hand toward or away from the robot is out of reach (measured)."""
+        cfg = self.config
+        c = self.d.xpos[cube.body].copy()
+        axis = self.d.xmat[cube.body].reshape(3, 3)[:, 2]        # long axis, horizontal
+        carry_yaw = self.carry_yaw(float(np.arctan2(c[1], c[0])))
+        yaw = float(np.arctan2(axis[1], axis[0])) + np.pi / 2   # fingers close across it
+        yaw = carry_yaw + (yaw - carry_yaw + np.pi / 2) % np.pi - np.pi / 2
+        self.move_joints(self._solve([c[0], c[1], cfg.carry_height], top_down_quat(yaw),
+                                     self.q_cmd))
+        self.vertical(c[:2], c[2], yaw)
+        self.grip = GRIPPER_CLOSED
+        self.step(cfg.grip_steps)
+        held = self.cell.attach(cube)
+        self.vertical(c[:2], cfg.carry_height, yaw)
+        if not held:
+            return
+        tcp = self.d.site_xpos[self.arm.tcp_site].copy()
+        R_tcp = self.d.site_xmat[self.arm.tcp_site].reshape(3, 3)
+        rel = R_tcp.T @ (self.d.xpos[cube.body] - tcp)              # the cube in the hand
+        R_rel = R_tcp.T @ self.d.xmat[cube.body].reshape(3, 3)
+        a = float(np.arctan2(spot[1], spot[0]))
+        tangent = np.array([-np.sin(a), np.cos(a), 0.0])
+        rest = np.array([spot[0], spot[1], cube.half_size[2] + 0.015])
+        for z_axis in (tangent, -tangent):
+            y_axis = np.cross([0.0, 0.0, 1.0], z_axis)
+            R = np.column_stack([np.cross(y_axis, z_axis), y_axis, z_axis])
+            if abs((R @ R_rel)[2, 2]) < 0.95:
+                continue                                             # (would not stand it up)
+            quat = np.zeros(4)
+            mujoco.mju_mat2Quat(quat, R.flatten())
+            goal = rest - R @ rel
+            q, ok = self.ik.solve(self.q_cmd, goal + [0.0, 0.0, 0.10], quat)
+            if ok:
+                break
+        else:  # no sideways pose reachable: set the cube back down where it lay
+            self.ik_failures += 1
+            self.vertical(c[:2], c[2] + 0.002, yaw)
+            self.cell.detach(cube)
+            self.grip = GRIPPER_OPEN
+            self.step(cfg.grip_steps)
+            self.vertical(c[:2], cfg.carry_height, yaw)
+            return
+        self.move_joints(q, rate=1.0)
+        self.line(goal + [0.0, 0.0, 0.10], goal, quat)
+        self.cell.detach(cube)
+        self.grip = GRIPPER_OPEN
+        self.step(cfg.grip_steps)
+        self.line(goal, goal - 0.07 * z_axis, quat)                  # fingers slide off sideways
+        self.line(goal - 0.07 * z_axis, goal - 0.07 * z_axis + [0.0, 0.0, 0.12], quat)
+        q = self.carry.copy()
+        q[0] += a
+        self.move_joints(q, rate=1.0)
 
     def place(self, cube: CubeIndices, xy, level: int) -> None:
         """From the carry posture over a station: lower the cube's centre onto (xy) at `level`,
@@ -311,7 +414,8 @@ class ScriptedCell:
         self.stats = {"buffered": 0, "from_buffer": 0, "rejected": 0, "needed_rejected": 0,
                       "taken_out_of_order": 0}
         if recover:
-            self.stats.update(recovered=0, written_off=0)
+            self.stats.update(recovered=0, written_off=0, staged=0)
+        cfg_c = self.config
         cell.conveyor.index()
         self.to_carry()
         towers: list[list[int]] = [[] for _ in order.recipes]
@@ -393,16 +497,31 @@ class ScriptedCell:
                                 f"{'in reach' if state['reachable'] else 'out of reach'})")
                 if not usable:
                     return
+                xy = {k: self.d.xpos[cell.cubes[k].body][:2].copy() for k in usable}
+                near = [k for k in usable if min(np.linalg.norm(xy[k] - cell.tower_xy(t))
+                                                 for t in range(len(towers))) < cfg_c.clear_radius]
+                spot = self.free_staging_spot()
+                if near and spot is not None:  # clear the site first
+                    k = near[0]
+                    if log:
+                        log(f"clearing the {order.arrivals[k][0]} cube away from the towers")
+                    self.swing_to(float(np.arctan2(xy[k][1], xy[k][0])))
+                    self.stage(cell.cubes[k], view.loose[k]["pose"], spot)
+                    moved = self.d.xpos[cell.cubes[k].body][:2]
+                    if np.linalg.norm(moved - spot) < 0.03:
+                        self.stats["staged"] += 1
+                    else:
+                        attempts[k] = attempts.get(k, 0) + 1   # (a failed attempt)
+                    continue
                 ready = [k for k in usable if any(planner.next_colour(t) == order.arrivals[k][0]
                                                   for t in range(len(towers)))]
                 k = (ready or usable)[0]
-                attempts[k] = attempts.get(k, 0) + 1
-                p = self.d.xpos[cell.cubes[k].body]
                 if log:
                     log(f"recovering the {order.arrivals[k][0]} cube")
-                self.swing_to(float(np.arctan2(p[1], p[0])))
-                self.pick_loose(cell.cubes[k])
+                self.swing_to(float(np.arctan2(xy[k][1], xy[k][0])))
+                self.pick_loose(cell.cubes[k], view.loose[k]["pose"], spot)
                 if not cell.attached(cell.cubes[k]):
+                    attempts[k] = attempts.get(k, 0) + 1   # (a failed attempt)
                     self.grip = GRIPPER_OPEN  # (not held: let go, it is looked at again)
                     self.step(self.config.grip_steps)
                     self.to_carry()
