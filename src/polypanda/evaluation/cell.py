@@ -51,6 +51,7 @@ class CellEvalConfig:
     aim: str = "fixture"            # learned place target: the fixture, or as trained (v3: top)
     batch_choice: bool = False      # v3: take any cube on the belt, not only the front one
     disturbances: str | None = None  # v3: a disturbance suite (eval_sets/), one per order
+    recover: bool = False           # v3: read the cell after a knock and recover loose cubes
 
     @property
     def n_cubes(self) -> int:
@@ -122,7 +123,8 @@ def run_cell_order(ctl: LearnedCell, config: CellEvalConfig, index: int) -> Cell
             disturbance = _suite(config.disturbances)[index] if config.disturbances else None
             towers = ctl.run_mixed_order(order, rng, lateral=config.lateral, yaw=config.yaw,
                                          slots=config.slots, batch_choice=config.batch_choice,
-                                         disturbance=disturbance, log=log.append)
+                                         disturbance=disturbance, recover=config.recover,
+                                         log=log.append)
         else:
             towers = ctl.run_order(order, rng, lateral=config.lateral, yaw=config.yaw,
                                    log=log.append)

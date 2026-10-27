@@ -40,6 +40,7 @@ from polypanda.simulation.disturbances import Knock, apply_knock, knock_outcome
 from polypanda.simulation.panda import PandaIndices
 from polypanda.simulation.scenes import CubeIndices, cube_yaw
 from polypanda.simulation.workcell import Workcell, WorkOrder
+from polypanda.supervisor.observe import observe
 from polypanda.supervisor.planner import BUFFER, TOWER, GreedyPlanner
 
 CUBE_HEIGHT = 0.06
@@ -58,6 +59,9 @@ class CellControllerConfig:
 
 
 class ScriptedCell:
+    # loose cubes this controller can recover, by how they rest (supervisor.observe)
+    recoverable_poses: tuple[str, ...] = ("upright",)
+
     def __init__(self, cell: Workcell, config: CellControllerConfig | None = None,
                  on_step: Callable[[], None] | None = None) -> None:
         self.cell, self.config, self.on_step = cell, config or CellControllerConfig(), on_step
@@ -200,6 +204,11 @@ class ScriptedCell:
         q[0] += angle
         self.move_joints(q, rate=1.0)  # wrist back to the carry yaw
 
+    def pick_loose(self, cube: CubeIndices) -> None:
+        """Pick a cube lying loose on the table (after a knock), from the carry posture over it:
+        an upright cube as at any station."""
+        self.pick(cube)
+
     def place(self, cube: CubeIndices, xy, level: int) -> None:
         """From the carry posture over a station: lower the cube's centre onto (xy) at `level`,
         release, and rise back to the carry posture."""
@@ -283,7 +292,7 @@ class ScriptedCell:
 
     def run_mixed_order(self, order: WorkOrder, rng=None, lateral: float = 0.0,
                         yaw: float = 0.0, slots: int = 3, batch_choice: bool = False,
-                        disturbance=None,
+                        disturbance=None, recover: bool = False,
                         log: Callable[[str], None] | None = None) -> list[list[int]]:
         """Fulfil a Layer 2 work order (random arrival order, surplus cubes) with the greedy
         planner (supervisor.planner) and `slots` buffer slots; returns per tower the arrival
@@ -291,7 +300,9 @@ class ScriptedCell:
         the robot may take any cube on the belt (GreedyPlanner.choose), not only the one at the
         pick point; the others wait 12 and 24 cm upstream, within reach. A `disturbance`
         (simulation.disturbances.Disturbance) knocks a tower right after it reaches the given
-        height; its outcome is left in `self.disturbance_outcome`."""
+        height; its outcome is left in `self.disturbance_outcome`. With `recover` the controller
+        reads the cell after a knock and at the end (supervisor.observe), brings its plan in line
+        with the towers as they stand, and recovers loose cubes (`recover_loose`)."""
         cell, cfg = self.cell, self.cell.config
         cell.reset(order, rng, lateral=lateral, yaw=yaw)
         self.q_cmd, self.grip = self.home.copy(), GRIPPER_OPEN
@@ -299,11 +310,16 @@ class ScriptedCell:
         planner = GreedyPlanner(order.recipes, slots=slots)
         self.stats = {"buffered": 0, "from_buffer": 0, "rejected": 0, "needed_rejected": 0,
                       "taken_out_of_order": 0}
+        if recover:
+            self.stats.update(recovered=0, written_off=0)
         cell.conveyor.index()
         self.to_carry()
         towers: list[list[int]] = [[] for _ in order.recipes]
         parked: list[int | None] = [None] * slots   # arrival index per buffer slot
         self.disturbance_outcome = None
+
+        written_off: set[int] = set()
+        attempts: dict[int, int] = {}
 
         def stack(k: int, t: int) -> None:
             self.swing_to(np.radians(cfg.tower_angles[t]))
@@ -312,37 +328,12 @@ class ScriptedCell:
             if (disturbance is not None and self.disturbance_outcome is None
                     and t == disturbance.tower and len(towers[t]) == disturbance.height):
                 self.knock(towers[t], disturbance.knock, log)
+                if recover:
+                    recover_loose()
 
-        handled: set[int] = set()
-        for n in range(len(order.arrivals)):
-            self.swing_to(np.radians(cfg.infeed_angle))
-            for _ in range(int(self.config.belt_timeout / self.dt)):
-                if cell.conveyor.ready:
-                    break
-                self.step()
-            cube = cell.conveyor.lead()
-            k = n
-            if batch_choice:
-                if not cell.conveyor.ready:
-                    cube = None
-            if cube is not None and batch_choice:
-                belt = sorted((c for c in cell.cubes if cell.conveyor.on_belt(c)),
-                              key=cell.conveyor.upstream_distance)
-                j = planner.choose([cell.cube_colour(c) for c in belt])
-                cube, k = belt[j], cell.cubes.index(belt[j])
-                if j:
-                    self.stats["taken_out_of_order"] += 1
-                    if log:
-                        log(f"took the {cell.cube_colour(cube)} cube, number {j + 1} on the belt")
-                    self.swing_to(float(np.arctan2(*self.d.xpos[cube.body][1::-1])))
-            if cube is None or k in handled or (not batch_choice and cell.cubes.index(cube) != k):
-                if log:
-                    log(f"cube {n} ({order.arrivals[n][0]}) did not arrive")
-                break
-            handled.add(k)
-            colour = order.arrivals[k][0]
-            self.pick(cube)
-            cell.conveyor.index()  # the belt brings the next cube while the arm is away
+        def route(k: int) -> None:
+            """Send the cube in the hand (arrival k) to a tower, a buffer slot or the bin."""
+            cube, colour = cell.cubes[k], order.arrivals[k][0]
             kind, where = planner.decide(colour)
             if kind == TOWER:
                 if log:
@@ -373,20 +364,99 @@ class ScriptedCell:
                 self.reject(cube)
                 self.stats["rejected"] += 1
                 self.stats["needed_rejected"] = planner.needed_rejected
+
+        def recover_loose() -> None:
+            """Closed loop: read the cell, bring the plan in line with the towers as they stand,
+            and recover loose cubes one at a time (cubes a tower needs next first), routing each
+            like a new arrival. Cubes this controller cannot recover are written off."""
+            while True:
+                view = observe(cell)
+                for t, stack_now in enumerate(view.towers):
+                    if len(stack_now) < len(towers[t]):
+                        if log:
+                            log(f"tower {'ABC'[t]}: {len(towers[t]) - len(stack_now)} cubes "
+                                f"fell; {len(stack_now)} still stand")
+                        towers[t][:] = towers[t][:len(stack_now)]
+                        planner.placed[t] = len(stack_now)
+                usable = []
+                for k, state in view.loose.items():
+                    if k in written_off:
+                        continue
+                    if state["recoverable"] and state["pose"] in self.recoverable_poses \
+                            and attempts.get(k, 0) < 2:
+                        usable.append(k)
+                    else:
+                        written_off.add(k)
+                        self.stats["written_off"] += 1
+                        if log:
+                            log(f"{order.arrivals[k][0]} cube written off ({state['pose']}, "
+                                f"{'in reach' if state['reachable'] else 'out of reach'})")
+                if not usable:
+                    return
+                ready = [k for k in usable if any(planner.next_colour(t) == order.arrivals[k][0]
+                                                  for t in range(len(towers)))]
+                k = (ready or usable)[0]
+                attempts[k] = attempts.get(k, 0) + 1
+                p = self.d.xpos[cell.cubes[k].body]
+                if log:
+                    log(f"recovering the {order.arrivals[k][0]} cube")
+                self.swing_to(float(np.arctan2(p[1], p[0])))
+                self.pick_loose(cell.cubes[k])
+                if not cell.attached(cell.cubes[k]):
+                    self.grip = GRIPPER_OPEN  # (not held: let go, it is looked at again)
+                    self.step(self.config.grip_steps)
+                    self.to_carry()
+                    continue
+                self.stats["recovered"] += 1
+                route(k)
+
+        handled: set[int] = set()
+        for n in range(len(order.arrivals)):
+            self.swing_to(np.radians(cfg.infeed_angle))
+            for _ in range(int(self.config.belt_timeout / self.dt)):
+                if cell.conveyor.ready:
+                    break
+                self.step()
+            cube = cell.conveyor.lead()
+            k = n
+            if batch_choice:
+                if not cell.conveyor.ready:
+                    cube = None
+            if cube is not None and batch_choice:
+                belt = sorted((c for c in cell.cubes if cell.conveyor.on_belt(c)),
+                              key=cell.conveyor.upstream_distance)
+                j = planner.choose([cell.cube_colour(c) for c in belt])
+                cube, k = belt[j], cell.cubes.index(belt[j])
+                if j:
+                    self.stats["taken_out_of_order"] += 1
+                    if log:
+                        log(f"took the {cell.cube_colour(cube)} cube, number {j + 1} on the belt")
+                    self.swing_to(float(np.arctan2(*self.d.xpos[cube.body][1::-1])))
+            if cube is None or k in handled or (not batch_choice and cell.cubes.index(cube) != k):
+                if log:
+                    log(f"cube {n} ({order.arrivals[n][0]}) did not arrive")
+                break
+            handled.add(k)
+            self.pick(cube)
+            cell.conveyor.index()  # the belt brings the next cube while the arm is away
+            route(k)
+        if recover:
+            recover_loose()
         self.swing_to(0.0)
         self.move_joints(self.home)
         self.step(20)
         return towers
 
     def check(self, towers: list[list[int]]) -> list[bool]:
-        """Per tower: every cube upright, at its level, on the fixture, in recipe order."""
+        """Per tower: every cube upright (either way up: the cubes are symmetric, and a knocked
+        cube may be recovered upside down), at its level, on the fixture, in recipe order."""
         cell, ok = self.cell, []
         for t, recipe in enumerate(cell.order.recipes):
             good = len(towers[t]) == len(recipe)
             for level, k in enumerate(towers[t]):
                 cube = cell.cubes[k]
                 p = self.d.xpos[cube.body]
-                tilt = np.degrees(np.arccos(np.clip(self.d.xmat[cube.body][8], -1, 1)))
+                tilt = np.degrees(np.arccos(min(1.0, abs(self.d.xmat[cube.body][8]))))
                 good &= (tilt < 5 and abs(p[2] - CUBE_HEIGHT * (level + 0.5)) < 0.005
                          and np.linalg.norm(p[:2] - cell.tower_xy(t)) < 0.02
                          and cell.cube_colour(cube) == recipe[level])

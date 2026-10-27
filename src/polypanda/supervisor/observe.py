@@ -1,8 +1,9 @@
 """The work-order cell as it physically is (v3, closed loop): which cubes stand on each tower and in
 each buffer slot, and which have fallen loose, read from the simulation rather than from the plan.
 
-A cube stands on a tower at level k when it is upright (tilt under 5 deg), its centre is at that
-level's height (within 5 mm) and within 2 cm of the fixture, and every level below is occupied:
+A cube stands on a tower at level k when it is upright (tilt under 5 deg, either way up), its
+centre is at that level's height (within 5 mm) and within 2 cm of the fixture, and every level
+below is occupied:
 the same tolerances as the final tower check (ScriptedCell.check). A cube is in a buffer slot when
 it stands upright on the table within 2 cm of the slot. A cube is loose when it has arrived (been
 loaded onto the belt) but is on no tower or slot, not on the belt, not in the reject bin and not
@@ -30,7 +31,9 @@ class CellView:
 
 
 def _tilt(cell: Workcell, k: int) -> float:
-    return float(np.degrees(np.arccos(np.clip(cell.data.xmat[cell.cubes[k].body][8], -1, 1))))
+    """Tilt from vertical either way up: a cube standing upside down stands as well (the cubes
+    are symmetric; a knocked cube can land upside down and be recovered so)."""
+    return float(np.degrees(np.arccos(min(1.0, abs(cell.data.xmat[cell.cubes[k].body][8])))))
 
 
 def observe(cell: Workcell, held: int | None = None) -> CellView:
