@@ -324,7 +324,7 @@ def evaluate_grasp_policy(driver, eval_set: GraspEvalSet, config: GraspConfig | 
     results, latencies = [], []
     if eval_set.distractors is not None and env.distractor_slots < eval_set.distractors.shape[1]:
         raise ValueError(f"{type(env).__name__} has no room for the set's distractor cubes")
-    if eval_set.lying and not hasattr(env, "_lying"):
+    if eval_set.lying and not getattr(env, "lays_cubes_down", False):
         raise ValueError(f"{type(env).__name__} cannot lay cubes down (lying sets need v4)")
     for i, (placement, region) in enumerate(zip(eval_set.placements, eval_set.regions,
                                                 strict=True)):

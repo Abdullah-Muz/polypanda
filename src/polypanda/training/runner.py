@@ -86,12 +86,14 @@ def _warm_start(cfg: TrainConfig, model, env: VecNormalize) -> dict:
             or loaded.action_space.shape != model.action_space.shape):
         raise ValueError(f"{source}: observation/action sizes differ from this task's")
     model.policy.load_state_dict(loaded.policy.state_dict())
+    if cfg.init_log_std is not None:  # explore again: the source's action noise has shrunk
+        model.policy.log_std.data.fill_(cfg.init_log_std)
     with open(source / f"{which}_vecnormalize.pkl", "rb") as f:
         stats = pickle.load(f)
     env.obs_rms, env.ret_rms = stats.obs_rms, stats.ret_rms
     meta = yaml.safe_load((source / "metadata.yaml").read_text())
     return {"run": str(source), "checkpoint": which, "policy_id": meta["policy_id"],
-            "git": meta.get("git", {}).get("commit")}
+            "git": meta.get("git", {}).get("commit"), "log_std": cfg.init_log_std}
 
 
 def train(cfg: TrainConfig, env_config, run_dir: Path) -> Path:

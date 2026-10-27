@@ -79,6 +79,40 @@ def test_lying_eval_sets_round_trip_and_keep_old_digests(tmp_path):
     assert back.lying and back.digest == lying.digest and back.subset(5).lying
 
 
+CFG2 = GraspConfig.from_yaml(ROOT / "configs" / "grasp_anypose2_cartesian.yaml")
+
+
+def test_preclose_starts_hover_open_above_the_cube_in_training_only():
+    cfg = replace(CFG2, curriculum=replace(CFG2.curriculum, pregrasp_start_prob=0.0,
+                                           preclose_start_prob=1.0))
+    env = GraspV4Env(cfg)
+    starts = 0
+    for s in range(12):
+        _, info = env.reset(seed=s)
+        if info["start"] != "preclose":
+            continue                                  # (IK can fail: then a home start)
+        starts += 1
+        m = env._measure()
+        assert not env.closed and np.abs(m["rel"][:2]).max() < 0.012  # up to 1 cm in x and y
+        assert -0.055 < m["rel"][2] < -0.015          # hand 2-5 cm above the cube's centre
+        assert abs(m["align"]) < 0.45                 # within 25 deg (+ a little IK slack)
+    assert starts >= 9
+    ev = GraspV4Env(cfg.for_evaluation())
+    assert all(ev.reset(seed=s)[1]["start"] == "home" for s in range(8))
+
+
+def test_the_lying_height_window_reaches_lower():
+    env = GraspV4Env(CFG2.for_evaluation())
+    env.reset(seed=0, options={"cube": (0.5, 0.0, 0.0), "lying": True})
+    assert env._height_ok(0.013) and env._height_ok(-0.009) and not env._height_ok(-0.012)
+    assert not env._height_ok(0.016)
+    env.reset(seed=0, options={"cube": (0.5, 0.0, 0.0)})            # upright: symmetric
+    assert not env._height_ok(0.013) and env._height_ok(0.009)
+    round1 = GraspV4Env(CFG.for_evaluation())                        # no window: symmetric
+    round1.reset(seed=0, options={"cube": (0.5, 0.0, 0.0), "lying": True})
+    assert not round1._height_ok(0.013)
+
+
 def test_v2_is_unchanged_by_the_v4_hooks():
     """v2 placements stand upright and v2 never lays a cube down (resting is v4 only)."""
     cfg = replace(CFG, resting=replace(CFG.resting, lying_prob=1.0))

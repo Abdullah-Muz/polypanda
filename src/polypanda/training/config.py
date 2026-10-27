@@ -56,6 +56,9 @@ class TrainConfig:
     # normalization ("{seed}" is replaced by this run's seed), e.g. runs/grasp_cart_seed{seed}.
     init_from: str | None = None
     init_checkpoint: str = "best"    # "best" or "final"
+    # Warm start: reset the policy's action noise (log std, every action) to this value. A
+    # trained policy's noise is small (std 0.1-0.5), too small to explore a new behaviour.
+    init_log_std: float | None = None
     ppo: PPOParams = field(default_factory=PPOParams)
     sac: SACParams = field(default_factory=SACParams)
 

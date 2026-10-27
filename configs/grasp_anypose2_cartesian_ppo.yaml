@@ -1,0 +1,35 @@
+# v3 step d1, round 2: PPO on configs/grasp_anypose2_cartesian.yaml, warm-started from the
+# hand-motion grasp of the same seed (grasp_cart). Round 1's action noise shrank from std 0.17-0.52
+# (grasp_cart) to 0.12-0.41 while it failed to learn lying cubes: here the noise is reset to
+# std 0.61 (log std -0.5) at the start and the entropy bonus doubled. 2M steps (round 1: 1.5M).
+
+algorithm: ppo
+task: grasp_v4
+env_config: configs/grasp_anypose2_cartesian.yaml
+seed: 0
+n_envs: 8
+vec_env: subproc
+total_timesteps: 2000000
+normalize_obs: true
+normalize_reward: true
+eval_freq: 100000
+eval_episodes: 100
+eval_seed: 100000
+checkpoint_freq: 250000
+torch_threads: 1
+init_from: runs/grasp_cart_seed{seed}
+init_checkpoint: best
+init_log_std: -0.5
+
+ppo:
+  learning_rate: 0.0003
+  n_steps: 512
+  batch_size: 256
+  n_epochs: 10
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_range: 0.2
+  ent_coef: 0.01
+  vf_coef: 0.5
+  max_grad_norm: 0.5
+  net_arch: [128, 128]

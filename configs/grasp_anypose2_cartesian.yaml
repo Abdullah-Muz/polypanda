@@ -1,0 +1,74 @@
+# v3 step d1, round 2: the any-pose grasp (GraspV4Env). Round 1 (configs/grasp_anypose_cartesian.yaml)
+# reached 17 % on held-out lying cubes and lost upright skill (57 % against 73 % on the wide set):
+# the warm-started policy found the lying cube but rarely turned the wrist to the new grip
+# direction (typically 9-30 deg off) or stopped at its lower height (often just over 1 cm too
+# low), and its action noise kept shrinking, so it explored ever less. Changes (set before any
+# round-2 training): open-hand "pre-close" training starts (curriculum), and a height window
+# for lying cubes reaching 1.5 cm below the centre (the table stops the hand lower). The PPO
+# config resets the action noise at the warm start. Otherwise round 1's task.
+
+action:
+  max_delta: 0.015
+  n_substeps: 25
+  max_lead: null
+  space: cartesian
+  cartesian:
+    dof: 4
+    max_step: 0.01
+    max_rot: 0.05
+    max_tilt: 0.6
+    max_lead: 0.03
+    box_low: [0.15, -0.5, 0.01]
+    box_high: [0.85, 0.5, 0.6]
+    ik_iters: 2
+    posture_gain: 0.02
+
+placement:
+  x_range: [0.30, 0.78]
+  y_range: [-0.20, 0.20]
+
+resting:
+  lying_prob: 0.6
+  max_lying_turn: 0.52
+  lying_gate_z_below: 0.015   # round 2: the hand may be up to 1.5 cm below a lying cube's centre
+
+gate:
+  xy_tol: 0.01
+  z_tol: 0.01
+  align_tol: 0.15
+  tilt_tol: 0.15
+  dwell_steps: 2
+  reopen_gap: 0.02
+  reopen_steps: 10
+
+episode:
+  horizon: 300
+  max_cube_tilt: 1.047
+
+success:
+  lift: 0.05
+
+reward:
+  approach: 20.0
+  align: 1.0
+  lift: 20.0
+  lift_cap: 0.10
+  hold: 0.5
+  action: 0.005
+  gripper_tilt: 0.1
+  floor: 0.1
+  knocked_over: 5.0
+
+curriculum:               # training only; validation and evaluation start every episode from home
+  pregrasp_start_prob: 0.3
+  preclose_start_prob: 0.2  # round 2: of the remaining home starts
+
+randomization:
+  mass_scale: [0.7, 1.4]
+  friction_scale: [0.7, 1.3]
+
+check:
+  min_lift: 0.02
+  window: 5
+  max_slip: 0.002
+  max_slip_rot: 0.05

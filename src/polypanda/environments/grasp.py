@@ -106,6 +106,11 @@ class CurriculumConfig:
     # experiences lift and hold rewards it would otherwise rarely discover. Never applied to
     # resets with an explicit placement (evaluation) or to validation (for_evaluation()).
     pregrasp_start_prob: float = 0.0
+    # v4 (GraspV4Env) only, training only: this fraction of randomly placed episodes starting
+    # from home instead start with the open hand hovering 2-5 cm above the cube, up to 1 cm off
+    # its centre in x and y and 25 deg off the grip direction, so the policy often meets the
+    # last steps (turn, descend, close) it otherwise rarely reaches for a lying cube.
+    preclose_start_prob: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -138,6 +143,10 @@ class RestingConfig:
     lying_prob: float = 0.0
     max_lying_turn: float = 0.52  # rad: a lying cube whose long axis tilts further out of
     #                               horizontal is knocked
+    # The gate's height window for a lying cube: the hand may be this far below the cube's
+    # centre (the table stops it lower; 4 cm tall, the cube is gripped fine 1.5 cm low) and
+    # gate.z_tol above. The default is symmetric, as for an upright cube.
+    lying_gate_z_below: float | None = None
 
 
 @dataclass(frozen=True)
@@ -293,6 +302,10 @@ class GraspEnv(gym.Env):
         """Whether the cube has been knocked over (the episode then ends)."""
         return m["cube_tilt"] > self.config.episode.max_cube_tilt
 
+    def _height_ok(self, rel_z: float) -> bool:
+        """The gate's height condition (rel_z: cube centre minus TCP)."""
+        return abs(rel_z) < self.config.gate.z_tol
+
     def _continue(self):
         """Begin an episode from the current physics state: the arm keeps its commands (no
         jump), the fingers open, the cube stays where it is."""
@@ -337,7 +350,7 @@ class GraspEnv(gym.Env):
     def _update_gate(self, m: dict) -> None:
         g = self.config.gate
         if not self.closed:
-            ready = (np.hypot(*m["rel"][:2]) < g.xy_tol and abs(m["rel"][2]) < g.z_tol
+            ready = (np.hypot(*m["rel"][:2]) < g.xy_tol and self._height_ok(m["rel"][2])
                      and abs(m["align"]) < g.align_tol and m["tilt"] < g.tilt_tol)
             self._dwell = self._dwell + 1 if ready else 0
             if self._dwell >= g.dwell_steps:
@@ -607,12 +620,56 @@ class GraspV4Env(GraspV2Env):
     can start from a v2 policy's weights.
     """
 
+    lays_cubes_down = True  # (explicit placements accept options["lying"])
+
     def reset(self, *, seed: int | None = None, options: dict | None = None):
         self._lying, self._lying_target = False, None
         self._rest_z = self.cube.half_size[2]
         obs, info = super().reset(seed=seed, options=options)
+        options = options or {}
+        p = self.config.curriculum.preclose_start_prob
+        if (p > 0 and "cube" not in options and not options.get("continue")
+                and info["start"] == "home" and self.np_random.uniform() < p
+                and self._preclose_start()):
+            info["start"] = "preclose"
+            m = self._measure()
+            self._prev = {"distance": m["distance"], "align": abs(m["align"]),
+                          "lift": min(m["lift"], self.config.reward.lift_cap)}
+            info["distance"] = m["distance"]
+            obs = self._observation(m)
         info["lying"] = self._lying
         return obs, info
+
+    def _preclose_start(self) -> bool:
+        """Training curriculum: the open hand hovering 2-5 cm above the cube, up to 1 cm off its
+        centre in x and in y and 25 deg off the grip direction. Returns False (home start) if
+        IK fails."""
+        if self._ik is None:
+            self._ik = PoseIK()
+        m = self._measure()
+        rng = self.np_random
+        yaw = closing_yaw(self._tcp_R()) + m["align"] + rng.uniform(-0.44, 0.44)
+        target = cube_position(self.data, self.cube) + [rng.uniform(-0.01, 0.01),
+                                                         rng.uniform(-0.01, 0.01),
+                                                         rng.uniform(0.02, 0.05)]
+        q, ok = self._ik.solve(self.data.qpos[self.arm.arm_qpos], target, top_down_quat(yaw))
+        if not ok:
+            return False
+        self.data.qpos[self.arm.arm_qpos] = q
+        self.data.qvel[:] = 0.0
+        mujoco.mj_forward(self.model, self.data)
+        self.adapter.reset_to_measured(self.data)
+        self.data.ctrl[self.arm.gripper_actuator] = GRIPPER_OPEN
+        self.monitor.reset()
+        self._state = self.monitor.update(self.data)
+        self._target_yaw = self._lying_target = None   # (committed again from here)
+        return True
+
+    def _height_ok(self, rel_z: float) -> bool:
+        below = self.config.resting.lying_gate_z_below
+        if not self._lying or below is None:
+            return super()._height_ok(rel_z)
+        return -self.config.gate.z_tol < rel_z < below
 
     def _place_cube(self, x: float, y: float, yaw: float, options: dict) -> None:
         if "cube" in options:
