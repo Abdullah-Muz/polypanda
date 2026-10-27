@@ -28,7 +28,13 @@ from polypanda.environments.handoff import HandoffPool, restore_state
 from polypanda.environments.reach import ActionConfig
 from polypanda.environments.transport import REPO_ROOT
 from polypanda.simulation.panda import PandaIndices, tcp_position
-from polypanda.simulation.scenes import CubeIndices, cube_position, cube_tilt, load_pick_scene
+from polypanda.simulation.scenes import (
+    CubeIndices,
+    cube_position,
+    cube_tilt,
+    cube_up,
+    load_pick_scene,
+)
 
 # v2 (Milestone 8, before any place policy was trained): adds the cube's up axis, so a learned
 # policy can tell which way the cube leans in the grip (the scripted place uses its orientation).
@@ -368,7 +374,7 @@ class PlaceEnv(gym.Env):
             [sum(self.data.qpos[adr] for adr in self._finger_qpos), float(self.released)],
             cube - tcp,
             [cube[2] - self.cube.half_size[2], cube_tilt(self.data, self.cube)],
-            self.data.xmat[self.cube.body].reshape(3, 3)[:, 2],
+            cube_up(self.data, self.cube),
             [float(self._contacts[0]), float(self._contacts[1])],
             self.target,
             self.target - cube,

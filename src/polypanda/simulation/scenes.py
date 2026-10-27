@@ -111,5 +111,13 @@ def cube_yaw(data: mujoco.MjData, cube: CubeIndices) -> float:
 
 
 def cube_tilt(data: mujoco.MjData, cube: CubeIndices) -> float:
-    """Angle (rad) between the cube's z axis and world z; 0 when upright."""
-    return float(np.arccos(np.clip(data.xmat[cube.body].reshape(3, 3)[2, 2], -1.0, 1.0)))
+    """Angle (rad) between the cube's z axis and vertical, either way up: 0 when upright or
+    upside down (the cubes are symmetric; a knocked cube can land upside down), pi/2 when lying
+    on a side. Up to v2 no cube was ever tilted beyond 90 deg, where both readings agree."""
+    return float(np.arccos(min(1.0, abs(data.xmat[cube.body].reshape(3, 3)[2, 2]))))
+
+
+def cube_up(data: mujoco.MjData, cube: CubeIndices) -> np.ndarray:
+    """The cube's z axis, turned to point upward (see cube_tilt)."""
+    up = data.xmat[cube.body].reshape(3, 3)[:, 2].copy()
+    return up if up[2] >= 0 else -up
