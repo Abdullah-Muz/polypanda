@@ -1,0 +1,52 @@
+{
+  "seed": 1,
+  "knocks_per_push": 60,
+  "outcomes": {
+    "shove_top -> D1": 48,
+    "shove_top -> D2": 9,
+    "shove_top -> D3": 3,
+    "shove_middle -> D2": 18,
+    "shove_middle -> D3": 27,
+    "shove_middle -> nothing fell": 15,
+    "push_top -> D1": 24,
+    "push_top -> D2": 25,
+    "push_top -> D3": 11
+  },
+  "kinds": {
+    "D1": {
+      "knocks": 72,
+      "recoverable": 0.6805555555555556,
+      "touching": 0.0,
+      "fallen_cubes": 72,
+      "reachable_cubes": 0.6805555555555556,
+      "poses": {
+        "lying": 55,
+        "upright": 17
+      }
+    },
+    "D2": {
+      "knocks": 52,
+      "recoverable": 0.7307692307692307,
+      "touching": 0.11538461538461539,
+      "fallen_cubes": 116,
+      "reachable_cubes": 0.9224137931034483,
+      "poses": {
+        "upright": 11,
+        "lying": 100,
+        "leaning": 5
+      }
+    },
+    "D3": {
+      "knocks": 41,
+      "recoverable": 0.6341463414634146,
+      "touching": 0.3902439024390244,
+      "fallen_cubes": 124,
+      "reachable_cubes": 0.9596774193548387,
+      "poses": {
+        "lying": 113,
+        "leaning": 10,
+        "upright": 1
+      }
+    }
+  }
+}
