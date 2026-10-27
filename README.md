@@ -6,7 +6,7 @@ Autonomous pick-and-place with a simulated Franka Panda: reinforcement-learned a
 
 *From the home pose, the robot grasps a cube with a learned PPO policy, carries it, and stands it upright on the green target. Each stage is chosen by the supervisor and verified before the next starts (`scripts/record_demo.py`; [full video](https://github.com/Abdullah-Muz/polypanda/releases)).*
 
-> **Status:** Milestones 1–8 complete (results below are from v1.0, Milestones 1–6). Milestone 9, a work-order cell, is in progress. Simulation only: nothing here has been run on a real robot.
+> **Status:** Milestones 1–8 complete (results below are from v1.0, Milestones 1–6). Milestone 9, a work-order cell, is in progress (Layers 1 and 2 done). Simulation only: nothing here has been run on a real robot.
 
 ## What it does
 
@@ -133,7 +133,7 @@ Every result file in [`results/`](results/) records the git commit (and whether 
 | [robustness.md](docs/robustness.md) | perturbation suite |
 | [evaluation_protocol.md](docs/evaluation_protocol.md), [results.md](docs/results.md) | protocol and every result table |
 | [model_cards.md](docs/model_cards.md) | the published policies, their scope and limitations |
-| [workcell.md](docs/workcell.md) | the Milestone 9 work-order cell, grasp assist, station frames (in progress) |
+| [workcell.md](docs/workcell.md) | the Milestone 9 work-order cell: grasp assist, station frames, buffer and planner, stacking place v1–v3 and a root-cause analysis (in progress) |
 
 ## Limitations
 
@@ -155,7 +155,7 @@ Every result file in [`results/`](results/) records the git commit (and whether 
 | 6 | Robustness, grasp v2, ablations, model release, demo video | Done ([robustness](docs/robustness.md), [ablations](docs/pick_and_place.md#ablations-milestone-63-what-each-supervisor-design-choice-is-worth), [models](docs/model_cards.md)) |
 | 7 | Generalizing the learned grasp to the whole table | Done, target not met ([generalization](docs/generalization.md)) |
 | 8 | Hand-motion actions; learned transport and place; fully learned chain | Done ([cartesian actions](docs/cartesian_actions.md)) |
-| 9 | Work-order cell: infeed conveyor, three recipe towers, learned skills at every station | In progress ([workcell](docs/workcell.md)) |
+| 9 | Work-order cell: infeed conveyor, three recipe towers, learned skills at every station; random arrivals with a buffer and planner | In progress: Layers 1–2 done; learned grasp and place complete 99.8 % and 99.2 % of held-out orders ([workcell](docs/workcell.md)) |
 
 ## Acknowledgements and references
 

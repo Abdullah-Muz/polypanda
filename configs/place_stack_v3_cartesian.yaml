@@ -1,10 +1,11 @@
-# Milestone 9: the learned stacking place, v3. v2 (a penalty for nudging the tower) made the
-# policies gentler but less precise: cubes landed 9-13 mm off centre, each aimed at the fixture
-# rather than the cube below, and the errors added up into overhangs. v3 rewards precision as
-# well as gentleness: it aims at the top tower cube, doubles the placed reward within 1 cm, and
-# keeps a softer nudge penalty. Three earlier v3 attempts did not learn (about 0 % validation
-# after 0.3-0.5M steps): a 1 cm release gate, a 1 cm placed check, and an unbounded centring
-# cost after release (see gate, check, reward.centring).
+# Milestone 9: the learned stacking place, v3. v2 (a penalty for nudging the tower) did not make
+# the policies clearly gentler, and in the cell some set the first cube 9-16 mm off the fixture,
+# leaving overhangs that crept until towers fell. v3 rewards precision as well as gentleness: it
+# aims at the top tower cube, doubles the placed reward within 1 cm, and keeps a softer nudge
+# penalty. Three earlier v3 attempts did not learn (about 0 % validation after 0.3-0.5M steps).
+# All three had an unbounded centring cost after release; they also tried a 1 cm release gate
+# and a 1 cm placed check in turn (see gate, check, reward.centring). In the cell this policy
+# is aimed at the fixture, not the top cube (supervisor.cell.LearnedCell._aim, docs/workcell.md).
 # Keys map to polypanda.environments.place.PlaceConfig.
 
 action:

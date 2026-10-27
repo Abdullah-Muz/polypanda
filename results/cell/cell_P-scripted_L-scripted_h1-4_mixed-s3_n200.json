@@ -1,0 +1,116 @@
+{
+  "name": "cell_P-scripted_L-scripted_h1-4_mixed-s3_n200",
+  "skills": {
+    "pick": "scripted pick",
+    "pick_provenance": {},
+    "place": "scripted place",
+    "place_provenance": {},
+    "moves": "scripted (base-only swings in the carry posture)"
+  },
+  "eval": {
+    "n": 200,
+    "seed": 20261026,
+    "heights": [
+      1,
+      4
+    ],
+    "lateral": 0.015,
+    "yaw": 0.2617993877991494,
+    "mixed": true,
+    "surplus": [
+      0,
+      2
+    ],
+    "solvable_with": 3,
+    "slots": 3
+  },
+  "cell": {
+    "radius": 0.5,
+    "infeed_angle": 90.0,
+    "tower_angles": [
+      -40.0,
+      -90.0,
+      -140.0
+    ],
+    "reject_angle": 150.0,
+    "buffer_angles": [
+      -10.0,
+      10.0,
+      30.0
+    ],
+    "n_cubes": 12,
+    "max_height": 6,
+    "batch": 3,
+    "cube_spacing": 0.12,
+    "first_cube": 0.5,
+    "belt_width": 0.12,
+    "belt_lift": 0.002,
+    "belt_speed": 0.15,
+    "rewind_speed": 0.4,
+    "belt_accel_gain": 3.0,
+    "belt_kv": 400.0,
+    "sign_radius": 0.82,
+    "bin_size": 0.18,
+    "bin_height": 0.08,
+    "dressing": true,
+    "finger_stiffness": 1000.0,
+    "torsional_friction": true,
+    "grasp_assist": true
+  },
+  "created_utc": "2026-10-26T19:39:16+00:00",
+  "git": {
+    "commit": "ce3be27088279292f4686ef58e430ea635c2dfa9",
+    "dirty": false
+  },
+  "versions": {
+    "python": "3.12.3",
+    "mujoco": "3.16.0",
+    "numpy": "2.5.4",
+    "torch": "2.14.1+cpu"
+  },
+  "summary": {
+    "orders": 200,
+    "success_rate": 1.0,
+    "success_ci95": [
+      0.9811539940816791,
+      1.0
+    ],
+    "towers": 600,
+    "tower_success_rate": 1.0,
+    "tower_success_by_height": {
+      "1": {
+        "towers": 148,
+        "success_rate": 1.0
+      },
+      "2": {
+        "towers": 147,
+        "success_rate": 1.0
+      },
+      "3": {
+        "towers": 147,
+        "success_rate": 1.0
+      },
+      "4": {
+        "towers": 158,
+        "success_rate": 1.0
+      }
+    },
+    "cubes": 1734,
+    "failures": {},
+    "learned_pick": null,
+    "learned_place": null,
+    "ik_failures": 0,
+    "sim_s_per_cube": 21.91150519031142,
+    "sim_s_per_order": {
+      "median": 190.35000000000002,
+      "p90": 244.26
+    },
+    "buffer": {
+      "cubes_buffered": 276,
+      "orders_using_buffer": 147,
+      "rejected": 219,
+      "needed_rejected": 0
+    },
+    "wall_clock_s": 6649.3
+  }
+}
