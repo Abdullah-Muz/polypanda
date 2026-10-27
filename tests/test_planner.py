@@ -10,6 +10,7 @@ from polypanda.supervisor.planner import (
     TOWER,
     GreedyPlanner,
     mixed_order,
+    simulate_routing,
     slots_needed,
 )
 
@@ -47,6 +48,33 @@ def test_full_buffer_rejects_a_needed_cube():
 def test_prefers_the_tower_with_more_to_build():
     p = GreedyPlanner((("red",), ("red", "green", "blue"), ("yellow",)), slots=3)
     assert p.decide("red") == (TOWER, 1)
+
+
+def test_batch_choice_takes_a_cube_a_tower_needs_next():
+    p = GreedyPlanner(RECIPES, slots=3)
+    assert p.choose(["green", "yellow", "red"]) == 1  # tower C needs yellow now
+    assert p.choose(["green", "green"]) == 0          # none needed now: the front cube
+    p.decide("yellow")
+    assert p.choose(["green", "red"]) == 1
+
+
+def test_symbolic_routing_on_the_layer2_evaluation_orders():
+    """The routing the cell gives the 200 Layer 2 evaluation orders (docs/v3_targets.md): the
+    physics cell with scripted skills completed 64, 144 and 200 of them front cube first."""
+    from polypanda.evaluation.cell import CellEvalConfig
+    cfg = CellEvalConfig(mixed=True)
+    orders = []
+    for i in range(cfg.n):
+        order, _ = mixed_order(np.random.default_rng([cfg.seed, i]), cfg.heights, cfg.surplus,
+                               cfg.solvable_with)
+        orders.append((order.recipes, [c for c, _ in order.arrivals]))
+
+    def completed(slots, batch_choice):
+        return sum(simulate_routing(r, c, slots, batch_choice=batch_choice)["complete"]
+                   for r, c in orders)
+
+    assert [completed(s, False) for s in (0, 1, 3)] == [64, 144, 200]
+    assert [completed(s, True) for s in (0, 1, 3)] == [106, 170, 200]
 
 
 def test_enough_slots_guarantee_completion():

@@ -260,8 +260,32 @@ def test_scripted_cell_routes_cubes_through_the_buffer_and_the_reject_bin():
     towers = ctl.run_mixed_order(order, np.random.default_rng(0), lateral=0.015,
                                  yaw=np.radians(15), log=log.append)
     assert towers == [[2, 0], [3], [1]] and ctl.check(towers) == [True, True, True]
-    assert ctl.stats == {"buffered": 1, "from_buffer": 1, "rejected": 1, "needed_rejected": 0}
+    assert ctl.stats == {"buffered": 1, "from_buffer": 1, "rejected": 1, "needed_rejected": 0,
+                         "taken_out_of_order": 0}
     assert any("buffer slot 1" in line for line in log)
     surplus = cell.data.xpos[cell.cubes[4].body]
     assert np.abs(surplus[:2] - cell.reject_xy).max() < cell.config.bin_size / 2  # in the bin
+    assert ctl.ik_failures == 0
+
+
+def test_batch_choice_takes_cubes_out_of_belt_order_as_the_symbolic_plan_does():
+    from polypanda.supervisor.planner import simulate_routing
+    cell = Workcell.build()
+    ctl = ScriptedCell(cell)
+    # the same order: with batch choice the yellow and the red are taken before the green, so
+    # the green goes straight onto its tower and nothing is parked
+    recipes = (("red", "green"), ("blue",), ("yellow",))
+    colours = ("green", "yellow", "red", "blue", "red")
+    order = WorkOrder(recipes, tuple((c, None) for c in colours))
+    log = []
+    towers = ctl.run_mixed_order(order, np.random.default_rng(0), lateral=0.015,
+                                 yaw=np.radians(15), batch_choice=True, log=log.append)
+    assert towers == [[2, 0], [3], [1]] and ctl.check(towers) == [True, True, True]
+    plan = simulate_routing(recipes, colours, slots=3, batch_choice=True)
+    assert plan["complete"] and ctl.stats == {
+        "buffered": plan["buffered"], "from_buffer": 0, "rejected": plan["rejected"],
+        "needed_rejected": plan["needed_rejected"],
+        "taken_out_of_order": plan["taken_out_of_order"]}
+    assert ctl.stats["buffered"] == 0 and ctl.stats["taken_out_of_order"] == 2
+    assert any("number 2 on the belt" in line for line in log)
     assert ctl.ik_failures == 0

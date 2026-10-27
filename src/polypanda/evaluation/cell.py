@@ -43,6 +43,7 @@ class CellEvalConfig:
     solvable_with: int = 3          # orders are generated solvable with this many buffer slots
     slots: int = 3                  # buffer slots the controller may use (ablation: 0, 1, 3)
     aim: str = "fixture"            # learned place target: the fixture, or as trained (v3: top)
+    batch_choice: bool = False      # v3: take any cube on the belt, not only the front one
 
     @property
     def n_cubes(self) -> int:
@@ -104,7 +105,8 @@ def run_cell_order(ctl: LearnedCell, config: CellEvalConfig, index: int) -> Cell
     try:
         if config.mixed:
             towers = ctl.run_mixed_order(order, rng, lateral=config.lateral, yaw=config.yaw,
-                                         slots=config.slots, log=log.append)
+                                         slots=config.slots, batch_choice=config.batch_choice,
+                                         log=log.append)
         else:
             towers = ctl.run_order(order, rng, lateral=config.lateral, yaw=config.yaw,
                                    log=log.append)

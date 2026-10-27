@@ -46,6 +46,8 @@ def main() -> None:
                         help="Layer 2: random arrival order with surplus cubes; the planner "
                              "routes each cube to a tower, a buffer slot or the reject bin")
     parser.add_argument("--slots", type=int, default=3, help="with --mixed: buffer slots")
+    parser.add_argument("--batch-choice", action="store_true",
+                        help="with --mixed: take any cube on the belt, not only the front one")
     parser.add_argument("--pick", default="scripted", help="'scripted' or run:<grasp run dir>")
     parser.add_argument("--place", default="scripted", help="'scripted' or run:<place run dir>")
     parser.add_argument("--aim", choices=("fixture", "trained"), default="fixture",
@@ -100,6 +102,7 @@ def main() -> None:
                           "yaw": np.radians(15) if args.jitter else 0.0}
                 if args.mixed:
                     towers = controller.run_mixed_order(order, rng, slots=args.slots,
+                                                        batch_choice=args.batch_choice,
                                                         log=lambda s: print("  " + s), **jitter)
                 else:
                     towers = controller.run_order(order, rng, log=lambda s: print("  " + s),

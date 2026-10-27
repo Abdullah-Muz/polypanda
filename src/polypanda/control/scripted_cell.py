@@ -264,17 +264,20 @@ class ScriptedCell:
         return towers
 
     def run_mixed_order(self, order: WorkOrder, rng=None, lateral: float = 0.0,
-                        yaw: float = 0.0, slots: int = 3,
+                        yaw: float = 0.0, slots: int = 3, batch_choice: bool = False,
                         log: Callable[[str], None] | None = None) -> list[list[int]]:
         """Fulfil a Layer 2 work order (random arrival order, surplus cubes) with the greedy
         planner (supervisor.planner) and `slots` buffer slots; returns per tower the arrival
-        indices of the cubes placed on it. Counts are left in `self.stats`."""
+        indices of the cubes placed on it. Counts are left in `self.stats`. With `batch_choice`
+        the robot may take any cube on the belt (GreedyPlanner.choose), not only the one at the
+        pick point; the others wait 12 and 24 cm upstream, within reach."""
         cell, cfg = self.cell, self.cell.config
         cell.reset(order, rng, lateral=lateral, yaw=yaw)
         self.q_cmd, self.grip = self.home.copy(), GRIPPER_OPEN
         self.ik_failures = 0
         planner = GreedyPlanner(order.recipes, slots=slots)
-        self.stats = {"buffered": 0, "from_buffer": 0, "rejected": 0, "needed_rejected": 0}
+        self.stats = {"buffered": 0, "from_buffer": 0, "rejected": 0, "needed_rejected": 0,
+                      "taken_out_of_order": 0}
         cell.conveyor.index()
         self.to_carry()
         towers: list[list[int]] = [[] for _ in order.recipes]
@@ -285,17 +288,34 @@ class ScriptedCell:
             self.place(cell.cubes[k], cell.tower_xy(t), len(towers[t]))
             towers[t].append(k)
 
-        for k, (colour, _) in enumerate(order.arrivals):
+        handled: set[int] = set()
+        for n in range(len(order.arrivals)):
             self.swing_to(np.radians(cfg.infeed_angle))
             for _ in range(int(self.config.belt_timeout / self.dt)):
                 if cell.conveyor.ready:
                     break
                 self.step()
             cube = cell.conveyor.lead()
-            if cube is None or cell.cubes.index(cube) != k:
+            k = n
+            if batch_choice:
+                if not cell.conveyor.ready:
+                    cube = None
+            if cube is not None and batch_choice:
+                belt = sorted((c for c in cell.cubes if cell.conveyor.on_belt(c)),
+                              key=cell.conveyor.upstream_distance)
+                j = planner.choose([cell.cube_colour(c) for c in belt])
+                cube, k = belt[j], cell.cubes.index(belt[j])
+                if j:
+                    self.stats["taken_out_of_order"] += 1
+                    if log:
+                        log(f"took the {cell.cube_colour(cube)} cube, number {j + 1} on the belt")
+                    self.swing_to(float(np.arctan2(*self.d.xpos[cube.body][1::-1])))
+            if cube is None or k in handled or (not batch_choice and cell.cubes.index(cube) != k):
                 if log:
-                    log(f"cube {k} ({colour}) did not arrive")
+                    log(f"cube {n} ({order.arrivals[n][0]}) did not arrive")
                 break
+            handled.add(k)
+            colour = order.arrivals[k][0]
             self.pick(cube)
             cell.conveyor.index()  # the belt brings the next cube while the arm is away
             kind, where = planner.decide(colour)
