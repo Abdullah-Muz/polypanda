@@ -48,6 +48,8 @@ def main() -> None:
     parser.add_argument("--slots", type=int, default=3, help="with --mixed: buffer slots")
     parser.add_argument("--pick", default="scripted", help="'scripted' or run:<grasp run dir>")
     parser.add_argument("--place", default="scripted", help="'scripted' or run:<place run dir>")
+    parser.add_argument("--aim", choices=("config", "fixture"), default="config",
+                        help="learned place target: as trained, or always the fixture centre")
     args = parser.parse_args()
     pick, pick_desc, *_ = skill_from_spec(args.pick, "pick")
     place, place_desc, *_ = skill_from_spec(args.place, "place")
@@ -76,7 +78,7 @@ def main() -> None:
             clock["t"] += dt / args.speed
             time.sleep(max(0.0, clock["t"] - time.perf_counter()))
 
-        controller = LearnedCell(cell, grasp=pick, place=place, on_step=show)
+        controller = LearnedCell(cell, grasp=pick, place=place, on_step=show, aim=args.aim)
         try:
             n = 1
             while True:

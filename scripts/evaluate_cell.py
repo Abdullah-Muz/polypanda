@@ -6,6 +6,7 @@ Usage:
   ... --place run:runs/<run_dir>                                          # learned place
   ... --heights 5 6                                                       # stress test
   ... --mixed [--slots 3]               # Layer 2: random arrivals, surplus, buffer and planner
+  ... --aim fixture                     # learned place always aims at the fixture centre
   ... --compare results/cell/<other>_episodes.csv                         # paired McNemar test
 The moves between stations are scripted in every configuration; --pick and --place choose a
 scripted or learned skill (the learned ones run through station frames). Writes
@@ -48,6 +49,8 @@ def main() -> None:
                         help="Layer 2: random arrival order, surplus cubes, buffer and planner")
     parser.add_argument("--slots", type=int, default=CellEvalConfig.slots,
                         help="with --mixed: buffer slots the controller may use")
+    parser.add_argument("--aim", choices=("config", "fixture"), default=CellEvalConfig.aim,
+                        help="learned place target: as trained, or always the fixture centre")
     parser.add_argument("--compare", type=Path, help="episodes CSV of another configuration")
     parser.add_argument("--out-dir", type=Path, default=Path("results/cell"))
     parser.add_argument("--quiet", action="store_true")
@@ -56,12 +59,13 @@ def main() -> None:
 
     git = git_state()  # recorded before evaluating, so later commits cannot mislabel the run
     config = CellEvalConfig(n=args.n, seed=args.seed, heights=tuple(args.heights),
-                            mixed=args.mixed, slots=args.slots)
+                            mixed=args.mixed, slots=args.slots, aim=args.aim)
     pick, pick_desc, pick_tag, pick_prov = skill_from_spec(args.pick, "pick")
     place, place_desc, place_tag, place_prov = skill_from_spec(args.place, "place")
     lo_h, hi_h = config.heights
     layer = f"_mixed-s{config.slots}" if config.mixed else ""
-    name = f"cell_P-{pick_tag}_L-{place_tag}_h{lo_h}-{hi_h}{layer}_n{config.n}"
+    aim = "_aim-fixture" if config.aim == "fixture" else ""
+    name = f"cell_P-{pick_tag}_L-{place_tag}{aim}_h{lo_h}-{hi_h}{layer}_n{config.n}"
 
     def progress(e: CellEpisode):
         if not args.quiet:

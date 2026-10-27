@@ -42,6 +42,7 @@ class CellEvalConfig:
     surplus: tuple[int, int] = (0, 2)
     solvable_with: int = 3          # orders are generated solvable with this many buffer slots
     slots: int = 3                  # buffer slots the controller may use (ablation: 0, 1, 3)
+    aim: str = "config"             # learned place target: as trained, or always the fixture
 
     @property
     def n_cubes(self) -> int:
@@ -183,7 +184,7 @@ def evaluate_cell(grasp: LearnedSkill | None, place: LearnedSkill | None,
                   ) -> tuple[dict, list[CellEpisode]]:
     config = config or CellEvalConfig()
     cell = Workcell.build(WorkcellConfig(n_cubes=config.n_cubes))
-    ctl = LearnedCell(cell, grasp=grasp, place=place)
+    ctl = LearnedCell(cell, grasp=grasp, place=place, aim=config.aim)
     start, episodes = time.time(), []
     for i in range(config.n):
         episodes.append(run_cell_order(ctl, config, i))

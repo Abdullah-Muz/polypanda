@@ -52,6 +52,10 @@ def test_a_place_trained_to_aim_at_the_stack_aims_at_its_top_cube():
     np.testing.assert_allclose(stack._aim(xy, 1), [xy[0] + 0.006, xy[1]], atol=1e-6)
     np.testing.assert_allclose(stack._aim(xy, 0), xy)       # first cube: the fixture itself
     np.testing.assert_allclose(fixture._aim(xy, 1), xy)     # v1/v2 policies: the fixture
+    override = LearnedCell(cell, place=stack.placer, aim="fixture")
+    np.testing.assert_allclose(override._aim(xy, 1), xy)    # v3 told to aim at the fixture
+    with pytest.raises(ValueError):
+        LearnedCell(cell, place=stack.placer, aim="top")
 
 
 def test_skill_specs():

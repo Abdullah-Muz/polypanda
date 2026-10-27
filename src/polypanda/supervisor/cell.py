@@ -48,9 +48,11 @@ class LearnedSkill:
 class LearnedCell(ScriptedCell):
     def __init__(self, cell: Workcell, grasp: LearnedSkill | None = None,
                  place: LearnedSkill | None = None, config: CellControllerConfig | None = None,
-                 on_step: Callable[[], None] | None = None) -> None:
+                 on_step: Callable[[], None] | None = None, aim: str = "config") -> None:
         super().__init__(cell, config, on_step)
-        self.grasp, self.placer = grasp, place
+        if aim not in ("config", "fixture"):
+            raise ValueError(f"aim must be 'config' or 'fixture', not {aim!r}")
+        self.grasp, self.placer, self.aim = grasp, place, aim
         self.picks: list[dict] = []    # per learned pick: success, steps, failure
         self.places: list[dict] = []   # per learned place: level, success, steps, failure
 
@@ -94,10 +96,11 @@ class LearnedCell(ScriptedCell):
     def _aim(self, xy, level: int) -> np.ndarray:
         """Where the learned place should set the cube down: the fixture (or slot) centre, or,
         for a policy trained to aim at the stack (PlaceConfig.stack.aim_at_top), the top cube's
-        actual position."""
+        actual position. `aim="fixture"` always aims at the fixture: aiming at the cube below
+        lets a small one-sided placement error add up level by level (a staircase)."""
         xy = np.asarray(xy, dtype=float)
         stack = getattr(self.placer.config, "stack", None)
-        if not level or not (stack and stack.aim_at_top):
+        if not level or self.aim == "fixture" or not (stack and stack.aim_at_top):
             return xy
         z = CUBE_HEIGHT * (level - 0.5)
         for c in self.cell.cubes:
