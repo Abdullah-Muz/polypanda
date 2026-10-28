@@ -173,3 +173,17 @@ def test_a_warm_start_loads_weights_resets_noise_and_renormalizes(run_dir, tmp_p
     init = yaml.safe_load((warm / "metadata.yaml").read_text())["init_from"]
     assert init["run"] == str(run_dir) and init["log_std"] == -0.5
     assert init["renormalized_on_steps"] == 128
+
+
+def test_state_dependent_exploration_trains_and_loads(tmp_path):
+    cfg = TrainConfig(n_envs=2, vec_env="dummy", total_timesteps=512, eval_freq=512,
+                      eval_episodes=1, checkpoint_freq=512,
+                      ppo=PPOParams(n_steps=128, batch_size=64, n_epochs=1, log_std_init=-2.0,
+                                    use_sde=True, sde_sample_freq=8))
+    run = train(cfg, ReachConfig(), tmp_path / "sde")
+    policy = load_run(run, "final")
+    assert policy.model.use_sde and policy.model.sde_sample_freq == 8
+    obs = np.zeros(policy.model.observation_space.shape, dtype=np.float32)
+    a1, a2 = (policy.predict(obs, deterministic=True)[0] for _ in range(2))
+    np.testing.assert_array_equal(a1, a2)                  # evaluation acts without the noise
+    assert not PPOParams().use_sde                         # off unless a config asks

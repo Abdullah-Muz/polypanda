@@ -116,6 +116,17 @@ def test_v1_is_unchanged_by_v2(env):
     assert obs.shape == (OBS_DIM,) and "clearance" not in info["reward_terms"]
 
 
+def test_round_5_releases_inside_the_success_tolerance_and_explores_by_state():
+    from polypanda.training.config import TrainConfig
+    cfg = StandUpConfig.from_yaml(ROOT / "configs" / "standup_v2_r5.yaml")
+    assert cfg.gate.xy_tol == pytest.approx(0.015)
+    assert cfg.gate.xy_tol < cfg.check.tolerance                       # room to settle
+    assert cfg.reward.clearance_margin == pytest.approx(0.15)
+    train = TrainConfig.from_yaml(ROOT / "configs" / "standup_v2_r5_ppo.yaml")
+    assert train.task == "standup_v2" and train.env_config == "configs/standup_v2_r5.yaml"
+    assert train.ppo.use_sde and train.ppo.sde_sample_freq == 32
+
+
 def test_eval_sets_round_trip_with_their_digest(env, tmp_path):
     s = generate_standup_set(env, "t", 4, 11)
     s.save(tmp_path / "t.json")

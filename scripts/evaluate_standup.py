@@ -2,7 +2,8 @@
 
 Usage:
   uv run python scripts/evaluate_standup.py --make-set --set eval_sets/standup_v1.json --seed S
-  uv run python scripts/evaluate_standup.py --policy scripted --set eval_sets/standup_v1.json
+  uv run python scripts/evaluate_standup.py --policy scripted --set eval_sets/standup_v1.json \
+      [--task-config configs/<task>.yaml]
   uv run python scripts/evaluate_standup.py --policy run:runs/<run_dir>[@final] --set ...
 Writes results/standup/<name>.json (summary + provenance) and <name>_episodes.csv.
 """
@@ -44,6 +45,8 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--set", type=Path, required=True)
     parser.add_argument("--policy", help="scripted | run:DIR[@best|final]")
+    parser.add_argument("--task-config", type=Path, default=TASK_CONFIG,
+                        help="the scripted stand-up's task (gate, physics); runs use their own")
     parser.add_argument("--make-set", action="store_true")
     parser.add_argument("--n", type=int, default=200)
     parser.add_argument("--seed", type=int)
@@ -63,9 +66,10 @@ def main() -> None:
     eval_set = StandUpEvalSet.load(args.set)
     if args.policy == "scripted":
         driver, env = ScriptedStandUpDriver(), StandUpEnv(
-            StandUpConfig.from_yaml(TASK_CONFIG).for_evaluation())
-        description, name = (f"scripted stand-up (6-D hand motions), task {TASK_CONFIG}",
-                             f"scripted_{eval_set.name}")
+            StandUpConfig.from_yaml(args.task_config).for_evaluation())
+        tag = "" if args.task_config == TASK_CONFIG else f"{args.task_config.stem}_"
+        description, name = (f"scripted stand-up (6-D hand motions), task {args.task_config}",
+                             f"scripted_{tag}{eval_set.name}")
     elif args.policy and args.policy.startswith("run:"):
         run_dir, _, which = args.policy[4:].partition("@")
         policy = load_run(run_dir, which or "best")
