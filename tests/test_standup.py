@@ -96,6 +96,20 @@ def test_v2_senses_the_towers_clearance_and_shapes_closing_in():
     assert float(env._observation()[OBS_DIM]) == pytest.approx(GAP_CAP)  # no tower: the cap
 
 
+def test_demo_starts_hand_over_partway_through_the_scripted_stand_up_in_training_only():
+    cfg = StandUpConfig.from_yaml(ROOT / "configs" / "standup_v2_demo.yaml")
+    cfg = replace(cfg, start=replace(cfg.start, helpful_prob=0.0, demo_prob=1.0,
+                                     demo_steps=(60, 60)))
+    env = StandUpV2Env(cfg)
+    obs, info = env.reset(seed=2)
+    assert info["start"] == "demo" and env.elapsed_steps == 0 and obs.shape == (OBS_DIM_V2,)
+    assert cube_tilt(env.data, env.cube) < np.radians(60)    # turned up by the scripted part
+    _, _, _, _, step_info = env.step(np.zeros(6, dtype=np.float32))
+    assert abs(step_info["reward_terms"]["progress"]) < 1.0  # no reward for the scripted part
+    ev = StandUpV2Env(cfg.for_evaluation())
+    assert all(ev.reset(seed=s)[1]["start"] == "carry" for s in range(3))
+
+
 def test_v1_is_unchanged_by_v2(env):
     obs, _ = env.reset(seed=0)
     _, _, _, _, info = env.step(np.zeros(6, dtype=np.float32))

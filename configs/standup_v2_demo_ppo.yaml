@@ -1,0 +1,33 @@
+# v3 step d2, round 4: configs/standup_v2_ppo.yaml (round 3) on configs/standup_v2_demo.yaml
+# (starts from demonstration states). Training settings unchanged except 2M steps: round 3 was
+# cut off at about 1.7M by a WSL restart, its validation flat from about 1M, so 2M keeps the
+# two rounds comparable (and the scripted starts cost about 19 % of the training speed).
+
+algorithm: ppo
+task: standup_v2
+env_config: configs/standup_v2_demo.yaml
+seed: 0
+n_envs: 8
+vec_env: subproc
+total_timesteps: 2000000
+normalize_obs: true
+normalize_reward: true
+eval_freq: 100000
+eval_episodes: 100
+eval_seed: 100000
+checkpoint_freq: 250000
+torch_threads: 1
+
+ppo:
+  learning_rate: 0.0003
+  n_steps: 512
+  batch_size: 256
+  n_epochs: 10
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_range: 0.2
+  ent_coef: 0.005
+  vf_coef: 0.5
+  max_grad_norm: 0.5
+  net_arch: [128, 128]
+  log_std_init: 0.0

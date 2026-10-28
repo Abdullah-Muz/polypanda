@@ -72,6 +72,12 @@ class StandUpStartConfig:
     # Training only: this fraction of episodes start with the hand already turned and low over
     # the spot (reset to helpful states, as the grasp's curriculum starts)
     helpful_prob: float = 0.0
+    # Training only (d2 round 4): this fraction of the other episodes start from a state along
+    # the scripted stand-up (control.scripted_standup): it acts for demo_steps (uniform, policy
+    # steps) from the carry posture, then the policy takes over. Demonstration states as starts
+    # only: the policy still learns from reward alone (no imitation loss).
+    demo_prob: float = 0.0
+    demo_steps: tuple[int, int] = (0, 120)
 
 
 @dataclass(frozen=True)
@@ -135,7 +141,7 @@ class StandUpConfig:
 
     def for_evaluation(self) -> "StandUpConfig":
         """Every episode starts from the carry posture with the nominal cube."""
-        return replace(self, start=replace(self.start, helpful_prob=0.0),
+        return replace(self, start=replace(self.start, helpful_prob=0.0, demo_prob=0.0),
                        randomization=RandomizationConfig())
 
 
@@ -193,6 +199,7 @@ class StandUpEnv(gym.Env):
         self.observation_space = spaces.Box(-np.inf, np.inf, shape=(OBS_DIM,), dtype=np.float32)
         self._ik = PoseIK()
         self._physics = None
+        self._demo_driver = None
         self.spot = np.zeros(2)
         self.tower = None            # (x, y, height) or None
         self.released = False
@@ -299,19 +306,34 @@ class StandUpEnv(gym.Env):
                 self._randomize(1.0, 1.0)
             if not self._start(ep):
                 raise ValueError(f"start out of reach: {ep}")
+            self._begin()
+            start = "helpful" if ep.get("helpful") else "carry"
         else:
-            rnd = self.config.randomization
+            s, rnd = self.config.start, self.config.randomization
             if rnd.enabled:
                 lo, hi = np.log(rnd.mass_scale)
                 self._randomize(float(np.exp(self.np_random.uniform(lo, hi))),
                                 float(self.np_random.uniform(*rnd.friction_scale)))
-            helpful = self.np_random.uniform() < self.config.start.helpful_prob
+            helpful = self.np_random.uniform() < s.helpful_prob
+            demo = 0  # (no draws when demo starts are off: earlier runs replay unchanged)
+            if not helpful and s.demo_prob > 0 and self.np_random.uniform() < s.demo_prob:
+                demo = int(self.np_random.integers(s.demo_steps[0], s.demo_steps[1] + 1))
             for _ in range(50):
                 ep = self.draw_episode(self.np_random, helpful)
-                if self._start(ep):
-                    break
+                if not self._start(ep):
+                    continue
+                self._begin()
+                if demo and not self._demo_prefix(demo):
+                    continue           # the scripted stand-up failed on this one: draw again
+                break
             else:
                 raise RuntimeError("no reachable start in 50 draws")
+            start = "helpful" if helpful else "demo" if demo else "carry"
+        return self._observation(), {"episode": ep, "start": start,
+                                     "distance": self._prev["distance"]}
+
+    def _begin(self) -> None:
+        """Start the episode's bookkeeping from the scene as it is now."""
         self.adapter.adopt_ctrl(self.data)
         self.check.reset()
         self.released = False
@@ -319,8 +341,25 @@ class StandUpEnv(gym.Env):
         self._prev = self._progress_state()
         self._prev_action = np.zeros(self.adapter.action_dim)
         self._contacts = self._finger_contacts()
-        return self._observation(), {"episode": ep, "start": "helpful" if ep.get("helpful")
-                                     else "carry", "distance": self._prev["distance"]}
+
+    def _demo_prefix(self, steps: int) -> bool:
+        """Let the scripted stand-up act for `steps` steps, then hand over: the episode (its
+        horizon, rewards and checks) starts from where it got to. False if it failed first."""
+        from polypanda.control.scripted_standup import ScriptedStandUpDriver  # (imports this)
+        if self._demo_driver is None:
+            self._demo_driver = ScriptedStandUpDriver()
+        self._demo_driver.reset(self)
+        for _ in range(steps):
+            _, _, terminated, _, _ = self.step(self._demo_driver(self, None))
+            if terminated:
+                return False
+        released, dwell = self.released, self._dwell
+        self.check.reset()
+        self._steps = 0
+        self._prev = {**self._progress_state(), "released": released}
+        self._prev_action = np.zeros(self.adapter.action_dim)
+        self.released, self._dwell = released, dwell
+        return True
 
     def _randomize(self, mass: float, friction: float) -> None:
         if self._physics is None:
