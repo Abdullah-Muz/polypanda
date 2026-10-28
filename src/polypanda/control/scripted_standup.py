@@ -29,41 +29,53 @@ class ScriptedStandUpDriver:
     directions = 16     # candidate horizontal directions for the turned hand
     clearance = 0.03    # m, arm to tower along the way down
 
-    def reset(self, env: StandUpEnv) -> None:
-        """Plan with privileged knowledge: of the reachable turned-hand poses whose arm stays
-        `clearance` from the tower from the turn down to the release, the one needing the least
-        joint motion (the cell's scripted stand-up uses fixed directions and could hit a
-        tower with the forearm; measured)."""
+    def plan(self, env: StandUpEnv, direction: float):
+        """The turned-hand poses for one direction of the hand's z axis (rad, world): turn at
+        carry height, then down to the release. Returns (joint targets of the poses, or None
+        if one is out of reach, stopping at the first; hand rotation; release TCP point)."""
         d, arm = env.data, env.arm
         tcp = tcp_position(d, arm)
         R = d.site_xmat[arm.tcp_site].reshape(3, 3)
         p_rel = R.T @ (cube_position(d, env.cube) - tcp)          # the cube in the hand
-        rest = env._release_point()
+        q = d.qpos[arm.arm_qpos].copy()
+        R_goal = _hand_R(direction)
+        goal = env._release_point() - R_goal @ p_rel
+        high = np.array([goal[0], goal[1], tcp[2]])              # turn at carry height first
+        poses = [high] + [goal + [0.0, 0.0, self.pre * f] for f in (1.0, 0.66, 0.33, 0.0)]
+        qs = []
+        for p in poses:
+            qk, ok = env._ik.solve(q, p, _quat(R_goal))
+            if not ok:
+                return None, R_goal, goal
+            qs.append(qk)
+        return qs, R_goal, goal
+
+    def candidates(self) -> np.ndarray:
+        return np.linspace(-np.pi, np.pi, self.directions, endpoint=False)
+
+    def reset(self, env: StandUpEnv, direction: float | None = None) -> None:
+        """Plan with privileged knowledge: of the reachable turned-hand poses whose arm stays
+        `clearance` from the tower from the turn down to the release, the one needing the least
+        joint motion (the cell's scripted stand-up uses fixed directions and could hit a
+        tower with the forearm; measured). With `direction`, that direction as commanded
+        (StandUpV3Env's demonstration starts), clear of the tower or not."""
+        d, arm = env.data, env.arm
+        tcp = tcp_position(d, arm)
         q = d.qpos[arm.arm_qpos].copy()
         best = None
-        for direction in np.linspace(-np.pi, np.pi, self.directions, endpoint=False):
-            R_goal = _hand_R(direction)
-            goal = rest - R_goal @ p_rel
-            high = np.array([goal[0], goal[1], tcp[2]])          # turn at carry height first
-            poses = [high] + [goal + [0.0, 0.0, self.pre * f] for f in (1.0, 0.66, 0.33, 0.0)]
-            qs = []
-            for p in poses:               # stop at the first unreachable pose (same plans)
-                qk, ok = env._ik.solve(q, p, _quat(R_goal))
-                if not ok:
-                    break
-                qs.append(qk)
-            if len(qs) < len(poses):
+        for cand in (self.candidates() if direction is None else [direction]):
+            qs, R_goal, goal = self.plan(env, cand)
+            if qs is None:
                 continue
-            gap = min(self._tower_gap(env, qk) for qk in qs)
-            if gap < self.clearance:
+            if direction is None and min(self._tower_gap(env, qk) for qk in qs) < self.clearance:
                 continue
             cost = float(np.abs(qs[0] - q).sum())
             if best is None or cost < best[0]:
                 best = (cost, R_goal, goal)
-        if best is None:              # nothing clear: the direction along the station circle
-            a = float(np.arctan2(env.spot[1], env.spot[0]))
-            R_goal = _hand_R(a + np.pi / 2)
-            best = (0.0, R_goal, rest - R_goal @ p_rel)
+        if best is None:              # nothing clear: the commanded direction, else the one
+            a = float(np.arctan2(env.spot[1], env.spot[0]))        # along the station circle
+            _, R_goal, goal = self.plan(env, a + np.pi / 2 if direction is None else direction)
+            best = (0.0, R_goal, goal)
         _, R_goal, goal = best
         self.quat, self.goal = _quat(R_goal), goal
         self.z = R_goal[:, 2]

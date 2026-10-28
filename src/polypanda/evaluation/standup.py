@@ -15,7 +15,7 @@ from pathlib import Path
 
 import numpy as np
 
-from polypanda.control.scripted_standup import ScriptedStandUpDriver  # noqa: F401 (re-export)
+from polypanda.control.scripted_standup import ScriptedStandUpDriver  # (also re-exported)
 from polypanda.environments.standup import StandUpEnv
 from polypanda.evaluation.reach import wilson_interval
 
@@ -75,7 +75,53 @@ class StandUpEpisode:
     final_tilt_deg: float
     final_xy_cm: float
     episode_return: float
-    failure: str | None  # toppled | tower_hit | never_released | not_stood
+    failure: str | None  # toppled | tower_hit | never_released | not_stood | wrong_turn
+    command_deg: float | None = None  # v3: the turn direction the driver commanded (world)
+
+
+class CommandedPolicyDriver:
+    """Drives StandUpV3Env with a direction-commanded policy (d2 round 6). At each start it
+    rates every reachable turn direction with the policy's own critic (the value the policy
+    expects to earn under that command) and commands the best; then the policy acts.
+
+    `choose`: "critic" (the skill as used); for diagnostics, "scripted" (the privileged
+    scripted planner's choice, clearing the tower) or a fixed world direction in radians."""
+
+    def __init__(self, policy, choose: str | float = "critic") -> None:
+        self.policy, self.choose = policy, choose
+        self.choice = None
+        self.values = {}
+
+    def reset(self, env) -> None:
+        if self.choose == "scripted":
+            planner = ScriptedStandUpDriver()
+            planner.reset(env)
+            d = float(np.arctan2(planner.z[1], planner.z[0]))
+        elif self.choose == "critic":
+            cands = env.reachable_directions() or [env.command]
+            self.values = dict(zip(cands, self._values(env, cands), strict=True))
+            d = max(self.values, key=self.values.get)
+        else:
+            d = float(self.choose)
+        env.set_command(d)
+        self.choice = float(np.degrees(d))
+
+    def _values(self, env, cands: list[float]) -> list[float]:
+        import torch
+        obs = []
+        for d in cands:
+            env.set_command(d)
+            obs.append(env._observation())
+        obs = np.stack(obs)
+        if self.policy.vec_normalize is not None:
+            obs = self.policy.vec_normalize.normalize_obs(obs)
+        with torch.no_grad():
+            v = self.policy.model.policy.predict_values(torch.as_tensor(obs, dtype=torch.float32))
+        return v.numpy().ravel().tolist()
+
+    def __call__(self, env, obs: np.ndarray) -> np.ndarray:
+        # the observation as of the command set in reset (the env's first one predates it)
+        return self.policy.predict(env._observation(), deterministic=True)[0]
 
 
 def run_standup_episode(env: StandUpEnv, driver, ep: dict, index: int
@@ -106,7 +152,7 @@ def run_standup_episode(env: StandUpEnv, driver, ep: dict, index: int
         released=bool(info["released"]), release_s=release,
         final_tilt_deg=float(np.degrees(info["cube_tilt"])),
         final_xy_cm=float(info["xy_error"] * 100), episode_return=float(ret),
-        failure=failure), latencies
+        failure=failure, command_deg=getattr(driver, "choice", None)), latencies
 
 
 def summarize_standup(results: list[StandUpEpisode], latencies: list[float]) -> dict:

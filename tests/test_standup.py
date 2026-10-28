@@ -10,9 +10,11 @@ from polypanda.environments.standup import (
     GAP_CAP,
     OBS_DIM,
     OBS_DIM_V2,
+    OBS_DIM_V3,
     StandUpConfig,
     StandUpEnv,
     StandUpV2Env,
+    StandUpV3Env,
 )
 from polypanda.evaluation.standup import (
     ScriptedStandUpDriver,
@@ -136,3 +138,93 @@ def test_eval_sets_round_trip_with_their_digest(env, tmp_path):
     back = StandUpEvalSet.load(tmp_path / "t.json")
     assert back.digest == s.digest and back.episodes == s.episodes
     assert generate_standup_set(env, "t", 4, 11).digest == s.digest     # reproducible
+
+
+CFG3 = StandUpConfig.from_yaml(ROOT / "configs" / "standup_v3.yaml")
+
+
+def _hand_dir(env):
+    z = env.data.site_xmat[env.arm.tcp_site].reshape(3, 3)[:, 2]
+    return float(np.arctan2(z[1], z[0])), abs(float(z[2]))
+
+
+def _angle(a, b):
+    return abs((a - b + np.pi) % (2 * np.pi) - np.pi)
+
+
+def test_v3_observes_a_reachable_commanded_turn_drawn_in_training():
+    cfg = replace(CFG3, start=replace(CFG3.start, helpful_prob=0.0, demo_prob=0.0))
+    env = StandUpV3Env(cfg)
+    commands = []
+    for s in range(4):
+        obs, info = env.reset(seed=s)
+        assert obs.shape == (OBS_DIM_V3,)
+        np.testing.assert_allclose(obs[-2:], [np.cos(env.command), np.sin(env.command)],
+                                   atol=1e-6)
+        assert any(_angle(env.command, d) < 1e-9 for d in env.reachable_directions())
+        commands.append(info["command"])
+    assert len(set(commands)) > 1                              # drawn, not one fixed way
+    ev = StandUpV3Env(cfg.for_evaluation())
+    ep = ev.draw_episode(np.random.default_rng(0))
+    ev.reset(options={"episode": ep, "command": 1.0})
+    assert ev.command == pytest.approx(1.0)
+
+
+def test_v3_turning_the_wrong_way_ends_the_episode():
+    cfg = replace(CFG3, start=replace(CFG3.start, helpful_prob=1.0))
+    env = StandUpV3Env(cfg)
+    env.reset(seed=3)                         # helpful: already turned the commanded way
+    direction, up = _hand_dir(env)
+    assert up < cfg.command.level and _angle(direction, env.command) < 0.1
+    _, _, terminated, _, info = env.step(np.zeros(6, dtype=np.float32))
+    assert not terminated or info["failure"] != "wrong_turn"
+    env.reset(seed=3)
+    env.set_command(env.command + np.pi)      # the opposite way
+    _, reward, terminated, _, info = env.step(np.zeros(6, dtype=np.float32))
+    assert terminated and info["failure"] == "wrong_turn"
+    assert info["reward_terms"]["wrong_turn"] == -cfg.command.wrong_turn
+
+
+def test_v3_demo_starts_turn_the_commanded_way_and_the_shaping_telescopes():
+    cfg = replace(CFG3, start=replace(CFG3.start, helpful_prob=0.0, demo_prob=1.0,
+                                      demo_steps=(60, 60)))
+    env = StandUpV3Env(cfg)
+    _, info = env.reset(seed=5)
+    assert info["start"] == "demo"
+    direction, up = _hand_dir(env)
+    assert up < cfg.command.level and _angle(direction, env.command) < cfg.command.tolerance
+    ev = StandUpV3Env(cfg.for_evaluation())
+    ev.reset(seed=5)
+    phi0, total = ev._align_potential(), 0.0
+    driver = ScriptedStandUpDriver()
+    driver.reset(ev, direction=ev.command)
+    for _ in range(40):
+        _, _, terminated, _, info = ev.step(driver(ev, None))
+        total += info["reward_terms"]["align"]
+        assert not terminated
+    assert total == pytest.approx(ev._align_potential() - phi0) and total > 1.0
+
+
+def test_the_critic_picks_the_command():
+    from polypanda.evaluation.standup import CommandedPolicyDriver
+
+    class Critic:                            # rates the command by how close it is to 30 deg
+        def predict_values(self, obs):
+            import torch
+            o = np.asarray(obs)
+            return torch.as_tensor(np.cos(np.arctan2(o[:, -1], o[:, -2]) - np.radians(30)))
+
+    class Policy:
+        vec_normalize = None
+        model = type("M", (), {"policy": Critic()})()
+
+        def predict(self, obs, deterministic=True):
+            return np.zeros(6, dtype=np.float32), None
+
+    env = StandUpV3Env(CFG3.for_evaluation())
+    env.reset(seed=0)
+    reachable = env.reachable_directions()
+    driver = CommandedPolicyDriver(Policy())
+    driver.reset(env)
+    best = min(reachable, key=lambda d: _angle(d, np.radians(30)))
+    assert env.command == pytest.approx(best) and driver.choice == pytest.approx(np.degrees(best))

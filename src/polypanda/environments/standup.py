@@ -120,6 +120,34 @@ class StandUpRewardConfig:
     # closing in costs up to `clearance`, backing off earns it back (it cannot accumulate)
     clearance: float = 0.0
     clearance_margin: float = 0.05  # m
+    # v3 (StandUpV3Env): grip strain, per step per rad the grasp assist's weld is stretched
+    # beyond strain_from (the cube pressed or dragged against the table: failures peaked at
+    # 20-40 deg, successes at 9-17 deg); and per step the gripper touches the released cube
+    # (from 3 steps after the release: knocked over or pushed off the spot backing out)
+    strain: float = 0.0
+    strain_from: float = 0.35    # rad (20 deg)
+    touch: float = 0.0
+    # v3: per step the cube is still held. Holding still cost nothing, and policies froze in
+    # front of a tower or with the cube pressed down off the spot until the episode ran out
+    # (never_released 35-89 per 600). Over a whole episode it stays below the tower penalty.
+    hold: float = 0.0
+
+
+@dataclass(frozen=True)
+class TurnCommandConfig:
+    """v3 (StandUpV3Env): the direction to turn the hand to is an input of the skill.
+
+    Each round-2..5 policy turned the hand one fixed way (the one reachable from the carry
+    posture in 198 of 200 starts) and hit towers behind its wrist; the scripted stand-up, which
+    picks among `directions` per start, failed the same way when held to one direction (77.5 %
+    against 93 %). In training the command is drawn among the reachable directions, so the
+    policy learns to turn every way it can; in use, its critic picks the command
+    (evaluation.standup.CommandedPolicyDriver)."""
+    directions: int = 16          # candidate directions of the turned hand's z axis (world)
+    level: float = 0.5            # |hand z . up| below this: the hand is turned
+    tolerance: float = 0.785      # rad: a turned hand's z within this of the command
+    align: float = 2.0            # potential-based shaping toward the commanded turn
+    wrong_turn: float = 10.0      # turned the wrong way (before the release); terminates
 
 
 @dataclass(frozen=True)
@@ -130,6 +158,7 @@ class StandUpConfig:
     gate: StandUpGateConfig = field(default_factory=StandUpGateConfig)
     check: PlacedCheckConfig = field(default_factory=lambda: PlacedCheckConfig(tolerance=0.03))
     reward: StandUpRewardConfig = field(default_factory=StandUpRewardConfig)
+    command: TurnCommandConfig = field(default_factory=TurnCommandConfig)
     gripper: GripperConfig = field(default_factory=GripperConfig)
     randomization: RandomizationConfig = field(default_factory=RandomizationConfig)
     horizon: int = 300           # policy steps (15 s); no termination on success
@@ -307,6 +336,7 @@ class StandUpEnv(gym.Env):
             if not self._start(ep):
                 raise ValueError(f"start out of reach: {ep}")
             self._begin()
+            self._on_start(ep, options)
             start = "helpful" if ep.get("helpful") else "carry"
         else:
             s, rnd = self.config.start, self.config.randomization
@@ -323,6 +353,8 @@ class StandUpEnv(gym.Env):
                 if not self._start(ep):
                     continue
                 self._begin()
+                if not self._on_start(ep, None):
+                    continue
                 if demo and not self._demo_prefix(demo):
                     continue           # the scripted stand-up failed on this one: draw again
                 break
@@ -348,7 +380,7 @@ class StandUpEnv(gym.Env):
         from polypanda.control.scripted_standup import ScriptedStandUpDriver  # (imports this)
         if self._demo_driver is None:
             self._demo_driver = ScriptedStandUpDriver()
-        self._demo_driver.reset(self)
+        self._demo_driver.reset(self, direction=self._demo_direction())
         for _ in range(steps):
             _, _, terminated, _, _ = self.step(self._demo_driver(self, None))
             if terminated:
@@ -360,6 +392,15 @@ class StandUpEnv(gym.Env):
         self._prev_action = np.zeros(self.adapter.action_dim)
         self.released, self._dwell = released, dwell
         return True
+
+    def _on_start(self, ep: dict, options: dict | None) -> bool:
+        """Hook once a start is set (options: the evaluation's, None in training). False: the
+        start does not suit, draw another (training only)."""
+        return True
+
+    def _demo_direction(self) -> float | None:
+        """The direction the demonstration turns the hand to (None: the scripted plan's own)."""
+        return None
 
     def _randomize(self, mass: float, friction: float) -> None:
         if self._physics is None:
@@ -549,3 +590,140 @@ class StandUpV2Env(StandUpEnv):
     def _observation(self) -> np.ndarray:
         gap, away = self._tower_gap()
         return np.concatenate([super()._observation(), [gap], away]).astype(np.float32)
+
+
+OBS_SCHEMA_V3 = "standup-v3-58d"   # v2 + the commanded turn direction
+OBS_LAYOUT_V3 = OBS_LAYOUT_V2 + (("command", 2),)
+OBS_DIM_V3 = sum(n for _, n in OBS_LAYOUT_V3)
+
+
+class StandUpV3Env(StandUpV2Env):
+    """Stand-up v3 (d2 round 6): the direction to turn the hand to is commanded.
+
+    Rounds 2-5 learned one turn direction each and hit towers behind the wrist (root-cause
+    analysis, 2026-10-28). Here the policy observes a command, the world direction its turned
+    hand's z axis is to point (cos, sin), and learns to turn every reachable way:
+    - training draws the command among the `command.directions` the arm can reach from the
+      start (the scripted planner's IK; no tower check), so it also learns which ones fail;
+    - turning more than `command.tolerance` away from it ends the episode (wrong_turn);
+    - potential-based shaping toward the commanded turn (`command.align`);
+    - demonstration starts turn the commanded way.
+    In use, evaluation.standup.CommandedPolicyDriver sets the command its critic rates best.
+    Also the robot-safety terms `reward.strain`, `reward.touch` and `reward.hold`.
+    """
+
+    def __init__(self, config: StandUpConfig | None = None) -> None:
+        super().__init__(config)
+        self.observation_space = spaces.Box(-np.inf, np.inf, shape=(OBS_DIM_V3,),
+                                            dtype=np.float32)
+        self.command = 0.0            # rad, world direction of the turned hand's z axis
+        self._align = 0.0
+        self._release_step = None
+        self._planner = None
+
+    # --- commands ------------------------------------------------------------------------
+    def _plan_driver(self):
+        if self._planner is None:
+            from polypanda.control.scripted_standup import ScriptedStandUpDriver
+            self._planner = ScriptedStandUpDriver()
+            self._planner.directions = self.config.command.directions
+        return self._planner
+
+    def reachable_directions(self, rng: np.random.Generator | None = None,
+                             first: bool = False) -> list[float]:
+        """The candidate directions whose turn and descent the arm can reach from here (all,
+        or with `first` the first found, in the order `rng` shuffles them)."""
+        planner = self._plan_driver()
+        cands = list(planner.candidates())
+        if rng is not None:
+            rng.shuffle(cands)
+        found = []
+        for d in cands:
+            if planner.plan(self, float(d))[0] is not None:
+                found.append(float(d))
+                if first:
+                    break
+        return found
+
+    def set_command(self, direction: float) -> None:
+        self.command = float(direction)
+        self._align = self._align_potential()
+
+    def _command_vec(self) -> np.ndarray:
+        return np.array([np.cos(self.command), np.sin(self.command)])
+
+    def _on_start(self, ep: dict, options: dict | None) -> bool:
+        if options is not None and "command" in options:
+            self.set_command(options["command"])
+        elif ep.get("helpful"):
+            self.set_command(ep["turn"])       # already turned that way
+        elif options is not None:              # evaluation without one: the first reachable
+            found = self.reachable_directions(first=True)
+            a = float(np.arctan2(self.spot[1], self.spot[0]))
+            self.set_command(found[0] if found else a + np.pi / 2)
+        else:
+            found = self.reachable_directions(self.np_random, first=True)
+            if not found:
+                return False
+            self.set_command(found[0])
+        return True
+
+    def _demo_direction(self) -> float | None:
+        return self.command
+
+    # --- measurements --------------------------------------------------------------------
+    def _hand_z(self) -> np.ndarray:
+        return self.data.site_xmat[self.arm.tcp_site].reshape(3, 3)[:, 2]
+
+    def _align_potential(self) -> float:
+        """align x (hand z . command): 0 pointing down, 1 turned the commanded way."""
+        return self.config.command.align * float(self._hand_z()[:2] @ self._command_vec())
+
+    def _command_error(self) -> float:
+        h = self._hand_z()[:2]
+        n = np.linalg.norm(h)
+        return float(np.arccos(np.clip(h @ self._command_vec() / n, -1, 1))) if n > 0 else 0.0
+
+    def _weld_lag(self) -> float:
+        """Rad between the cube's orientation and where the grasp assist's weld holds it."""
+        target, weld = np.zeros(4), self.model.eq_data[self.assist, 6:10]
+        mujoco.mju_mulQuat(target, self.data.xquat[self.hand], weld)
+        c = abs(float(target @ self.data.xquat[self.cube.body]))
+        return 2.0 * float(np.arccos(min(1.0, c)))
+
+    # --- episode -------------------------------------------------------------------------
+    def reset(self, *, seed: int | None = None, options: dict | None = None):
+        obs, info = super().reset(seed=seed, options=options)
+        self._align = self._align_potential()
+        self._release_step = 0 if self.released else None
+        info["command"] = self.command
+        return obs, info
+
+    def step(self, action):
+        obs, reward, terminated, truncated, info = super().step(action)
+        if info.get("failure") == "non_finite":
+            return np.zeros(OBS_DIM_V3, dtype=np.float32), reward, terminated, truncated, info
+        c, r = self.config.command, self.config.reward
+        terms = info["reward_terms"]
+        new = {"align": 0.0, "strain": 0.0, "touch": 0.0, "hold": 0.0, "wrong_turn": 0.0}
+        if not self.released:
+            phi = self._align_potential()
+            new["align"], self._align = phi - self._align, phi
+            new["strain"] = -r.strain * max(0.0, self._weld_lag() - r.strain_from)
+            new["hold"] = -r.hold
+            if (not terminated and abs(self._hand_z()[2]) < c.level
+                    and self._command_error() > c.tolerance):
+                new["wrong_turn"] = -c.wrong_turn
+                terminated, truncated = True, False
+                info["failure"] = "wrong_turn"
+        else:
+            if self._release_step is None:
+                self._release_step = self._steps
+            if self._steps - self._release_step >= 3 and info["gripper_contact"]:
+                new["touch"] = -r.touch
+        terms.update(new)
+        info["command"] = self.command
+        return obs, reward + sum(new.values()), terminated, truncated, info
+
+    def _observation(self) -> np.ndarray:
+        return np.concatenate([super()._observation(), self._command_vec()]).astype(np.float32)

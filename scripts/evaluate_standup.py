@@ -23,6 +23,7 @@ import numpy as np
 from polypanda.environments.standup import StandUpConfig, StandUpEnv
 from polypanda.evaluation.grasp import PolicyDriver
 from polypanda.evaluation.standup import (
+    CommandedPolicyDriver,
     ScriptedStandUpDriver,
     StandUpEpisode,
     StandUpEvalSet,
@@ -47,6 +48,9 @@ def main() -> None:
     parser.add_argument("--policy", help="scripted | run:DIR[@best|final]")
     parser.add_argument("--task-config", type=Path, default=TASK_CONFIG,
                         help="the scripted stand-up's task (gate, physics); runs use their own")
+    parser.add_argument("--choose", default="critic",
+                        help="v3 runs: who picks the turn direction: critic (the skill), "
+                             "scripted (privileged planner, diagnostic) or a world angle in deg")
     parser.add_argument("--make-set", action="store_true")
     parser.add_argument("--n", type=int, default=200)
     parser.add_argument("--seed", type=int)
@@ -74,12 +78,21 @@ def main() -> None:
         run_dir, _, which = args.policy[4:].partition("@")
         policy = load_run(run_dir, which or "best")
         meta = policy.metadata
-        if meta["skill"] not in ("standup", "standup_v2"):
+        if meta["skill"] not in ("standup", "standup_v2", "standup_v3"):
             raise SystemExit(f"{run_dir} is a {meta['skill']} policy, not standup")
-        driver, env = PolicyDriver(policy), make_run_env(run_dir, meta["skill"])
+        env = make_run_env(run_dir, meta["skill"])
         description = (f"{meta['algorithm']} {policy.which} model from {run_dir} "
                        f"(seed {meta['seed']}, {meta['total_timesteps']:,} steps)")
         name = f"{meta['policy_id']}_{policy.which}_{eval_set.name}"
+        if meta["skill"] == "standup_v3":
+            choose = args.choose if args.choose in ("critic", "scripted") else np.radians(
+                float(args.choose))
+            driver = CommandedPolicyDriver(policy, choose)
+            description += f"; turn direction chosen by: {args.choose}"
+            if args.choose != "critic":
+                name += f"_choose-{args.choose}"
+        else:
+            driver = PolicyDriver(policy)
     else:
         raise SystemExit("use --policy scripted or run:DIR[@which]")
 
