@@ -1,0 +1,109 @@
+{
+  "name": "grasp_anypose4_seed2_best_grasp_lying_v1_joints",
+  "condition": "joints",
+  "grasp": "PPO grasp policy grasp_anypose4_seed2",
+  "grasp_provenance": {
+    "run_dir": "runs/grasp_anypose4_seed2",
+    "checkpoint": "best",
+    "policy_id": "grasp_anypose4_seed2",
+    "trained_at": "357eeefab4d8ddd56d16d1aa0d188870c25d0d52"
+  },
+  "protocol": "GraspV4Env, 15 s horizon",
+  "gripper": {
+    "finger_stiffness": 1000.0,
+    "torsional_friction": true
+  },
+  "eval_set": {
+    "name": "grasp_lying_v1",
+    "n": 200,
+    "digest": "35304ba155c3"
+  },
+  "perturbation_seed": 20261026,
+  "created_utc": "2026-10-28T01:04:07+00:00",
+  "git": {
+    "commit": "9f0965b2d0452f8c8af9fd8702857084b1dc696e",
+    "dirty": false
+  },
+  "versions": {
+    "python": "3.12.3",
+    "mujoco": "3.16.0",
+    "numpy": "2.5.4",
+    "torch": "2.14.1+cpu"
+  },
+  "summary": {
+    "episodes": 200,
+    "success_rate": 0.925,
+    "success_ci95": [
+      0.8799554020266798,
+      0.9540254929427476
+    ],
+    "first_success_s": {
+      "median": 3.1500000000000004,
+      "p90": 3.6
+    },
+    "success_fraction_median": 0.79,
+    "retry_rate": 0.0,
+    "max_cube_tilt_deg": {
+      "median": 89.9999999999961,
+      "max": 90.0
+    },
+    "final_lift_cm_median": 9.946705195849487,
+    "floor_contact_episode_rate": 0.335,
+    "return": {
+      "mean": 117.25697601863656,
+      "std": 37.01125650969277
+    },
+    "by_region": {
+      "far": {
+        "n": 123,
+        "success_rate": 0.8943089430894309,
+        "success_ci95": [
+          0.827545863784844,
+          0.9371874729122648
+        ]
+      },
+      "near": {
+        "n": 77,
+        "success_rate": 0.974025974025974,
+        "success_ci95": [
+          0.9101524452675265,
+          0.9928479901518616
+        ]
+      }
+    },
+    "failures": {
+      "never_closed": 15
+    },
+    "inference_latency_us": {
+      "median": 837.3790005862247,
+      "p99": 5411.069286856231
+    },
+    "wall_clock_s": 361.8,
+    "by_level": {
+      "0-0.05": {
+        "n": 1,
+        "success_rate": 1.0,
+        "success_ci95": [
+          0.20654329147389294,
+          1.0
+        ]
+      },
+      "0.05-0.075": {
+        "n": 23,
+        "success_rate": 0.9130434782608695,
+        "success_ci95": [
+          0.7320359570190598,
+          0.9758205045927666
+        ]
+      },
+      "0.075-0.1": {
+        "n": 176,
+        "success_rate": 0.9261363636363636,
+        "success_ci95": [
+          0.8777383683888433,
+          0.9563289441795502
+        ]
+      }
+    }
+  }
+}

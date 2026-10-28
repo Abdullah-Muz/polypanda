@@ -1,0 +1,106 @@
+{
+  "name": "scripted_v4_grasp_lying_v1_joints",
+  "condition": "joints",
+  "grasp": "scripted any-pose grasp (4-D cartesian actions)",
+  "grasp_provenance": {
+    "task_config": "configs/grasp_anypose4_cartesian.yaml"
+  },
+  "protocol": "GraspV4Env, 15 s horizon",
+  "gripper": {
+    "finger_stiffness": 1000.0,
+    "torsional_friction": true
+  },
+  "eval_set": {
+    "name": "grasp_lying_v1",
+    "n": 200,
+    "digest": "35304ba155c3"
+  },
+  "perturbation_seed": 20261026,
+  "created_utc": "2026-10-28T01:08:37+00:00",
+  "git": {
+    "commit": "9f0965b2d0452f8c8af9fd8702857084b1dc696e",
+    "dirty": false
+  },
+  "versions": {
+    "python": "3.12.3",
+    "mujoco": "3.16.0",
+    "numpy": "2.5.4",
+    "torch": "2.14.1+cpu"
+  },
+  "summary": {
+    "episodes": 200,
+    "success_rate": 0.83,
+    "success_ci95": [
+      0.7718399896049648,
+      0.8757216464889435
+    ],
+    "first_success_s": {
+      "median": 3.6500000000000004,
+      "p90": 3.9000000000000004
+    },
+    "success_fraction_median": 0.7433333333333333,
+    "retry_rate": 0.01,
+    "max_cube_tilt_deg": {
+      "median": 89.99999999999726,
+      "max": 90.0
+    },
+    "final_lift_cm_median": 56.76187309201326,
+    "floor_contact_episode_rate": 0.0,
+    "return": {
+      "mean": 116.15822139259276,
+      "std": 16.46406383755122
+    },
+    "by_region": {
+      "far": {
+        "n": 123,
+        "success_rate": 0.967479674796748,
+        "success_ci95": [
+          0.9193601684162935,
+          0.9872824472555366
+        ]
+      },
+      "near": {
+        "n": 77,
+        "success_rate": 0.6103896103896104,
+        "success_ci95": [
+          0.4987086179545712,
+          0.7115791546773411
+        ]
+      }
+    },
+    "failures": {
+      "dropped": 34
+    },
+    "inference_latency_us": {
+      "median": 7.274000381585211,
+      "p99": 285.42671614559487
+    },
+    "wall_clock_s": 278.2,
+    "by_level": {
+      "0-0.05": {
+        "n": 1,
+        "success_rate": 1.0,
+        "success_ci95": [
+          0.20654329147389294,
+          1.0
+        ]
+      },
+      "0.05-0.075": {
+        "n": 23,
+        "success_rate": 0.9130434782608695,
+        "success_ci95": [
+          0.7320359570190598,
+          0.9758205045927666
+        ]
+      },
+      "0.075-0.1": {
+        "n": 176,
+        "success_rate": 0.8181818181818182,
+        "success_ci95": [
+          0.7546060198295274,
+          0.8681642402215398
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,86 @@
+{
+  "name": "grasp_anypose4_seed2_best_grasp_upright_v1_combined",
+  "condition": "combined",
+  "grasp": "PPO grasp policy grasp_anypose4_seed2",
+  "grasp_provenance": {
+    "run_dir": "runs/grasp_anypose4_seed2",
+    "checkpoint": "best",
+    "policy_id": "grasp_anypose4_seed2",
+    "trained_at": "357eeefab4d8ddd56d16d1aa0d188870c25d0d52"
+  },
+  "protocol": "GraspV4Env, 15 s horizon",
+  "gripper": {
+    "finger_stiffness": 1000.0,
+    "torsional_friction": true
+  },
+  "eval_set": {
+    "name": "grasp_upright_v1",
+    "n": 200,
+    "digest": "7974a1ccee1a"
+  },
+  "perturbation_seed": 20261026,
+  "created_utc": "2026-10-28T01:04:10+00:00",
+  "git": {
+    "commit": "9f0965b2d0452f8c8af9fd8702857084b1dc696e",
+    "dirty": false
+  },
+  "versions": {
+    "python": "3.12.3",
+    "mujoco": "3.16.0",
+    "numpy": "2.5.4",
+    "torch": "2.14.1+cpu"
+  },
+  "summary": {
+    "episodes": 200,
+    "success_rate": 0.845,
+    "success_ci95": [
+      0.7883919410627441,
+      0.8886043148536146
+    ],
+    "first_success_s": {
+      "median": 3.1500000000000004,
+      "p90": 3.660000000000001
+    },
+    "success_fraction_median": 0.7866666666666666,
+    "retry_rate": 0.005,
+    "max_cube_tilt_deg": {
+      "median": 4.2659040969843565,
+      "max": 83.9830402440904
+    },
+    "final_lift_cm_median": 6.859291664125594,
+    "floor_contact_episode_rate": 0.01,
+    "return": {
+      "mean": 111.93867471269304,
+      "std": 36.36378339403102
+    },
+    "by_region": {
+      "far": {
+        "n": 126,
+        "success_rate": 0.7857142857142857,
+        "success_ci95": [
+          0.7061770574215046,
+          0.8483447599313315
+        ]
+      },
+      "near": {
+        "n": 74,
+        "success_rate": 0.9459459459459459,
+        "success_ci95": [
+          0.8690943547687496,
+          0.9787813312397599
+        ]
+      }
+    },
+    "failures": {
+      "never_closed": 19,
+      "knocked_over": 2,
+      "dropped": 10
+    },
+    "inference_latency_us": {
+      "median": 811.8234982248396,
+      "p99": 4951.4513520989485
+    },
+    "wall_clock_s": 350.6,
+    "by_level": {}
+  }
+}

@@ -1,0 +1,110 @@
+{
+  "name": "grasp_anypose4_seed0_best_grasp_lying_v1_joints",
+  "condition": "joints",
+  "grasp": "PPO grasp policy grasp_anypose4_seed0",
+  "grasp_provenance": {
+    "run_dir": "runs/grasp_anypose4_seed0",
+    "checkpoint": "best",
+    "policy_id": "grasp_anypose4_seed0",
+    "trained_at": "357eeefab4d8ddd56d16d1aa0d188870c25d0d52"
+  },
+  "protocol": "GraspV4Env, 15 s horizon",
+  "gripper": {
+    "finger_stiffness": 1000.0,
+    "torsional_friction": true
+  },
+  "eval_set": {
+    "name": "grasp_lying_v1",
+    "n": 200,
+    "digest": "35304ba155c3"
+  },
+  "perturbation_seed": 20261026,
+  "created_utc": "2026-10-28T00:13:20+00:00",
+  "git": {
+    "commit": "9f0965b2d0452f8c8af9fd8702857084b1dc696e",
+    "dirty": false
+  },
+  "versions": {
+    "python": "3.12.3",
+    "mujoco": "3.16.0",
+    "numpy": "2.5.4",
+    "torch": "2.14.1+cpu"
+  },
+  "summary": {
+    "episodes": 200,
+    "success_rate": 0.82,
+    "success_ci95": [
+      0.7608840628376157,
+      0.8670544933746589
+    ],
+    "first_success_s": {
+      "median": 3.85,
+      "p90": 6.455000000000003
+    },
+    "success_fraction_median": 0.71,
+    "retry_rate": 0.0,
+    "max_cube_tilt_deg": {
+      "median": 89.99999999999837,
+      "max": 90.0
+    },
+    "final_lift_cm_median": 13.332261487671675,
+    "floor_contact_episode_rate": 0.845,
+    "return": {
+      "mean": 92.89360920041119,
+      "std": 51.13336723555651
+    },
+    "by_region": {
+      "far": {
+        "n": 123,
+        "success_rate": 0.8130081300813008,
+        "success_ci95": [
+          0.7350138280136341,
+          0.8720425320448956
+        ]
+      },
+      "near": {
+        "n": 77,
+        "success_rate": 0.8311688311688312,
+        "success_ci95": [
+          0.7322690482024222,
+          0.8985942696933148
+        ]
+      }
+    },
+    "failures": {
+      "never_closed": 32,
+      "knocked_over": 4
+    },
+    "inference_latency_us": {
+      "median": 841.4819967583753,
+      "p99": 3090.964998264113
+    },
+    "wall_clock_s": 325.1,
+    "by_level": {
+      "0-0.05": {
+        "n": 1,
+        "success_rate": 1.0,
+        "success_ci95": [
+          0.20654329147389294,
+          1.0
+        ]
+      },
+      "0.05-0.075": {
+        "n": 23,
+        "success_rate": 0.8695652173913043,
+        "success_ci95": [
+          0.678721020269818,
+          0.954624234856553
+        ]
+      },
+      "0.075-0.1": {
+        "n": 176,
+        "success_rate": 0.8125,
+        "success_ci95": [
+          0.748389694041868,
+          0.8632596685082872
+        ]
+      }
+    }
+  }
+}

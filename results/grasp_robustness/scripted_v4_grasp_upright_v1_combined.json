@@ -1,0 +1,82 @@
+{
+  "name": "scripted_v4_grasp_upright_v1_combined",
+  "condition": "combined",
+  "grasp": "scripted any-pose grasp (4-D cartesian actions)",
+  "grasp_provenance": {
+    "task_config": "configs/grasp_anypose4_cartesian.yaml"
+  },
+  "protocol": "GraspV4Env, 15 s horizon",
+  "gripper": {
+    "finger_stiffness": 1000.0,
+    "torsional_friction": true
+  },
+  "eval_set": {
+    "name": "grasp_upright_v1",
+    "n": 200,
+    "digest": "7974a1ccee1a"
+  },
+  "perturbation_seed": 20261026,
+  "created_utc": "2026-10-28T01:08:48+00:00",
+  "git": {
+    "commit": "9f0965b2d0452f8c8af9fd8702857084b1dc696e",
+    "dirty": false
+  },
+  "versions": {
+    "python": "3.12.3",
+    "mujoco": "3.16.0",
+    "numpy": "2.5.4",
+    "torch": "2.14.1+cpu"
+  },
+  "summary": {
+    "episodes": 200,
+    "success_rate": 0.88,
+    "success_ci95": [
+      0.8276563857409517,
+      0.9180206497611246
+    ],
+    "first_success_s": {
+      "median": 3.6,
+      "p90": 3.9000000000000004
+    },
+    "success_fraction_median": 0.7433333333333333,
+    "retry_rate": 0.045,
+    "max_cube_tilt_deg": {
+      "median": 4.128020659929144,
+      "max": 88.92300919011633
+    },
+    "final_lift_cm_median": 55.693663810499544,
+    "floor_contact_episode_rate": 0.0,
+    "return": {
+      "mean": 114.7211689839344,
+      "std": 19.504843475301907
+    },
+    "by_region": {
+      "far": {
+        "n": 126,
+        "success_rate": 0.9841269841269841,
+        "success_ci95": [
+          0.9439701231255323,
+          0.9956362896112178
+        ]
+      },
+      "near": {
+        "n": 74,
+        "success_rate": 0.7027027027027027,
+        "success_ci95": [
+          0.5906687497464007,
+          0.7947292893483764
+        ]
+      }
+    },
+    "failures": {
+      "dropped": 11,
+      "knocked_over": 13
+    },
+    "inference_latency_us": {
+      "median": 7.263995939865708,
+      "p99": 237.73068161972307
+    },
+    "wall_clock_s": 267.9,
+    "by_level": {}
+  }
+}

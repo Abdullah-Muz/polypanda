@@ -1,0 +1,119 @@
+{
+  "name": "grasp_anypose4_seed0_best_grasp_upright_v1_mass",
+  "condition": "mass",
+  "grasp": "PPO grasp policy grasp_anypose4_seed0",
+  "grasp_provenance": {
+    "run_dir": "runs/grasp_anypose4_seed0",
+    "checkpoint": "best",
+    "policy_id": "grasp_anypose4_seed0",
+    "trained_at": "357eeefab4d8ddd56d16d1aa0d188870c25d0d52"
+  },
+  "protocol": "GraspV4Env, 15 s horizon",
+  "gripper": {
+    "finger_stiffness": 1000.0,
+    "torsional_friction": true
+  },
+  "eval_set": {
+    "name": "grasp_upright_v1",
+    "n": 200,
+    "digest": "7974a1ccee1a"
+  },
+  "perturbation_seed": 20261026,
+  "created_utc": "2026-10-28T00:13:35+00:00",
+  "git": {
+    "commit": "9f0965b2d0452f8c8af9fd8702857084b1dc696e",
+    "dirty": false
+  },
+  "versions": {
+    "python": "3.12.3",
+    "mujoco": "3.16.0",
+    "numpy": "2.5.4",
+    "torch": "2.14.1+cpu"
+  },
+  "summary": {
+    "episodes": 200,
+    "success_rate": 0.89,
+    "success_ci95": [
+      0.8390720169908702,
+      0.9262280983928396
+    ],
+    "first_success_s": {
+      "median": 3.45,
+      "p90": 4.365000000000001
+    },
+    "success_fraction_median": 0.77,
+    "retry_rate": 0.0,
+    "max_cube_tilt_deg": {
+      "median": 3.5967922420117686,
+      "max": 83.9448899741969
+    },
+    "final_lift_cm_median": 10.40103823881974,
+    "floor_contact_episode_rate": 0.015,
+    "return": {
+      "mean": 109.18699567855757,
+      "std": 35.40544108487299
+    },
+    "by_region": {
+      "far": {
+        "n": 126,
+        "success_rate": 0.9126984126984127,
+        "success_ci95": [
+          0.8504222916386699,
+          0.9505536667598711
+        ]
+      },
+      "near": {
+        "n": 74,
+        "success_rate": 0.8513513513513513,
+        "success_ci95": [
+          0.7531029907801314,
+          0.9149202769841487
+        ]
+      }
+    },
+    "failures": {
+      "never_closed": 6,
+      "knocked_over": 14,
+      "dropped": 2
+    },
+    "inference_latency_us": {
+      "median": 835.3504999831785,
+      "p99": 3342.363050796859
+    },
+    "wall_clock_s": 339.6,
+    "by_level": {
+      "0.5-0.71": {
+        "n": 53,
+        "success_rate": 0.8301886792452831,
+        "success_ci95": [
+          0.7077446317626587,
+          0.9080015822777624
+        ]
+      },
+      "0.71-1": {
+        "n": 49,
+        "success_rate": 0.9183673469387755,
+        "success_ci95": [
+          0.8081061295851387,
+          0.9677977037582878
+        ]
+      },
+      "1-1.41": {
+        "n": 52,
+        "success_rate": 0.9230769230769231,
+        "success_ci95": [
+          0.8182618931787533,
+          0.9696811457026542
+        ]
+      },
+      "1.41-2": {
+        "n": 46,
+        "success_rate": 0.8913043478260869,
+        "success_ci95": [
+          0.7696189698736853,
+          0.9526692391725731
+        ]
+      }
+    }
+  }
+}

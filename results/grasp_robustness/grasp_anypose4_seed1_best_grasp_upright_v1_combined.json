@@ -1,0 +1,86 @@
+{
+  "name": "grasp_anypose4_seed1_best_grasp_upright_v1_combined",
+  "condition": "combined",
+  "grasp": "PPO grasp policy grasp_anypose4_seed1",
+  "grasp_provenance": {
+    "run_dir": "runs/grasp_anypose4_seed1",
+    "checkpoint": "best",
+    "policy_id": "grasp_anypose4_seed1",
+    "trained_at": "357eeefab4d8ddd56d16d1aa0d188870c25d0d52"
+  },
+  "protocol": "GraspV4Env, 15 s horizon",
+  "gripper": {
+    "finger_stiffness": 1000.0,
+    "torsional_friction": true
+  },
+  "eval_set": {
+    "name": "grasp_upright_v1",
+    "n": 200,
+    "digest": "7974a1ccee1a"
+  },
+  "perturbation_seed": 20261026,
+  "created_utc": "2026-10-28T00:19:13+00:00",
+  "git": {
+    "commit": "9f0965b2d0452f8c8af9fd8702857084b1dc696e",
+    "dirty": false
+  },
+  "versions": {
+    "python": "3.12.3",
+    "mujoco": "3.16.0",
+    "numpy": "2.5.4",
+    "torch": "2.14.1+cpu"
+  },
+  "summary": {
+    "episodes": 200,
+    "success_rate": 0.8,
+    "success_ci95": [
+      0.7391436038882958,
+      0.8495487925607118
+    ],
+    "first_success_s": {
+      "median": 3.3000000000000003,
+      "p90": 4.05
+    },
+    "success_fraction_median": 0.7633333333333333,
+    "retry_rate": 0.01,
+    "max_cube_tilt_deg": {
+      "median": 2.5791623648682576,
+      "max": 87.69470864093398
+    },
+    "final_lift_cm_median": 21.517706849962803,
+    "floor_contact_episode_rate": 0.035,
+    "return": {
+      "mean": 103.16388677774577,
+      "std": 43.661213702694525
+    },
+    "by_region": {
+      "far": {
+        "n": 126,
+        "success_rate": 0.8253968253968254,
+        "success_ci95": [
+          0.7497644529716708,
+          0.881774283457948
+        ]
+      },
+      "near": {
+        "n": 74,
+        "success_rate": 0.7567567567567568,
+        "success_ci95": [
+          0.6479345618473262,
+          0.8402362876727247
+        ]
+      }
+    },
+    "failures": {
+      "knocked_over": 11,
+      "dropped": 10,
+      "never_closed": 19
+    },
+    "inference_latency_us": {
+      "median": 820.9209991036914,
+      "p99": 2494.770595512802
+    },
+    "wall_clock_s": 315.2,
+    "by_level": {}
+  }
+}

@@ -1,0 +1,86 @@
+{
+  "name": "grasp_anypose4_seed0_best_grasp_lying_v1_combined",
+  "condition": "combined",
+  "grasp": "PPO grasp policy grasp_anypose4_seed0",
+  "grasp_provenance": {
+    "run_dir": "runs/grasp_anypose4_seed0",
+    "checkpoint": "best",
+    "policy_id": "grasp_anypose4_seed0",
+    "trained_at": "357eeefab4d8ddd56d16d1aa0d188870c25d0d52"
+  },
+  "protocol": "GraspV4Env, 15 s horizon",
+  "gripper": {
+    "finger_stiffness": 1000.0,
+    "torsional_friction": true
+  },
+  "eval_set": {
+    "name": "grasp_lying_v1",
+    "n": 200,
+    "digest": "35304ba155c3"
+  },
+  "perturbation_seed": 20261026,
+  "created_utc": "2026-10-28T00:13:27+00:00",
+  "git": {
+    "commit": "9f0965b2d0452f8c8af9fd8702857084b1dc696e",
+    "dirty": false
+  },
+  "versions": {
+    "python": "3.12.3",
+    "mujoco": "3.16.0",
+    "numpy": "2.5.4",
+    "torch": "2.14.1+cpu"
+  },
+  "summary": {
+    "episodes": 200,
+    "success_rate": 0.845,
+    "success_ci95": [
+      0.7883919410627441,
+      0.8886043148536146
+    ],
+    "first_success_s": {
+      "median": 4.05,
+      "p90": 6.160000000000001
+    },
+    "success_fraction_median": 0.71,
+    "retry_rate": 0.005,
+    "max_cube_tilt_deg": {
+      "median": 89.99999999999832,
+      "max": 90.0
+    },
+    "final_lift_cm_median": 13.205391706163391,
+    "floor_contact_episode_rate": 0.84,
+    "return": {
+      "mean": 95.97372966501344,
+      "std": 47.16376816682935
+    },
+    "by_region": {
+      "far": {
+        "n": 123,
+        "success_rate": 0.8373983739837398,
+        "success_ci95": [
+          0.7621542381593724,
+          0.8922052148907309
+        ]
+      },
+      "near": {
+        "n": 77,
+        "success_rate": 0.8571428571428571,
+        "success_ci95": [
+          0.7620252720484026,
+          0.9183175217607253
+        ]
+      }
+    },
+    "failures": {
+      "never_closed": 24,
+      "knocked_over": 6,
+      "dropped": 1
+    },
+    "inference_latency_us": {
+      "median": 835.273000120651,
+      "p99": 3606.9534999114694
+    },
+    "wall_clock_s": 332.1,
+    "by_level": {}
+  }
+}

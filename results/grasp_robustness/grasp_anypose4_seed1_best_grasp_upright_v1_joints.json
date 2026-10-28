@@ -1,0 +1,111 @@
+{
+  "name": "grasp_anypose4_seed1_best_grasp_upright_v1_joints",
+  "condition": "joints",
+  "grasp": "PPO grasp policy grasp_anypose4_seed1",
+  "grasp_provenance": {
+    "run_dir": "runs/grasp_anypose4_seed1",
+    "checkpoint": "best",
+    "policy_id": "grasp_anypose4_seed1",
+    "trained_at": "357eeefab4d8ddd56d16d1aa0d188870c25d0d52"
+  },
+  "protocol": "GraspV4Env, 15 s horizon",
+  "gripper": {
+    "finger_stiffness": 1000.0,
+    "torsional_friction": true
+  },
+  "eval_set": {
+    "name": "grasp_upright_v1",
+    "n": 200,
+    "digest": "7974a1ccee1a"
+  },
+  "perturbation_seed": 20261026,
+  "created_utc": "2026-10-28T00:19:00+00:00",
+  "git": {
+    "commit": "9f0965b2d0452f8c8af9fd8702857084b1dc696e",
+    "dirty": false
+  },
+  "versions": {
+    "python": "3.12.3",
+    "mujoco": "3.16.0",
+    "numpy": "2.5.4",
+    "torch": "2.14.1+cpu"
+  },
+  "summary": {
+    "episodes": 200,
+    "success_rate": 0.895,
+    "success_ci95": [
+      0.8448186177864638,
+      0.9302930375380627
+    ],
+    "first_success_s": {
+      "median": 3.25,
+      "p90": 3.960000000000001
+    },
+    "success_fraction_median": 0.7766666666666666,
+    "retry_rate": 0.0,
+    "max_cube_tilt_deg": {
+      "median": 2.335943837521109,
+      "max": 88.90733407895885
+    },
+    "final_lift_cm_median": 22.150007017031445,
+    "floor_contact_episode_rate": 0.005,
+    "return": {
+      "mean": 113.3169505196156,
+      "std": 36.10272249278231
+    },
+    "by_region": {
+      "far": {
+        "n": 126,
+        "success_rate": 0.9603174603174603,
+        "success_ci95": [
+          0.9104631226702407,
+          0.9829331386204399
+        ]
+      },
+      "near": {
+        "n": 74,
+        "success_rate": 0.7837837837837838,
+        "success_ci95": [
+          0.6772606074069529,
+          0.862296647325735
+        ]
+      }
+    },
+    "failures": {
+      "knocked_over": 19,
+      "dropped": 1,
+      "never_closed": 1
+    },
+    "inference_latency_us": {
+      "median": 807.2825003182516,
+      "p99": 2411.041148661751
+    },
+    "wall_clock_s": 307.1,
+    "by_level": {
+      "0-0.05": {
+        "n": 1,
+        "success_rate": 1.0,
+        "success_ci95": [
+          0.20654329147389294,
+          1.0
+        ]
+      },
+      "0.05-0.075": {
+        "n": 23,
+        "success_rate": 0.8695652173913043,
+        "success_ci95": [
+          0.678721020269818,
+          0.954624234856553
+        ]
+      },
+      "0.075-0.1": {
+        "n": 176,
+        "success_rate": 0.8977272727272727,
+        "success_ci95": [
+          0.8441381833791285,
+          0.9343246416847054
+        ]
+      }
+    }
+  }
+}
