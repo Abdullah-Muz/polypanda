@@ -84,16 +84,27 @@ class CommandedPolicyDriver:
     rates every reachable turn direction with the policy's own critic (the value the policy
     expects to earn under that command) and commands the best; then the policy acts.
 
-    `choose`: "critic" (the skill as used); for diagnostics, "scripted" (the privileged
-    scripted planner's choice, clearing the tower) or a fixed world direction in radians."""
+    `choose`: "critic" (the skill as used); a training.turn_chooser.TurnChooser (the learned
+    high level, rating each command's chance of success); for diagnostics, "scripted" (the
+    privileged scripted planner's choice, clearing the tower) or a fixed world direction in
+    radians."""
 
-    def __init__(self, policy, choose: str | float = "critic") -> None:
+    def __init__(self, policy, choose="critic") -> None:
         self.policy, self.choose = policy, choose
         self.choice = None
         self.values = {}
 
     def reset(self, env) -> None:
-        if self.choose == "scripted":
+        if hasattr(self.choose, "scores"):
+            cands = env.reachable_directions() or [env.command]
+            obs = []
+            for d in cands:
+                env.set_command(d)
+                obs.append(env._observation())
+            self.values = dict(zip(cands, self.choose.scores(np.stack(obs)).tolist(),
+                                   strict=True))
+            d = max(self.values, key=self.values.get)
+        elif self.choose == "scripted":
             planner = ScriptedStandUpDriver()
             planner.reset(env)
             d = float(np.arctan2(planner.z[1], planner.z[0]))

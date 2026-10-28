@@ -148,6 +148,11 @@ class TurnCommandConfig:
     tolerance: float = 0.785      # rad: a turned hand's z within this of the command
     align: float = 2.0            # potential-based shaping toward the commanded turn
     wrong_turn: float = 10.0      # turned the wrong way (before the release); terminates
+    # The wrong-turn rule is a training device (it makes the policy follow the command), not
+    # part of the task: off in evaluation, like the helpful and demonstration starts. Checked
+    # at 60 deg of turn it also cut off turns still swinging round to the command (round 6 at
+    # 1M steps, 40 fresh starts: 72 % with it, 81 % without).
+    enforce: bool = True
 
 
 @dataclass(frozen=True)
@@ -169,9 +174,11 @@ class StandUpConfig:
         return load_yaml(cls, path)
 
     def for_evaluation(self) -> "StandUpConfig":
-        """Every episode starts from the carry posture with the nominal cube."""
+        """Every episode starts from the carry posture with the nominal cube; no training
+        devices (helpful and demonstration starts, the wrong-turn rule)."""
         return replace(self, start=replace(self.start, helpful_prob=0.0, demo_prob=0.0),
-                       randomization=RandomizationConfig())
+                       randomization=RandomizationConfig(),
+                       command=replace(self.command, enforce=False))
 
 
 def load_standup_scene(gripper: GripperConfig) -> tuple[mujoco.MjModel, mujoco.MjData]:
@@ -711,7 +718,7 @@ class StandUpV3Env(StandUpV2Env):
             new["align"], self._align = phi - self._align, phi
             new["strain"] = -r.strain * max(0.0, self._weld_lag() - r.strain_from)
             new["hold"] = -r.hold
-            if (not terminated and abs(self._hand_z()[2]) < c.level
+            if (c.enforce and not terminated and abs(self._hand_z()[2]) < c.level
                     and self._command_error() > c.tolerance):
                 new["wrong_turn"] = -c.wrong_turn
                 terminated, truncated = True, False

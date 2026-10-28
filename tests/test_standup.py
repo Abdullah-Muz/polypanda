@@ -183,6 +183,11 @@ def test_v3_turning_the_wrong_way_ends_the_episode():
     _, reward, terminated, _, info = env.step(np.zeros(6, dtype=np.float32))
     assert terminated and info["failure"] == "wrong_turn"
     assert info["reward_terms"]["wrong_turn"] == -cfg.command.wrong_turn
+    ev = StandUpV3Env(cfg.for_evaluation())   # a training device: off in evaluation
+    ep = ev.draw_episode(np.random.default_rng(3), helpful=True)
+    ev.reset(options={"episode": ep, "command": ep["turn"] + np.pi})
+    _, _, terminated, _, info = ev.step(np.zeros(6, dtype=np.float32))
+    assert not terminated and info["reward_terms"]["wrong_turn"] == 0.0
 
 
 def test_v3_demo_starts_turn_the_commanded_way_and_the_shaping_telescopes():
@@ -228,3 +233,27 @@ def test_the_critic_picks_the_command():
     driver.reset(env)
     best = min(reachable, key=lambda d: _angle(d, np.radians(30)))
     assert env.command == pytest.approx(best) and driver.choice == pytest.approx(np.degrees(best))
+
+
+def test_the_turn_chooser_learns_which_commands_succeed_and_drives_the_choice():
+    from polypanda.evaluation.standup import CommandedPolicyDriver
+    from polypanda.training.turn_chooser import TurnChooser, choice_quality, fit_chooser
+
+    rng = np.random.default_rng(0)
+    angles = rng.uniform(-np.pi, np.pi, (40, 6))           # 40 starts x 6 commands
+    obs = np.zeros((240, OBS_DIM_V3), dtype=np.float32)
+    obs[:, -2], obs[:, -1] = np.cos(angles.ravel()), np.sin(angles.ravel())
+    obs[:, :-2] = rng.normal(size=(240, OBS_DIM_V3 - 2))   # noise elsewhere
+    success = obs[:, -1] > 0.5                             # only some commands work
+    data = {"obs": obs, "success": success, "start": np.repeat(np.arange(40), 6)}
+    chooser = fit_chooser(obs, success)
+    oracle = np.mean([success[data["start"] == s].any() for s in range(40)])
+    assert choice_quality(chooser.scores(obs), data) == pytest.approx(oracle)
+
+    env = StandUpV3Env(CFG3.for_evaluation())
+    env.reset(seed=0)
+    north = TurnChooser(chooser.net, chooser.mean, chooser.std)
+    driver = CommandedPolicyDriver(policy=None, choose=north)
+    driver.reset(env)
+    best = max(env.reachable_directions(), key=np.sin)
+    assert np.sin(env.command) == pytest.approx(np.sin(best), abs=0.2)

@@ -49,8 +49,9 @@ def main() -> None:
     parser.add_argument("--task-config", type=Path, default=TASK_CONFIG,
                         help="the scripted stand-up's task (gate, physics); runs use their own")
     parser.add_argument("--choose", default="critic",
-                        help="v3 runs: who picks the turn direction: critic (the skill), "
-                             "scripted (privileged planner, diagnostic) or a world angle in deg")
+                        help="v3 runs: who picks the turn direction: critic (the PPO critic), "
+                             "chooser (the run's trained turn chooser), scripted (privileged "
+                             "planner, diagnostic) or a world angle in deg")
     parser.add_argument("--make-set", action="store_true")
     parser.add_argument("--n", type=int, default=200)
     parser.add_argument("--seed", type=int)
@@ -85,8 +86,13 @@ def main() -> None:
                        f"(seed {meta['seed']}, {meta['total_timesteps']:,} steps)")
         name = f"{meta['policy_id']}_{policy.which}_{eval_set.name}"
         if meta["skill"] == "standup_v3":
-            choose = args.choose if args.choose in ("critic", "scripted") else np.radians(
-                float(args.choose))
+            if args.choose == "chooser":
+                from polypanda.training.turn_chooser import TurnChooser
+                choose = TurnChooser.load(Path(run_dir) / f"turn_chooser_{policy.which}.pt")
+            elif args.choose in ("critic", "scripted"):
+                choose = args.choose
+            else:
+                choose = np.radians(float(args.choose))
             driver = CommandedPolicyDriver(policy, choose)
             description += f"; turn direction chosen by: {args.choose}"
             if args.choose != "critic":
