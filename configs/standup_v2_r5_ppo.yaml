@@ -1,12 +1,7 @@
-# v3 step d2, round 5: round 4's training (configs/standup_v2_demo_ppo.yaml) on
-# configs/standup_v2_r5.yaml, with state-dependent exploration (gSDE). Round 4's per-step
-# Gaussian noise (std still about 0.9 at 2M steps) averages out over the ~20 steps a turn
-# takes, so the policies never tried turning the other way round the tower. gSDE noise is a
-# function of the state, held for sde_sample_freq steps (longer than a turn).
-# log_std_init -3 (std per latent feature): held noise adds up over steps, so it is matched on
-# how far it carries the untrained hand, not on its per-step size. Measured over 20 steps:
-# round 4 4.3 cm; gSDE -2 21 cm (a first launch at -2 made no progress: validation 0 % at 200k
-# on all seeds, runs/aborted/standup_round5_lsi-2_*); gSDE -3 9.3 cm, about 2x round 4.
+# v3 step d2, round 5: round 4's training (configs/standup_v2_demo_ppo.yaml, per-step Gaussian
+# exploration) on configs/standup_v2_r5.yaml (release gate 1.5 cm, clearance margin 15 cm).
+# State-dependent exploration (configs/standup_v2_r5_gsde_ppo.yaml) was tried first and set
+# aside: it learned far slower (validation 0 % at 300k on all seeds).
 
 algorithm: ppo
 task: standup_v2
@@ -35,6 +30,4 @@ ppo:
   vf_coef: 0.5
   max_grad_norm: 0.5
   net_arch: [128, 128]
-  log_std_init: -3.0
-  use_sde: true
-  sde_sample_freq: 32
+  log_std_init: 0.0
