@@ -13,6 +13,11 @@ are evaluation-only: no skill was trained or tuned on them.
             (the grip holds about 2 N of friction, about 1 N of which carries the weight)
 - combined: all of the above at once
 - ood:      cube starts in a 5 cm band outside the placement region (out of distribution)
+
+The grasp suite (`run_grasp_condition`, v3 any-pose grasp) runs the grasp alone on held-out
+grasp sets, lying or upright, under mass, friction, size, joints and combined. Push acts during
+transport, which a grasp episode has none of (combined still draws it, unused, so its stream
+matches); ood is left out because the any-pose region already reaches the arm's reach limit.
 """
 
 import time
@@ -20,19 +25,25 @@ from dataclasses import asdict, dataclass
 
 import numpy as np
 
+from polypanda.evaluation.grasp import (
+    GraspPolicyEpisode,
+    evaluate_grasp_policy,
+)
 from polypanda.evaluation.pickplace import (
     PickPlaceEpisode,
     episode_from_result,
     summarize_pickplace,
 )
 from polypanda.evaluation.reach import wilson_interval
-from polypanda.evaluation.sets import PickPlaceEvalSet
+from polypanda.evaluation.sets import GraspEvalSet, PickPlaceEvalSet
 from polypanda.simulation.randomization import CubePhysics
 from polypanda.simulation.scenes import CUBE_X_RANGE, CUBE_Y_RANGE
 from polypanda.supervisor.fsm import PickPlaceSupervisor, Stage, SupervisorConfig
 
 ROBUSTNESS_SPAWN_KEY = 0x8B0D
 CONDITIONS = ("mass", "friction", "size", "joints", "push", "combined", "ood")
+GRASP_ROBUSTNESS_SPAWN_KEY = 0x8B0E
+GRASP_CONDITIONS = ("mass", "friction", "size", "joints", "combined")
 PUSH_START, PUSH_STEPS = (5, 15), 4    # transport policy steps; transport needs >= 30 steps
 OOD_BAND = 0.05                        # m outside the placement region
 
@@ -142,6 +153,44 @@ def run_condition(grasp_driver, transport_driver, place_driver, eval_set: PickPl
     summary = summarize_pickplace([r.episode for r in results])
     summary["by_level"] = by_level(results, condition)
     summary["wall_clock_s"] = round(time.perf_counter() - start, 1)
+    return summary, results
+
+
+@dataclass(frozen=True)
+class GraspRobustEpisode:
+    condition: str
+    mass_scale: float
+    friction_scale: float
+    size_scale: float
+    arm_offset_max: float
+    episode: GraspPolicyEpisode
+
+
+def run_grasp_condition(driver, eval_set: GraspEvalSet, condition: str, seed: int, env
+                        ) -> tuple[dict, list[GraspRobustEpisode]]:
+    """The grasp alone on a held-out grasp set (lying or upright) under one condition; the same
+    perturbation stream for every skill and both sets (paired)."""
+    if condition not in GRASP_CONDITIONS:
+        raise ValueError(f"unknown grasp condition {condition!r}")
+    rng = np.random.default_rng(np.random.SeedSequence(
+        seed, spawn_key=(GRASP_ROBUSTNESS_SPAWN_KEY, GRASP_CONDITIONS.index(condition))))
+    perturbations = [sample_perturbation(rng, condition) for _ in range(len(eval_set))]
+    physics = ScenePhysics(env)
+
+    def before_episode(i):
+        physics.apply(perturbations[i])
+        return {"arm_offset": perturbations[i].arm_offset}
+
+    try:
+        summary, episodes = evaluate_grasp_policy(driver, eval_set, env=env,
+                                                  before_episode=before_episode)
+    finally:
+        physics.apply(Perturbation())  # leave the model nominal
+    results = [GraspRobustEpisode(condition=condition, mass_scale=p.mass_scale,
+                                  friction_scale=p.friction_scale, size_scale=p.size_scale,
+                                  arm_offset_max=float(np.abs(p.arm_offset).max()), episode=e)
+               for p, e in zip(perturbations, episodes, strict=True)]
+    summary["by_level"] = by_level(results, condition)
     return summary, results
 
 

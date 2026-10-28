@@ -15,20 +15,25 @@ import numpy as np
 import yaml
 
 from polypanda.control.scripted_place import ScriptedPlace
-from polypanda.environments.grasp import GraspEnv
-from polypanda.evaluation.grasp import PolicyDriver, ScriptedDriver
+from polypanda.environments.grasp import GraspConfig, GraspEnv, GraspV4Env
+from polypanda.evaluation.grasp import PolicyDriver, ScriptedAnyPoseDriver, ScriptedDriver
 from polypanda.evaluation.reach import wilson_interval
 from polypanda.evaluation.sets import PickPlaceEvalSet
 from polypanda.evaluation.transport import ScriptedCarryDriver
 from polypanda.policies.loader import load_run, make_run_env
 from polypanda.supervisor.fsm import PickPlaceResult, PickPlaceSupervisor, SupervisorConfig
 
+SCRIPTED_V4_CONFIG = Path("configs/grasp_anypose4_cartesian.yaml")  # the any-pose task (d1)
+
 
 def grasp_env_for(spec: str):
-    """The environment a grasp skill is evaluated in: GraspEnv for the scripted grasp; for a
-    trained run, its task's env with the run's own task configuration, as evaluated."""
+    """The environment a grasp skill is evaluated in: GraspEnv for the scripted grasp,
+    GraspV4Env on the any-pose task for the scripted any-pose grasp; for a trained run, its
+    task's env with the run's own task configuration, as evaluated."""
     if spec == "scripted":
         return GraspEnv()
+    if spec == "scripted-v4":
+        return GraspV4Env(GraspConfig.from_yaml(SCRIPTED_V4_CONFIG).for_evaluation())
     run_dir = Path(spec[4:].partition("@")[0])
     meta_file = run_dir / "metadata.yaml"
     skill = (yaml.safe_load(meta_file.read_text())["skill"] if meta_file.exists()
@@ -37,11 +42,15 @@ def grasp_env_for(spec: str):
 
 
 def grasp_driver_from_spec(spec: str):
-    """'scripted' or 'run:<run_dir>[@best|final]' -> (driver, description, tag, provenance)."""
+    """'scripted', 'scripted-v4' or 'run:<run_dir>[@best|final]' -> (driver, description, tag,
+    provenance)."""
     if spec == "scripted":
         return ScriptedDriver(), "scripted top-down grasp", "scripted", {}
+    if spec == "scripted-v4":
+        return (ScriptedAnyPoseDriver(), "scripted any-pose grasp (4-D cartesian actions)",
+                "scripted_v4", {"task_config": str(SCRIPTED_V4_CONFIG)})
     if not spec.startswith("run:"):
-        raise ValueError("grasp must be 'scripted' or 'run:<run_dir>[@best|final]'")
+        raise ValueError("grasp must be 'scripted', 'scripted-v4' or 'run:<run_dir>[@best|final]'")
     run_dir, _, which = spec[4:].partition("@")
     policy = load_run(run_dir, which or "best")
     meta = policy.metadata

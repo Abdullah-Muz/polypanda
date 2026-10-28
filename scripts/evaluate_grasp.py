@@ -3,6 +3,8 @@
 Usage:
   uv run python scripts/evaluate_grasp.py                      # standalone scripted runner
   uv run python scripts/evaluate_grasp.py --policy scripted    # scripted, GraspEnv protocol
+  uv run python scripts/evaluate_grasp.py --policy scripted-v4 --set eval_sets/grasp_lying_v1.json
+                                                               # scripted any-pose grasp (d1)
   uv run python scripts/evaluate_grasp.py --policy run:runs/<run_dir>[@final]
   uv run python scripts/evaluate_grasp.py --make-set           # (re)generate the placement set
 Writes results/grasp/<name>.json (summary + provenance) and <name>_episodes.csv.
@@ -33,11 +35,12 @@ from polypanda.evaluation.grasp import (
     GraspEpisodeResult,
     GraspPolicyEpisode,
     PolicyDriver,
+    ScriptedAnyPoseDriver,
     ScriptedDriver,
     evaluate_grasp_policy,
     evaluate_scripted_grasp,
 )
-from polypanda.evaluation.pickplace import grasp_env_for
+from polypanda.evaluation.pickplace import SCRIPTED_V4_CONFIG, grasp_env_for
 from polypanda.evaluation.sets import GraspEvalSet, generate_grasp_eval_set
 from polypanda.policies.loader import load_run
 from polypanda.simulation.scenes import WIDE_X_RANGE, WIDE_Y_RANGE
@@ -65,6 +68,11 @@ def run_env_protocol(args, eval_set: GraspEvalSet) -> None:
     if args.policy == "scripted":
         driver, description, name = (ScriptedDriver(), "scripted top-down grasp through GraspEnv",
                                      f"scripted_env_{eval_set.name}")
+    elif args.policy == "scripted-v4":
+        driver = ScriptedAnyPoseDriver()
+        description = (f"scripted any-pose grasp through GraspV4Env (4-D cartesian actions), "
+                       f"task {SCRIPTED_V4_CONFIG}")
+        name = f"scripted_v4_{eval_set.name}"
     elif args.policy.startswith("run:"):
         run_dir, _, which = args.policy[4:].partition("@")
         policy = load_run(run_dir, which or "best")
@@ -76,7 +84,8 @@ def run_env_protocol(args, eval_set: GraspEvalSet) -> None:
                        f"(seed {meta['seed']}, {meta['total_timesteps']:,} steps)")
         name = f"{meta['policy_id']}_{policy.which}_{eval_set.name}"
     else:
-        raise SystemExit(f"unknown policy {args.policy!r}; use scripted or run:DIR[@which]")
+        raise SystemExit(f"unknown policy {args.policy!r}; "
+                         "use scripted, scripted-v4 or run:DIR[@which]")
 
     env = grasp_env_for(args.policy)  # the policy's own task env (GraspEnv, V2 or V3)
     if args.gripper:  # e.g. an earlier policy in the gripper a later task trains in

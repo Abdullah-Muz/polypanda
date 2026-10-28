@@ -209,6 +209,36 @@ class ScriptedDriver:
         return self.controller.act(env.data)[0]
 
 
+class ScriptedAnyPoseDriver:
+    """A hand-written any-pose grasp acting through the v4 policies' own 4-D cartesian actions
+    (dx, dy, dz, dyaw), from the env's exact measurements: centre over the cube and turn to the
+    grip direction 4 cm above it, descend to 4 mm above its centre, and lift gently once the
+    fingers have closed (GraspV4Env's gate closes them). The scripted comparison for the
+    any-pose grasp; it sees the same quantities as the policy's observation."""
+
+    hover, low = 0.04, 0.004          # m above the cube centre: lining up, closing
+    centred, aligned = 0.006, 0.08    # m, rad: lined up enough to descend
+    lift = 0.3                        # of the full step per action (a full-speed lift can pivot
+    #                                   the cube in the grip)
+
+    def reset(self, env: GraspEnv) -> None:
+        pass
+
+    def __call__(self, env: GraspEnv, obs: np.ndarray) -> np.ndarray:
+        a = np.zeros(4, dtype=np.float32)
+        if env.closed:
+            a[2] = self.lift
+            return a
+        cart = env.config.action.cartesian
+        m = env._measure()
+        rel = m["rel"]
+        lined_up = np.hypot(*rel[:2]) < self.centred and abs(m["align"]) < self.aligned
+        a[:2] = np.clip(rel[:2] / cart.max_step, -1, 1)
+        a[2] = np.clip((rel[2] + (self.low if lined_up else self.hover)) / cart.max_step, -1, 1)
+        a[3] = np.clip(m["align"] / cart.max_rot, -1, 1)
+        return a
+
+
 @dataclass(frozen=True)
 class GraspPolicyEpisode:
     index: int
@@ -229,9 +259,9 @@ class GraspPolicyEpisode:
 
 
 def run_policy_episode(env: GraspEnv, driver, placement, index: int, region: str,
-                       distractors=None, lying: bool = False
+                       distractors=None, lying: bool = False, extra_options: dict | None = None
                        ) -> tuple[GraspPolicyEpisode, list[float]]:
-    options = {"cube": tuple(placement)}
+    options = {"cube": tuple(placement), **(extra_options or {})}
     if lying:
         options["lying"] = True  # (GraspV4Env)
     if distractors is not None:
@@ -317,8 +347,11 @@ def summarize_policy_grasp(results: list[GraspPolicyEpisode], latencies: list[fl
 
 
 def evaluate_grasp_policy(driver, eval_set: GraspEvalSet, config: GraspConfig | None = None,
-                          env: GraspEnv | None = None) -> tuple[dict, list[GraspPolicyEpisode]]:
-    """`env` overrides the default GraspEnv(config), e.g. a GraspV2Env for v2 policies."""
+                          env: GraspEnv | None = None, before_episode=None
+                          ) -> tuple[dict, list[GraspPolicyEpisode]]:
+    """`env` overrides the default GraspEnv(config), e.g. a GraspV2Env for v2 policies.
+    `before_episode(i)`, if given, runs before episode i and returns extra reset options (the
+    robustness suite perturbs the scene there)."""
     env = env or GraspEnv(config)
     start = time.perf_counter()
     results, latencies = [], []
@@ -329,8 +362,9 @@ def evaluate_grasp_policy(driver, eval_set: GraspEvalSet, config: GraspConfig | 
     for i, (placement, region) in enumerate(zip(eval_set.placements, eval_set.regions,
                                                 strict=True)):
         others = None if eval_set.distractors is None else eval_set.distractors[i]
+        extra = before_episode(i) if before_episode else None
         result, lat = run_policy_episode(env, driver, placement, i, region, others,
-                                         lying=eval_set.lying)
+                                         lying=eval_set.lying, extra_options=extra)
         results.append(result)
         latencies.extend(lat)
     summary = summarize_policy_grasp(results, latencies)
