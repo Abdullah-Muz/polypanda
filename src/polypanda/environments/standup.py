@@ -109,6 +109,11 @@ class StandUpRewardConfig:
     floor: float = 0.1           # per step with the arm or fingers on the table
     toppled: float = 10.0        # the released cube fell over; terminates
     tower: float = 10.0          # the arm or cube touched the tower; terminates
+    # v2 (StandUpV2Env): potential-based clearance shaping, clearance x the change of
+    # -max(0, 1 - gap / clearance_margin), gap = the arm's and cube's distance to the tower:
+    # closing in costs up to `clearance`, backing off earns it back (it cannot accumulate)
+    clearance: float = 0.0
+    clearance_margin: float = 0.05  # m
 
 
 @dataclass(frozen=True)
@@ -440,3 +445,68 @@ class StandUpEnv(gym.Env):
             tower_rel,
             tower,
         ]).astype(np.float32)
+
+
+OBS_SCHEMA_V2 = "standup-v2-56d"   # v1 + the tower clearance (distance, and its direction)
+OBS_LAYOUT_V2 = OBS_LAYOUT + (("tower_gap", 1), ("tower_away", 3))
+OBS_DIM_V2 = sum(n for _, n in OBS_LAYOUT_V2)
+GAP_CAP = 0.2   # m: clearances beyond this read as this (and with no tower)
+
+
+class StandUpV2Env(StandUpEnv):
+    """Stand-up v2 (d2 round 3): v1 plus a sense of the tower before touching it.
+
+    v1 policies stood every cube up with no tower near (12/12) but hit the tower in a quarter
+    of the episodes with one, mostly mid-turn: they saw only where the tower's top is, and
+    the tower penalty came with the contact. v2 observes the clearance, the smallest distance
+    from the arm or the cube to the tower (capped at GAP_CAP), and the direction away from it
+    (tower point to arm point), as a proximity sensor would, and adds reward.clearance shaping.
+    """
+
+    def __init__(self, config: StandUpConfig | None = None) -> None:
+        super().__init__(config)
+        m = self.model
+        self._gap_geoms = [g for g in range(m.ngeom)
+                           if (m.geom_bodyid[g] in self.arm_bodies
+                               and (m.geom_contype[g] or m.geom_conaffinity[g]))
+                           or g == self.cube.geom]
+        self.observation_space = spaces.Box(-np.inf, np.inf, shape=(OBS_DIM_V2,),
+                                            dtype=np.float32)
+        self._fromto = np.zeros(6)
+        self._clear = 0.0
+
+    def _tower_gap(self) -> tuple[float, np.ndarray]:
+        """The arm's and cube's clearance from the tower (m) and the vector from the tower's
+        nearest point to theirs."""
+        if self.tower is None:
+            return GAP_CAP, np.zeros(3)
+        best, away = GAP_CAP, np.zeros(3)
+        for g in self._gap_geoms:
+            dist = mujoco.mj_geomDistance(self.model, self.data, g, self.tower_geom, GAP_CAP,
+                                          self._fromto)
+            if dist < best:
+                best, away = dist, self._fromto[:3] - self._fromto[3:]
+        return max(float(best), 0.0), away
+
+    def _clearance_potential(self, gap: float) -> float:
+        r = self.config.reward
+        return -max(0.0, 1.0 - gap / r.clearance_margin)
+
+    def reset(self, *, seed: int | None = None, options: dict | None = None):
+        obs, info = super().reset(seed=seed, options=options)
+        self._clear = self._clearance_potential(self._tower_gap()[0])
+        return obs, info
+
+    def step(self, action):
+        obs, reward, terminated, truncated, info = super().step(action)
+        if info.get("failure") == "non_finite":
+            return np.zeros(OBS_DIM_V2, dtype=np.float32), reward, terminated, truncated, info
+        clear = self._clearance_potential(self._tower_gap()[0])
+        term = self.config.reward.clearance * (clear - self._clear)
+        self._clear = clear
+        info["reward_terms"]["clearance"] = term
+        return obs, reward + term, terminated, truncated, info
+
+    def _observation(self) -> np.ndarray:
+        gap, away = self._tower_gap()
+        return np.concatenate([super()._observation(), [gap], away]).astype(np.float32)

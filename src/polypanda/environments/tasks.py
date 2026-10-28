@@ -24,6 +24,7 @@ TASKS = {
                                    transport.RESIDUAL_OBS_SCHEMA),
     "place": TaskSpec(place.PlaceEnv, place.PlaceConfig, place.OBS_SCHEMA),
     "standup": TaskSpec(standup.StandUpEnv, standup.StandUpConfig, standup.OBS_SCHEMA),
+    "standup_v2": TaskSpec(standup.StandUpV2Env, standup.StandUpConfig, standup.OBS_SCHEMA_V2),
 }
 
 

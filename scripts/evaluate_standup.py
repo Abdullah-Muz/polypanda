@@ -70,9 +70,9 @@ def main() -> None:
         run_dir, _, which = args.policy[4:].partition("@")
         policy = load_run(run_dir, which or "best")
         meta = policy.metadata
-        if meta["skill"] != "standup":
+        if meta["skill"] not in ("standup", "standup_v2"):
             raise SystemExit(f"{run_dir} is a {meta['skill']} policy, not standup")
-        driver, env = PolicyDriver(policy), make_run_env(run_dir, "standup")
+        driver, env = PolicyDriver(policy), make_run_env(run_dir, meta["skill"])
         description = (f"{meta['algorithm']} {policy.which} model from {run_dir} "
                        f"(seed {meta['seed']}, {meta['total_timesteps']:,} steps)")
         name = f"{meta['policy_id']}_{policy.which}_{eval_set.name}"

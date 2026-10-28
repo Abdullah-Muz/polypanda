@@ -6,7 +6,14 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from polypanda.environments.standup import OBS_DIM, StandUpConfig, StandUpEnv
+from polypanda.environments.standup import (
+    GAP_CAP,
+    OBS_DIM,
+    OBS_DIM_V2,
+    StandUpConfig,
+    StandUpEnv,
+    StandUpV2Env,
+)
 from polypanda.evaluation.standup import (
     ScriptedStandUpDriver,
     StandUpEvalSet,
@@ -59,6 +66,40 @@ def test_touching_the_tower_ends_the_episode(env):
         if terminated:
             break
     assert terminated and info["failure"] == "tower_hit"
+
+
+CFG2 = StandUpConfig.from_yaml(ROOT / "configs" / "standup_v2.yaml")
+
+
+def test_v2_senses_the_towers_clearance_and_shapes_closing_in():
+    env = StandUpV2Env(CFG2.for_evaluation())
+    ep = env.draw_episode(np.random.default_rng(3))
+    ep["tower"] = (ep["spot"][0] + 0.12, ep["spot"][1], 4)   # 12 cm beside the hand, 24 cm tall
+    obs, _ = env.reset(options={"episode": ep})
+    assert obs.shape == (OBS_DIM_V2,)
+    gap0 = float(obs[OBS_DIM])
+    assert 0.0 < gap0 < GAP_CAP
+    toward = np.zeros(6, dtype=np.float32)
+    toward[0] = 1.0                                       # move the hand toward the tower
+    gaps, terms = [], []
+    for _ in range(40):
+        obs, _, terminated, _, info = env.step(toward)
+        gaps.append(float(obs[OBS_DIM]))
+        terms.append(info["reward_terms"]["clearance"])
+        if terminated:
+            break
+    k = int(np.argmin(gaps))
+    assert gaps[k] < CFG2.reward.clearance_margin and sum(terms[:k + 1]) < 0   # closer: cost
+    phi = [min(0.0, g / CFG2.reward.clearance_margin - 1.0) for g in (gap0, gaps[-1])]
+    assert sum(terms) == pytest.approx(CFG2.reward.clearance * (phi[1] - phi[0]))  # telescopes
+    env.reset(options={"episode": {**ep, "tower": None}})
+    assert float(env._observation()[OBS_DIM]) == pytest.approx(GAP_CAP)  # no tower: the cap
+
+
+def test_v1_is_unchanged_by_v2(env):
+    obs, _ = env.reset(seed=0)
+    _, _, _, _, info = env.step(np.zeros(6, dtype=np.float32))
+    assert obs.shape == (OBS_DIM,) and "clearance" not in info["reward_terms"]
 
 
 def test_eval_sets_round_trip_with_their_digest(env, tmp_path):
