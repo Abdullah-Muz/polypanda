@@ -101,11 +101,14 @@ class StandUpRewardConfig:
     retreat: float = 5.0         # per m the hand moves away from the released cube (capped)
     retreat_cap: float = 0.10
     stood: float = 0.5           # per step while the placed check holds
-    action: float = 0.005
-    action_rate: float = 0.05
+    # The per-step action costs stay below the terminal penalties over a whole episode, even
+    # for the untrained (std 1) policy: with action_rate 0.05 a full episode cost -60..-90 and
+    # the first runs learned to end episodes early on the tower (-5; stopped at 0.2M steps)
+    action: float = 0.001        # x |a|^2 (random 6-D: about 0.005 per step)
+    action_rate: float = 0.002   # x |a - a_prev|^2 (random: about 0.02 per step)
     floor: float = 0.1           # per step with the arm or fingers on the table
-    toppled: float = 5.0         # the released cube fell over; terminates
-    tower: float = 5.0           # the arm or cube touched the tower; terminates
+    toppled: float = 10.0        # the released cube fell over; terminates
+    tower: float = 10.0          # the arm or cube touched the tower; terminates
 
 
 @dataclass(frozen=True)
