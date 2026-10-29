@@ -131,6 +131,10 @@ class StandUpRewardConfig:
     # front of a tower or with the cube pressed down off the spot until the episode ran out
     # (never_released 35-89 per 600). Over a whole episode it stays below the tower penalty.
     hold: float = 0.0
+    # v3 with the shield (round 10): per step x the fraction of the action the shield cut
+    # (|a - a_used| / |a|), so the policy learns paths the shield need not correct instead of
+    # pushing against it (round 9's policies were never told and froze in front of the tower)
+    shield: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -176,10 +180,18 @@ class TowerShieldConfig:
     come within `min_gap` and closer than at the current targets, the step is retried at the
     `scales` of the action, the last of which (0) holds the targets. The policy still decides
     every motion; the shield only refuses ones that would touch the tower (a "safety shield",
-    as in provably safe RL). Part of the skill: on in training and in evaluation."""
+    as in provably safe RL). Part of the skill: on in training and in evaluation.
+
+    Round 9 (86.2 % held-out): tower hits 54 -> 3 of 600, but never_released 19 -> 71, the
+    robot stopped 3-6 cm short with the cube still tilted; 28 of the 71 starts round 7 had
+    stood. Scaling the whole action down stops it dead in front of the tower. With `slide`
+    (round 10) a refused step is first retried with the part of the hand's motion that heads
+    into the tower removed (along the closest points' normal), at full, half and no turning,
+    so the hand keeps moving round and up it; only then the `scales`."""
     enabled: bool = False
     min_gap: float = 0.015        # m, at the commanded joints (the arm lags them by ~1 cm)
     scales: tuple[float, ...] = (1.0, 0.5, 0.25, 0.0)
+    slide: bool = False
 
 
 @dataclass(frozen=True)
@@ -760,7 +772,9 @@ class StandUpV3Env(StandUpV2Env):
     # --- the safety shield ---------------------------------------------------------------
     def _arm_gap_at(self, q: np.ndarray) -> float:
         """The clearance from the tower (m) of the arm with its joints at q, and of the cube
-        while held, where the grasp assist's weld carries it (kinematics only)."""
+        while held, where the grasp assist's weld carries it (kinematics only). Also sets
+        `_shield_normal`, the unit world vector from the tower's closest point to the arm's
+        (None if nothing is within GAP_CAP)."""
         m, c = self.model, self.cube
         if not hasattr(self, "_shield_data"):
             self._shield_data = mujoco.MjData(m)
@@ -778,11 +792,28 @@ class StandUpV3Env(StandUpV2Env):
             mujoco.mj_kinematics(m, s)
         else:
             geoms = [g for g in geoms if g != c.geom]
-        gap = GAP_CAP
+        gap, self._shield_normal = GAP_CAP, None
         for g in geoms:
-            gap = min(gap, mujoco.mj_geomDistance(m, s, g, self.tower_geom, GAP_CAP,
-                                                  self._fromto))
+            d = mujoco.mj_geomDistance(m, s, g, self.tower_geom, GAP_CAP, self._fromto)
+            if d < gap:
+                v = (self._fromto[:3] - self._fromto[3:]) * (1.0 if d >= 0 else -1.0)
+                n = float(np.linalg.norm(v))
+                gap, self._shield_normal = d, (v / n if n > 1e-9 else None)
         return float(gap)
+
+    def _shield_candidates(self, a: np.ndarray) -> list[np.ndarray]:
+        """The actions the shield tries in turn (TowerShieldConfig)."""
+        sh, out = self.config.shield, [a]
+        n = self._shield_normal
+        if sh.slide and n is not None:
+            n = self.adapter._frame_rotations()[0] @ n     # actions are in the station frame
+            t = np.asarray(a[:3], dtype=np.float64).copy()
+            t -= min(0.0, float(t @ n)) * n                # drop the part heading in
+            for turn in (1.0, 0.5, 0.0):
+                b = np.asarray(a, dtype=np.float64).copy()
+                b[:3], b[3:] = t, b[3:] * turn
+                out.append(b)
+        return out + [a * s for s in sh.scales if s != 1.0]
 
     def _actuate(self, a: np.ndarray) -> None:
         sh = self.config.shield
@@ -794,14 +825,16 @@ class StandUpV3Env(StandUpV2Env):
         saved = (ad.q_cmd.copy(), ad.target_pos.copy(), ad.target_R.copy(),
                  ad._velocity_step.copy())
         ref = self._arm_gap_at(saved[0])
-        for scale in sh.scales:
+        a = np.clip(np.asarray(a, dtype=np.float64), -1.0, 1.0)
+        for b in self._shield_candidates(a):
             ad.q_cmd, ad.target_pos, ad.target_R, ad._velocity_step = (
                 saved[0].copy(), saved[1].copy(), saved[2].copy(), saved[3].copy())
-            q = ad.apply(self.data, a * scale)
+            q = ad.apply(self.data, b)
             gap = self._arm_gap_at(q)
             if gap >= sh.min_gap or gap >= ref - 1e-4:
                 break
-        self._shield_scale = float(scale)
+        size, cut = float(np.linalg.norm(a)), float(np.linalg.norm(a - b))
+        self._shield_scale = 1.0 - min(1.0, cut / size) if size > 0 else 1.0  # 1: untouched
         mujoco.mj_step(self.model, self.data, nstep=ad.n_substeps)
 
     # --- episode -------------------------------------------------------------------------
@@ -818,7 +851,8 @@ class StandUpV3Env(StandUpV2Env):
             return np.zeros(OBS_DIM_V3, dtype=np.float32), reward, terminated, truncated, info
         c, r = self.config.command, self.config.reward
         terms = info["reward_terms"]
-        new = {"align": 0.0, "strain": 0.0, "touch": 0.0, "hold": 0.0, "wrong_turn": 0.0}
+        new = {"align": 0.0, "strain": 0.0, "touch": 0.0, "hold": 0.0, "wrong_turn": 0.0,
+               "shield": -r.shield * (1.0 - getattr(self, "_shield_scale", 1.0))}
         if not self.released:
             phi = self._align_potential()
             new["align"], self._align = phi - self._align, phi

@@ -1,0 +1,89 @@
+# v3 step d2, round 10: round 9 (configs/standup_v3_r9.yaml) with a sliding shield and a
+# charge for its cuts. Round 9 (86.2 % held-out, best so far; round 7 85.7 %, p = 0.82): the
+# shield took tower hits from 54 to 3 of 600, but never_released rose from 19 to 71, the robot
+# stopped 3-6 cm short with the cube still tilted, 28 of them on starts round 7 had stood. The
+# shield scaled the whole step down and the policy was never told, so it pushed into it.
+# Changes, set before any round-10 training:
+# - shield.slide: a refused step is first retried without the part of the hand's motion that
+#   heads into the tower (round and up it keeps going), at full, half and no turning;
+# - reward.shield 0.05 per step x the fraction of the action the shield cut;
+# - training commands from round 9's 5 voting choosers (runs/choosers/standup_round9_pooled.pt).
+
+action:
+  space: cartesian
+  n_substeps: 25
+  cartesian:
+    dof: 6
+    max_step: 0.01
+    max_rot: 0.05
+    max_tilt: 1.75
+    max_lead: 0.03
+    box_low: [0.15, -0.5, 0.01]
+    box_high: [0.85, 0.5, 0.6]
+    ik_iters: 2
+    posture_gain: 0.02
+
+start:
+  radius: [0.32, 0.62]
+  angle: [-0.44, 0.44]
+  carry_height: 0.32
+  grip_offset: 0.01
+  grip_z: [-0.005, 0.01]
+  helpful_prob: 0.3
+  demo_prob: 0.3
+  demo_steps: [0, 120]
+
+tower:
+  prob: 0.8
+  distance: [0.20, 0.26]
+  min_radius: 0.30
+  max_cubes: 4
+
+gate:
+  max_tilt: 0.26
+  max_drop: 0.025
+  xy_tol: 0.03
+  dwell_steps: 2
+
+check:
+  max_rest_height: 0.003
+  max_tilt: 0.1745
+  tolerance: 0.03
+  max_speed: 0.01
+  window: 10
+
+reward:
+  clearance: 2.0
+  clearance_margin: 0.05
+  strain: 0.15              # x rad of weld stretch beyond 20 deg, per step (40 deg: -0.05)
+  strain_from: 0.35
+  touch: 0.2                # per step the gripper touches the released cube
+  hold: 0.01                # per step still holding (a whole episode: -3, below the -10s)
+  shield: 0.05              # per step x the fraction the shield cut (whole episode: -15 max)
+
+command:
+  directions: 16
+  level: 0.2
+  tolerance: 1.05
+  align: 2.0
+  wrong_turn: 10.0
+  sampler: chooser
+  chooser: runs/choosers/standup_round9_pooled.pt   # 5 voting, round 9's outcomes
+  top_k: 3
+  explore: 0.2
+
+shield:                     # the safety shield (StandUpConfig.shield)
+  enabled: true
+  min_gap: 0.015
+  slide: true               # round 10
+
+gripper:
+  finger_stiffness: 1000.0
+  torsional_friction: true
+
+randomization:
+  mass_scale: [0.7, 1.4]
+  friction_scale: [0.7, 1.3]
+
+horizon: 300
+topple_tilt: 0.785

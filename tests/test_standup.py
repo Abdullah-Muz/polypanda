@@ -13,8 +13,10 @@ from polypanda.environments.standup import (
     OBS_DIM_V3,
     StandUpConfig,
     StandUpEnv,
+    StandUpRewardConfig,
     StandUpV2Env,
     StandUpV3Env,
+    TowerShieldConfig,
 )
 from polypanda.evaluation.standup import (
     ScriptedStandUpDriver,
@@ -335,3 +337,42 @@ def test_the_shield_keeps_the_arm_off_the_tower_and_off_by_default():
     train = TrainConfig.from_yaml(ROOT / "configs" / "standup_v3_r9_ppo.yaml")
     assert train.init_from == "runs/standup_round7_seed{seed}"
     assert train.env_config == "configs/standup_v3_r9.yaml"
+
+
+def test_the_sliding_shield_keeps_moving_past_the_tower_and_charges_for_cuts():
+    """Pushed at and down into a tower, the round-9 shield holds the hand where it stops; the
+    sliding one drops only the part heading in, so the hand keeps going down, still clear."""
+    on = replace(CFG3.shield, enabled=True)
+    reward = replace(CFG3.reward, shield=0.05)
+    drops = {}
+    for slide in (False, True):
+        cfg = replace(CFG3, shield=replace(on, slide=slide), reward=reward).for_evaluation()
+        env = StandUpV3Env(cfg)
+        ep = env.draw_episode(np.random.default_rng(3))
+        ep["tower"] = (ep["spot"][0] + 0.12, ep["spot"][1], 4)
+        env.reset(options={"episode": ep})
+        z0 = float(env.data.site_xpos[env.arm.tcp_site][2])
+        toward = np.zeros(6, dtype=np.float32)
+        toward[0], toward[2] = 1.0, -0.5
+        gaps, charged = [], []
+        for _ in range(150):
+            _, _, terminated, _, info = env.step(toward)
+            gaps.append(env._arm_gap_at(env.data.qpos[env.arm.arm_qpos]))
+            cut = 1.0 - info["shield_scale"]
+            assert info["reward_terms"]["shield"] == pytest.approx(-0.05 * cut)
+            charged.append(cut)
+            if terminated:
+                assert info["failure"] != "tower_hit"
+                break
+        assert min(gaps) > 0.0 and max(charged) > 0.0
+        drops[slide] = z0 - float(env.data.site_xpos[env.arm.tcp_site][2])
+    assert drops[True] > drops[False] + 0.02
+    assert not TowerShieldConfig().slide and StandUpRewardConfig().shield == 0.0
+    from polypanda.training.config import TrainConfig
+    r10 = StandUpConfig.from_yaml(ROOT / "configs" / "standup_v3_r10.yaml")
+    assert r10.shield.enabled and r10.shield.slide and r10.for_evaluation().shield.slide
+    assert r10.reward.shield == pytest.approx(0.05)
+    assert r10.command.chooser == "runs/choosers/standup_round9_pooled.pt"
+    train = TrainConfig.from_yaml(ROOT / "configs" / "standup_v3_r10_ppo.yaml")
+    assert train.init_from == "runs/standup_round9_seed{seed}"
+    assert train.env_config == "configs/standup_v3_r10.yaml"
