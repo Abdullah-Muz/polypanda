@@ -69,6 +69,15 @@ Also reported, with no target: orders completed over all knocks, recoverable or 
 
 Each new skill is also run through the robustness suite and compared with a scripted version.
 
+*Results, reported as they came (no target moved): the lying-cube grasp (d1) ran 84.8 % on its one-shot set, the stand-up (d2) 87.7 % on its one-shot set (91.5 % on its development set), each close to its scripted version. Neither was trained with a randomized cube size, against the line above; the stand-up's size robustness is weak (77.3 % against the scripted 92.5 %).*
+
+### Recovery with the learned skills (d+), protocol set on 2026-10-29 before any d+ code
+
+- **Targets unchanged:** the D1/D2/D3 table above, now with the learned lying-cube grasp and stand-up doing the recovery (3 seeds pooled); the scripted recovery is reported beside it on the same orders.
+- **Development and final sets:** all d+ development uses `eval_sets/disturbance_dev_v1.json` (50 other orders, orders seed 20261101, knocks seed 20261102). `disturbance_suite_v1` is run once, at the end, for the reported result.
+- **Headline: learned only.** When a learned skill fails, the cell retries with the learned skills (its usual attempts per cube); a variant that falls back to the scripted skills may be reported beside it, labelled.
+- **First integration, no retraining:** the stand-up observes the nearest real tower, and its safety shield checks every obstacle in the cell. A gate test (isolated recoveries in the cell) decides whether the stand-up needs a round in cell-like scenes; any stand-up retraining first gets a fresh one-shot stand-up set.
+
 ## Deliverables
 
 - An interactive demo: press a key in the viewer to knock a tower over, and watch the robot notice and rebuild it.

@@ -1,6 +1,8 @@
 """Make the v3 disturbance suite: one knock (or none) for each of the Layer 2 evaluation orders.
 
 Usage: uv run python scripts/make_disturbance_suite.py [--out eval_sets/disturbance_suite_v1.json]
+  Development suite (d+: other orders and knocks; run evaluate_cell.py with --seed ORDERS --n N):
+  ... --out eval_sets/disturbance_dev_v1.json --orders-seed 20261101 --suite-seed 20261102 --n 50
 For every order of the 200 Layer 2 evaluation orders (the same recipes and arrivals as v2), from
 its own random stream: with probability 0.2, or when no tower will be 2 cubes tall, no knock (D0,
 a control); otherwise a tower that will be at least 2 cubes tall, the height after which it is
@@ -25,13 +27,16 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--out", type=Path, default=Path("eval_sets/disturbance_suite_v1.json"))
     parser.add_argument("--no-knock", type=float, default=0.2)
+    parser.add_argument("--orders-seed", type=int, default=CellEvalConfig.seed)
+    parser.add_argument("--suite-seed", type=int, default=SUITE_SEED)
+    parser.add_argument("--n", type=int, default=CellEvalConfig.n)
     args = parser.parse_args()
-    cfg = CellEvalConfig(mixed=True)
+    cfg = CellEvalConfig(mixed=True, seed=args.orders_seed, n=args.n)
     recipes = [mixed_order(np.random.default_rng([cfg.seed, i]), cfg.heights, cfg.surplus,
                            cfg.solvable_with)[0].recipes for i in range(cfg.n)]
-    suite = make_suite(recipes, np.random.default_rng(SUITE_SEED), args.no_knock)
-    meta = {"orders": "Layer 2 evaluation orders (CellEvalConfig mixed, seed 20261026)",
-            "n": cfg.n, "seed": SUITE_SEED, "no_knock": args.no_knock, "version": 1}
+    suite = make_suite(recipes, np.random.default_rng(args.suite_seed), args.no_knock)
+    meta = {"orders": f"Layer 2 evaluation orders (CellEvalConfig mixed, seed {cfg.seed})",
+            "n": cfg.n, "seed": args.suite_seed, "no_knock": args.no_knock, "version": 1}
     save_suite(args.out, suite, meta)
     knocks = [s for s in suite if s is not None]
     print(f"wrote {args.out}: {len(knocks)} knocks, {len(suite) - len(knocks)} controls (D0); "
