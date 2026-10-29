@@ -257,3 +257,29 @@ def test_the_turn_chooser_learns_which_commands_succeed_and_drives_the_choice():
     driver.reset(env)
     best = max(env.reachable_directions(), key=np.sin)
     assert np.sin(env.command) == pytest.approx(np.sin(best), abs=0.2)
+
+
+def test_round_7_draws_training_commands_from_the_choosers_top_picks(tmp_path):
+    from polypanda.training.config import TrainConfig
+    from polypanda.training.turn_chooser import fit_chooser
+
+    rng = np.random.default_rng(1)
+    angles = rng.uniform(-np.pi, np.pi, 400)
+    obs = rng.normal(size=(400, OBS_DIM_V3)).astype(np.float32)
+    obs[:, -2], obs[:, -1] = np.cos(angles), np.sin(angles)
+    fit_chooser(obs, obs[:, -1] > 0.5).save(tmp_path / "north.pt")   # prefers +y turns
+    command = replace(CFG3.command, sampler="chooser", chooser=str(tmp_path / "north.pt"),
+                      top_k=1, explore=0.0)
+    cfg = replace(CFG3, start=replace(CFG3.start, helpful_prob=0.0, demo_prob=0.0),
+                  command=command)
+    env = StandUpV3Env(cfg)
+    for s in range(3):
+        env.reset(seed=s)
+        best = max(env.reachable_directions(), key=np.sin)
+        assert np.sin(env.command) == pytest.approx(np.sin(best), abs=0.2)
+    r7 = StandUpConfig.from_yaml(ROOT / "configs" / "standup_v3_r7.yaml")
+    assert r7.command.sampler == "chooser" and r7.command.level == pytest.approx(0.2)
+    assert r7.for_evaluation().command.explore == 0.0
+    assert not r7.for_evaluation().command.enforce
+    train = TrainConfig.from_yaml(ROOT / "configs" / "standup_v3_r7_ppo.yaml")
+    assert train.init_from == "runs/standup_round6_seed{seed}" and train.task == "standup_v3"

@@ -153,6 +153,15 @@ class TurnCommandConfig:
     # at 60 deg of turn it also cut off turns still swinging round to the command (round 6 at
     # 1M steps, 40 fresh starts: 72 % with it, 81 % without).
     enforce: bool = True
+    # How training draws the command (d2 round 7). "uniform": among the reachable directions
+    # (round 6). "chooser": with probability 1 - explore, uniformly among the `top_k`
+    # reachable directions a turn chooser (training.turn_chooser, file `chooser`) rates best,
+    # else uniformly. Round 6's policies, trained on all 16 directions alike, carried out a
+    # random reachable one 57-72 % of the time: even a perfect choice stayed at 85-92 %.
+    sampler: str = "uniform"
+    chooser: str | None = None
+    top_k: int = 3
+    explore: float = 0.2
 
 
 @dataclass(frozen=True)
@@ -178,7 +187,7 @@ class StandUpConfig:
         devices (helpful and demonstration starts, the wrong-turn rule)."""
         return replace(self, start=replace(self.start, helpful_prob=0.0, demo_prob=0.0),
                        randomization=RandomizationConfig(),
-                       command=replace(self.command, enforce=False))
+                       command=replace(self.command, enforce=False, explore=0.0))
 
 
 def load_standup_scene(gripper: GripperConfig) -> tuple[mujoco.MjModel, mujoco.MjData]:
@@ -627,6 +636,7 @@ class StandUpV3Env(StandUpV2Env):
         self._align = 0.0
         self._release_step = None
         self._planner = None
+        self._chooser = None
 
     # --- commands ------------------------------------------------------------------------
     def _plan_driver(self):
@@ -669,11 +679,37 @@ class StandUpV3Env(StandUpV2Env):
             a = float(np.arctan2(self.spot[1], self.spot[0]))
             self.set_command(found[0] if found else a + np.pi / 2)
         else:
-            found = self.reachable_directions(self.np_random, first=True)
-            if not found:
+            d = self._draw_command()
+            if d is None:
                 return False
-            self.set_command(found[0])
+            self.set_command(d)
         return True
+
+    def _draw_command(self) -> float | None:
+        """A training command (TurnCommandConfig.sampler); None if none is reachable."""
+        c = self.config.command
+        if c.sampler == "chooser" and self.np_random.uniform() >= c.explore:
+            if self._chooser is None:
+                from polypanda.training.turn_chooser import TurnChooser
+                self._chooser = TurnChooser.load(c.chooser)
+            planner = self._plan_driver()
+            cands = [float(d) for d in planner.candidates()]
+            obs = []
+            for d in cands:
+                self.set_command(d)
+                obs.append(self._observation())
+            top = []
+            for i in np.argsort(-self._chooser.scores(np.stack(obs))):
+                if planner.plan(self, cands[i])[0] is not None:
+                    top.append(cands[i])
+                    if len(top) == c.top_k:
+                        break
+            if top:
+                return top[int(self.np_random.integers(len(top)))]
+        elif c.sampler not in ("uniform", "chooser"):
+            raise ValueError(f"unknown command sampler {c.sampler!r}")
+        found = self.reachable_directions(self.np_random, first=True)
+        return found[0] if found else None
 
     def _demo_direction(self) -> float | None:
         return self.command

@@ -1,0 +1,86 @@
+# v3 step d2, round 7: round 6 (configs/standup_v3.yaml) with the training commands drawn
+# where they matter. Round 6 (80.0 % held-out with its turn chooser, 77.0 % with the critic)
+# was capped by its low-level skill: trained on all 16 directions alike, its policies carried
+# out a random reachable command 57-72 % of the time, so even a perfect choice of command
+# stayed at 85-92 % on practice starts (scripts/train_turn_chooser.py reports).
+# Changes, set before any round-7 training:
+# - command.sampler chooser: 80 % of the training commands are drawn among the top 3
+#   reachable ones of a turn chooser fitted on all three round-6 seeds' 14,682 outcomes
+#   (scripts/fit_turn_chooser.py -> runs/choosers/standup_round6_pooled.pt), 20 % uniformly
+#   ("close the loop", Sequential Dexterity 2309.00987 / SMERL 2010.14484);
+# - the wrong-turn rule checks once the hand is nearly level (|z . up| < 0.2, 78 deg of
+#   turn) with 60 deg of slack: at 60 deg of turn it cut off turns still swinging round.
+# Evaluation is unchanged (no wrong-turn rule, no exploration in the command draw).
+
+action:
+  space: cartesian
+  n_substeps: 25
+  cartesian:
+    dof: 6
+    max_step: 0.01
+    max_rot: 0.05
+    max_tilt: 1.75
+    max_lead: 0.03
+    box_low: [0.15, -0.5, 0.01]
+    box_high: [0.85, 0.5, 0.6]
+    ik_iters: 2
+    posture_gain: 0.02
+
+start:
+  radius: [0.32, 0.62]
+  angle: [-0.44, 0.44]
+  carry_height: 0.32
+  grip_offset: 0.01
+  grip_z: [-0.005, 0.01]
+  helpful_prob: 0.3
+  demo_prob: 0.3
+  demo_steps: [0, 120]
+
+tower:
+  prob: 0.8
+  distance: [0.20, 0.26]
+  min_radius: 0.30
+  max_cubes: 4
+
+gate:
+  max_tilt: 0.26
+  max_drop: 0.025
+  xy_tol: 0.03
+  dwell_steps: 2
+
+check:
+  max_rest_height: 0.003
+  max_tilt: 0.1745
+  tolerance: 0.03
+  max_speed: 0.01
+  window: 10
+
+reward:
+  clearance: 2.0
+  clearance_margin: 0.05
+  strain: 0.15              # x rad of weld stretch beyond 20 deg, per step (40 deg: -0.05)
+  strain_from: 0.35
+  touch: 0.2                # per step the gripper touches the released cube
+  hold: 0.01                # per step still holding (a whole episode: -3, below the -10s)
+
+command:
+  directions: 16
+  level: 0.2                # round 7: check once the hand is nearly level (78 deg), was 0.5 (60)
+  tolerance: 1.05           # round 7: 60 deg, was 45
+  align: 2.0
+  wrong_turn: 10.0
+  sampler: chooser          # round 7: practise the commands that matter
+  chooser: runs/choosers/standup_round6_pooled.pt
+  top_k: 3
+  explore: 0.2
+
+gripper:
+  finger_stiffness: 1000.0
+  torsional_friction: true
+
+randomization:
+  mass_scale: [0.7, 1.4]
+  friction_scale: [0.7, 1.3]
+
+horizon: 300
+topple_tilt: 0.785
