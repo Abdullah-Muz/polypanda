@@ -211,6 +211,7 @@ def summarize_cell(episodes: list[CellEpisode], ctl: LearnedCell) -> dict:
         "failures": dict(Counter(e.failure for e in episodes if not e.success)),
         "learned_pick": skill(ctl.picks),
         "learned_place": skill(ctl.places, key="level"),
+        "learned_standup": skill(ctl.standups),
         "ik_failures": sum(e.ik_failures for e in episodes),
         "sim_s_per_cube": sum(e.sim_s for e in episodes) / cubes,
         "sim_s_per_order": {"median": _pct([e.sim_s for e in episodes], 50),
@@ -224,11 +225,11 @@ def summarize_cell(episodes: list[CellEpisode], ctl: LearnedCell) -> dict:
 
 
 def evaluate_cell(grasp: LearnedSkill | None, place: LearnedSkill | None,
-                  config: CellEvalConfig | None = None, progress=None
-                  ) -> tuple[dict, list[CellEpisode]]:
+                  config: CellEvalConfig | None = None, progress=None,
+                  standup: LearnedSkill | None = None) -> tuple[dict, list[CellEpisode]]:
     config = config or CellEvalConfig()
     cell = Workcell.build(WorkcellConfig(n_cubes=config.n_cubes))
-    ctl = LearnedCell(cell, grasp=grasp, place=place, aim=config.aim)
+    ctl = LearnedCell(cell, grasp=grasp, place=place, aim=config.aim, standup=standup)
     start, episodes = time.time(), []
     for i in range(config.n):
         episodes.append(run_cell_order(ctl, config, i))

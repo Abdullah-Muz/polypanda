@@ -101,7 +101,7 @@ class CommandedPolicyDriver:
             obs = []
             for d in cands:
                 env.set_command(d)
-                obs.append(env._observation())
+                obs.append(env.view_observation())
             self.values = dict(zip(cands, self.choose.scores(np.stack(obs)).tolist(),
                                    strict=True))
             d = max(self.values, key=self.values.get)
@@ -123,7 +123,7 @@ class CommandedPolicyDriver:
         obs = []
         for d in cands:
             env.set_command(d)
-            obs.append(env._observation())
+            obs.append(env.view_observation())
         obs = np.stack(obs)
         if self.policy.vec_normalize is not None:
             obs = self.policy.vec_normalize.normalize_obs(obs)
@@ -132,8 +132,9 @@ class CommandedPolicyDriver:
         return v.numpy().ravel().tolist()
 
     def __call__(self, env, obs: np.ndarray) -> np.ndarray:
-        # the observation as of the command set in reset (the env's first one predates it)
-        return self.policy.predict(env._observation(), deterministic=True)[0]
+        # the observation as of the command set in reset (the env's first one predates it), as
+        # the policy sees it (at a workcell station: in the station frame)
+        return self.policy.predict(env.view_observation(), deterministic=True)[0]
 
 
 def run_standup_episode(env: StandUpEnv, driver, ep: dict, index: int

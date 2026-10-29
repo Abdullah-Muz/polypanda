@@ -44,6 +44,9 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--pick", default="scripted")
     parser.add_argument("--place", default="scripted")
+    parser.add_argument("--standup", default="scripted",
+                        help="v3 recovery: stand lying cubes up with a scripted or learned "
+                             "(run:DIR, with its turn chooser) stand-up")
     parser.add_argument("--n", type=int, default=200)
     parser.add_argument("--seed", type=int, default=CellEvalConfig.seed)
     parser.add_argument("--heights", type=int, nargs=2, default=CellEvalConfig.heights)
@@ -74,6 +77,7 @@ def main() -> None:
                             recover=args.recover)
     pick, pick_desc, pick_tag, pick_prov = skill_from_spec(args.pick, "pick")
     place, place_desc, place_tag, place_prov = skill_from_spec(args.place, "place")
+    standup, standup_desc, standup_tag, standup_prov = skill_from_spec(args.standup, "standup")
     lo_h, hi_h = config.heights
     layer = (f"_mixed-s{config.slots}{'-batch' if config.batch_choice else ''}"
              f"{'_' + Path(config.disturbances).stem if config.disturbances else ''}"
@@ -82,17 +86,19 @@ def main() -> None:
     stack = getattr(getattr(place, "config", None), "stack", None)
     # flagged when the place runs with a target other than the one it was trained with
     aim = "_aim-fixture" if config.aim == "fixture" and stack and stack.aim_at_top else ""
-    name = f"cell_P-{pick_tag}_L-{place_tag}{aim}_h{lo_h}-{hi_h}{layer}_n{config.n}"
+    stand = "" if standup is None else f"_S-{standup_tag}"
+    name = f"cell_P-{pick_tag}_L-{place_tag}{stand}{aim}_h{lo_h}-{hi_h}{layer}_n{config.n}"
 
     def progress(e: CellEpisode):
         if not args.quiet:
             print(f"order {e.index}: {'ok  ' if e.success else 'FAIL'} heights {e.heights} "
                   f"towers {e.towers_ok} {e.failure or ''}", flush=True)
 
-    summary, episodes = evaluate_cell(pick, place, config, progress)
+    summary, episodes = evaluate_cell(pick, place, config, progress, standup=standup)
     record = {"name": name,
               "skills": {"pick": pick_desc, "pick_provenance": pick_prov,
                          "place": place_desc, "place_provenance": place_prov,
+                         "standup": standup_desc, "standup_provenance": standup_prov,
                          "moves": "scripted (base-only swings in the carry posture)"},
               "eval": asdict(config),
               "cell": asdict(WorkcellConfig()),
@@ -132,7 +138,7 @@ def main() -> None:
         print(f"  {kind}: {v['success_rate']:.1%} of {v['orders']} orders"
               + (f"; recoverable {v['recoverable']}, of which {rec:.1%} completed"
                  if rec is not None else ""))
-    for stage in ("learned_pick", "learned_place"):
+    for stage in ("learned_pick", "learned_place", "learned_standup"):
         if s[stage]:
             k = s[stage]
             print(f"  {stage}: {k['success_rate']:.1%} of {k['attempts']}, median "

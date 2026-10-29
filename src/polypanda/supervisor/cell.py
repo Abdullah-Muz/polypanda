@@ -15,12 +15,14 @@ welded, after the policy has lifted the cube.
 from collections.abc import Callable
 from pathlib import Path
 
+import mujoco
 import numpy as np
 
 from polypanda.control.ik import closing_yaw
 from polypanda.control.scripted_cell import CUBE_HEIGHT, CellControllerConfig, ScriptedCell
 from polypanda.environments.grasp import GRIPPER_CLOSED, GRIPPER_OPEN
 from polypanda.environments.tasks import TASKS
+from polypanda.evaluation.standup import CommandedPolicyDriver
 from polypanda.policies.loader import LoadedPolicy, load_run, run_env_config
 from polypanda.simulation.scenes import CubeIndices
 from polypanda.simulation.workcell import Workcell
@@ -38,6 +40,12 @@ class LearnedSkill:
         self.env_cls = TASKS[skill].env_cls
         config = run_env_config(run_dir, skill)
         self.config = config.for_evaluation() if hasattr(config, "for_evaluation") else config
+        # a commanded stand-up's turn chooser (scripts/train_turn_chooser.py), if it has one
+        path = Path(run_dir) / f"turn_chooser_{self.policy.which}.pt"
+        self.chooser = None
+        if path.exists():
+            from polypanda.training.turn_chooser import TurnChooser
+            self.chooser = TurnChooser.load(path)
 
     def env(self, cell: Workcell, cube: CubeIndices):
         """The skill's env on the cell's scene, for one cube."""
@@ -48,27 +56,30 @@ class LearnedSkill:
 class LearnedCell(ScriptedCell):
     def __init__(self, cell: Workcell, grasp: LearnedSkill | None = None,
                  place: LearnedSkill | None = None, config: CellControllerConfig | None = None,
-                 on_step: Callable[[], None] | None = None, aim: str = "fixture") -> None:
+                 on_step: Callable[[], None] | None = None, aim: str = "fixture",
+                 standup: LearnedSkill | None = None) -> None:
         super().__init__(cell, config, on_step)
         if aim not in ("fixture", "trained"):
             raise ValueError(f"aim must be 'fixture' or 'trained', not {aim!r}")
-        self.grasp, self.placer, self.aim = grasp, place, aim
+        self.grasp, self.placer, self.aim, self.stander = grasp, place, aim, standup
         self.picks: list[dict] = []    # per learned pick: success, steps, failure
         self.places: list[dict] = []   # per learned place: level, success, steps, failure
+        self.standups: list[dict] = []  # per learned stand-up: success, steps, failure, command
 
-    def _run_skill(self, skill: LearnedSkill, env, view, obs, after_step=None) -> dict:
-        """Run a policy until its success predicate holds, it fails, or its horizon ends."""
+    def _run_skill(self, skill: LearnedSkill, env, view, obs, after_step=None, act=None) -> dict:
+        """Run a policy (or `act()`, a driver's action) until its success predicate holds, it
+        fails, or its episode ends."""
         info = {}
         horizon = getattr(env.config, "horizon", None) or env.config.episode.horizon
         for _ in range(horizon):
             self.cell.conveyor.update()
-            action, _ = skill.policy.predict(obs, deterministic=True)
-            obs, _, terminated, _, info = view.step(action)
+            action = act() if act else skill.policy.predict(obs, deterministic=True)[0]
+            obs, _, terminated, truncated, info = view.step(action)
             if after_step:
                 after_step()
             if self.on_step:
                 self.on_step()
-            if info.get("is_success") or terminated:
+            if info.get("is_success") or terminated or truncated:
                 break
         self.q_cmd = env.adapter.q_cmd.copy()
         return {"success": bool(info.get("is_success")), "steps": env.elapsed_steps,
@@ -92,6 +103,69 @@ class LearnedCell(ScriptedCell):
         if result["success"]:
             self.cell.attach(cube)
         self.to_carry()
+
+    def nearest_stack(self, xy, exclude: CubeIndices) -> tuple[float, float, float] | None:
+        """(x, y, top height) of the stack of upright cubes (a tower, a buffered cube) nearest
+        to `xy`, the stand-up's "tower"; None if there is none."""
+        stacks: list[list] = []
+        for c in self.cell.cubes:
+            if c is exclude or self.d.xmat[c.body].reshape(3, 3)[2, 2] < 0.9:
+                continue                                   # (lying or tilted: not a stack)
+            p = self.d.xpos[c.body]
+            for s in stacks:
+                if np.linalg.norm(p[:2] - s[0]) < 0.03:
+                    s[1] = max(s[1], p[2] + c.half_size[2])
+                    break
+            else:
+                stacks.append([p[:2].copy(), p[2] + c.half_size[2]])
+        if not stacks:
+            return None
+        xy, top = min(stacks, key=lambda s: np.linalg.norm(s[0] - np.asarray(xy)))
+        return float(xy[0]), float(xy[1]), float(top)
+
+    def stand_up(self, cube: CubeIndices, spot) -> None:
+        """Stand a lying cube upright at `spot`: with a learned grasp (d1, which grasps lying
+        cubes) it is picked where it lies and lifted to the carry posture; with a learned
+        stand-up (d2) it is carried over the spot, as the scripted stand-up does, and the
+        stand-up policy (its turn chooser, shield and re-planning, through the spot's station
+        frame) turns it upright and lets go; then the hand rises straight up and returns to the
+        carry posture. Without either, the scripted stand-up."""
+        if self.grasp is None and self.stander is None:
+            return super().stand_up(cube, spot)
+        if self.grasp is not None:
+            c = self.d.xpos[cube.body].copy()
+            self.pick(cube)
+            if not self.cell.attached(cube):
+                return
+            yaw = self.carry_yaw(float(np.arctan2(c[1], c[0])))  # where pick's to_carry leaves it
+        else:
+            held, c, yaw = self.grasp_lying(cube)
+            if not held:
+                return
+        a, rel, R_rel = self.carry_over(cube, spot, c, yaw)
+        if self.stander is None:
+            return self.stand_held(cube, spot, a, rel, R_rel, c)
+        self.step(5)  # settle, as the trained episodes start at rest
+        env = self.stander.env(self.cell, cube)
+        view = StationView(env, a)
+        tower = self.nearest_stack(spot, exclude=cube)
+        obs, _ = view.reset(spot=(float(spot[0]), float(spot[1])), tower=tower)
+        driver = CommandedPolicyDriver(self.stander.policy, self.stander.chooser or "critic")
+        driver.reset(env)
+        result = self._run_skill(self.stander, env, view, obs, act=lambda: driver(env, None))
+        result.update(command_deg=driver.choice, replans=env._replans,
+                      released=bool(env.released))
+        self.standups.append(result)
+        self.cell.detach(cube)        # (released: already off; not: let go where it is)
+        self.grip = GRIPPER_OPEN
+        self.step(self.config.grip_steps)
+        tcp = self.d.site_xpos[self.arm.tcp_site].copy()
+        quat = np.zeros(4)
+        mujoco.mju_mat2Quat(quat, self.d.site_xmat[self.arm.tcp_site])
+        self.line(tcp, tcp + [0.0, 0.0, 0.12], quat)
+        q = self.carry.copy()
+        q[0] += a
+        self.move_joints(q, rate=1.0)
 
     @property
     def trained_at_top(self) -> bool:

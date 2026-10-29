@@ -262,6 +262,15 @@ class ScriptedCell:
         1.5 cm above the table (measured: any lower and the hand touches the table; the cube
         drops flat), back the hand out sideways and return to the carry posture over the spot.
         Pointing the hand toward or away from the robot is out of reach (measured)."""
+        held, c, yaw = self.grasp_lying(cube)
+        if not held:
+            return
+        a, rel, R_rel = self.carry_over(cube, spot, c, yaw)
+        self.stand_held(cube, spot, a, rel, R_rel, c)
+
+    def grasp_lying(self, cube: CubeIndices) -> tuple[bool, np.ndarray, float]:
+        """stand_up's grasp: from above across the lying cube's 4 cm width, then lift to the
+        carry height. Returns (held, where the cube lay, the hand's closing yaw)."""
         cfg = self.config
         c = self.d.xpos[cube.body].copy()
         axis = self.d.xmat[cube.body].reshape(3, 3)[:, 2]        # long axis, horizontal
@@ -275,8 +284,13 @@ class ScriptedCell:
         self.step(cfg.grip_steps)
         held = self.cell.attach(cube)
         self.vertical(c[:2], cfg.carry_height, yaw)
-        if not held:
-            return
+        return held, c, yaw
+
+    def carry_over(self, cube: CubeIndices, spot, c, yaw: float):
+        """Carry a held cube, lifted to the carry height over where it lay (`c`; the hand at
+        closing yaw `yaw`), over the spot, the hand still pointing down. Returns (the spot's
+        angle, the cube's position and rotation in the hand)."""
+        cfg = self.config
         tcp = self.d.site_xpos[self.arm.tcp_site].copy()
         R_tcp = self.d.site_xmat[self.arm.tcp_site].reshape(3, 3)
         rel = R_tcp.T @ (self.d.xpos[cube.body] - tcp)              # the cube in the hand
@@ -287,6 +301,12 @@ class ScriptedCell:
         self.swing_to(a)
         self.move_joints(self._solve([spot[0], spot[1], cfg.carry_height], top_down_quat(yaw
                          + a - float(np.arctan2(c[1], c[0]))), self.q_cmd))
+        return a, rel, R_rel
+
+    def stand_held(self, cube: CubeIndices, spot, a: float, rel, R_rel, c) -> None:
+        """stand_up's turn, from the hand over the spot: sideways along the station circle,
+        down, let go, back out sideways and up to the carry posture over the spot."""
+        cfg = self.config
         tangent = np.array([-np.sin(a), np.cos(a), 0.0])
         rest = np.array([spot[0], spot[1], cube.half_size[2] + 0.015])
         towers = [self.cell.tower_xy(t) for t in range(len(self.cell.config.tower_angles))]

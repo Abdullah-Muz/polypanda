@@ -60,6 +60,7 @@ OBS_DIM = sum(n for _, n in OBS_LAYOUT)
 CUBE_HEIGHT = 0.06       # m, one tower cube
 TOWER_HALF = 0.12        # m, half height of the tower box (4 cubes); it sinks into the table
 TOWER_PARK = (-0.8, 0.8)  # out of reach, behind the robot
+OBSTACLE_RANGE = 0.5      # m from the spot: the bodies the arm keeps clear of in a shared scene
 
 
 @dataclass(frozen=True)
@@ -281,19 +282,30 @@ def _quat(R: np.ndarray) -> np.ndarray:
 class StandUpEnv(gym.Env):
     metadata = {"render_modes": []}
 
-    def __init__(self, config: StandUpConfig | None = None) -> None:
+    def __init__(self, config: StandUpConfig | None = None, scene=None, cube: str = "cube"
+                 ) -> None:
+        """`scene` (model, data): run in an existing scene, e.g. the workcell, on the cube body
+        named `cube` (its grasp-assist weld `assist<k>` for `cube<k>`), started with the reset
+        option "continue"; by default the env builds its own scene with one tower box."""
         self.config = config or StandUpConfig()
-        self.model, self.data = load_standup_scene(self.config.gripper)
+        self.model, self.data = scene or load_standup_scene(self.config.gripper)
         m = self.model
         self.arm = PandaIndices.from_model(m)
-        self.cube = CubeIndices.from_model(m)
+        self.cube = CubeIndices.from_model(m, cube)
         self.adapter = make_action_adapter(m, self.arm, self.config.action)
         self.check = PlacedCheck(m, self.arm, self.cube, self.config.check)
-        self.assist = m.equality("assist").id
+        self.assist = m.equality(f"assist{cube[len('cube'):]}").id
         self.hand = m.body("hand").id
-        self.tower_body, self.tower_geom = m.body("tower").id, m.geom("tower").id
-        self.arm_bodies = {b for b in range(m.nbody) if b not in (0, self.cube.body,
-                                                                  self.tower_body)}
+        own = scene is None
+        self.tower_body = m.body("tower").id if own else None
+        self.tower_geom = m.geom("tower").id if own else None
+        # the robot's own bodies (in a cell, not the other cubes, the conveyor or the bin)
+        self.arm_bodies = {b for b in range(m.nbody) if b and m.body_rootid[b]
+                           == m.body_rootid[self.hand]}
+        # what the arm and held cube must keep clear of: the tower box, or in a cell every
+        # other body near the spot (set at each start)
+        self._obstacle_geoms: list[int] = []
+        self._obstacle_bodies: set[int] = set()
         self._finger_qpos = [m.joint(f"finger_joint{i}").qposadr[0] for i in (1, 2)]
         self._fingers = (m.body("left_finger").id, m.body("right_finger").id)
         limit = action_limit(self.config.action)
@@ -350,6 +362,8 @@ class StandUpEnv(gym.Env):
         else:
             m.body_pos[self.tower_body] = [*TOWER_PARK, -TOWER_HALF]
             self.tower = None
+        self._obstacle_geoms = [self.tower_geom] if tower else []
+        self._obstacle_bodies = {self.tower_body} if tower else set()
         self.spot = np.asarray(ep["spot"], dtype=float)
         # The grip d1 leaves: hand pointing down, fingers across the cube's width, the cube's
         # long axis horizontal along the hand's x axis
@@ -403,6 +417,8 @@ class StandUpEnv(gym.Env):
     def reset(self, *, seed: int | None = None, options: dict | None = None):
         super().reset(seed=seed)
         options = options or {}
+        if options.get("continue"):                      # a skill inside a larger task
+            return self._continue(options)
         if "episode" in options:                         # explicit (evaluation): nominal cube
             ep = dict(options["episode"])                # (or its "physics": the robustness
             physics = ep.pop("physics", None)            # suite's mass, friction, size scales)
@@ -437,6 +453,31 @@ class StandUpEnv(gym.Env):
                 raise RuntimeError("no reachable start in 50 draws")
             start = "helpful" if helpful else "demo" if demo else "carry"
         return self._observation(), {"episode": ep, "start": start,
+                                     "distance": self._prev["distance"]}
+
+    def _continue(self, options: dict):
+        """Start from the scene as it is (the cube already held by the grasp assist, the hand
+        over the spot), as in the workcell: options "spot" (x, y), "tower" (x, y, top height)
+        for the observation or None, and optionally "command". The obstacles are every body
+        that is not the robot, the cube or the world within `OBSTACLE_RANGE` of the spot."""
+        m, d = self.model, self.data
+        if not d.eq_active[self.assist]:
+            raise ValueError("continue: the cube is not held by the grasp assist")
+        self.spot = np.asarray(options["spot"], dtype=float)
+        tower = options.get("tower")
+        self.tower = None if tower is None else np.asarray(tower, dtype=float)
+        mujoco.mj_forward(m, d)
+        here = np.array([*self.spot, 0.0])
+        self._obstacle_geoms = [
+            g for g in range(m.ngeom)
+            if (m.geom_contype[g] or m.geom_conaffinity[g])
+            and m.geom_bodyid[g] not in self.arm_bodies
+            and m.geom_bodyid[g] not in (0, self.cube.body)
+            and np.linalg.norm((d.geom_xpos[g] - here)[:2]) - m.geom_rbound[g] < OBSTACLE_RANGE]
+        self._obstacle_bodies = {int(m.geom_bodyid[g]) for g in self._obstacle_geoms}
+        self._begin()
+        self._on_start({}, options)
+        return self._observation(), {"episode": None, "start": "continue",
                                      "distance": self._prev["distance"]}
 
     def _begin(self) -> None:
@@ -510,12 +551,12 @@ class StandUpEnv(gym.Env):
         return found[self._fingers[0]], found[self._fingers[1]]
 
     def _contact_flags(self) -> tuple[bool, bool]:
-        """(arm or fingers on the table, anything on the tower)."""
+        """(arm or fingers on the table, the arm or the cube on the tower or another obstacle)."""
         floor = tower = False
         for i in range(self.data.ncon):
             con = self.data.contact[i]
             b = {self.model.geom_bodyid[con.geom1], self.model.geom_bodyid[con.geom2]}
-            if self.tower_body in b:
+            if b & self._obstacle_bodies and (b & self.arm_bodies or self.cube.body in b):
                 tower = True
             elif 0 in b and b & self.arm_bodies:
                 floor = True
@@ -543,7 +584,6 @@ class StandUpEnv(gym.Env):
                 self.data.ctrl[self.arm.gripper_actuator] = GRIPPER_OPEN
         self._contacts = self._finger_contacts()
         floor, tower = self._contact_flags()
-        tower = tower and self.tower is not None
         toppled = self.released and tilt > cfg.topple_tilt
         stood = self.check.update(self.data, self.spot, float(self.cube.half_size[2]))
         now = self._progress_state()
@@ -622,8 +662,9 @@ class StandUpV2Env(StandUpEnv):
     (tower point to arm point), as a proximity sensor would, and adds reward.clearance shaping.
     """
 
-    def __init__(self, config: StandUpConfig | None = None) -> None:
-        super().__init__(config)
+    def __init__(self, config: StandUpConfig | None = None, scene=None, cube: str = "cube"
+                 ) -> None:
+        super().__init__(config, scene, cube)
         m = self.model
         self._gap_geoms = [g for g in range(m.ngeom)
                            if (m.geom_bodyid[g] in self.arm_bodies
@@ -635,16 +676,14 @@ class StandUpV2Env(StandUpEnv):
         self._clear = 0.0
 
     def _tower_gap(self) -> tuple[float, np.ndarray]:
-        """The arm's and cube's clearance from the tower (m) and the vector from the tower's
-        nearest point to theirs."""
-        if self.tower is None:
-            return GAP_CAP, np.zeros(3)
+        """The arm's and cube's clearance from the tower (in a shared scene, the nearest
+        obstacle) (m) and the vector from the tower's nearest point to theirs."""
         best, away = GAP_CAP, np.zeros(3)
-        for g in self._gap_geoms:
-            dist = mujoco.mj_geomDistance(self.model, self.data, g, self.tower_geom, GAP_CAP,
-                                          self._fromto)
-            if dist < best:
-                best, away = dist, self._fromto[:3] - self._fromto[3:]
+        for o in self._obstacle_geoms:
+            for g in self._gap_geoms:
+                dist = mujoco.mj_geomDistance(self.model, self.data, g, o, GAP_CAP, self._fromto)
+                if dist < best:
+                    best, away = dist, self._fromto[:3] - self._fromto[3:]
         return max(float(best), 0.0), away
 
     def _clearance_potential(self, gap: float) -> float:
@@ -691,8 +730,9 @@ class StandUpV3Env(StandUpV2Env):
     Also the robot-safety terms `reward.strain`, `reward.touch` and `reward.hold`.
     """
 
-    def __init__(self, config: StandUpConfig | None = None) -> None:
-        super().__init__(config)
+    def __init__(self, config: StandUpConfig | None = None, scene=None, cube: str = "cube"
+                 ) -> None:
+        super().__init__(config, scene, cube)
         self.observation_space = spaces.Box(-np.inf, np.inf, shape=(OBS_DIM_V3,),
                                             dtype=np.float32)
         self.command = 0.0            # rad, world direction of the turned hand's z axis
@@ -760,7 +800,7 @@ class StandUpV3Env(StandUpV2Env):
             obs = []
             for d in cands:
                 self.set_command(d)
-                obs.append(self._observation())
+                obs.append(self.view_observation())
             top = []
             for i in np.argsort(-self._chooser.scores(np.stack(obs))):
                 if planner.plan(self, cands[i])[0] is not None:
@@ -793,7 +833,7 @@ class StandUpV3Env(StandUpV2Env):
         current, obs = self.command, []
         for d in cands:
             self.set_command(d)
-            obs.append(self._observation())
+            obs.append(self.view_observation())
         self.set_command(current)
         return cands[int(np.argmax(self._chooser.scores(np.stack(obs))))]
 
@@ -802,7 +842,9 @@ class StandUpV3Env(StandUpV2Env):
         rp = self.config.replan
         self._arm_gap_at(self.data.qpos[self.arm.arm_qpos])
         n = self._shield_normal
-        h = np.zeros(2) if n is None else n[:2] / max(float(np.linalg.norm(n[:2])), 1e-9)
+        h = np.zeros(3) if n is None else np.array([n[0], n[1], 0.0])
+        h = self.adapter._frame_rotations()[0] @ h          # actions are in the station frame
+        h /= max(float(np.linalg.norm(h)), 1e-9)
         away = np.array([0.5 * h[0], 0.5 * h[1], 1.0, 0.0, 0.0, 0.0])
         for _ in range(min(rp.back, self.config.horizon - self._steps)):
             self._actuate(away)
@@ -860,12 +902,13 @@ class StandUpV3Env(StandUpV2Env):
         else:
             geoms = [g for g in geoms if g != c.geom]
         gap, self._shield_normal = GAP_CAP, None
-        for g in geoms:
-            d = mujoco.mj_geomDistance(m, s, g, self.tower_geom, GAP_CAP, self._fromto)
-            if d < gap:
-                v = (self._fromto[:3] - self._fromto[3:]) * (1.0 if d >= 0 else -1.0)
-                n = float(np.linalg.norm(v))
-                gap, self._shield_normal = d, (v / n if n > 1e-9 else None)
+        for o in self._obstacle_geoms:
+            for g in geoms:
+                d = mujoco.mj_geomDistance(m, s, g, o, GAP_CAP, self._fromto)
+                if d < gap:
+                    v = (self._fromto[:3] - self._fromto[3:]) * (1.0 if d >= 0 else -1.0)
+                    n = float(np.linalg.norm(v))
+                    gap, self._shield_normal = d, (v / n if n > 1e-9 else None)
         return float(gap)
 
     def _shield_candidates(self, a: np.ndarray) -> list[np.ndarray]:
@@ -884,7 +927,7 @@ class StandUpV3Env(StandUpV2Env):
 
     def _actuate(self, a: np.ndarray) -> None:
         sh = self.config.shield
-        if not sh.enabled or self.tower is None:
+        if not sh.enabled or not self._obstacle_geoms:
             super()._actuate(a)
             self._shield_scale = 1.0
             return
@@ -950,7 +993,7 @@ class StandUpV3Env(StandUpV2Env):
         terms.update(new)
         info["shield_scale"] = getattr(self, "_shield_scale", 1.0)
         rp = self.config.replan
-        if (rp.enabled and self.tower is not None and not self._resetting
+        if (rp.enabled and self._obstacle_geoms and not self._resetting
                 and not (self.released or terminated or truncated)):
             self._held = self._held + 1 if info["shield_scale"] < 0.05 else 0
             if self._held >= rp.stall and self._replans < rp.max_replans:
@@ -964,3 +1007,11 @@ class StandUpV3Env(StandUpV2Env):
 
     def _observation(self) -> np.ndarray:
         return np.concatenate([super()._observation(), self._command_vec()]).astype(np.float32)
+
+    # the observation as the policy sees it: at a station of the workcell, StationView sets
+    # this to its station-frame transform (so a turn chooser scores what the policy sees)
+    obs_transform = None
+
+    def view_observation(self) -> np.ndarray:
+        o = self._observation()
+        return o if self.obs_transform is None else self.obs_transform(o)
