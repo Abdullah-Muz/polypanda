@@ -1,0 +1,55 @@
+{
+  "name": "scripted_standup_final_v1",
+  "policy": "scripted stand-up (6-D hand motions), task configs/standup_v1.yaml",
+  "protocol": "StandUpEnv, 15 s horizon",
+  "eval_set": {
+    "name": "standup_final_v1",
+    "n": 200,
+    "digest": "0b87229054d5"
+  },
+  "created_utc": "2026-10-29T22:12:41+00:00",
+  "git": {
+    "commit": "e20b306a58012e25afa681b313604246d64d9b44",
+    "dirty": false
+  },
+  "versions": {
+    "python": "3.12.3",
+    "mujoco": "3.16.0",
+    "numpy": "2.5.4"
+  },
+  "summary": {
+    "episodes": 200,
+    "success_rate": 0.93,
+    "success_ci95": [
+      0.8859442178331628,
+      0.9578482170770813
+    ],
+    "first_success_s_median": 4.275,
+    "release_rate": 0.955,
+    "failures": {
+      "never_released": 7,
+      "tower_hit": 6,
+      "toppled": 1
+    },
+    "by_tower": {
+      "no tower": {
+        "n": 40,
+        "success_rate": 0.95,
+        "success_ci95": [
+          0.834958291820748,
+          0.9861796228538989
+        ]
+      },
+      "tower": {
+        "n": 160,
+        "success_rate": 0.925,
+        "success_ci95": [
+          0.8734905849508775,
+          0.9565794338965946
+        ]
+      }
+    },
+    "inference_latency_us_median": 86.56299996800954,
+    "wall_clock_s": 249.4
+  }
+}

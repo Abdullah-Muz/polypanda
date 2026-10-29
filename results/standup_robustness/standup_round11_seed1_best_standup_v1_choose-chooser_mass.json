@@ -1,0 +1,92 @@
+{
+  "name": "standup_round11_seed1_best_standup_v1_choose-chooser_mass",
+  "condition": "mass",
+  "policy": "PPO best model from runs/standup_round11_seed1 (seed 1, 602,112 steps); turn direction chosen by: chooser",
+  "protocol": "StandUpV3Env, 15 s horizon",
+  "eval_set": {
+    "name": "standup_v1",
+    "n": 200,
+    "digest": "1fd10ae17e65"
+  },
+  "perturbation_seed": 20261026,
+  "created_utc": "2026-10-29T22:14:19+00:00",
+  "git": {
+    "commit": "e20b306a58012e25afa681b313604246d64d9b44",
+    "dirty": false
+  },
+  "versions": {
+    "python": "3.12.3",
+    "mujoco": "3.16.0",
+    "numpy": "2.5.4",
+    "torch": "2.14.1+cpu"
+  },
+  "summary": {
+    "episodes": 200,
+    "success_rate": 0.885,
+    "success_ci95": [
+      0.8333517476611362,
+      0.9221368277817569
+    ],
+    "first_success_s_median": 2.5,
+    "release_rate": 0.895,
+    "failures": {
+      "never_released": 20,
+      "tower_hit": 1,
+      "not_stood": 2
+    },
+    "by_tower": {
+      "no tower": {
+        "n": 39,
+        "success_rate": 0.9487179487179487,
+        "success_ci95": [
+          0.8311406095436208,
+          0.9858223423536004
+        ]
+      },
+      "tower": {
+        "n": 161,
+        "success_rate": 0.8695652173913043,
+        "success_ci95": [
+          0.8088234681350441,
+          0.9130816820212271
+        ]
+      }
+    },
+    "inference_latency_us_median": 833.8104999552343,
+    "by_level": {
+      "0.5-0.71": {
+        "n": 62,
+        "success_rate": 0.8709677419354839,
+        "success_ci95": [
+          0.7655044310309549,
+          0.9331420174150125
+        ]
+      },
+      "0.71-1": {
+        "n": 41,
+        "success_rate": 0.8536585365853658,
+        "success_ci95": [
+          0.7155624473141073,
+          0.9311584547054459
+        ]
+      },
+      "1-1.41": {
+        "n": 41,
+        "success_rate": 0.8780487804878049,
+        "success_ci95": [
+          0.7445549235115514,
+          0.9467674200265919
+        ]
+      },
+      "1.41-2": {
+        "n": 56,
+        "success_rate": 0.9285714285714286,
+        "success_ci95": [
+          0.830243171685138,
+          0.9718744187536204
+        ]
+      }
+    },
+    "wall_clock_s": 343.3
+  }
+}
