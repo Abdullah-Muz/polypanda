@@ -18,6 +18,12 @@ The grasp suite (`run_grasp_condition`, v3 any-pose grasp) runs the grasp alone 
 grasp sets, lying or upright, under mass, friction, size, joints and combined. Push acts during
 transport, which a grasp episode has none of (combined still draws it, unused, so its stream
 matches); ood is left out because the any-pose region already reaches the arm's reach limit.
+
+The stand-up suite (`run_standup_condition`, v3 step d2) runs the stand-up alone on a held-out
+stand-up set under mass, friction, size and combined (training randomized mass 0.7-1.4 and
+friction 0.7-1.3, never size). Joints is left out: a stand-up starts from the carry posture
+over the spot, which the arm reaches by IK; push acts during transport (combined draws both,
+unused, so its stream matches the other suites').
 """
 
 import time
@@ -36,6 +42,12 @@ from polypanda.evaluation.pickplace import (
 )
 from polypanda.evaluation.reach import wilson_interval
 from polypanda.evaluation.sets import GraspEvalSet, PickPlaceEvalSet
+from polypanda.evaluation.standup import (
+    StandUpEpisode,
+    StandUpEvalSet,
+    run_standup_episode,
+    summarize_standup,
+)
 from polypanda.simulation.randomization import CubePhysics
 from polypanda.simulation.scenes import CUBE_X_RANGE, CUBE_Y_RANGE
 from polypanda.supervisor.fsm import PickPlaceSupervisor, Stage, SupervisorConfig
@@ -44,6 +56,8 @@ ROBUSTNESS_SPAWN_KEY = 0x8B0D
 CONDITIONS = ("mass", "friction", "size", "joints", "push", "combined", "ood")
 GRASP_ROBUSTNESS_SPAWN_KEY = 0x8B0E
 GRASP_CONDITIONS = ("mass", "friction", "size", "joints", "combined")
+STANDUP_ROBUSTNESS_SPAWN_KEY = 0x8B0F
+STANDUP_CONDITIONS = ("mass", "friction", "size", "combined")
 PUSH_START, PUSH_STEPS = (5, 15), 4    # transport policy steps; transport needs >= 30 steps
 OOD_BAND = 0.05                        # m outside the placement region
 
@@ -191,6 +205,41 @@ def run_grasp_condition(driver, eval_set: GraspEvalSet, condition: str, seed: in
                                   arm_offset_max=float(np.abs(p.arm_offset).max()), episode=e)
                for p, e in zip(perturbations, episodes, strict=True)]
     summary["by_level"] = by_level(results, condition)
+    return summary, results
+
+
+@dataclass(frozen=True)
+class StandUpRobustEpisode:
+    condition: str
+    mass_scale: float
+    friction_scale: float
+    size_scale: float
+    episode: StandUpEpisode
+
+
+def run_standup_condition(driver, eval_set: StandUpEvalSet, condition: str, seed: int, env
+                          ) -> tuple[dict, list[StandUpRobustEpisode]]:
+    """The stand-up alone on a held-out stand-up set under one condition; the same perturbation
+    stream for every stand-up controller (paired). The env applies each episode's scales at its
+    reset and is nominal again at the next plain one."""
+    if condition not in STANDUP_CONDITIONS:
+        raise ValueError(f"unknown stand-up condition {condition!r}")
+    rng = np.random.default_rng(np.random.SeedSequence(
+        seed, spawn_key=(STANDUP_ROBUSTNESS_SPAWN_KEY, STANDUP_CONDITIONS.index(condition))))
+    perturbations = [sample_perturbation(rng, condition) for _ in range(len(eval_set))]
+    start, results, latencies = time.perf_counter(), [], []
+    try:
+        for i, (ep, p) in enumerate(zip(eval_set.episodes, perturbations, strict=True)):
+            ep = {**ep, "physics": (p.mass_scale, p.friction_scale, p.size_scale)}
+            result, lat = run_standup_episode(env, driver, ep, i)
+            latencies.extend(lat)
+            results.append(StandUpRobustEpisode(condition, p.mass_scale, p.friction_scale,
+                                                p.size_scale, result))
+    finally:
+        env._randomize(1.0, 1.0, 1.0)  # leave the model nominal
+    summary = summarize_standup([r.episode for r in results], latencies)
+    summary["by_level"] = by_level(results, condition)
+    summary["wall_clock_s"] = round(time.perf_counter() - start, 1)
     return summary, results
 
 

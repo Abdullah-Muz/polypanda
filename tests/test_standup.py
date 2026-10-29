@@ -379,6 +379,26 @@ def test_the_sliding_shield_keeps_moving_past_the_tower_and_charges_for_cuts():
     assert train.env_config == "configs/standup_v3_r10.yaml"
 
 
+def test_the_robustness_suite_perturbs_the_cube_per_episode_and_pairs_the_draws():
+    from polypanda.evaluation.robustness import STANDUP_CONDITIONS, run_standup_condition
+    env = StandUpEnv(CFG.for_evaluation())
+    m, b, g = env.model, env.cube.body, env.cube.geom
+    mass, size = float(m.body_mass[b]), m.geom_size[g].copy()
+    ep = generate_standup_set(env, "t", 1, 5).episodes[0]
+    env.reset(options={"episode": {**ep, "physics": (2.0, 1.0, 1.1)}})
+    assert m.body_mass[b] == pytest.approx(mass * 2.0 * 1.1 ** 3)
+    assert np.allclose(env.cube.half_size, size * 1.1)
+    env.reset(options={"episode": ep})                       # a plain episode: nominal again
+    assert m.body_mass[b] == pytest.approx(mass) and np.allclose(m.geom_size[g], size)
+    st = generate_standup_set(env, "t", 2, 5)
+    runs = [run_standup_condition(ScriptedStandUpDriver(), st, "combined", 1, env)[1]
+            for _ in range(2)]
+    draws = [[(r.mass_scale, r.friction_scale, r.size_scale) for r in rs] for rs in runs]
+    assert draws[0] == draws[1] and all(x != (1.0, 1.0, 1.0) for x in draws[0])
+    assert m.body_mass[b] == pytest.approx(mass) and np.allclose(m.geom_size[g], size)
+    assert STANDUP_CONDITIONS == ("mass", "friction", "size", "combined")
+
+
 class _HeldV3(StandUpV3Env):
     """A shield that holds every move (it still moves the arm: the back-off must)."""
 

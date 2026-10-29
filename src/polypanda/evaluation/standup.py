@@ -16,7 +16,7 @@ from pathlib import Path
 import numpy as np
 
 from polypanda.control.scripted_standup import ScriptedStandUpDriver  # (also re-exported)
-from polypanda.environments.standup import StandUpEnv
+from polypanda.environments.standup import StandUpConfig, StandUpEnv
 from polypanda.evaluation.reach import wilson_interval
 
 
@@ -188,6 +188,43 @@ def summarize_standup(results: list[StandUpEpisode], latencies: list[float]) -> 
         "by_tower": by_tower,
         "inference_latency_us_median": float(np.median(latencies) * 1e6) if latencies else None,
     }
+
+
+def standup_driver_from_spec(spec: str, choose: str = "critic",
+                             task_config: str | Path = "configs/standup_v1.yaml"):
+    """(driver, env, description, name prefix) for "scripted" (on task_config's task) or
+    "run:DIR[@best|final]"; for v3 runs `choose` says who picks the turn direction: critic,
+    chooser (the run's turn_chooser_<which>.pt), scripted, or a world angle in degrees."""
+    from polypanda.evaluation.grasp import PolicyDriver
+    from polypanda.policies.loader import load_run, make_run_env
+    if spec == "scripted":
+        task_config = Path(task_config)
+        env = StandUpEnv(StandUpConfig.from_yaml(task_config).for_evaluation())
+        tag = "" if task_config == Path("configs/standup_v1.yaml") else f"{task_config.stem}_"
+        return (ScriptedStandUpDriver(), env,
+                f"scripted stand-up (6-D hand motions), task {task_config}", f"scripted_{tag}")
+    if not spec.startswith("run:"):
+        raise ValueError("use scripted or run:DIR[@which]")
+    run_dir, _, which = spec[4:].partition("@")
+    policy = load_run(run_dir, which or "best")
+    meta = policy.metadata
+    if meta["skill"] not in ("standup", "standup_v2", "standup_v3"):
+        raise ValueError(f"{run_dir} is a {meta['skill']} policy, not standup")
+    env = make_run_env(run_dir, meta["skill"])
+    description = (f"{meta['algorithm']} {policy.which} model from {run_dir} "
+                   f"(seed {meta['seed']}, {meta['total_timesteps']:,} steps)")
+    name = f"{meta['policy_id']}_{policy.which}_"
+    if meta["skill"] != "standup_v3":
+        return PolicyDriver(policy), env, description, name
+    if choose == "chooser":
+        from polypanda.training.turn_chooser import TurnChooser
+        how = TurnChooser.load(Path(run_dir) / f"turn_chooser_{policy.which}.pt")
+    elif choose in ("critic", "scripted"):
+        how = choose
+    else:
+        how = np.radians(float(choose))
+    description += f"; turn direction chosen by: {choose}"
+    return CommandedPolicyDriver(policy, how), env, description, name
 
 
 def evaluate_standup(driver, eval_set: StandUpEvalSet, env: StandUpEnv

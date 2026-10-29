@@ -21,16 +21,14 @@ import mujoco
 import numpy as np
 
 from polypanda.environments.standup import StandUpConfig, StandUpEnv
-from polypanda.evaluation.grasp import PolicyDriver
 from polypanda.evaluation.standup import (
     CommandedPolicyDriver,
-    ScriptedStandUpDriver,
     StandUpEpisode,
     StandUpEvalSet,
     evaluate_standup,
     generate_standup_set,
+    standup_driver_from_spec,
 )
-from polypanda.policies.loader import load_run, make_run_env
 
 TASK_CONFIG = Path("configs/standup_v1.yaml")
 
@@ -69,38 +67,14 @@ def main() -> None:
         return
 
     eval_set = StandUpEvalSet.load(args.set)
-    if args.policy == "scripted":
-        driver, env = ScriptedStandUpDriver(), StandUpEnv(
-            StandUpConfig.from_yaml(args.task_config).for_evaluation())
-        tag = "" if args.task_config == TASK_CONFIG else f"{args.task_config.stem}_"
-        description, name = (f"scripted stand-up (6-D hand motions), task {args.task_config}",
-                             f"scripted_{tag}{eval_set.name}")
-    elif args.policy and args.policy.startswith("run:"):
-        run_dir, _, which = args.policy[4:].partition("@")
-        policy = load_run(run_dir, which or "best")
-        meta = policy.metadata
-        if meta["skill"] not in ("standup", "standup_v2", "standup_v3"):
-            raise SystemExit(f"{run_dir} is a {meta['skill']} policy, not standup")
-        env = make_run_env(run_dir, meta["skill"])
-        description = (f"{meta['algorithm']} {policy.which} model from {run_dir} "
-                       f"(seed {meta['seed']}, {meta['total_timesteps']:,} steps)")
-        name = f"{meta['policy_id']}_{policy.which}_{eval_set.name}"
-        if meta["skill"] == "standup_v3":
-            if args.choose == "chooser":
-                from polypanda.training.turn_chooser import TurnChooser
-                choose = TurnChooser.load(Path(run_dir) / f"turn_chooser_{policy.which}.pt")
-            elif args.choose in ("critic", "scripted"):
-                choose = args.choose
-            else:
-                choose = np.radians(float(args.choose))
-            driver = CommandedPolicyDriver(policy, choose)
-            description += f"; turn direction chosen by: {args.choose}"
-            if args.choose != "critic":
-                name += f"_choose-{args.choose}"
-        else:
-            driver = PolicyDriver(policy)
-    else:
-        raise SystemExit("use --policy scripted or run:DIR[@which]")
+    try:
+        driver, env, description, prefix = standup_driver_from_spec(
+            args.policy or "", args.choose, args.task_config)
+    except ValueError as e:
+        raise SystemExit(str(e)) from e
+    name = prefix + eval_set.name
+    if isinstance(driver, CommandedPolicyDriver) and args.choose != "critic":
+        name += f"_choose-{args.choose}"
 
     summary, episodes = evaluate_standup(driver, eval_set, env)
     record = {"name": name, "policy": description, "protocol": "StandUpEnv, 15 s horizon",

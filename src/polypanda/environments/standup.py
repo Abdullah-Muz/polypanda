@@ -404,9 +404,10 @@ class StandUpEnv(gym.Env):
         super().reset(seed=seed)
         options = options or {}
         if "episode" in options:                         # explicit (evaluation): nominal cube
-            ep = dict(options["episode"])
-            if self._physics is not None:
-                self._randomize(1.0, 1.0)
+            ep = dict(options["episode"])                # (or its "physics": the robustness
+            physics = ep.pop("physics", None)            # suite's mass, friction, size scales)
+            if physics is not None or self._physics is not None:
+                self._randomize(*(physics or (1.0, 1.0, 1.0)))
             if not self._start(ep):
                 raise ValueError(f"start out of reach: {ep}")
             self._begin()
@@ -480,10 +481,10 @@ class StandUpEnv(gym.Env):
         """The direction the demonstration turns the hand to (None: the scripted plan's own)."""
         return None
 
-    def _randomize(self, mass: float, friction: float) -> None:
+    def _randomize(self, mass: float, friction: float, size: float = 1.0) -> None:
         if self._physics is None:
             self._physics = CubePhysics(self.model, self.cube)
-        self._physics.apply(mass_scale=mass, friction_scale=friction)
+        self._physics.apply(mass_scale=mass, friction_scale=friction, size_scale=size)
 
     # --- measurements --------------------------------------------------------------------
     def _release_point(self) -> np.ndarray:
