@@ -187,11 +187,37 @@ class TowerShieldConfig:
     stood. Scaling the whole action down stops it dead in front of the tower. With `slide`
     (round 10) a refused step is first retried with the part of the hand's motion that heads
     into the tower removed (along the closest points' normal), at full, half and no turning,
-    so the hand keeps moving round and up it; only then the `scales`."""
+    so the hand keeps moving round and up it; only then the `scales`.
+
+    Round 10 (87.3 %, 0 tower hits): 39 of its 64 freezes were deadlocks, the arm or cube 1.4 cm
+    from the tower, where every move that is not a hold came closer, so every step was held from
+    about step 73 on, often with the cube upright 3-9 cm off the spot. With `floor` set, a step
+    the shield would hold is retried once more, the same candidates accepted down to `floor`."""
     enabled: bool = False
     min_gap: float = 0.015        # m, at the commanded joints (the arm lags them by ~1 cm)
     scales: tuple[float, ...] = (1.0, 0.5, 0.25, 0.0)
     slide: bool = False
+    floor: float | None = None    # m, the hard minimum when min_gap would hold the arm
+
+
+@dataclass(frozen=True)
+class ReplanConfig:
+    """v3 (d2 round 11): re-plan when the shield holds the arm (StandUpV3Env).
+
+    Round 10's deadlocks (39 of 64 freezes) were the commanded turn's wrist or cube against the
+    tower, held from about step 73 on. After `stall` steps the shield held every move, the hand
+    lifts and backs away from the tower (`back` steps: up at full speed, away at half; part of
+    one environment step, so the policy is not credited with moves it did not choose), and the
+    command becomes the one a turn chooser rates best from where the hand now is, among those
+    not yet tried, at most `max_replans` times an episode. The chooser is the training command
+    chooser (TurnCommandConfig.chooser), or in use the one CommandedPolicyDriver chooses with.
+    Practice starts, round 10's policies without retraining (200 x 3, seed 779): 90.2 %
+    against 88.0 % (only re-planning 14, only not 1), never a tower hit. Part of the skill: on
+    in training and in evaluation."""
+    enabled: bool = False
+    stall: int = 20               # steps (1 s) with every move held
+    back: int = 12                # steps of backing away
+    max_replans: int = 4
 
 
 @dataclass(frozen=True)
@@ -204,6 +230,7 @@ class StandUpConfig:
     reward: StandUpRewardConfig = field(default_factory=StandUpRewardConfig)
     command: TurnCommandConfig = field(default_factory=TurnCommandConfig)
     shield: TowerShieldConfig = field(default_factory=TowerShieldConfig)
+    replan: ReplanConfig = field(default_factory=ReplanConfig)
     gripper: GripperConfig = field(default_factory=GripperConfig)
     randomization: RandomizationConfig = field(default_factory=RandomizationConfig)
     horizon: int = 300           # policy steps (15 s); no termination on success
@@ -749,6 +776,45 @@ class StandUpV3Env(StandUpV2Env):
     def _demo_direction(self) -> float | None:
         return self.command
 
+    # --- re-planning (ReplanConfig) --------------------------------------------------------
+    def _replan_command(self) -> float | None:
+        """The untried command the turn chooser rates best from the current state (the first
+        untried candidate without a chooser); None when every candidate was tried."""
+        cands = [float(d) for d in self._plan_driver().candidates()
+                 if all(abs(float(d) - t) > 1e-6 for t in self._tried)]
+        if not cands:
+            return None
+        if self._chooser is None and self.config.command.chooser:
+            from polypanda.training.turn_chooser import TurnChooser
+            self._chooser = TurnChooser.load(self.config.command.chooser)
+        if self._chooser is None:
+            return cands[0]
+        current, obs = self.command, []
+        for d in cands:
+            self.set_command(d)
+            obs.append(self._observation())
+        self.set_command(current)
+        return cands[int(np.argmax(self._chooser.scores(np.stack(obs))))]
+
+    def _replan(self) -> None:
+        """Back away from the tower, then command the chooser's best untried direction."""
+        rp = self.config.replan
+        self._arm_gap_at(self.data.qpos[self.arm.arm_qpos])
+        n = self._shield_normal
+        h = np.zeros(2) if n is None else n[:2] / max(float(np.linalg.norm(n[:2])), 1e-9)
+        away = np.array([0.5 * h[0], 0.5 * h[1], 1.0, 0.0, 0.0, 0.0])
+        for _ in range(min(rp.back, self.config.horizon - self._steps)):
+            self._actuate(away)
+            self._steps += 1
+        d = self._replan_command()
+        if d is not None:
+            self.set_command(d)
+        # the shaping restarts from here: the backing away was not the policy's move
+        self._prev = {**self._progress_state(), "released": self.released}
+        self._prev_action = away
+        self._clear = self._clearance_potential(self._tower_gap()[0])
+        self._held, self._replans = 0, self._replans + 1
+
     # --- measurements --------------------------------------------------------------------
     def _hand_z(self) -> np.ndarray:
         return self.data.site_xmat[self.arm.tcp_site].reshape(3, 3)[:, 2]
@@ -826,22 +892,33 @@ class StandUpV3Env(StandUpV2Env):
                  ad._velocity_step.copy())
         ref = self._arm_gap_at(saved[0])
         a = np.clip(np.asarray(a, dtype=np.float64), -1.0, 1.0)
-        for b in self._shield_candidates(a):
+
+        def attempt(b: np.ndarray) -> float:
             ad.q_cmd, ad.target_pos, ad.target_R, ad._velocity_step = (
                 saved[0].copy(), saved[1].copy(), saved[2].copy(), saved[3].copy())
-            q = ad.apply(self.data, b)
-            gap = self._arm_gap_at(q)
-            if gap >= sh.min_gap or gap >= ref - 1e-4:
-                break
+            return self._arm_gap_at(ad.apply(self.data, b))
+
+        cands = self._shield_candidates(a)
+        moves = [b for b in cands if np.any(b)]
+        hold = np.zeros_like(a)
+        b = next((b for b in moves if (g := attempt(b)) >= sh.min_gap or g >= ref - 1e-4), None)
+        if b is None and sh.floor is not None:
+            b = next((b for b in moves if attempt(b) >= sh.floor), None)
+        if b is None:
+            b = hold
+            attempt(b)
         size, cut = float(np.linalg.norm(a)), float(np.linalg.norm(a - b))
         self._shield_scale = 1.0 - min(1.0, cut / size) if size > 0 else 1.0  # 1: untouched
         mujoco.mj_step(self.model, self.data, nstep=ad.n_substeps)
 
     # --- episode -------------------------------------------------------------------------
     def reset(self, *, seed: int | None = None, options: dict | None = None):
+        # a demonstration prefix steps inside reset: no re-planning during it
+        self._tried, self._held, self._replans, self._resetting = [], 0, 0, True
         obs, info = super().reset(seed=seed, options=options)
         self._align = self._align_potential()
         self._release_step = 0 if self.released else None
+        self._tried, self._held, self._replans, self._resetting = [], 0, 0, False
         info["command"] = self.command
         return obs, info
 
@@ -858,8 +935,9 @@ class StandUpV3Env(StandUpV2Env):
             new["align"], self._align = phi - self._align, phi
             new["strain"] = -r.strain * max(0.0, self._weld_lag() - r.strain_from)
             new["hold"] = -r.hold
-            if (c.enforce and not terminated and abs(self._hand_z()[2]) < c.level
-                    and self._command_error() > c.tolerance):
+            # (after a re-plan the hand is still turned the old way: no wrong-turn rule)
+            if (c.enforce and not terminated and not self._replans
+                    and abs(self._hand_z()[2]) < c.level and self._command_error() > c.tolerance):
                 new["wrong_turn"] = -c.wrong_turn
                 terminated, truncated = True, False
                 info["failure"] = "wrong_turn"
@@ -869,8 +947,18 @@ class StandUpV3Env(StandUpV2Env):
             if self._steps - self._release_step >= 3 and info["gripper_contact"]:
                 new["touch"] = -r.touch
         terms.update(new)
-        info["command"] = self.command
         info["shield_scale"] = getattr(self, "_shield_scale", 1.0)
+        rp = self.config.replan
+        if (rp.enabled and self.tower is not None and not self._resetting
+                and not (self.released or terminated or truncated)):
+            self._held = self._held + 1 if info["shield_scale"] < 0.05 else 0
+            if self._held >= rp.stall and self._replans < rp.max_replans:
+                self._tried.append(self.command)
+                self._replan()
+                obs = self._observation()
+                truncated = self._steps >= self.config.horizon
+        info["replans"] = self._replans
+        info["command"] = self.command
         return obs, reward + sum(new.values()), terminated, truncated, info
 
     def _observation(self) -> np.ndarray:

@@ -11,6 +11,7 @@ from polypanda.environments.standup import (
     OBS_DIM,
     OBS_DIM_V2,
     OBS_DIM_V3,
+    ReplanConfig,
     StandUpConfig,
     StandUpEnv,
     StandUpRewardConfig,
@@ -376,3 +377,50 @@ def test_the_sliding_shield_keeps_moving_past_the_tower_and_charges_for_cuts():
     train = TrainConfig.from_yaml(ROOT / "configs" / "standup_v3_r10_ppo.yaml")
     assert train.init_from == "runs/standup_round9_seed{seed}"
     assert train.env_config == "configs/standup_v3_r10.yaml"
+
+
+class _HeldV3(StandUpV3Env):
+    """A shield that holds every move (it still moves the arm: the back-off must)."""
+
+    def _actuate(self, a):
+        super()._actuate(a)
+        self._shield_scale = 0.0
+
+
+def test_a_held_arm_backs_away_and_re_plans_to_an_untried_command():
+    rp = ReplanConfig(enabled=True, stall=5, back=4, max_replans=2)
+    train = replace(CFG3, shield=replace(CFG3.shield, enabled=True), replan=rp)
+    for cfg in (train, train.for_evaluation()):
+        env = _HeldV3(cfg)
+        ep = env.draw_episode(np.random.default_rng(3))
+        ep["tower"] = (ep["spot"][0] + 0.12, ep["spot"][1], 4)
+        ep["helpful"] = False
+        env.reset(options={"episode": ep})
+        first = env.command
+        z0 = float(env.data.site_xpos[env.arm.tcp_site][2])
+        commands, info = [first], {}
+        for k in range(1, 30):
+            _, _, terminated, truncated, info = env.step(np.zeros(6, dtype=np.float32))
+            assert info.get("failure") != "wrong_turn"     # not after a re-plan, nor before
+            if info["replans"] > len(commands) - 1:
+                commands.append(env.command)
+                if len(commands) == 2:                      # 5 held steps, then 4 backing away
+                    assert env._steps == k + 4 and env.data.site_xpos[env.arm.tcp_site][2] > z0
+            if terminated or truncated:
+                break
+        assert info["replans"] == 2 and len(set(commands)) == 3     # at most 2, never repeated
+    demo = _HeldV3(replace(train, start=replace(train.start, demo_prob=1.0)))
+    for seed in range(3):                       # a demonstration prefix never re-plans
+        demo.reset(seed=seed)
+        assert demo._replans == 0 and demo._tried == []
+    off = StandUpV3Env(replace(CFG3, shield=replace(CFG3.shield, enabled=True)).for_evaluation())
+    off.reset(seed=0)
+    assert not ReplanConfig().enabled and off.step(np.zeros(6))[4]["replans"] == 0
+    from polypanda.training.config import TrainConfig
+    r11 = StandUpConfig.from_yaml(ROOT / "configs" / "standup_v3_r11.yaml")
+    assert r11.replan.enabled and r11.for_evaluation().replan == r11.replan   # part of the skill
+    assert (r11.replan.stall, r11.replan.back, r11.replan.max_replans) == (20, 12, 4)
+    assert r11.command.chooser == "runs/choosers/standup_round10_pooled.pt" and r11.shield.slide
+    train = TrainConfig.from_yaml(ROOT / "configs" / "standup_v3_r11_ppo.yaml")
+    assert train.init_from == "runs/standup_round10_seed{seed}"
+    assert train.env_config == "configs/standup_v3_r11.yaml"

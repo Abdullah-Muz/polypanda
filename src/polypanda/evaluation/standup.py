@@ -96,6 +96,7 @@ class CommandedPolicyDriver:
 
     def reset(self, env) -> None:
         if hasattr(self.choose, "scores"):
+            env._chooser = self.choose            # re-planning (ReplanConfig) chooses with it too
             cands = env.reachable_directions() or [env.command]
             obs = []
             for d in cands:
