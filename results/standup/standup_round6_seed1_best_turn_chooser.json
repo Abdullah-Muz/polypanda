@@ -1,0 +1,20 @@
+{
+  "run": "runs/standup_round6_seed1",
+  "which": "best",
+  "starts": 600,
+  "rows": 4894,
+  "reachable_per_start_median": 9.0,
+  "held_out_starts": 120,
+  "held_out": {
+    "chooser": 0.8916666666666667,
+    "critic": 0.8916666666666667,
+    "random_reachable": 0.7169932613682614,
+    "oracle_any_command": 0.9166666666666666
+  },
+  "failures_by_command_outcome": {
+    "never_released": 1326,
+    "not_stood": 22,
+    "toppled": 1,
+    "tower_hit": 600
+  }
+}
