@@ -165,6 +165,24 @@ class TurnCommandConfig:
 
 
 @dataclass(frozen=True)
+class TowerShieldConfig:
+    """v3 (d2 round 9): a safety shield between the policy and the arm (StandUpV3Env).
+
+    Rounds 7-8 (85.7 / 83.5 % held-out) failed mostly on tower hits (54 / 57 of 600), largely
+    the wrist swinging into the tower while turning; even the best turn direction for a start
+    failed 10-15 % of the time. Each step the shield checks the clearance from the tower of the
+    arm (and the cube it holds) at the joint targets the action would command, by kinematics; if
+    it would
+    come within `min_gap` and closer than at the current targets, the step is retried at the
+    `scales` of the action, the last of which (0) holds the targets. The policy still decides
+    every motion; the shield only refuses ones that would touch the tower (a "safety shield",
+    as in provably safe RL). Part of the skill: on in training and in evaluation."""
+    enabled: bool = False
+    min_gap: float = 0.015        # m, at the commanded joints (the arm lags them by ~1 cm)
+    scales: tuple[float, ...] = (1.0, 0.5, 0.25, 0.0)
+
+
+@dataclass(frozen=True)
 class StandUpConfig:
     action: ActionConfig = field(default_factory=ActionConfig)
     start: StandUpStartConfig = field(default_factory=StandUpStartConfig)
@@ -173,6 +191,7 @@ class StandUpConfig:
     check: PlacedCheckConfig = field(default_factory=lambda: PlacedCheckConfig(tolerance=0.03))
     reward: StandUpRewardConfig = field(default_factory=StandUpRewardConfig)
     command: TurnCommandConfig = field(default_factory=TurnCommandConfig)
+    shield: TowerShieldConfig = field(default_factory=TowerShieldConfig)
     gripper: GripperConfig = field(default_factory=GripperConfig)
     randomization: RandomizationConfig = field(default_factory=RandomizationConfig)
     horizon: int = 300           # policy steps (15 s); no termination on success
@@ -409,6 +428,10 @@ class StandUpEnv(gym.Env):
         self.released, self._dwell = released, dwell
         return True
 
+    def _actuate(self, a: np.ndarray) -> None:
+        """Command the arm with action `a` and advance the physics one control step."""
+        self.adapter.step(self.data, a)
+
     def _on_start(self, ep: dict, options: dict | None) -> bool:
         """Hook once a start is set (options: the evaluation's, None in training). False: the
         start does not suit, draw another (training only)."""
@@ -461,7 +484,7 @@ class StandUpEnv(gym.Env):
     def step(self, action):
         cfg, r = self.config, self.config.reward
         a, bound_terms = bound_action(action, cfg.action)
-        self.adapter.step(self.data, a)
+        self._actuate(a)
         self._steps += 1
         if not (np.all(np.isfinite(self.data.qpos)) and np.all(np.isfinite(self.data.qvel))):
             return (np.zeros(OBS_DIM, dtype=np.float32), -r.toppled, True, False,
@@ -734,6 +757,53 @@ class StandUpV3Env(StandUpV2Env):
         c = abs(float(target @ self.data.xquat[self.cube.body]))
         return 2.0 * float(np.arccos(min(1.0, c)))
 
+    # --- the safety shield ---------------------------------------------------------------
+    def _arm_gap_at(self, q: np.ndarray) -> float:
+        """The clearance from the tower (m) of the arm with its joints at q, and of the cube
+        while held, where the grasp assist's weld carries it (kinematics only)."""
+        m, c = self.model, self.cube
+        if not hasattr(self, "_shield_data"):
+            self._shield_data = mujoco.MjData(m)
+        s = self._shield_data
+        s.qpos[:] = self.data.qpos
+        s.qpos[self.arm.arm_qpos] = q
+        mujoco.mj_kinematics(m, s)
+        geoms = self._gap_geoms
+        if self.data.eq_active[self.assist]:      # held: the cube goes where the hand takes it
+            R = s.xmat[self.hand].reshape(3, 3)
+            quat = np.zeros(4)
+            mujoco.mju_mulQuat(quat, s.xquat[self.hand], m.eq_data[self.assist, 6:10])
+            s.qpos[c.qpos:c.qpos + 3] = s.xpos[self.hand] + R @ m.eq_data[self.assist, 3:6]
+            s.qpos[c.qpos + 3:c.qpos + 7] = quat
+            mujoco.mj_kinematics(m, s)
+        else:
+            geoms = [g for g in geoms if g != c.geom]
+        gap = GAP_CAP
+        for g in geoms:
+            gap = min(gap, mujoco.mj_geomDistance(m, s, g, self.tower_geom, GAP_CAP,
+                                                  self._fromto))
+        return float(gap)
+
+    def _actuate(self, a: np.ndarray) -> None:
+        sh = self.config.shield
+        if not sh.enabled or self.tower is None:
+            super()._actuate(a)
+            self._shield_scale = 1.0
+            return
+        ad = self.adapter
+        saved = (ad.q_cmd.copy(), ad.target_pos.copy(), ad.target_R.copy(),
+                 ad._velocity_step.copy())
+        ref = self._arm_gap_at(saved[0])
+        for scale in sh.scales:
+            ad.q_cmd, ad.target_pos, ad.target_R, ad._velocity_step = (
+                saved[0].copy(), saved[1].copy(), saved[2].copy(), saved[3].copy())
+            q = ad.apply(self.data, a * scale)
+            gap = self._arm_gap_at(q)
+            if gap >= sh.min_gap or gap >= ref - 1e-4:
+                break
+        self._shield_scale = float(scale)
+        mujoco.mj_step(self.model, self.data, nstep=ad.n_substeps)
+
     # --- episode -------------------------------------------------------------------------
     def reset(self, *, seed: int | None = None, options: dict | None = None):
         obs, info = super().reset(seed=seed, options=options)
@@ -766,6 +836,7 @@ class StandUpV3Env(StandUpV2Env):
                 new["touch"] = -r.touch
         terms.update(new)
         info["command"] = self.command
+        info["shield_scale"] = getattr(self, "_shield_scale", 1.0)
         return obs, reward + sum(new.values()), terminated, truncated, info
 
     def _observation(self) -> np.ndarray:

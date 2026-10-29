@@ -1,0 +1,35 @@
+# v3 step d2, round 9: configs/standup_v3_r9.yaml (the shield), warm-started from round 7's
+# best policies (our best, 85.7 %), with round 8's training settings: 600k steps, learning
+# rate 3e-4 -> 3e-5, 200 validation episodes. Only the shield differs from round 8.
+
+algorithm: ppo
+task: standup_v3
+env_config: configs/standup_v3_r9.yaml
+seed: 0
+n_envs: 8
+vec_env: subproc
+total_timesteps: 600000
+normalize_obs: true
+normalize_reward: true
+eval_freq: 100000
+eval_episodes: 200
+eval_seed: 100000
+checkpoint_freq: 250000
+torch_threads: 1
+init_from: runs/standup_round7_seed{seed}
+init_checkpoint: best
+
+ppo:
+  learning_rate: 0.0003
+  learning_rate_final: 0.00003
+  n_steps: 512
+  batch_size: 256
+  n_epochs: 10
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_range: 0.2
+  ent_coef: 0.005
+  vf_coef: 0.5
+  max_grad_norm: 0.5
+  net_arch: [128, 128]
+  log_std_init: 0.0

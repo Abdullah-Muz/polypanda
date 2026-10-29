@@ -305,3 +305,33 @@ def test_round_8_closes_the_loop_again_with_voting_choosers_and_a_decaying_rate(
     assert lr.learning_rate_final == pytest.approx(3e-5)
     assert linear_schedule(lr.learning_rate, lr.learning_rate_final, 1.0) == pytest.approx(3e-4)
     assert linear_schedule(lr.learning_rate, lr.learning_rate_final, 0.0) == pytest.approx(3e-5)
+
+
+def test_the_shield_keeps_the_arm_off_the_tower_and_off_by_default():
+    shielded = replace(CFG3, shield=replace(CFG3.shield, enabled=True)).for_evaluation()
+    for cfg, guarded in ((shielded, True), (CFG3.for_evaluation(), False)):
+        env = StandUpV3Env(cfg)
+        ep = env.draw_episode(np.random.default_rng(3))
+        ep["tower"] = (ep["spot"][0] + 0.12, ep["spot"][1], 4)   # 12 cm beside, 24 cm tall
+        env.reset(options={"episode": ep})
+        toward = np.zeros(6, dtype=np.float32)
+        toward[0], toward[2] = 1.0, -0.5                           # at and down into the tower
+        gaps, scales, failure = [], [], None
+        for _ in range(150):
+            _, _, terminated, _, info = env.step(toward)
+            gaps.append(env._arm_gap_at(env.data.qpos[env.arm.arm_qpos]))
+            scales.append(info["shield_scale"])
+            if terminated:
+                failure = info["failure"]
+                break
+        if guarded:
+            assert failure is None and min(gaps) > 0.0 and min(scales) < 1.0
+        else:
+            assert failure == "tower_hit"
+    assert not CFG3.shield.enabled and CFG3.for_evaluation().shield == CFG3.shield
+    from polypanda.training.config import TrainConfig
+    r9 = StandUpConfig.from_yaml(ROOT / "configs" / "standup_v3_r9.yaml")
+    assert r9.shield.enabled and r9.for_evaluation().shield.enabled     # part of the skill
+    train = TrainConfig.from_yaml(ROOT / "configs" / "standup_v3_r9_ppo.yaml")
+    assert train.init_from == "runs/standup_round7_seed{seed}"
+    assert train.env_config == "configs/standup_v3_r9.yaml"
