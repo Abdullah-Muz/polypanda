@@ -26,6 +26,9 @@ class PPOParams:
     # log_std_init sets the std per latent feature (the action noise sums over the 128).
     use_sde: bool = False
     sde_sample_freq: int = -1
+    # Linear learning-rate decay to this value over the run (None: constant learning_rate).
+    # Late in d2 rounds 6-7 the constant rate let validation drift down after early peaks.
+    learning_rate_final: float | None = None
 
 
 @dataclass(frozen=True)

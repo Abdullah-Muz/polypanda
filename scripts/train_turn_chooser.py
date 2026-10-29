@@ -18,7 +18,12 @@ import numpy as np
 import torch
 
 from polypanda.policies.loader import load_run
-from polypanda.training.turn_chooser import choice_quality, collect_outcomes, fit_chooser
+from polypanda.training.turn_chooser import (
+    choice_quality,
+    collect_outcomes,
+    fit_chooser,
+    fit_ensemble,
+)
 
 
 def _collect(job):
@@ -33,6 +38,8 @@ def main() -> None:
     parser.add_argument("--starts", type=int, default=600)
     parser.add_argument("--seed0", type=int, default=50_000)
     parser.add_argument("--workers", type=int, default=5)
+    parser.add_argument("--ensemble", type=int, default=1,
+                        help="fit this many choosers and average them (d2 round 8 on: 5)")
     parser.add_argument("--out-dir", type=Path, default=Path("results/standup"))
     args = parser.parse_args()
     run, _, which = args.run.partition("@")
@@ -56,11 +63,13 @@ def main() -> None:
     is_held = np.array([s in held for s in data["start"]])
     train = {k: v[~is_held] for k, v in data.items()}
     test = {k: v[is_held] for k, v in data.items()}
-    chooser = fit_chooser(train["obs"], train["success"])
+    chooser = (fit_chooser(train["obs"], train["success"]) if args.ensemble == 1
+               else fit_ensemble(train["obs"], train["success"], args.ensemble))
     oracle = np.mean([data["success"][data["start"] == s].any() for s in held])
     random_pick = np.mean([data["success"][data["start"] == s].mean() for s in held])
     report = {
-        "run": run, "which": which, "starts": len(starts), "rows": int(len(data["success"])),
+        "run": run, "which": which, "ensemble": args.ensemble, "starts": len(starts),
+        "rows": int(len(data["success"])),
         "reachable_per_start_median": float(np.median(np.bincount(
             np.searchsorted(starts, data["start"])))),
         "held_out_starts": len(held),
@@ -71,7 +80,8 @@ def main() -> None:
         "failures_by_command_outcome": {f: int((data["failure"] == f).sum())
                                         for f in np.unique(data["failure"]) if f},
     }
-    final = fit_chooser(data["obs"], data["success"])
+    final = (fit_chooser(data["obs"], data["success"]) if args.ensemble == 1
+             else fit_ensemble(data["obs"], data["success"], args.ensemble))
     final.save(Path(run) / f"turn_chooser_{which}.pt")
     name = f"{policy.metadata['policy_id']}_{which}_turn_chooser"
     args.out_dir.mkdir(parents=True, exist_ok=True)

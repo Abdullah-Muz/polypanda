@@ -283,3 +283,25 @@ def test_round_7_draws_training_commands_from_the_choosers_top_picks(tmp_path):
     assert not r7.for_evaluation().command.enforce
     train = TrainConfig.from_yaml(ROOT / "configs" / "standup_v3_r7_ppo.yaml")
     assert train.init_from == "runs/standup_round6_seed{seed}" and train.task == "standup_v3"
+
+
+def test_round_8_closes_the_loop_again_with_voting_choosers_and_a_decaying_rate(tmp_path):
+    from polypanda.training.config import TrainConfig
+    from polypanda.training.runner import linear_schedule
+    from polypanda.training.turn_chooser import TurnChooser, TurnChooserEnsemble, fit_ensemble
+
+    rng = np.random.default_rng(2)
+    obs = rng.normal(size=(200, OBS_DIM_V3)).astype(np.float32)
+    ens = fit_ensemble(obs, obs[:, 0] > 0, n=3, epochs=50)
+    ens.save(tmp_path / "e.pt")
+    back = TurnChooser.load(tmp_path / "e.pt")
+    assert isinstance(back, TurnChooserEnsemble) and len(back.members) == 3
+    np.testing.assert_allclose(back.scores(obs), ens.scores(obs), rtol=1e-6)
+    r8 = StandUpConfig.from_yaml(ROOT / "configs" / "standup_v3_r8.yaml")
+    assert r8.command.chooser == "runs/choosers/standup_round7_pooled.pt"
+    train = TrainConfig.from_yaml(ROOT / "configs" / "standup_v3_r8_ppo.yaml")
+    assert train.init_from == "runs/standup_round7_seed{seed}" and train.eval_episodes == 200
+    lr = train.ppo
+    assert lr.learning_rate_final == pytest.approx(3e-5)
+    assert linear_schedule(lr.learning_rate, lr.learning_rate_final, 1.0) == pytest.approx(3e-4)
+    assert linear_schedule(lr.learning_rate, lr.learning_rate_final, 0.0) == pytest.approx(3e-5)

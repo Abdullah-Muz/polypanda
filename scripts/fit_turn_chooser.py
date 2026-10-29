@@ -13,13 +13,14 @@ from pathlib import Path
 
 import numpy as np
 
-from polypanda.training.turn_chooser import choice_quality, fit_chooser
+from polypanda.training.turn_chooser import choice_quality, fit_chooser, fit_ensemble
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--outcomes", type=Path, nargs="+", required=True)
     parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--ensemble", type=int, default=1)
     args = parser.parse_args()
     parts = []
     for k, path in enumerate(args.outcomes):
@@ -44,7 +45,8 @@ def main() -> None:
               f"{choice_quality(chooser.scores(test['obs']), test):.1%}, random reachable "
               f"{rand:.1%}, best possible {best:.1%}")
     args.out.parent.mkdir(parents=True, exist_ok=True)
-    fit_chooser(data["obs"], data["success"]).save(args.out)
+    (fit_chooser(data["obs"], data["success"]) if args.ensemble == 1
+     else fit_ensemble(data["obs"], data["success"], args.ensemble)).save(args.out)
     print(f"wrote {args.out} ({len(data['success'])} outcomes from {len(args.outcomes)} runs)")
 
 

@@ -14,6 +14,7 @@ import pickle
 import subprocess
 import time
 from datetime import UTC, datetime
+from functools import partial
 from pathlib import Path
 
 import numpy as np
@@ -64,6 +65,11 @@ def _vec_env(env_cls: type, env_config, n_envs: int, seed: int, kind: str):
                         env_kwargs={"config": env_config})
 
 
+def linear_schedule(start: float, end: float, progress_remaining: float) -> float:
+    """SB3 learning-rate schedule: `start` at the beginning of the run, `end` at its end."""
+    return end + (start - end) * progress_remaining
+
+
 def build_model(cfg: TrainConfig, env, tensorboard_log: str | None):
     params = dataclasses.asdict(cfg.algo_params)
     arch = list(params.pop("net_arch"))
@@ -72,6 +78,9 @@ def build_model(cfg: TrainConfig, env, tensorboard_log: str | None):
     if cfg.algorithm == "ppo":
         policy_kwargs = {"net_arch": {"pi": arch, "vf": arch},
                          "log_std_init": params.pop("log_std_init")}
+        final = params.pop("learning_rate_final")
+        if final is not None:
+            params["learning_rate"] = partial(linear_schedule, params["learning_rate"], final)
         return PPO("MlpPolicy", env, policy_kwargs=policy_kwargs, **common, **params)
     return SAC("MlpPolicy", env, policy_kwargs={"net_arch": {"pi": arch, "qf": arch}},
                **common, **params)
