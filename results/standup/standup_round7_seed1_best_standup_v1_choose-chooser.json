@@ -1,0 +1,56 @@
+{
+  "name": "standup_round7_seed1_best_standup_v1_choose-chooser",
+  "policy": "PPO best model from runs/standup_round7_seed1 (seed 1, 1,503,232 steps); turn direction chosen by: chooser",
+  "protocol": "StandUpEnv, 15 s horizon",
+  "eval_set": {
+    "name": "standup_v1",
+    "n": 200,
+    "digest": "1fd10ae17e65"
+  },
+  "created_utc": "2026-10-29T03:33:58+00:00",
+  "git": {
+    "commit": "85b23482c3b9eeb508fa32f4cbf5a591405ff3d2",
+    "dirty": false
+  },
+  "versions": {
+    "python": "3.12.3",
+    "mujoco": "3.16.0",
+    "numpy": "2.5.4"
+  },
+  "summary": {
+    "episodes": 200,
+    "success_rate": 0.83,
+    "success_ci95": [
+      0.7718399896049648,
+      0.8757216464889435
+    ],
+    "first_success_s_median": 2.575,
+    "release_rate": 0.88,
+    "failures": {
+      "tower_hit": 20,
+      "never_released": 8,
+      "not_stood": 4,
+      "toppled": 2
+    },
+    "by_tower": {
+      "no tower": {
+        "n": 39,
+        "success_rate": 0.8974358974358975,
+        "success_ci95": [
+          0.7642084129775517,
+          0.9593873444171301
+        ]
+      },
+      "tower": {
+        "n": 161,
+        "success_rate": 0.8136645962732919,
+        "success_ci95": [
+          0.746464973740927,
+          0.8662444394169166
+        ]
+      }
+    },
+    "inference_latency_us_median": 586.4020004082704,
+    "wall_clock_s": 218.7
+  }
+}
