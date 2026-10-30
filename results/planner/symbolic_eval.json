@@ -1,0 +1,270 @@
+{
+  "task": {
+    "spares": 2,
+    "slack": 1.5,
+    "spare_delay": 0.0
+  },
+  "orders": 2000,
+  "reps": 5,
+  "eval_seed": 20261105,
+  "best_rule": "replace lying, lying near a tower, upright near a tower; after a failed attempt retry",
+  "policies": {
+    "rescue_all": {
+      "completed": 8904,
+      "games": 10000,
+      "rate": 0.8904,
+      "ci95": [
+        0.8841265675223002,
+        0.8963735955350596
+      ]
+    },
+    "best_rule": {
+      "completed": 9251,
+      "games": 10000,
+      "rate": 0.9251,
+      "ci95": [
+        0.919775858190593,
+        0.9300976544008099
+      ]
+    },
+    "recovery_planner_seed0": {
+      "completed": 9423,
+      "games": 10000,
+      "rate": 0.9423,
+      "ci95": [
+        0.9375576377871352,
+        0.9467026647750326
+      ]
+    },
+    "recovery_planner_seed1": {
+      "completed": 9452,
+      "games": 10000,
+      "rate": 0.9452,
+      "ci95": [
+        0.9405658653339477,
+        0.9494922099558489
+      ]
+    },
+    "recovery_planner_seed2": {
+      "completed": 9426,
+      "games": 10000,
+      "rate": 0.9426,
+      "ci95": [
+        0.9378686793704429,
+        0.9469913927842379
+      ]
+    },
+    "recovery_planner_blind-situation_seed0": {
+      "completed": 9448,
+      "games": 10000,
+      "rate": 0.9448,
+      "ci95": [
+        0.9401507358217788,
+        0.9491076466780001
+      ]
+    },
+    "recovery_planner_blind-situation_seed1": {
+      "completed": 9442,
+      "games": 10000,
+      "rate": 0.9442,
+      "ci95": [
+        0.9395281644308813,
+        0.948530678883871
+      ]
+    },
+    "recovery_planner_blind-situation_seed2": {
+      "completed": 9439,
+      "games": 10000,
+      "rate": 0.9439,
+      "ci95": [
+        0.9392169334247128,
+        0.948242140297526
+      ]
+    },
+    "recovery_planner_blind-clock_seed0": {
+      "completed": 9372,
+      "games": 10000,
+      "rate": 0.9372,
+      "ci95": [
+        0.932275042689145,
+        0.9417891768002961
+      ]
+    },
+    "recovery_planner_blind-clock_seed1": {
+      "completed": 9367,
+      "games": 10000,
+      "rate": 0.9367,
+      "ci95": [
+        0.9317576377011736,
+        0.9413069658007449
+      ]
+    },
+    "recovery_planner_blind-clock_seed2": {
+      "completed": 9366,
+      "games": 10000,
+      "rate": 0.9366,
+      "ci95": [
+        0.931654166890402,
+        0.9412105134140122
+      ]
+    },
+    "recovery_planner_perfect_seed0": {
+      "completed": 9404,
+      "games": 10000,
+      "rate": 0.9404,
+      "ci95": [
+        0.935588503154088,
+        0.9448732586554951
+      ]
+    },
+    "recovery_planner_perfect_seed1": {
+      "completed": 9411,
+      "games": 10000,
+      "rate": 0.9411,
+      "ci95": [
+        0.9363138158828311,
+        0.9455474083092833
+      ]
+    },
+    "recovery_planner_perfect_seed2": {
+      "completed": 9376,
+      "games": 10000,
+      "rate": 0.9376,
+      "ci95": [
+        0.9326890282543215,
+        0.942174884025137
+      ]
+    },
+    "learned (seeds pooled)": {
+      "completed": 28301,
+      "games": 30000,
+      "rate": 0.9433666666666667,
+      "ci95": [
+        0.9406938481674605,
+        0.9459259505452482
+      ]
+    }
+  },
+  "paired": {
+    "recovery_planner_seed0 vs best_rule": {
+      "only_first": 210,
+      "only_second": 38,
+      "p_value": 5.0528433769562356e-30
+    },
+    "recovery_planner_seed0 vs rescue_all": {
+      "only_first": 590,
+      "only_second": 71,
+      "p_value": 9.688009611682781e-103
+    },
+    "recovery_planner_seed1 vs best_rule": {
+      "only_first": 240,
+      "only_second": 39,
+      "p_value": 1.7714716728344126e-36
+    },
+    "recovery_planner_seed1 vs rescue_all": {
+      "only_first": 589,
+      "only_second": 41,
+      "p_value": 2.259920032338737e-125
+    },
+    "recovery_planner_seed2 vs best_rule": {
+      "only_first": 214,
+      "only_second": 39,
+      "p_value": 1.9812421198981347e-30
+    },
+    "recovery_planner_seed2 vs rescue_all": {
+      "only_first": 585,
+      "only_second": 63,
+      "p_value": 5.777169834880607e-107
+    },
+    "recovery_planner_blind-situation_seed0 vs best_rule": {
+      "only_first": 238,
+      "only_second": 41,
+      "p_value": 6.267842328147099e-35
+    },
+    "recovery_planner_blind-situation_seed0 vs rescue_all": {
+      "only_first": 583,
+      "only_second": 39,
+      "p_value": 1.6224360417230983e-125
+    },
+    "recovery_planner_blind-situation_seed1 vs best_rule": {
+      "only_first": 229,
+      "only_second": 38,
+      "p_value": 1.9575946544099034e-34
+    },
+    "recovery_planner_blind-situation_seed1 vs rescue_all": {
+      "only_first": 585,
+      "only_second": 47,
+      "p_value": 3.5122530521217466e-119
+    },
+    "recovery_planner_blind-situation_seed2 vs best_rule": {
+      "only_first": 221,
+      "only_second": 33,
+      "p_value": 2.4306259495855824e-35
+    },
+    "recovery_planner_blind-situation_seed2 vs rescue_all": {
+      "only_first": 611,
+      "only_second": 76,
+      "p_value": 1.029498039756963e-104
+    },
+    "recovery_planner_blind-clock_seed0 vs best_rule": {
+      "only_first": 168,
+      "only_second": 47,
+      "p_value": 3.721706008869114e-17
+    },
+    "recovery_planner_blind-clock_seed0 vs rescue_all": {
+      "only_first": 578,
+      "only_second": 110,
+      "p_value": 1.6394837042996263e-77
+    },
+    "recovery_planner_blind-clock_seed1 vs best_rule": {
+      "only_first": 169,
+      "only_second": 53,
+      "p_value": 2.6343945043815127e-15
+    },
+    "recovery_planner_blind-clock_seed1 vs rescue_all": {
+      "only_first": 576,
+      "only_second": 113,
+      "p_value": 1.3505749561188462e-75
+    },
+    "recovery_planner_blind-clock_seed2 vs best_rule": {
+      "only_first": 163,
+      "only_second": 48,
+      "p_value": 7.676082087925454e-16
+    },
+    "recovery_planner_blind-clock_seed2 vs rescue_all": {
+      "only_first": 580,
+      "only_second": 118,
+      "p_value": 4.227081450764724e-74
+    },
+    "recovery_planner_perfect_seed0 vs best_rule": {
+      "only_first": 255,
+      "only_second": 102,
+      "p_value": 3.0088470100993243e-16
+    },
+    "recovery_planner_perfect_seed0 vs rescue_all": {
+      "only_first": 560,
+      "only_second": 60,
+      "p_value": 1.130441020711791e-102
+    },
+    "recovery_planner_perfect_seed1 vs best_rule": {
+      "only_first": 263,
+      "only_second": 103,
+      "p_value": 2.9232452275528025e-17
+    },
+    "recovery_planner_perfect_seed1 vs rescue_all": {
+      "only_first": 551,
+      "only_second": 44,
+      "p_value": 1.48034672977284e-112
+    },
+    "recovery_planner_perfect_seed2 vs best_rule": {
+      "only_first": 260,
+      "only_second": 135,
+      "p_value": 3.156129150823649e-10
+    },
+    "recovery_planner_perfect_seed2 vs rescue_all": {
+      "only_first": 520,
+      "only_second": 48,
+      "p_value": 3.846863050208309e-101
+    }
+  }
+}

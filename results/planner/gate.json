@@ -1,0 +1,191 @@
+{
+  "calibration": {
+    "odds": {
+      "('pick', 'belt', 'upright')": 0.9998013113451222,
+      "('pick', 'loose', 'lying')": 0.9342105263157895,
+      "('pick', 'loose', 'upright')": 0.9168831168831169,
+      "('pick', 'buffer', 'upright')": 0.9987484355444305,
+      "('place', 'tower', 0)": 0.9994767137624281,
+      "('place', 'tower', 1)": 0.9976851851851852,
+      "('place', 'buffer', 0)": 0.9988095238095238,
+      "('place', 'tower', 2)": 0.9969604863221885,
+      "('place', 'tower', 3)": 0.9933035714285714,
+      "('place', 'stage', 0)": 0.9830508474576272,
+      "('standup',)": 0.8859375
+    },
+    "attempts": {
+      "('pick', 'belt', 'upright')": 5031,
+      "('pick', 'loose', 'lying')": 682,
+      "('pick', 'loose', 'upright')": 768,
+      "('pick', 'buffer', 'upright')": 797,
+      "('place', 'tower', 0)": 1909,
+      "('place', 'tower', 1)": 1726,
+      "('place', 'buffer', 0)": 838,
+      "('place', 'tower', 2)": 985,
+      "('place', 'tower', 3)": 446,
+      "('place', 'stage', 0)": 57,
+      "('standup',)": 638
+    },
+    "action_times_s": {
+      "pick_belt": 16.28554325556386,
+      "pick_buffer": 8.495433037175047,
+      "pick_up": 8.491597692408472,
+      "lying": 20.284311752194473,
+      "place_tower": 2.4068062336277745,
+      "place_buffer": 3.9437787608864645,
+      "place_stage": 12.681278591964245,
+      "reject": -3.0514578096942526,
+      "overhead": 9.477946385303516
+    }
+  },
+  "check": [
+    {
+      "kind": "D1",
+      "recoverable": true,
+      "orders": 312,
+      "physics": 92.94871794871794,
+      "symbolic": 94.46955128205128
+    },
+    {
+      "kind": "D1",
+      "recoverable": false,
+      "orders": 52,
+      "physics": 13.461538461538462,
+      "symbolic": 11.278846153846153
+    },
+    {
+      "kind": "D2",
+      "recoverable": true,
+      "orders": 48,
+      "physics": 95.83333333333333,
+      "symbolic": 89.10416666666667
+    },
+    {
+      "kind": "D2",
+      "recoverable": false,
+      "orders": 17,
+      "physics": 0.0,
+      "symbolic": 10.264705882352942
+    },
+    {
+      "kind": "D3",
+      "recoverable": true,
+      "orders": 67,
+      "physics": 92.53731343283582,
+      "symbolic": 89.91044776119404
+    },
+    {
+      "kind": "D3",
+      "recoverable": false,
+      "orders": 24,
+      "physics": 20.833333333333332,
+      "symbolic": 30.041666666666668
+    },
+    {
+      "kind": "all",
+      "recoverable": true,
+      "orders": 427,
+      "physics": 93.20843091334895,
+      "symbolic": 93.23302107728337
+    },
+    {
+      "kind": "all",
+      "recoverable": false,
+      "orders": 93,
+      "physics": 12.903225806451612,
+      "symbolic": 15.78494623655914
+    }
+  ],
+  "gate": [
+    {
+      "spares": 1,
+      "slack": null,
+      "spare_delay": 0.0,
+      "no_spares": 79.41730769230769,
+      "rescue_all": 97.02307692307693,
+      "best_rule": "replace upright; after a failed attempt retry",
+      "best_rule_rate": 97.03557692307692,
+      "search": 96.9048076923077,
+      "headroom": -0.13076923076921787
+    },
+    {
+      "spares": 2,
+      "slack": null,
+      "spare_delay": 0.0,
+      "no_spares": 79.41730769230769,
+      "rescue_all": 97.48076923076923,
+      "best_rule": "replace upright near a tower; after a failed attempt retry",
+      "best_rule_rate": 97.55,
+      "search": 97.41730769230769,
+      "headroom": -0.13269230769230944
+    },
+    {
+      "spares": 2,
+      "slack": 1.25,
+      "spare_delay": 0.0,
+      "no_spares": 46.56057692307692,
+      "rescue_all": 55.66442307692308,
+      "best_rule": "replace lying, lying near a tower, upright near a tower; after a failed attempt retry",
+      "best_rule_rate": 79.61923076923077,
+      "search": 80.19615384615385,
+      "headroom": 0.5769230769230802
+    },
+    {
+      "spares": 2,
+      "slack": 1.25,
+      "spare_delay": 20.0,
+      "no_spares": 46.56057692307692,
+      "rescue_all": 52.291346153846156,
+      "best_rule": "replace nothing; after a failed attempt retry",
+      "best_rule_rate": 52.48076923076923,
+      "search": 54.23076923076923,
+      "headroom": 1.75
+    },
+    {
+      "spares": 2,
+      "slack": 1.5,
+      "spare_delay": 0.0,
+      "no_spares": 72.25576923076923,
+      "rescue_all": 86.86923076923077,
+      "best_rule": "replace lying near a tower, upright near a tower; after a failed attempt replace",
+      "best_rule_rate": 93.56153846153846,
+      "search": 95.42115384615384,
+      "headroom": 1.8596153846153811
+    },
+    {
+      "spares": 2,
+      "slack": 1.5,
+      "spare_delay": 20.0,
+      "no_spares": 72.25576923076923,
+      "rescue_all": 83.80673076923077,
+      "best_rule": "replace lying, upright near a tower; after a failed attempt retry",
+      "best_rule_rate": 83.91057692307692,
+      "search": 86.2,
+      "headroom": 2.289423076923086
+    },
+    {
+      "spares": 2,
+      "slack": 2.0,
+      "spare_delay": 0.0,
+      "no_spares": 79.4048076923077,
+      "rescue_all": 97.39615384615385,
+      "best_rule": "replace upright near a tower; after a failed attempt retry",
+      "best_rule_rate": 97.45769230769231,
+      "search": 97.41538461538461,
+      "headroom": -0.04230769230770193
+    },
+    {
+      "spares": 2,
+      "slack": 2.0,
+      "spare_delay": 20.0,
+      "no_spares": 79.4048076923077,
+      "rescue_all": 97.06826923076923,
+      "best_rule": "replace upright near a tower; after a failed attempt retry",
+      "best_rule_rate": 97.11923076923077,
+      "search": 97.2798076923077,
+      "headroom": 0.16057692307693117
+    }
+  ],
+  "reps": 50,
+  "passed": false
+}
