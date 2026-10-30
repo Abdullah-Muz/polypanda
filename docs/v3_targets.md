@@ -29,6 +29,17 @@ The planner chooses which cube on the belt to take next, and where it goes: a to
 | Routine orders at 3 slots in the physics cell, with the learned skills: at least 99 % | routing orders |
 | **Under disturbances (D1–D3 pooled): significantly more orders completed (p < 0.05) than the scripted recovery rules, with the same skills** | disturbance suite, physics cell |
 
+*Amended on 2026-10-30, after the recovery skills (d+) and before any planner code or training: rescue or replace. The d+ final showed that the third target above leaves the planner almost nothing to decide. With the learned skills, scripted recovery completes about 92 % of the orders with a recoverable knock, and about 26 % of knocked orders are not recoverable, so no planner can complete them. At most about 6 points remain, mostly lost to skill failures rather than to decisions. The cell therefore gets a limited stock of spare cubes (the scrap-and-replace extension under A3). After a knock, the planner decides for each fallen cube whether to rescue it or to write it off and call a spare of its colour up the conveyor. A spare costs stock and the time it takes to arrive; a rescue costs time and can fail or knock something else over, with odds that depend on the situation (step e measures them). The third target becomes:*
+
+| Target | Measured on |
+|---|---|
+| **Under disturbances (D1–D3 pooled), with spares: significantly more orders completed (p < 0.05) than the best hand-written spares rule, with the same skills and the same spares** | disturbance suite, physics cell |
+
+- **Baseline:** the best of a family of hand-written rules, chosen in the symbolic simulation, not on the suite. The family starts with "rescue every recoverable cube, replace the rest while spares last", with thresholds on the pose and the distance to the nearest tower. Scripted recovery without spares (d+) is reported beside it.
+- **Fixed before any planner training**, from the calibration orders (`eval_sets/disturbance_calib_v1.json`) and never from the suite: the number of spares per order, how a spare arrives and how long it takes, and the skill outcome rates the simulation samples.
+- **Headroom gate, as in step 1:** before training, the best decisions found by search in the symbolic simulation must beat the best rule by at least 5 points of knocked orders. Otherwise the task is reported as solved by rules, and the user decides the next step.
+- **Routine targets unchanged** (the first two rows above), and the D1/D2/D3 recovery targets unchanged.
+
 **Ablations** (reported, no target): the planner trained without seeing the cubes on the belt, without seeing the towers, and with skill outcomes assumed always successful in training.
 
 ## A2: closed loop
