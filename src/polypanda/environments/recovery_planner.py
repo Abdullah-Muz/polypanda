@@ -10,7 +10,8 @@ as a calibration knock of the same height left them. Orders that give the planne
 skipped: no choice of it can change them.
 
 `blind` hides parts of the observation, for the ablations in docs/v3_targets.md: "situation"
-(the cube's pose and nearness to a tower) and "clock" (time used and time left).
+(the cube's pose and nearness to a tower, and the counts of lying and upright fallen cubes,
+which include it) and "clock" (time used and time left).
 """
 
 import gymnasium as gym
@@ -29,7 +30,9 @@ from polypanda.supervisor.symbolic import (
     undisturbed_time,
 )
 
-HIDDEN = {"situation": (0, 1), "clock": (5, 6)}   # feature indices (SymbolicCell.features)
+# feature indices (SymbolicCell.features); hiding only the cube's own pose (0, 1) left it
+# readable from the fallen-cube counts (9, 10): the first ablation runs (52111b3) were not blind
+HIDDEN = {"situation": (0, 1, 9, 10), "clock": (5, 6)}
 
 
 class RecoveryPlannerEnv(gym.Env):
