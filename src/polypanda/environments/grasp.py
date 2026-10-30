@@ -60,6 +60,11 @@ OBS_SLICES = {
 class PlacementConfig:
     x_range: tuple[float, float] = CUBE_X_RANGE
     y_range: tuple[float, float] = CUBE_Y_RANGE
+    # v3 d1 round 5 (training): with probability near_prob, x is drawn from near_x instead, the
+    # inner edge where the workcell's staging ring stands cubes (r = 0.36 m). In the cell d1
+    # seed 0 knocked 7 of its upright staged cubes over there (d+ development suite)
+    near_prob: float = 0.0
+    near_x: tuple[float, float] = (0.30, 0.40)
 
 
 @dataclass(frozen=True)
@@ -182,8 +187,9 @@ class GraspConfig:
 
     def for_evaluation(self) -> "GraspConfig":
         """The task as evaluated: every episode starts from home with the nominal cube on the
-        table."""
-        return replace(self, curriculum=CurriculumConfig(), randomization=RandomizationConfig())
+        table, placed over the whole region (no extra near-base draws)."""
+        return replace(self, curriculum=CurriculumConfig(), randomization=RandomizationConfig(),
+                       placement=replace(self.placement, near_prob=0.0))
 
 
 def alignment_error(R_tcp: np.ndarray, cube_yaw_value: float) -> float:
@@ -286,7 +292,8 @@ class GraspEnv(gym.Env):
         if "cube" in options:
             x, y, yaw = (float(v) for v in options["cube"])
         else:
-            x = self.np_random.uniform(*cfg.x_range)
+            near = cfg.near_prob > 0 and self.np_random.uniform() < cfg.near_prob  # (no draw off)
+            x = self.np_random.uniform(*(cfg.near_x if near else cfg.x_range))
             y = self.np_random.uniform(*cfg.y_range)
             yaw = self.np_random.uniform(-np.pi, np.pi)
             prob = self.config.curriculum.pregrasp_start_prob

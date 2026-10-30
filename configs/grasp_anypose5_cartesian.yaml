@@ -1,0 +1,80 @@
+# v3 step d1, round 5 (for d+): round 4 (configs/grasp_anypose4_cartesian.yaml) with more
+# practice where the workcell needs it. d1 was reported as is at round 4 (84.8 % on its one-shot
+# lying set; that result stands). In the cell's recovery (d+ development suite) seed 0's picks:
+# belt 79/79; loose upright 8/41 knocked over, 7 of them on the staging ring (r 0.34-0.36 m,
+# the inner edge of the placement region); loose lying 8/31 (6 timeouts, most far from any
+# tower). Seeds 1 and 2 picked 97-100 %.
+# Changes (set before any round-5 training): placement.near_prob 0.3 (x from 0.30-0.40 m) and
+# resting.lying_prob 0.7 (was 0.6), training only.
+
+action:
+  max_delta: 0.015
+  n_substeps: 25
+  max_lead: null
+  space: cartesian
+  cartesian:
+    dof: 4
+    max_step: 0.01
+    max_rot: 0.05
+    max_tilt: 0.6
+    max_lead: 0.03
+    box_low: [0.15, -0.5, 0.01]
+    box_high: [0.85, 0.5, 0.6]
+    ik_iters: 2
+    posture_gain: 0.02
+
+placement:
+  x_range: [0.30, 0.78]
+  y_range: [-0.20, 0.20]
+  near_prob: 0.3             # round 5: x from near_x (the staging ring)
+  near_x: [0.30, 0.40]
+
+resting:
+  lying_prob: 0.7           # round 5 (was 0.6)
+  max_lying_turn: 0.52
+  lying_gate_z_below: 0.015
+
+gripper:                    # round 4: as simulation.workcell.WorkcellConfig
+  finger_stiffness: 1000.0
+  torsional_friction: true
+
+gate:
+  xy_tol: 0.01
+  z_tol: 0.01
+  align_tol: 0.15
+  tilt_tol: 0.15
+  dwell_steps: 2
+  reopen_gap: 0.02
+  reopen_steps: 10
+
+episode:
+  horizon: 300
+  max_cube_tilt: 1.047
+
+success:
+  lift: 0.05
+
+reward:
+  approach: 20.0
+  align: 1.0
+  lift: 20.0
+  lift_cap: 0.10
+  hold: 0.5
+  action: 0.005
+  gripper_tilt: 0.1
+  floor: 0.1
+  knocked_over: 5.0
+
+curriculum:               # training only; validation and evaluation start every episode from home
+  pregrasp_start_prob: 0.3
+  preclose_start_prob: 0.2
+
+randomization:
+  mass_scale: [0.7, 1.4]
+  friction_scale: [0.7, 1.3]
+
+check:
+  min_lift: 0.02
+  window: 5
+  max_slip: 0.002
+  max_slip_rot: 0.05

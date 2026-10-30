@@ -117,6 +117,26 @@ def test_the_lying_height_window_reaches_lower():
 CFG4 = GraspConfig.from_yaml(ROOT / "configs" / "grasp_anypose4_cartesian.yaml")
 
 
+def test_round5_draws_more_cubes_near_the_base_in_training_only():
+    cfg5 = GraspConfig.from_yaml(ROOT / "configs" / "grasp_anypose5_cartesian.yaml")
+    assert cfg5.placement.near_prob == pytest.approx(0.3) and cfg5.resting.lying_prob == 0.7
+    assert cfg5.for_evaluation().placement.near_prob == 0.0 and CFG4.placement.near_prob == 0.0
+    def inner_share(cfg):
+        env, xs = GraspV4Env(cfg), []
+        for s in range(60):
+            env.reset(seed=s)
+            xs.append(float(env.data.xpos[env.cube.body][0]))
+        return np.mean(np.array(xs) < 0.40), min(xs)
+
+    near, low = inner_share(cfg5)
+    plain, _ = inner_share(replace(cfg5, placement=replace(cfg5.placement, near_prob=0.0)))
+    assert near > plain + 0.15 and low >= 0.29
+    from polypanda.training.config import TrainConfig
+    train = TrainConfig.from_yaml(ROOT / "configs" / "grasp_anypose5_cartesian_ppo.yaml")
+    assert train.init_from == "runs/grasp_anypose4_seed{seed}" and train.init_log_std is None
+    assert train.ppo.learning_rate_final == pytest.approx(3e-5)
+
+
 def test_round4_trains_in_the_workcells_gripper_and_the_default_is_menageries():
     menagerie, round4 = GraspV4Env(CFG2), GraspV4Env(CFG4)
     a = menagerie.arm.gripper_actuator
