@@ -463,6 +463,18 @@ class Workcell:
         k = self.cubes.index(cube)
         return self.order.arrivals[k][0] if self.order and k < len(self.order.arrivals) else None
 
+    def call_spare(self, colour: str) -> int:
+        """v3 f: send a spare cube of `colour` up the belt, as one more arrival of the order: the
+        next cube waiting in the hopper takes the colour. Returns its arrival index."""
+        k = len(self.order.arrivals)
+        if k >= len(self.cubes):
+            raise ValueError(f"no spare cube left in the hopper ({len(self.cubes)} cubes)")
+        self.order = WorkOrder(self.order.recipes, self.order.arrivals + ((colour, None),))
+        self.model.geom_rgba[self.cubes[k].geom] = COLOURS[colour]
+        if self.conveyor.lead() is None:   # (the belt is idle: start it)
+            self.conveyor.index()
+        return k
+
 
 class Conveyor:
     """Belt indexing and batch feeding.

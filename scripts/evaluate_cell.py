@@ -32,6 +32,7 @@ import torch
 from polypanda.evaluation.cell import CellEpisode, CellEvalConfig, evaluate_cell, skill_from_spec
 from polypanda.evaluation.pickplace import mcnemar_exact
 from polypanda.simulation.workcell import WorkcellConfig
+from polypanda.supervisor.symbolic import BEST_RULE, load_planner
 
 
 def git_state() -> dict:
@@ -64,6 +65,14 @@ def main() -> None:
     parser.add_argument("--aim", choices=("fixture", "trained"), default=CellEvalConfig.aim,
                         help="learned place target: the fixture centre, or as trained (v3: the "
                              "top tower cube)")
+    parser.add_argument("--spares", type=int, default=0,
+                        help="v3 f, with --recover: spare cubes per order")
+    parser.add_argument("--slack", type=float,
+                        help="v3 f: an order counts only if complete within slack x its "
+                             "undisturbed time (the symbolic cell's fitted action times)")
+    parser.add_argument("--recovery-planner", default="rescue-all",
+                        help="v3 f, with --spares: rescue-all, best-rule, or run:DIR (a learned "
+                             "recovery planner, scripts/train_recovery_planner.py)")
     parser.add_argument("--compare", type=Path, help="episodes CSV of another configuration")
     parser.add_argument("--out-dir", type=Path, default=Path("results/cell"))
     parser.add_argument("--quiet", action="store_true")
@@ -75,7 +84,17 @@ def main() -> None:
                             mixed=args.mixed, slots=args.slots, aim=args.aim,
                             batch_choice=args.batch_choice,
                             disturbances=str(args.disturbances) if args.disturbances else None,
-                            recover=args.recover)
+                            recover=args.recover, spares=args.spares, slack=args.slack)
+    planner_spec = args.recovery_planner
+    if planner_spec == "rescue-all":
+        recovery_planner, planner_tag = None, "rescue-all"
+    elif planner_spec == "best-rule":
+        recovery_planner, planner_tag = BEST_RULE, "best-rule"
+    elif planner_spec.startswith("run:"):
+        recovery_planner = load_planner(Path(planner_spec[4:]))
+        planner_tag = Path(planner_spec[4:]).name
+    else:
+        raise ValueError("--recovery-planner must be rescue-all, best-rule or run:DIR")
     pick, pick_desc, pick_tag, pick_prov = skill_from_spec(args.pick, "pick")
     place, place_desc, place_tag, place_prov = skill_from_spec(args.place, "place")
     standup, standup_desc, standup_tag, standup_prov = skill_from_spec(args.standup, "standup")
@@ -83,6 +102,8 @@ def main() -> None:
     layer = (f"_mixed-s{config.slots}{'-batch' if config.batch_choice else ''}"
              f"{'_' + Path(config.disturbances).stem if config.disturbances else ''}"
              f"{'_recover' if config.recover else ''}"
+             f"{f'_spares{config.spares}-{planner_tag}' if config.spares else ''}"
+             f"{f'_slack{config.slack:g}' if config.slack else ''}"
              if config.mixed else "")
     stack = getattr(getattr(place, "config", None), "stack", None)
     # flagged when the place runs with a target other than the one it was trained with
@@ -97,12 +118,14 @@ def main() -> None:
 
     attempts: list[dict] = []
     summary, episodes = evaluate_cell(pick, place, config, progress, standup=standup,
-                                      attempts=attempts)
+                                      attempts=attempts, recovery_planner=recovery_planner)
     record = {"name": name,
               "skills": {"pick": pick_desc, "pick_provenance": pick_prov,
                          "place": place_desc, "place_provenance": place_prov,
                          "standup": standup_desc, "standup_provenance": standup_prov,
-                         "moves": "scripted (base-only swings in the carry posture)"},
+                         "moves": "scripted (base-only swings in the carry posture)",
+                         "recovery_planner": (str(recovery_planner)
+                                              if planner_spec == "best-rule" else planner_spec)},
               "eval": asdict(config),
               "cell": asdict(WorkcellConfig()),
               "created_utc": datetime.now(UTC).isoformat(timespec="seconds"),

@@ -13,9 +13,7 @@ import json
 from pathlib import Path
 
 import numpy as np
-from stable_baselines3 import PPO
 
-from polypanda.environments.recovery_planner import HIDDEN
 from polypanda.evaluation.cell import CellEvalConfig
 from polypanda.evaluation.pickplace import mcnemar_exact
 from polypanda.evaluation.reach import wilson_interval
@@ -27,6 +25,7 @@ from polypanda.supervisor.symbolic import (
     RULE_FAMILY,
     Calibration,
     SymbolicCell,
+    load_planner,
     undisturbed_time,
 )
 
@@ -51,18 +50,6 @@ def play(policy, cal, games, seed, reps) -> list[bool]:
             for i, (order, knock, fallen, deadline) in enumerate(games) for r in range(reps)]
 
 
-def learned(run_dir: Path):
-    model = PPO.load(run_dir / "model.zip", device="cpu")
-    meta = json.loads((run_dir / "meta.json").read_text())
-    hidden = [i for b in meta["blind"] for i in HIDDEN[b]]
-
-    def policy(d) -> bool:
-        obs = np.clip(d.features, -2.0, 2.0)
-        obs[hidden] = 0.0
-        return int(model.predict(obs, deterministic=True)[0]) == 1
-    return policy
-
-
 def summary(wins: list[bool]) -> dict:
     k, n = sum(wins), len(wins)
     return {"completed": k, "games": n, "rate": k / n, "ci95": list(wilson_interval(k, n))}
@@ -82,7 +69,7 @@ def main() -> None:
     results = {"rescue_all": play(RESCUE_ALL, cal, games, EVAL_SEED, args.reps),
                "best_rule": play(best, cal, games, EVAL_SEED, args.reps)}
     for run in args.runs:
-        results[run.name] = play(learned(run), cal, games, EVAL_SEED, args.reps)
+        results[run.name] = play(load_planner(run), cal, games, EVAL_SEED, args.reps)
     out = {"task": {"spares": DEFAULT_TASK.spares, "slack": DEFAULT_TASK.slack,
                     "spare_delay": DEFAULT_TASK.spare_delay},
            "orders": args.n, "reps": args.reps, "eval_seed": EVAL_SEED,

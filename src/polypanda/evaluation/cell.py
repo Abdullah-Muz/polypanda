@@ -34,6 +34,7 @@ from polypanda.simulation.disturbances import load_suite
 from polypanda.simulation.workcell import Workcell, WorkcellConfig, WorkOrder
 from polypanda.supervisor.cell import LearnedCell, LearnedSkill
 from polypanda.supervisor.planner import mixed_order
+from polypanda.supervisor.symbolic import Calibration, undisturbed_time
 
 
 @dataclass(frozen=True)
@@ -52,11 +53,13 @@ class CellEvalConfig:
     batch_choice: bool = False      # v3: take any cube on the belt, not only the front one
     disturbances: str | None = None  # v3: a disturbance suite (eval_sets/), one per order
     recover: bool = False           # v3: read the cell after a knock and recover loose cubes
+    spares: int = 0                 # v3 f: spare cubes per order (ScriptedCell.run_mixed_order)
+    slack: float | None = None      # v3 f: deadline, slack x the order's undisturbed time
 
     @property
     def n_cubes(self) -> int:
         """Cube bodies the cell needs (never fewer than Layer 1's original 12-cube model)."""
-        return max(12, 3 * self.heights[1] + (self.surplus[1] if self.mixed else 0))
+        return max(12, 3 * self.heights[1] + (self.surplus[1] if self.mixed else 0)) + self.spares
 
 
 @dataclass(frozen=True)
@@ -77,6 +80,15 @@ class CellEpisode:
     disturbance: str = ""        # v3: "D0" no knock, "none" nothing fell, or D1/D2/D3
     recoverable: bool = False    # every cube the knock threw off could physically be recovered
     fallen: int = 0              # cubes the knock threw off the tower
+    deadline: float | None = None  # v3 f: simulated s the order had (success: complete by then)
+    spares_used: int = 0         # v3 f: spare cubes called up the belt,
+    replaced: int = 0            # of which for cubes the recovery planner chose not to rescue
+
+
+@lru_cache(maxsize=1)
+def _calibration() -> Calibration:
+    """The symbolic cell's calibration (step e): the action times that set the deadlines."""
+    return Calibration.from_calibration_run()
 
 
 def skill_from_spec(spec: str, stage: str):
@@ -119,13 +131,18 @@ def run_cell_order(ctl: LearnedCell, config: CellEvalConfig, index: int) -> Cell
             viewer()
 
     ctl.on_step = count
+    deadline = (config.slack * undisturbed_time(order, _calibration())
+                if config.mixed and config.slack else None)
     try:
         if config.mixed:
             disturbance = _suite(config.disturbances)[index] if config.disturbances else None
+            spares = ({"spares": config.spares, "replace": ctl.recovery_planner,
+                       "deadline": deadline, "times": _calibration().times}
+                      if config.spares or deadline else {})
             towers = ctl.run_mixed_order(order, rng, lateral=config.lateral, yaw=config.yaw,
                                          slots=config.slots, batch_choice=config.batch_choice,
                                          disturbance=disturbance, recover=config.recover,
-                                         log=log.append)
+                                         log=log.append, **spares)
         else:
             towers = ctl.run_order(order, rng, lateral=config.lateral, yaw=config.yaw,
                                    log=log.append)
@@ -150,6 +167,10 @@ def run_cell_order(ctl: LearnedCell, config: CellEvalConfig, index: int) -> Cell
             failure = f"knock:{knocked['kind']}"
         else:
             failure = "tower"
+    sim_s = round(steps[0] * ctl.dt, 2)
+    late = deadline is not None and sim_s > deadline
+    if all(ok) and late:
+        failure = "late"
     if config.mixed and config.disturbances:
         kind = "D0" if knocked is None else knocked["kind"]
         extra = {"disturbance": kind, "recoverable": bool(knocked and knocked["recoverable"]),
@@ -161,14 +182,16 @@ def run_cell_order(ctl: LearnedCell, config: CellEvalConfig, index: int) -> Cell
     else:
         extra = {}
     return CellEpisode(
-        index=index, success=all(ok), failure=failure,
+        index=index, success=all(ok) and not late, failure=failure,
         heights="-".join(str(len(r)) for r in order.recipes),
         towers_ok="".join(str(int(x)) for x in ok), cubes=len(order.arrivals),
         pick_failures=sum(not r["success"] for r in new_picks),
         place_failures=sum(not r["success"] for r in new_places),
-        ik_failures=ctl.ik_failures, sim_s=round(steps[0] * ctl.dt, 2),
+        ik_failures=ctl.ik_failures, sim_s=sim_s,
         buffered=stats.get("buffered", 0), rejected=stats.get("rejected", 0),
-        needed_rejected=stats.get("needed_rejected", 0), **extra)
+        needed_rejected=stats.get("needed_rejected", 0),
+        deadline=None if deadline is None else round(deadline, 2),
+        spares_used=stats.get("spares_used", 0), replaced=stats.get("replaced", 0), **extra)
 
 
 def summarize_cell(episodes: list[CellEpisode], ctl: LearnedCell) -> dict:
@@ -226,6 +249,10 @@ def summarize_cell(episodes: list[CellEpisode], ctl: LearnedCell) -> dict:
                    "rejected": sum(e.rejected for e in episodes),
                    "needed_rejected": sum(e.needed_rejected for e in episodes)},
         **({"disturbances": disturbances} if disturbances else {}),
+        **({"spares": {"used": sum(e.spares_used for e in episodes),
+                       "replaced": sum(e.replaced for e in episodes),
+                       "orders_late": sum(e.failure == "late" for e in episodes)}}
+           if any(e.deadline is not None or e.spares_used for e in episodes) else {}),
     }
 
 
@@ -241,12 +268,15 @@ def skill_attempts(ctl: LearnedCell) -> list[dict]:
 
 def evaluate_cell(grasp: LearnedSkill | None, place: LearnedSkill | None,
                   config: CellEvalConfig | None = None, progress=None,
-                  standup: LearnedSkill | None = None, attempts: list | None = None
-                  ) -> tuple[dict, list[CellEpisode]]:
-    """Run the orders; `attempts`, if given, is filled with skill_attempts."""
+                  standup: LearnedSkill | None = None, attempts: list | None = None,
+                  recovery_planner=None) -> tuple[dict, list[CellEpisode]]:
+    """Run the orders; `attempts`, if given, is filled with skill_attempts. With spares
+    (config.spares), `recovery_planner` (supervisor.symbolic: a Rule or load_planner) decides
+    rescue or replace; None rescues every cube it can."""
     config = config or CellEvalConfig()
     cell = Workcell.build(WorkcellConfig(n_cubes=config.n_cubes))
     ctl = LearnedCell(cell, grasp=grasp, place=place, aim=config.aim, standup=standup)
+    ctl.recovery_planner = recovery_planner
     start, episodes = time.time(), []
     for i in range(config.n):
         episodes.append(run_cell_order(ctl, config, i))

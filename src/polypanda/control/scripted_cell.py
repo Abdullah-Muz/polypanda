@@ -42,6 +42,7 @@ from polypanda.simulation.scenes import CubeIndices, cube_yaw
 from polypanda.simulation.workcell import Workcell, WorkOrder, station_xy
 from polypanda.supervisor.observe import observe
 from polypanda.supervisor.planner import BUFFER, TOWER, GreedyPlanner
+from polypanda.supervisor.symbolic import Decision, Loose, decision_features
 
 CUBE_HEIGHT = 0.06
 
@@ -431,7 +432,10 @@ class ScriptedCell:
     def run_mixed_order(self, order: WorkOrder, rng=None, lateral: float = 0.0,
                         yaw: float = 0.0, slots: int = 3, batch_choice: bool = False,
                         disturbance=None, recover: bool = False,
-                        log: Callable[[str], None] | None = None) -> list[list[int]]:
+                        log: Callable[[str], None] | None = None, spares: int = 0,
+                        replace: Callable[[Decision], bool] | None = None,
+                        deadline: float | None = None, times: dict | None = None
+                        ) -> list[list[int]]:
         """Fulfil a Layer 2 work order (random arrival order, surplus cubes) with the greedy
         planner (supervisor.planner) and `slots` buffer slots; returns per tower the arrival
         indices of the cubes placed on it. Counts are left in `self.stats`. With `batch_choice`
@@ -440,7 +444,14 @@ class ScriptedCell:
         (simulation.disturbances.Disturbance) knocks a tower right after it reaches the given
         height; its outcome is left in `self.disturbance_outcome`. With `recover` the controller
         reads the cell after a knock and at the end (supervisor.observe), brings its plan in line
-        with the towers as they stand, and recovers loose cubes (`recover_loose`)."""
+        with the towers as they stand, and recovers loose cubes (`recover_loose`).
+
+        v3 f, spares: up to `spares` spare cubes per order. A written-off cube the towers still
+        need is replaced by a spare of its colour, which comes up the belt as one more arrival
+        (Workcell.call_spare). `replace` (a recovery planner, supervisor.symbolic) is asked, as
+        in the symbolic cell, whether to replace a cube that could be rescued instead of
+        rescuing it, and again after each failed attempt; it sees decision_features, with the
+        order's `deadline` (simulated s, or None) and the fitted action `times`."""
         cell, cfg = self.cell, self.cell.config
         cell.reset(order, rng, lateral=lateral, yaw=yaw)
         self.q_cmd, self.grip = self.home.copy(), GRIPPER_OPEN
@@ -459,6 +470,44 @@ class ScriptedCell:
 
         written_off: set[int] = set()
         attempts: dict[int, int] = {}
+        asked: dict[int, int] = {}       # attempts when the planner was last asked, per cube
+        staged: set[int] = set()         # cubes moved to a staging spot and still there
+        handled: set[int] = set()        # arrivals taken off the belt
+        spares_left = [spares]
+        if spares:
+            self.stats.update(spares_used=0, replaced=0)
+        t0 = self.d.time
+
+        def colour_of(k: int) -> str:
+            return cell.order.arrivals[k][0]
+
+        def call_spare(k: int) -> None:
+            """Replace written-off cube k with a spare, if the towers need it and one is left."""
+            if spares_left[0] > 0 and planner.demand(colour_of(k)) > 0:
+                spares_left[0] -= 1
+                cell.call_spare(colour_of(k))
+                self.stats["spares_used"] += 1
+                if log:
+                    log(f"spare {colour_of(k)} cube called up the belt")
+
+        def ask(k: int, view) -> bool:
+            """The recovery planner: replace cube k with a spare instead of rescuing it?"""
+            a = attempts.get(k, 0)
+            if (replace is None or spares_left[0] <= 0 or planner.demand(colour_of(k)) <= 0
+                    or asked.get(k) == a or (k in staged and a == 0)):
+                return False
+            asked[k] = a
+            xy = self.d.xpos[cell.cubes[k].body][:2]
+            near = min(np.linalg.norm(xy - cell.tower_xy(t))
+                       for t in range(len(order.recipes))) < cfg_c.clear_radius
+            cube = Loose(colour_of(k), view.loose[k]["pose"], True, bool(near),
+                         staged=k in staged, attempts=a)
+            poses = [s["pose"] for j, s in view.loose.items() if j not in written_off]
+            elapsed = self.d.time - t0 + times["overhead"]  # (the symbolic clock starts there)
+            features = decision_features(
+                cube, a > 0, spares_left[0], spares, elapsed, deadline,
+                len(cell.order.arrivals) - len(handled), planner, poses, times)
+            return bool(replace(Decision(cube, a > 0, features)))
 
         def stack(k: int, t: int) -> None:
             self.swing_to(np.radians(cfg.tower_angles[t]))
@@ -472,7 +521,7 @@ class ScriptedCell:
 
         def route(k: int) -> None:
             """Send the cube in the hand (arrival k) to a tower, a buffer slot or the bin."""
-            cube, colour = cell.cubes[k], order.arrivals[k][0]
+            cube, colour = cell.cubes[k], colour_of(k)
             kind, where = planner.decide(colour)
             if kind == TOWER:
                 if log:
@@ -481,7 +530,7 @@ class ScriptedCell:
                 while (move := planner.next_buffer_move()) is not None:
                     slot, t = move
                     if log:
-                        log(f"  buffer slot {slot + 1} ({order.arrivals[parked[slot]][0]}) -> "
+                        log(f"  buffer slot {slot + 1} ({colour_of(parked[slot])}) -> "
                             f"tower {'ABC'[t]}, level {len(towers[t]) + 1}")
                     k_slot, parked[slot] = parked[slot], None  # (before stacking: a knock there
                     self.swing_to(np.radians(cfg.buffer_angles[slot]))  # may refill the slot)
@@ -527,10 +576,22 @@ class ScriptedCell:
                         usable.append(k)
                     else:
                         written_off.add(k)
+                        staged.discard(k)
                         self.stats["written_off"] += 1
                         if log:
-                            log(f"{order.arrivals[k][0]} cube written off ({state['pose']}, "
+                            log(f"{colour_of(k)} cube written off ({state['pose']}, "
                                 f"{'in reach' if state['reachable'] else 'out of reach'})")
+                        call_spare(k)
+                for k in list(usable):
+                    if ask(k, view):
+                        usable.remove(k)
+                        written_off.add(k)
+                        staged.discard(k)
+                        self.stats["written_off"] += 1
+                        self.stats["replaced"] += 1
+                        if log:
+                            log(f"{colour_of(k)} cube left for a spare (recovery planner)")
+                        call_spare(k)
                 if not usable:
                     return
                 xy = {k: self.d.xpos[cell.cubes[k].body][:2].copy() for k in usable}
@@ -541,21 +602,22 @@ class ScriptedCell:
                 if near and spot is not None:  # clear the site first
                     k = near[0]
                     if log:
-                        log(f"clearing the {order.arrivals[k][0]} cube away from the towers")
+                        log(f"clearing the {colour_of(k)} cube away from the towers")
                     self.swing_to(float(np.arctan2(xy[k][1], xy[k][0])))
                     self.source = "stage"
                     self.stage(cell.cubes[k], view.loose[k]["pose"], spot)
                     moved = self.d.xpos[cell.cubes[k].body][:2]
                     if np.linalg.norm(moved - spot) < 0.03:
                         self.stats["staged"] += 1
+                        staged.add(k)
                     else:
                         attempts[k] = attempts.get(k, 0) + 1   # (a failed attempt)
                     continue
-                ready = [k for k in usable if any(planner.next_colour(t) == order.arrivals[k][0]
+                ready = [k for k in usable if any(planner.next_colour(t) == colour_of(k)
                                                   for t in range(len(towers)))]
                 k = (ready or usable)[0]
                 if log:
-                    log(f"recovering the {order.arrivals[k][0]} cube")
+                    log(f"recovering the {colour_of(k)} cube")
                 self.swing_to(float(np.arctan2(xy[k][1], xy[k][0])))
                 self.source = "loose"
                 self.pick_loose(cell.cubes[k], view.loose[k]["pose"], spot)
@@ -566,10 +628,11 @@ class ScriptedCell:
                     self.to_carry()
                     continue
                 self.stats["recovered"] += 1
+                staged.discard(k)
                 route(k)
 
-        handled: set[int] = set()
-        for n in range(len(order.arrivals)):
+        def take(n: int) -> bool:
+            """Take arrival n off the belt and route it; False if it did not arrive."""
             self.swing_to(np.radians(cfg.infeed_angle))
             for _ in range(int(self.config.belt_timeout / self.dt)):
                 if cell.conveyor.ready:
@@ -592,15 +655,24 @@ class ScriptedCell:
                     self.swing_to(float(np.arctan2(*self.d.xpos[cube.body][1::-1])))
             if cube is None or k in handled or (not batch_choice and cell.cubes.index(cube) != k):
                 if log:
-                    log(f"cube {n} ({order.arrivals[n][0]}) did not arrive")
-                break
+                    log(f"cube {n} ({colour_of(n)}) did not arrive")
+                return False
             handled.add(k)
             self.source = "belt"
             self.pick(cube)
             cell.conveyor.index()  # the belt brings the next cube while the arm is away
             route(k)
-        if recover:
-            recover_loose()
+            return True
+
+        n, stalled = 0, False
+        while True:
+            while not stalled and n < len(cell.order.arrivals):
+                stalled = not take(n)
+                n += not stalled
+            if recover:
+                recover_loose()      # (may call spares up the belt: then the loop goes on)
+            if stalled or n >= len(cell.order.arrivals):
+                break
         self.swing_to(0.0)
         self.move_joints(self.home)
         self.step(20)

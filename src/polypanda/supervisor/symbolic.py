@@ -162,6 +162,23 @@ class Loose:
     asked: int = -1      # attempts when the planner was last asked about it
 
 
+def decision_features(cube: Loose, retry: bool, spares: int, max_spares: int, t: float,
+                      deadline: float | None, queue: int, planner: GreedyPlanner,
+                      loose_poses: list[str], times: dict) -> np.ndarray:
+    """What the planner sees at a decision, scaled to about [0, 1]; the symbolic and the physics
+    cell (ScriptedCell.run_mixed_order) both build it here. `queue`: arrivals (and spares) still
+    to come up the belt; `loose_poses`: every fallen cube still loose, this one included."""
+    horizon = deadline or 1e9
+    left = sum(len(r) - p for r, p in zip(planner.recipes, planner.placed, strict=True))
+    work = left * (times["pick_belt"] + times["place_tower"])
+    ready = any(planner.next_colour(k) == cube.colour for k in range(len(planner.recipes)))
+    return np.array([
+        cube.pose == "lying", cube.near, retry, cube.staged, spares / max(1, max_spares),
+        t / horizon, (horizon - t - work) / horizon, queue / 14, left / 12,
+        loose_poses.count("lying") / 4, loose_poses.count("upright") / 4, ready,
+        deadline is not None], dtype=np.float32)
+
+
 @dataclass
 class Decision:
     """A question for the planner: replace `cube` with a spare (True) or rescue it (False)?"""
@@ -209,18 +226,9 @@ class SymbolicCell:
         return self.planner.demand(colour) > 0
 
     def features(self, c: Loose, retry: bool) -> np.ndarray:
-        """What the planner sees at a decision, scaled to about [0, 1]."""
-        deadline = self.deadline or 1e9
-        left = sum(len(r) - p for r, p in zip(self.order.recipes, self.planner.placed,
-                                              strict=True))
-        work = left * (self.cal.times["pick_belt"] + self.cal.times["place_tower"])
-        ready = any(self.planner.next_colour(t) == c.colour for t in range(len(self.towers)))
-        return np.array([
-            c.pose == "lying", c.near, retry, c.staged, self.spares / max(1, self.task.spares),
-            self.t / deadline, (deadline - self.t - work) / deadline, len(self.queue) / 14,
-            left / 12, sum(x.pose == "lying" for x in self.loose) / 4,
-            sum(x.pose == "upright" for x in self.loose) / 4, ready,
-            self.deadline is not None], dtype=np.float32)
+        return decision_features(
+            c, retry, self.spares, self.task.spares, self.t, self.deadline, len(self.queue),
+            self.planner, [x.pose for x in self.loose], self.cal.times)
 
     # --- the order --------------------------------------------------------------------------
     def play(self) -> Generator[Decision, bool, bool]:
@@ -367,3 +375,23 @@ class Rule:
 RESCUE_ALL = Rule()
 RULE_FAMILY = tuple(Rule(frozenset(s for s, b in zip(SITUATIONS, bits, strict=True) if b), after)
                     for bits in np.ndindex(2, 2, 2, 2) for after in (False, True))
+# the best of RULE_FAMILY on the selection orders (results/planner/symbolic_eval.json, 52111b3)
+BEST_RULE = Rule(frozenset({("lying", False), ("lying", True), ("upright", True)}), False)
+
+
+def load_planner(run_dir: Path) -> Callable[[Decision], bool]:
+    """A trained recovery planner (scripts/train_recovery_planner.py) as a policy: True to
+    replace. It sees what it was trained to see (its run's `blind`)."""
+    from stable_baselines3 import PPO
+
+    from polypanda.environments.recovery_planner import HIDDEN
+
+    model = PPO.load(Path(run_dir) / "model.zip", device="cpu")
+    meta = json.loads((Path(run_dir) / "meta.json").read_text())
+    hidden = [i for b in meta["blind"] for i in HIDDEN[b]]
+
+    def policy(d: Decision) -> bool:
+        obs = np.clip(d.features, -2.0, 2.0)
+        obs[hidden] = 0.0
+        return int(model.predict(obs, deterministic=True)[0]) == 1
+    return policy

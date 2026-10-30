@@ -63,6 +63,35 @@ def test_without_recovery_the_order_fails_and_an_unreachable_cube_is_written_off
     assert ctl.check(towers)[0] is False
 
 
+def test_a_spare_replaces_a_cube_lost_for_good_and_the_planner_can_choose_one():
+    """v3 f: a written-off cube the towers need is replaced by a spare of its colour, which
+    comes up the belt as one more arrival; a recovery planner may also leave a cube it could
+    rescue for a spare. It is asked with the features the symbolic cell gives it."""
+    from polypanda.simulation.workcell import WorkcellConfig
+    from polypanda.supervisor.symbolic import SymbolicCell
+
+    times = {"pick_belt": 16.0, "place_tower": 2.0, "overhead": 9.0}
+    ctl = MovesTheTopCube(Workcell.build(WorkcellConfig(n_cubes=7)))
+    ctl.radius = 0.85                                # beyond the arm's reach
+    log = []
+    towers = ctl.run_mixed_order(ORDER, np.random.default_rng(0), disturbance=KNOCK,
+                                 recover=True, log=log.append, spares=2, times=times)
+    assert ctl.check(towers) == [True, True, True]
+    assert ctl.stats["spares_used"] == 1 and towers[0] == [0, 5, 3]   # the spare is arrival 5
+    assert ctl.cell.cube_colour(ctl.cell.cubes[5]) == "green"
+    ctl.radius, asked = 0.5, []                      # in reach: the planner is asked
+
+    def replace(d):
+        asked.append(d)
+        return True
+    towers = ctl.run_mixed_order(ORDER, np.random.default_rng(0), disturbance=KNOCK,
+                                 recover=True, spares=2, replace=replace, deadline=400.0,
+                                 times=times)
+    assert ctl.check(towers) == [True, True, True] and ctl.stats["replaced"] == 1
+    assert len(asked) == 1 and not asked[0].retry and asked[0].cube.pose == "upright"
+    assert asked[0].features.shape == (SymbolicCell.N_FEATURES,) and asked[0].features[12] == 1
+
+
 def test_the_learned_stand_up_env_runs_in_the_cell_on_the_held_cube():
     """d+: the stand-up env on the workcell's own scene, started from the scripted stand-up's
     hand-over point (the lying cube held at the carry height over a staging spot): its arm is
