@@ -1,0 +1,187 @@
+{
+  "name": "cell_P-grasp_anypose4_seed0_best_L-place_stack_v3_seed0_best_aim-fixture_h1-4_mixed-s3_disturbance_dev_v1_recover_n50",
+  "skills": {
+    "pick": "PPO grasp_v4 policy grasp_anypose4_seed0",
+    "pick_provenance": {
+      "run_dir": "runs/grasp_anypose4_seed0",
+      "checkpoint": "best",
+      "policy_id": "grasp_anypose4_seed0",
+      "trained_at": "357eeefab4d8ddd56d16d1aa0d188870c25d0d52"
+    },
+    "place": "PPO place policy place_stack_v3_seed0",
+    "place_provenance": {
+      "run_dir": "runs/place_stack_v3_seed0",
+      "checkpoint": "best",
+      "policy_id": "place_stack_v3_seed0",
+      "trained_at": "202035514f1d4914a22d23ab7642808c02670747"
+    },
+    "standup": "scripted standup",
+    "standup_provenance": {},
+    "moves": "scripted (base-only swings in the carry posture)"
+  },
+  "eval": {
+    "n": 50,
+    "seed": 20261101,
+    "heights": [
+      1,
+      4
+    ],
+    "lateral": 0.015,
+    "yaw": 0.2617993877991494,
+    "mixed": true,
+    "surplus": [
+      0,
+      2
+    ],
+    "solvable_with": 3,
+    "slots": 3,
+    "aim": "fixture",
+    "batch_choice": false,
+    "disturbances": "eval_sets/disturbance_dev_v1.json",
+    "recover": true
+  },
+  "cell": {
+    "radius": 0.5,
+    "infeed_angle": 90.0,
+    "tower_angles": [
+      -40.0,
+      -90.0,
+      -140.0
+    ],
+    "reject_angle": 150.0,
+    "buffer_angles": [
+      -10.0,
+      10.0,
+      30.0
+    ],
+    "n_cubes": 12,
+    "max_height": 6,
+    "batch": 3,
+    "cube_spacing": 0.12,
+    "first_cube": 0.5,
+    "belt_width": 0.12,
+    "belt_lift": 0.002,
+    "belt_speed": 0.15,
+    "rewind_speed": 0.4,
+    "belt_accel_gain": 3.0,
+    "belt_kv": 400.0,
+    "sign_radius": 0.82,
+    "bin_size": 0.18,
+    "bin_height": 0.08,
+    "dressing": true,
+    "finger_stiffness": 1000.0,
+    "torsional_friction": true,
+    "grasp_assist": true
+  },
+  "created_utc": "2026-10-29T23:59:35+00:00",
+  "git": {
+    "commit": "69d9f7f2de8340317d10b5c9d4fc2fa8ec372617",
+    "dirty": false
+  },
+  "versions": {
+    "python": "3.12.3",
+    "mujoco": "3.16.0",
+    "numpy": "2.5.4",
+    "torch": "2.14.1+cpu"
+  },
+  "summary": {
+    "orders": 50,
+    "success_rate": 0.7,
+    "success_ci95": [
+      0.562493877226366,
+      0.8089661091039063
+    ],
+    "towers": 150,
+    "tower_success_rate": 0.8933333333333333,
+    "tower_success_by_height": {
+      "1": {
+        "towers": 37,
+        "success_rate": 1.0
+      },
+      "2": {
+        "towers": 46,
+        "success_rate": 0.8478260869565217
+      },
+      "3": {
+        "towers": 34,
+        "success_rate": 0.9411764705882353
+      },
+      "4": {
+        "towers": 33,
+        "success_rate": 0.7878787878787878
+      }
+    },
+    "cubes": 411,
+    "failures": {
+      "pick:knocked_over": 1,
+      "knock:D1": 4,
+      "pick:timeout": 7,
+      "place:toppled": 1,
+      "knock:D2": 1,
+      "knock:D3": 1
+    },
+    "learned_pick": {
+      "attempts": 639,
+      "success_rate": 0.974960876369327,
+      "median_steps": 65.0,
+      "failures": {
+        "knocked_over": 5,
+        "timeout": 11
+      }
+    },
+    "learned_place": {
+      "attempts": 514,
+      "success_rate": 0.9922178988326849,
+      "median_steps": 26.0,
+      "failures": {
+        "toppled": 4
+      },
+      "by_level": {
+        "1": 0.9918367346938776,
+        "2": 0.9863945578231292,
+        "3": 1.0,
+        "4": 1.0
+      }
+    },
+    "learned_standup": null,
+    "ik_failures": 167,
+    "sim_s_per_cube": 26.779440389294404,
+    "sim_s_per_order": {
+      "median": 202.2,
+      "p90": 294.38500000000005
+    },
+    "buffer": {
+      "cubes_buffered": 73,
+      "orders_using_buffer": 41,
+      "rejected": 45,
+      "needed_rejected": 0
+    },
+    "disturbances": {
+      "D0": {
+        "orders": 8,
+        "success_rate": 1.0,
+        "recoverable": 0,
+        "success_rate_recoverable": null
+      },
+      "D1": {
+        "orders": 28,
+        "success_rate": 0.7142857142857143,
+        "recoverable": 25,
+        "success_rate_recoverable": 0.8
+      },
+      "D2": {
+        "orders": 3,
+        "success_rate": 0.3333333333333333,
+        "recoverable": 3,
+        "success_rate_recoverable": 0.3333333333333333
+      },
+      "D3": {
+        "orders": 11,
+        "success_rate": 0.5454545454545454,
+        "recoverable": 9,
+        "success_rate_recoverable": 0.5555555555555556
+      }
+    },
+    "wall_clock_s": 1890.3
+  }
+}

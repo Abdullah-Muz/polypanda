@@ -1,0 +1,149 @@
+{
+  "name": "cell_P-scripted_L-scripted_h1-4_mixed-s3_disturbance_dev_v1_recover_n50",
+  "skills": {
+    "pick": "scripted pick",
+    "pick_provenance": {},
+    "place": "scripted place",
+    "place_provenance": {},
+    "moves": "scripted (base-only swings in the carry posture)"
+  },
+  "eval": {
+    "n": 50,
+    "seed": 20261101,
+    "heights": [
+      1,
+      4
+    ],
+    "lateral": 0.015,
+    "yaw": 0.2617993877991494,
+    "mixed": true,
+    "surplus": [
+      0,
+      2
+    ],
+    "solvable_with": 3,
+    "slots": 3,
+    "aim": "fixture",
+    "batch_choice": false,
+    "disturbances": "eval_sets/disturbance_dev_v1.json",
+    "recover": true
+  },
+  "cell": {
+    "radius": 0.5,
+    "infeed_angle": 90.0,
+    "tower_angles": [
+      -40.0,
+      -90.0,
+      -140.0
+    ],
+    "reject_angle": 150.0,
+    "buffer_angles": [
+      -10.0,
+      10.0,
+      30.0
+    ],
+    "n_cubes": 12,
+    "max_height": 6,
+    "batch": 3,
+    "cube_spacing": 0.12,
+    "first_cube": 0.5,
+    "belt_width": 0.12,
+    "belt_lift": 0.002,
+    "belt_speed": 0.15,
+    "rewind_speed": 0.4,
+    "belt_accel_gain": 3.0,
+    "belt_kv": 400.0,
+    "sign_radius": 0.82,
+    "bin_size": 0.18,
+    "bin_height": 0.08,
+    "dressing": true,
+    "finger_stiffness": 1000.0,
+    "torsional_friction": true,
+    "grasp_assist": true
+  },
+  "created_utc": "2026-10-29T23:11:38+00:00",
+  "git": {
+    "commit": "df6a21fc98f906b79cae0fdcd4c1207a8ea27c15",
+    "dirty": false
+  },
+  "versions": {
+    "python": "3.12.3",
+    "mujoco": "3.16.0",
+    "numpy": "2.5.4",
+    "torch": "2.14.1+cpu"
+  },
+  "summary": {
+    "orders": 50,
+    "success_rate": 0.84,
+    "success_ci95": [
+      0.7148551903823401,
+      0.9166267863791231
+    ],
+    "towers": 150,
+    "tower_success_rate": 0.94,
+    "tower_success_by_height": {
+      "1": {
+        "towers": 37,
+        "success_rate": 1.0
+      },
+      "2": {
+        "towers": 46,
+        "success_rate": 0.9782608695652174
+      },
+      "3": {
+        "towers": 34,
+        "success_rate": 0.9117647058823529
+      },
+      "4": {
+        "towers": 33,
+        "success_rate": 0.8484848484848485
+      }
+    },
+    "cubes": 411,
+    "failures": {
+      "knock:D3": 3,
+      "knock:D1": 5
+    },
+    "learned_pick": null,
+    "learned_place": null,
+    "ik_failures": 7,
+    "sim_s_per_cube": 28.93625304136253,
+    "sim_s_per_order": {
+      "median": 213.875,
+      "p90": 349.11
+    },
+    "buffer": {
+      "cubes_buffered": 71,
+      "orders_using_buffer": 41,
+      "rejected": 48,
+      "needed_rejected": 0
+    },
+    "disturbances": {
+      "D0": {
+        "orders": 8,
+        "success_rate": 1.0,
+        "recoverable": 0,
+        "success_rate_recoverable": null
+      },
+      "D1": {
+        "orders": 29,
+        "success_rate": 0.8275862068965517,
+        "recoverable": 25,
+        "success_rate_recoverable": 0.96
+      },
+      "D2": {
+        "orders": 2,
+        "success_rate": 1.0,
+        "recoverable": 2,
+        "success_rate_recoverable": 1.0
+      },
+      "D3": {
+        "orders": 11,
+        "success_rate": 0.7272727272727273,
+        "recoverable": 10,
+        "success_rate_recoverable": 0.8
+      }
+    },
+    "wall_clock_s": 1819.2
+  }
+}
