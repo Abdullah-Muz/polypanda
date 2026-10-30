@@ -78,6 +78,8 @@ Each new skill is also run through the robustness suite and compared with a scri
 - **Headline: learned only.** When a learned skill fails, the cell retries with the learned skills (its usual attempts per cube); a variant that falls back to the scripted skills may be reported beside it, labelled.
 - **First integration, no retraining:** the stand-up observes the nearest real tower, and its safety shield checks every obstacle in the cell. A gate test (isolated recoveries in the cell) decides whether the stand-up needs a round in cell-like scenes; any stand-up retraining first gets a fresh one-shot stand-up set.
 
+*Result, reported as it came (configuration locked in 959d2f2; d1 round 5 was added for d+ on the development suite): on `disturbance_suite_v1`, 3 seeds pooled, all learned, recoverable D1 93.2 % (218/234), D2 87.5 % (28/32, a small sample), D3 91.5 % (75/82), so every target is met. Orders completed: 77.5 %, against 78.5 % for the scripted cell; the paired difference per order is not significant (p = 0.58). Seeds differ: seeds 1 and 2 recover 97–100 % of recoverable knocks, seed 0 only 73–81 %, because its pick knocks cubes over and its stand-up times out (79.4 % of stand-ups).*
+
 ## Deliverables
 
 - An interactive demo: press a key in the viewer to knock a tower over, and watch the robot notice and rebuild it.
