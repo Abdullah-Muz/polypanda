@@ -24,8 +24,10 @@ from polypanda.environments.grasp import GRIPPER_CLOSED, GRIPPER_OPEN
 from polypanda.environments.tasks import TASKS
 from polypanda.evaluation.standup import CommandedPolicyDriver
 from polypanda.policies.loader import LoadedPolicy, load_run, run_env_config
+from polypanda.simulation.disturbances import rest_state
 from polypanda.simulation.scenes import CubeIndices
 from polypanda.simulation.workcell import Workcell
+from polypanda.supervisor.observe import observe
 from polypanda.supervisor.stations import StationView
 
 HANDOFF_GAP = 0.09  # m, cube bottom above its resting height where place episodes start
@@ -65,6 +67,31 @@ class LearnedCell(ScriptedCell):
         self.picks: list[dict] = []    # per learned pick: success, steps, failure
         self.places: list[dict] = []   # per learned place: level, success, steps, failure
         self.standups: list[dict] = []  # per learned stand-up: success, steps, failure, command
+        self.order_index: int | None = None  # the order being run, for the per-attempt records
+        self.knocks: list[dict] = []    # per cube a knock threw off: order, kind, rest state
+
+    def _loose_others(self, cube: CubeIndices) -> int:
+        """Loose cubes other than `cube` (supervisor.observe): a rise across an attempt means
+        it knocked something down."""
+        k = self.cell.cubes.index(cube)
+        return sum(j != k for j in observe(self.cell).loose)
+
+    def _situation(self, cube: CubeIndices, xy) -> dict:
+        """What a skill attempt starts from (step e, skill outcome rates by situation): where
+        the cube comes from, how it rests, where `xy` (the cube, or the spot or tower it goes
+        to) is, how far the nearest other stack is from there, and the loose cubes around."""
+        state = rest_state(self.cell, cube)
+        stack = self.nearest_stack(xy, exclude=cube)
+        return {"order": self.order_index, "source": self.source, "pose": state["pose"],
+                "radius": float(np.hypot(xy[0], xy[1])),
+                "angle": float(np.degrees(np.arctan2(xy[1], xy[0]))),
+                "near": (None if stack is None
+                         else float(np.hypot(stack[0] - xy[0], stack[1] - xy[1]))),
+                "loose_before": self._loose_others(cube), "t0": float(self.d.time)}
+
+    def _finish(self, result: dict, situation: dict, cube: CubeIndices) -> dict:
+        result.update(situation, loose_after=self._loose_others(cube), t1=float(self.d.time))
+        return result
 
     def _run_skill(self, skill: LearnedSkill, env, view, obs, after_step=None, act=None) -> dict:
         """Run a policy (or `act()`, a driver's action) until its success predicate holds, it
@@ -90,6 +117,7 @@ class LearnedCell(ScriptedCell):
             return super().pick(cube)
         c = self.d.xpos[cube.body]
         angle = float(np.arctan2(c[1], c[0]))
+        situation = self._situation(cube, c[:2].copy())
         q = self.home.copy()
         q[0] += angle
         self.move_joints(q, rate=1.0)
@@ -103,6 +131,7 @@ class LearnedCell(ScriptedCell):
         if result["success"]:
             self.cell.attach(cube)
         self.to_carry()
+        self._finish(result, situation, cube)
 
     def nearest_stack(self, xy, exclude: CubeIndices) -> tuple[float, float, float] | None:
         """(x, y, top height) of the stack of upright cubes (a tower, a buffered cube) nearest
@@ -132,6 +161,7 @@ class LearnedCell(ScriptedCell):
         carry posture. Without either, the scripted stand-up."""
         if self.grasp is None and self.stander is None:
             return super().stand_up(cube, spot)
+        situation = self._situation(cube, spot)  # (t0: before the grasp, which logs as a pick)
         if self.grasp is not None:
             c = self.d.xpos[cube.body].copy()
             self.pick(cube)
@@ -166,6 +196,7 @@ class LearnedCell(ScriptedCell):
         q = self.carry.copy()
         q[0] += a
         self.move_joints(q, rate=1.0)
+        self._finish(result, situation, cube)
 
     @property
     def trained_at_top(self) -> bool:
@@ -203,6 +234,7 @@ class LearnedCell(ScriptedCell):
         if self.placer is None:
             return super().place(cube, xy, level)
         rest = CUBE_HEIGHT * (level + 0.5)
+        situation = self._situation(cube, xy)
         xy = self._aim(xy, level)
         tcp = self.d.site_xpos[self.arm.tcp_site]
         offset = tcp[2] - self.d.xpos[cube.body][2]
@@ -225,3 +257,4 @@ class LearnedCell(ScriptedCell):
         R = self.d.site_xmat[self.arm.tcp_site].reshape(3, 3)
         self.vertical(self.d.site_xpos[self.arm.tcp_site][:2].copy(), self.config.carry_height,
                       closing_yaw(R))
+        self._finish(result, situation, cube)

@@ -12,7 +12,8 @@ Usage:
   ... --compare results/cell/<other>_episodes.csv                         # paired McNemar test
 The moves between stations are scripted in every configuration; --pick and --place choose a
 scripted or learned skill (the learned ones run through station frames). Writes
-results/cell/<name>.json (summary + provenance) and <name>_episodes.csv.
+results/cell/<name>.json (summary + provenance) and <name>_episodes.csv, and with learned skills
+<name>_skills.csv (every skill attempt with its situation and outcome, and every knocked cube).
 """
 
 import argparse
@@ -94,7 +95,9 @@ def main() -> None:
             print(f"order {e.index}: {'ok  ' if e.success else 'FAIL'} heights {e.heights} "
                   f"towers {e.towers_ok} {e.failure or ''}", flush=True)
 
-    summary, episodes = evaluate_cell(pick, place, config, progress, standup=standup)
+    attempts: list[dict] = []
+    summary, episodes = evaluate_cell(pick, place, config, progress, standup=standup,
+                                      attempts=attempts)
     record = {"name": name,
               "skills": {"pick": pick_desc, "pick_provenance": pick_prov,
                          "place": place_desc, "place_provenance": place_prov,
@@ -118,6 +121,12 @@ def main() -> None:
         writer = csv.DictWriter(f, fieldnames=[fld.name for fld in fields(CellEpisode)])
         writer.writeheader()
         writer.writerows(asdict(e) for e in episodes)
+    if attempts:  # learned skills: every attempt with its situation (step e)
+        columns = list(dict.fromkeys(key for row in attempts for key in row))
+        with open(args.out_dir / f"{name}_skills.csv", "w", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=columns)
+            writer.writeheader()
+            writer.writerows(attempts)
 
     s = summary
     lo, hi = s["success_ci95"]

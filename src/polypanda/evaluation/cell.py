@@ -109,6 +109,7 @@ def run_cell_order(ctl: LearnedCell, config: CellEvalConfig, index: int) -> Cell
     else:
         order = WorkOrder.random(rng, heights=config.heights)
     picks, places, steps, log = len(ctl.picks), len(ctl.places), [0], []
+    ctl.order_index = index
 
     viewer = ctl.on_step  # (a viewer or a diagnostic hook still sees every step)
 
@@ -153,6 +154,10 @@ def run_cell_order(ctl: LearnedCell, config: CellEvalConfig, index: int) -> Cell
         kind = "D0" if knocked is None else knocked["kind"]
         extra = {"disturbance": kind, "recoverable": bool(knocked and knocked["recoverable"]),
                  "fallen": len(knocked["fallen"]) if knocked else 0}
+        if knocked:  # where each fallen cube came to rest, for skill_attempts
+            ctl.knocks.extend({"order": index, "kind": kind, "cube": k, **state}
+                              for k, state in zip(knocked["fallen"], knocked["states"],
+                                                  strict=True))
     else:
         extra = {}
     return CellEpisode(
@@ -224,9 +229,21 @@ def summarize_cell(episodes: list[CellEpisode], ctl: LearnedCell) -> dict:
     }
 
 
+def skill_attempts(ctl: LearnedCell) -> list[dict]:
+    """Every learned skill attempt with the situation it started from (LearnedCell._situation),
+    its outcome and its start and end times (simulated seconds into the order), and where every
+    knocked cube came to rest: the measured outcome rates a symbolic cell (step e) samples from."""
+    return ([{"skill": "pick", **r} for r in ctl.picks]
+            + [{"skill": "place", **r} for r in ctl.places]
+            + [{"skill": "standup", **r} for r in ctl.standups]
+            + [{"skill": "knock", **r} for r in ctl.knocks])
+
+
 def evaluate_cell(grasp: LearnedSkill | None, place: LearnedSkill | None,
                   config: CellEvalConfig | None = None, progress=None,
-                  standup: LearnedSkill | None = None) -> tuple[dict, list[CellEpisode]]:
+                  standup: LearnedSkill | None = None, attempts: list | None = None
+                  ) -> tuple[dict, list[CellEpisode]]:
+    """Run the orders; `attempts`, if given, is filled with skill_attempts."""
     config = config or CellEvalConfig()
     cell = Workcell.build(WorkcellConfig(n_cubes=config.n_cubes))
     ctl = LearnedCell(cell, grasp=grasp, place=place, aim=config.aim, standup=standup)
@@ -237,4 +254,6 @@ def evaluate_cell(grasp: LearnedSkill | None, place: LearnedSkill | None,
             progress(episodes[-1])
     summary = summarize_cell(episodes, ctl)
     summary["wall_clock_s"] = round(time.time() - start, 1)
+    if attempts is not None:
+        attempts.extend(skill_attempts(ctl))
     return summary, episodes

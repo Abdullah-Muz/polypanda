@@ -82,6 +82,7 @@ class ScriptedCell:
         self.ik_failures = 0
         self.stats: dict[str, int] = {}  # per order (run_mixed_order)
         self.disturbance_outcome: dict | None = None  # the order's knock, if any
+        self.source = "belt"  # where the cube being handled comes from (belt, buffer, loose, stage)
         self.carry = self._carry_posture()
 
     # --- primitives -----------------------------------------------------------------------
@@ -384,7 +385,8 @@ class ScriptedCell:
         out = knock_outcome(self.cell, cubes, before)
         self.disturbance_outcome = {
             "kind": out["kind"] or "none", "recoverable": out["recoverable"],
-            "fallen": [self.cell.cubes.index(c) for c in out["fallen"]]}
+            "fallen": [self.cell.cubes.index(c) for c in out["fallen"]],
+            "states": [rest_state(self.cell, c) for c in out["fallen"]]}
         if log:
             log(f"knock ({knock.push}): {self.disturbance_outcome['kind']}, "
                 f"{len(out['fallen'])} cubes fell, "
@@ -483,6 +485,7 @@ class ScriptedCell:
                             f"tower {'ABC'[t]}, level {len(towers[t]) + 1}")
                     k_slot, parked[slot] = parked[slot], None  # (before stacking: a knock there
                     self.swing_to(np.radians(cfg.buffer_angles[slot]))  # may refill the slot)
+                    self.source = "buffer"
                     self.pick(cell.cubes[k_slot])
                     stack(k_slot, t)
                     self.stats["from_buffer"] += 1
@@ -540,6 +543,7 @@ class ScriptedCell:
                     if log:
                         log(f"clearing the {order.arrivals[k][0]} cube away from the towers")
                     self.swing_to(float(np.arctan2(xy[k][1], xy[k][0])))
+                    self.source = "stage"
                     self.stage(cell.cubes[k], view.loose[k]["pose"], spot)
                     moved = self.d.xpos[cell.cubes[k].body][:2]
                     if np.linalg.norm(moved - spot) < 0.03:
@@ -553,6 +557,7 @@ class ScriptedCell:
                 if log:
                     log(f"recovering the {order.arrivals[k][0]} cube")
                 self.swing_to(float(np.arctan2(xy[k][1], xy[k][0])))
+                self.source = "loose"
                 self.pick_loose(cell.cubes[k], view.loose[k]["pose"], spot)
                 if not cell.attached(cell.cubes[k]):
                     attempts[k] = attempts.get(k, 0) + 1   # (a failed attempt)
@@ -590,6 +595,7 @@ class ScriptedCell:
                     log(f"cube {n} ({order.arrivals[n][0]}) did not arrive")
                 break
             handled.add(k)
+            self.source = "belt"
             self.pick(cube)
             cell.conveyor.index()  # the belt brings the next cube while the arm is away
             route(k)

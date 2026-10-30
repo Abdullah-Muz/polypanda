@@ -110,3 +110,36 @@ def test_the_learned_stand_up_env_runs_in_the_cell_on_the_held_cube():
         obs, _, terminated, _, info = view.step(np.zeros(6, dtype=np.float32))
         assert not terminated and np.isfinite(obs).all()
     assert cell.attached(cube) and env.released is False
+
+
+def test_the_learned_cell_records_each_attempt_with_its_situation():
+    """Step e (skill outcome rates by situation): an attempt is logged with where its cube comes
+    from, how it rests, where it is, how far the nearest stack is, the loose cubes around it
+    before and after, and its start and end times; a knock records where each cube came to rest."""
+    from polypanda.simulation.disturbances import stand_tower
+    from polypanda.supervisor.cell import LearnedCell
+
+    cell = Workcell.build()
+    ctl = LearnedCell(cell)
+    rng = np.random.default_rng(0)
+    cell.reset(ORDER, rng)
+    stand_tower(cell, 0, cell.cubes[:3], rng)
+    cube = cell.cubes[3]
+    a = np.radians(cell.config.tower_angles[0] + 15)
+    ctl.d.qpos[cube.qpos:cube.qpos + 7] = [0.5 * np.cos(a), 0.5 * np.sin(a), cube.half_size[0],
+                                           *LYING]
+    mujoco.mj_forward(ctl.m, ctl.d)
+    ctl.source, ctl.order_index = "loose", 7
+    xy = ctl.d.xpos[cube.body][:2].copy()
+    s = ctl._situation(cube, xy)
+    assert s["order"] == 7 and s["source"] == "loose" and s["pose"] == "lying"
+    assert s["radius"] == pytest.approx(0.5, abs=0.01)
+    assert s["angle"] == pytest.approx(cell.config.tower_angles[0] + 15, abs=0.5)
+    assert s["near"] == pytest.approx(np.linalg.norm(xy - cell.tower_xy(0)), abs=0.01)
+    ctl.step(4)
+    result = ctl._finish({"success": True}, s, cube)
+    assert result["loose_after"] == result["loose_before"] and result["t1"] > result["t0"]
+    ctl.knock([0, 1, 2], KNOCK.knock)
+    out = ctl.disturbance_outcome
+    assert len(out["states"]) == len(out["fallen"])
+    assert all({"pose", "radius", "angle", "recoverable"} <= set(s) for s in out["states"])
