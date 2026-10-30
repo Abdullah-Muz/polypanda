@@ -40,7 +40,13 @@ The planner chooses which cube on the belt to take next, and where it goes: a to
 - **Headroom gate, as in step 1:** before training, the best decisions found by search in the symbolic simulation must beat the best rule by at least 5 points of knocked orders. Otherwise the task is reported as solved by rules, and the user decides the next step.
 - **Routine targets unchanged** (the first two rows above), and the D1/D2/D3 recovery targets unchanged.
 
-**Ablations** (reported, no target): the planner trained without seeing the cubes on the belt, without seeing the towers, and with skill outcomes assumed always successful in training.
+*Gate result and amendment, 2026-10-30, before any planner code. The step e calibration run (`fcefde0`: 600 orders, about 18,000 skill attempts with their situations) set the odds and action times of a symbolic cell. Its scripted recovery reproduces the physics run: 93.2 % of recoverable knocks completed in both. **The gate failed.** With 1 or 2 spares, the best of 32 hand-written rules completes 97.0–97.5 % of knocked orders, and search over every rescue-or-replace plan per order does no better (−0.1 points). With a deadline (1.25, 1.5 or 2 × the order's undisturbed time; spare delay 0 or 20 s), search beats the best rule by at most 2.3 points. Rules are near-optimal for these decisions, as they were for routine routing (step 1). The user chose to train the learned planner anyway and report it as it comes. The third target above stands, unmoved; it is expected to be missed and will be reported so, with this gate as the reason.*
+
+- **The planner's decisions:** after a knock, for each fallen cube, rescue it or write it off and call a spare; after a failed rescue attempt, retry or replace. Routing stays the greedy rule, so the routine targets are met by the rule, not tested on the planner.
+- **The task, fixed now from the calibration orders:** 2 spares per order; a spare rides the belt like any arrival, with no extra delay; an order counts as completed only if it is complete within 1.5 × its undisturbed time, computed from the fitted action times. In the symbolic cell at these settings: rescue every recoverable cube 86.9 %, the best rule 93.6 %, search 95.4 %.
+- **Reported, no new target:** the learned planner against the best rule and against "rescue every recoverable cube", paired per order, in the physics cell on the disturbance suite (3 seeds), and in the symbolic cell.
+
+**Ablations** (reported, no target): the planner trained without seeing the fallen cubes' situations (pose, nearness to a tower), without seeing the clock, and with skill outcomes assumed always successful in training.
 
 ## A2: closed loop
 
