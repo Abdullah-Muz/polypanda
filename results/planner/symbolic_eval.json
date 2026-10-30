@@ -55,30 +55,30 @@
       ]
     },
     "recovery_planner_blind-situation_seed0": {
-      "completed": 9448,
+      "completed": 9424,
       "games": 10000,
-      "rate": 0.9448,
+      "rate": 0.9424,
       "ci95": [
-        0.9401507358217788,
-        0.9491076466780001
+        0.9376613144475657,
+        0.9467989113121064
       ]
     },
     "recovery_planner_blind-situation_seed1": {
-      "completed": 9442,
+      "completed": 9423,
       "games": 10000,
-      "rate": 0.9442,
+      "rate": 0.9423,
       "ci95": [
-        0.9395281644308813,
-        0.948530678883871
+        0.9375576377871352,
+        0.9467026647750326
       ]
     },
     "recovery_planner_blind-situation_seed2": {
-      "completed": 9439,
+      "completed": 9421,
       "games": 10000,
-      "rate": 0.9439,
+      "rate": 0.9421,
       "ci95": [
-        0.9392169334247128,
-        0.948242140297526
+        0.9373502960212341,
+        0.9465101601459247
       ]
     },
     "recovery_planner_blind-clock_seed0": {
@@ -177,34 +177,34 @@
       "p_value": 5.777169834880607e-107
     },
     "recovery_planner_blind-situation_seed0 vs best_rule": {
-      "only_first": 238,
-      "only_second": 41,
-      "p_value": 6.267842328147099e-35
+      "only_first": 230,
+      "only_second": 57,
+      "p_value": 8.466620477739322e-26
     },
     "recovery_planner_blind-situation_seed0 vs rescue_all": {
-      "only_first": 583,
-      "only_second": 39,
-      "p_value": 1.6224360417230983e-125
+      "only_first": 580,
+      "only_second": 60,
+      "p_value": 7.934863462729958e-108
     },
     "recovery_planner_blind-situation_seed1 vs best_rule": {
-      "only_first": 229,
-      "only_second": 38,
-      "p_value": 1.9575946544099034e-34
+      "only_first": 224,
+      "only_second": 52,
+      "p_value": 1.3202969585199106e-26
     },
     "recovery_planner_blind-situation_seed1 vs rescue_all": {
-      "only_first": 585,
-      "only_second": 47,
-      "p_value": 3.5122530521217466e-119
+      "only_first": 589,
+      "only_second": 70,
+      "p_value": 3.7147192702647916e-103
     },
     "recovery_planner_blind-situation_seed2 vs best_rule": {
-      "only_first": 221,
-      "only_second": 33,
-      "p_value": 2.4306259495855824e-35
+      "only_first": 218,
+      "only_second": 48,
+      "p_value": 4.6966742260565564e-27
     },
     "recovery_planner_blind-situation_seed2 vs rescue_all": {
-      "only_first": 611,
-      "only_second": 76,
-      "p_value": 1.029498039756963e-104
+      "only_first": 598,
+      "only_second": 81,
+      "p_value": 2.6508934782653777e-98
     },
     "recovery_planner_blind-clock_seed0 vs best_rule": {
       "only_first": 168,
