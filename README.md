@@ -1,6 +1,6 @@
 # PolyPanda
 
-Reinforcement-learned manipulation skills for a simulated Franka Panda in MuJoCo: from picking and placing one cube, to building towers to work orders in a small production cell, to noticing when a tower is knocked over and rebuilding it. Every learned skill is measured on held-out sets, next to a scripted baseline on the same cases, every target is committed before the work it measures, and every result is reproducible from a clean commit.
+Reinforcement learned manipulation skills for a simulated Franka Panda in MuJoCo: from picking and placing one cube, to building towers to work orders in a small production cell, to noticing when a tower is knocked over and rebuilding it. Every learned skill is measured on held-out sets, next to a scripted baseline on the same cases, every target is committed before the work it measures, and every result is reproducible from a clean commit.
 
 ![The v3 work-order cell: a tower knocked over and rebuilt with learned skills](docs/figures/recovery.gif)
 
