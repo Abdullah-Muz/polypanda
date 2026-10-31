@@ -84,6 +84,9 @@ class ScriptedCell:
         self.stats: dict[str, int] = {}  # per order (run_mixed_order)
         self.disturbance_outcome: dict | None = None  # the order's knock, if any
         self.source = "belt"  # where the cube being handled comes from (belt, buffer, loose, stage)
+        # a knock asked for from outside (the viewer's knock key): it hits the next tower a cube
+        # is placed on once that tower is at least 2 cubes tall (run_mixed_order)
+        self.knock_request: Knock | None = None
         self.carry = self._carry_posture()
 
     # --- primitives -----------------------------------------------------------------------
@@ -516,6 +519,11 @@ class ScriptedCell:
             if (disturbance is not None and self.disturbance_outcome is None
                     and t == disturbance.tower and len(towers[t]) == disturbance.height):
                 self.knock(towers[t], disturbance.knock, log)
+                if recover:
+                    recover_loose()
+            elif self.knock_request is not None and len(towers[t]) >= 2:
+                knock, self.knock_request = self.knock_request, None
+                self.knock(towers[t], knock, log)
                 if recover:
                     recover_loose()
 

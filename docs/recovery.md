@@ -37,7 +37,7 @@ It is classified after everything settles: **D1** one cube left the tower, **D2*
 
 **Batch choice (a).** The robot may take any of the three cubes on the belt, not only the front one. The scripted cell then completes 106 / 170 / 200 of 200 orders at 0 / 1 / 3 buffer slots, exactly what the symbolic routing predicts, and the learned cell 600/600 at 3 slots (against 595/600 front cube only).
 
-**The closed loop (b, c).** After each placement and after a knock, `supervisor/observe.py` reads the cell as it physically is: which cubes stand on each tower (upright either way up, at their level, on the fixture), which stand in buffer slots, and which are loose, with how each one rests. The planner's plan is brought in line with the towers as they stand, and loose cubes are recovered one at a time (`ScriptedCell.recover_loose`):
+**The closed loop (b, c).** After a knock and at the end of every order, `supervisor/observe.py` reads the cell as it physically is: which cubes stand on each tower (upright either way up, at their level, on the fixture), which stand in buffer slots, and which are loose, with how each one rests. The planner's plan is brought in line with the towers as they stand, and loose cubes are recovered one at a time (`ScriptedCell.recover_loose`):
 - cubes lying on a side, or within 20 cm of a tower, are first moved to a staging spot on an inner ring, so the hand never works down beside a rebuilt tower;
 - a lying cube is stood upright there (grasped across its width, carried over the spot, turned, released);
 - then each cube is picked and routed like a new arrival, with the cubes a tower needs next first;

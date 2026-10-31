@@ -50,6 +50,18 @@ def test_a_fallen_cube_is_recovered_and_the_tower_rebuilt(pose):
     assert ctl.ik_failures == 0
 
 
+def test_a_knock_asked_for_from_outside_hits_the_next_tower_two_high():
+    """The viewer's knock key: the request waits for a placement on a tower at least 2 cubes
+    tall (tower A after its green cube), knocks it once, and the cell recovers."""
+    ctl = MovesTheTopCube(Workcell.build())
+    ctl.knock_request = KNOCK.knock
+    log = []
+    towers = ctl.run_mixed_order(ORDER, np.random.default_rng(0), recover=True, log=log.append)
+    assert ctl.knock_request is None and ctl.stats["recovered"] == 1
+    assert ctl.check(towers) == [True, True, True]
+    assert any("tower A: 1 cubes fell" in line for line in log)
+
+
 def test_without_recovery_the_order_fails_and_an_unreachable_cube_is_written_off():
     ctl = MovesTheTopCube(Workcell.build())
     towers = ctl.run_mixed_order(ORDER, np.random.default_rng(0), disturbance=KNOCK)
