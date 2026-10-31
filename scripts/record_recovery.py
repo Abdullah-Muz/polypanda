@@ -236,6 +236,9 @@ def main() -> None:
     parser.add_argument("--rebuild-speed", type=int, default=SPEED["rebuild"])
     parser.add_argument("--square", action="store_true",
                         help="1080 x 1080 for social feeds, framed closer on the towers")
+    parser.add_argument("--supersample", type=int, default=1,
+                        help="render (and draw the overlays) at this many times the size, then "
+                             "shrink each frame: smoother edges and text (2: 4x the pixels)")
     parser.add_argument("--suite", type=Path,
                         help="film the order with this suite's own knock instead of a chosen "
                              "one (e.g. eval_sets/disturbance_calib_v1.json)")
@@ -273,9 +276,10 @@ def main() -> None:
         cell = Workcell.build(WorkcellConfig(n_cubes=config.n_cubes))
         model = cell.model
         model.mat_reflectance[:] = 0.0  # floor reflections render with streak artifacts
-        model.vis.global_.offwidth = max(model.vis.global_.offwidth, args.width)
-        model.vis.global_.offheight = max(model.vis.global_.offheight, args.height)
-        renderer = mujoco.Renderer(model, args.height, args.width)
+        ss = max(1, args.supersample)
+        model.vis.global_.offwidth = max(model.vis.global_.offwidth, args.width * ss)
+        model.vis.global_.offheight = max(model.vis.global_.offheight, args.height * ss)
+        renderer = mujoco.Renderer(model, args.height * ss, args.width * ss)
         camera = mujoco.MjvCamera()  # the towers, their recipe signs, the knock and the belt
         camera.azimuth, camera.elevation, camera.distance = 250, -35, 1.95
         camera.lookat[:] = [0.05, -0.22, 0.12]
@@ -302,8 +306,12 @@ def main() -> None:
             heights = [len(t) for t in observe(cell).towers]
             speed = ("slow motion" if fine else "sped up" if args.readme_gif
                      else "x2" if ctl.phase == "knock" else f"x{SPEED[ctl.phase]}")
-            return overlay(renderer.render(), cell.order.recipes, heights, caption(), speed,
-                           banner, ctl.log_lines)
+            frame = overlay(renderer.render(), cell.order.recipes, heights, caption(), speed,
+                            banner, ctl.log_lines)
+            if ss > 1:  # (the overlays scale with the frame, so the layout is unchanged)
+                frame = np.asarray(Image.fromarray(frame).resize((args.width, args.height),
+                                                                 Image.LANCZOS))
+            return frame
 
         def on_step():
             ctl.steps_seen += 1
