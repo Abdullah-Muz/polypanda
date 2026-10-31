@@ -240,6 +240,13 @@ def main() -> None:
                         help="film the order with this suite's own knock instead of a chosen "
                              "one (e.g. eval_sets/disturbance_calib_v1.json)")
     parser.add_argument("--out", type=Path, default=Path("media/recovery"))
+    parser.add_argument("--readme-gif", type=Path,
+                        help="also a short loop for the README: from just before the knock to "
+                             "the rebuilt towers, the slow motion halved and the rest sped up")
+    parser.add_argument("--readme-gif-width", type=int, default=720)
+    parser.add_argument("--readme-gif-stride", type=int, default=4,
+                        help="README GIF: keep every n-th frame after the slow motion (its speed "
+                             "labels then say 'sped up', as the video's numbers no longer hold)")
     args = parser.parse_args()
     SPEED.update(build=args.build_speed, rebuild=args.rebuild_speed)
     if args.square:
@@ -293,8 +300,8 @@ def main() -> None:
         def render(banner=None, fine=False) -> np.ndarray:
             renderer.update_scene(cell.data, camera)
             heights = [len(t) for t in observe(cell).towers]
-            speed = ("slow motion" if fine else "x2" if ctl.phase == "knock"
-                     else f"x{SPEED[ctl.phase]}")
+            speed = ("slow motion" if fine else "sped up" if args.readme_gif
+                     else "x2" if ctl.phase == "knock" else f"x{SPEED[ctl.phase]}")
             return overlay(renderer.render(), cell.order.recipes, heights, caption(), speed,
                            banner, ctl.log_lines)
 
@@ -309,9 +316,26 @@ def main() -> None:
                 frames.append(render())
 
         ctl.on_step = on_step
-        ctl.sub_render = lambda: frames.append(render(fine=True))
+        slow: list[int] = []   # indices of the slow-motion frames
+
+        def sub_render() -> None:
+            slow.append(len(frames))
+            frames.append(render(fine=True))
+
+        ctl.sub_render = sub_render
         episode = run_cell_order(ctl, config, index)
         last = render(f"Order complete: tower {knocked} rebuilt")
+        if args.readme_gif:  # the knock and the rebuild, looping
+            k0, k1 = slow[0], slow[-1] + 1
+            loop = (frames[max(0, k0 - 24):k0:2] + frames[k0:k1:2]
+                    + frames[k1::args.readme_gif_stride] + [last] * 18)
+            size = (args.readme_gif_width,
+                    round(args.height * args.readme_gif_width / args.width))
+            args.readme_gif.parent.mkdir(parents=True, exist_ok=True)
+            write_gif(args.readme_gif, [np.asarray(Image.fromarray(f).resize(size, Image.LANCZOS))
+                                        for f in loop], fps=12)
+            print(f"{args.readme_gif}: {len(loop) / 12:.1f} s, "
+                  f"{args.readme_gif.stat().st_size / 1e6:.1f} MB")
         frames += [last] * round(1.5 * FPS)
         card = end_card(args.width, args.height, [
             ("Knocked over, then rebuilt:", 40, (255, 255, 255)),

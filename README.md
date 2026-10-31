@@ -2,9 +2,9 @@
 
 Reinforcement-learned manipulation skills for a simulated Franka Panda in MuJoCo: from picking and placing one cube, to building towers to work orders in a small production cell, to noticing when a tower is knocked over and rebuilding it. Every learned skill is measured on held-out sets, next to a scripted baseline on the same cases, every target is committed before the work it measures, and every result is reproducible from a clean commit.
 
-![The work-order cell: learned grasp and place policies building three towers](docs/figures/workcell.gif)
+![The v3 work-order cell: a tower knocked over and rebuilt with learned skills](docs/figures/recovery.gif)
 
-*A Layer 2 work order (`scripts/record_cell.py`). Cubes arrive on the conveyor in random order, including one no tower needs. A PPO grasp policy picks each cube, and a PPO place policy sets it on a tower or parks it in a buffer slot until its tower is ready. The planner, the swings between stations and the drop into the reject bin are scripted. [Full video](https://github.com/Abdullah-Muz/polypanda/releases).*
+*v3 (`scripts/record_recovery.py`): tower B is knocked flat the moment it is complete. The cell notices, moves the fallen cubes clear of the other towers, stands the lying ones upright and rebuilds the tower. Grasping, standing up and stacking are PPO policies; the recovery decisions shown in the robot's log, the swings between stations and the drop into the reject bin are scripted. The knock was chosen for the demo; everything after it is the cell's own. One cube landed leaning, which the grasp is not trusted with, so it is left alone and a blue cube from the belt takes its place. [Full video](https://github.com/Abdullah-Muz/polypanda/releases) · the v2 cell: [workcell.gif](docs/figures/workcell.gif).*
 
 > **Status:** v3.0. Milestones 1–10 complete: v3 adds recovery from knocked-over towers, two new learned skills and a learned recovery planner. Simulation only: nothing here has been run on a real robot.
 
@@ -112,6 +112,13 @@ scripts/fetch_models.sh                  # trained policies from the GitHub Rele
 Watch it (opens the MuJoCo viewer):
 
 ```bash
+uv run python scripts/view_workcell.py --recover --jitter --pick run:runs/grasp_anypose5_seed1 \
+    --place run:runs/place_stack_v3_seed1 --standup run:runs/standup_round11_seed1
+    # v3: press K to knock the next tower, and watch the cell rebuild it (--auto-knock: one per order)
+uv run python scripts/view_workcell.py --replay 9 --orders-seed 20261103 --recover \
+    --disturbances eval_sets/disturbance_calib_v1.json --pick run:runs/grasp_anypose5_seed2 \
+    --place run:runs/place_stack_v3_seed2 --standup run:runs/standup_round11_seed2
+    # replay any evaluated order exactly (here a calibration order with its own knock)
 uv run python scripts/view_workcell.py --mixed --jitter \
     --pick run:runs/grasp_cart_seed2 --place run:runs/place_stack_v3_seed2   # the cell, learned
 uv run python scripts/view_workcell.py --mixed                              # the cell, scripted
