@@ -11,7 +11,7 @@ Trained policies are published as GitHub Release assets: `scripts/fetch_models.s
 **All policies:**
 - act on a simulated Franka Panda in MuJoCo 3.16 (Menagerie model `cda5236f`), at 20 Hz;
 - output either 7 joint-position increments (`joint-increment-v1-7d`, at most 0.015 rad per joint per step; Milestones 1–7), or a motion of the hand that inverse kinematics turns into joint targets (`cartesian-v1-4d` / `-3d` / `-6d`, Milestones 8–9; [cartesian_actions.md](cartesian_actions.md));
-- are SB3 PPO or SAC MLPs (128 × 128, ReLU) trained on CPU.
+- are SB3 PPO or SAC MLPs (128 × 128, ReLU) trained on CPU; the v3 turn chooser is an ensemble of 5 small supervised networks, and the v3 recovery planner a 64 × 64 PPO policy over two discrete actions.
 
 **None has been tested on hardware.** They are research artefacts for this simulation, not controllers for a real robot.
 
@@ -22,6 +22,9 @@ Trained policies are published as GitHub Release assets: `scripts/fetch_models.s
 | Transport | `transport_slow_seed{0,1,2}` | pick-and-place (the cell's moves are scripted) |
 | Place on a table | `place_cart_seed{0,1,2}` | pick-and-place |
 | Place on a tower | `place_stack_v3_seed{0,1,2}`, **aimed at the fixture** | the work-order cell |
+| Grasp, upright or lying (v3) | `grasp_anypose5_seed{0,1,2}` for recovery in the cell; `grasp_anypose4_seed{0,1,2}` is the one-shot-tested version | the cell with recovery |
+| Stand a cube upright (v3) | `standup_round11_seed{0,1,2}` with its turn chooser, shield and re-planning | the cell with recovery |
+| Rescue or replace (v3) | `recovery_planner_seed{0,1,2}` | the cell with spares and a deadline; the best hand-written rule did better in physics |
 
 ## Reach: PPO v2 (`reach_ppo_v2_seed{0,1,2}`), recommended
 
@@ -123,6 +126,37 @@ v1 plus a charge for every millimetre a tower cube moves, failing at 5 mm. Not c
 | In the work-order cell, **aimed at the fixture** | Layer 1: **599/600** orders (3 seeds); Layer 2: **595/600** (p = 0.057 against v1) |
 | Use | the cell aims it at the fixture by default (`LearnedCell(aim="fixture")`). Aimed at the cube below, as trained, its small repeatable error adds up into a leaning stack: 20 of 165 Layer 1 and 38 of 124 Layer 2 orders failed ([workcell.md](workcell.md#v3-in-the-cell-a-root-cause-analysis)) |
 | Limitations | seed 0 nudges towers most and has 4 of the 5 Layer 2 failures; a first cube placed 6–8 mm off on the table can leave an overhang that creeps |
+
+## Grasp a cube upright or lying on its side: round 4 (`grasp_anypose4_seed{0,1,2}`) and round 5 (`grasp_anypose5_seed{0,1,2}`) (Milestone 10)
+
+| | |
+|---|---|
+| Task | grasp a cube upright or lying on a side anywhere in the cell's reach (0.30–0.78 m) and lift it 5 cm (`GraspV4Env`, `grasp_v4`; hand motion `cartesian-v1-4d`); the cell's gripper (1000 N/m, torsional friction); randomized cube mass and friction |
+| Training | round 4: 2M steps warm-started from `grasp_cart`, with function-preserving input renormalization; round 5: 1M more steps with more lying cubes (70 %) and practice near the base (x 0.30–0.40, 30 % of episodes), learning rate 3e-4 → 3e-5 |
+| Held-out result | round 4: **84.8 %** on the one-shot lying set (79.0 / 84.0 / 91.5; target 85 %), scripted 84.0 % (p = 0.74); upright 92.2 %. Round 5, development sets: lying 92.7 % (vs 86.2 %, p = 8e-5), upright 95.2 % |
+| In the work-order cell | round 5 does every pick in v3 recovery: 96.6–99.6 % of about 2400 picks per seed |
+| Limitations | not trained with randomized cube size: on upright cubes it loses ground to a different size or friction (84 % vs scripted 92 %); seed 0 knocks over and times out on cubes far more often than seeds 1–2; misses are mostly fingers that never close on a lying cube |
+
+## Stand a held cube upright beside towers: round 11 (`standup_round11_seed{0,1,2}`) (Milestone 10)
+
+| | |
+|---|---|
+| Task | from the carry posture, turn a lying cube held in the hand upright and set it on a spot, with a tower of 1–4 cubes 20–26 cm away; touching the tower fails (`StandUpV3Env`, `standup`; hand motion `cartesian-v1-6d`, tilt up to 100°) |
+| Policy | commanded: it observes the direction its hand should turn to (one of 16), the nearest tower, the clearance from it and the direction away from it. In use, a turn chooser (`turn_chooser_best.pt`, 5 networks trained on the policy's own outcomes) sets the command; a safety shield slides the arm along obstacles; after 20 blocked steps it backs off and re-plans (up to 4 times) |
+| Training | 11 rounds; round 11: 600k steps warm-started from round 10, learning rate 3e-4 → 3e-5, with the shield (and its cut penalty) and re-planning in training |
+| Held-out result | **87.7 %** on the one-shot set (89.5 / 90.5 / 83.0; target 90 %), scripted 93.0 % (p = 0.001); development set 91.5 %. Robustness: mass 90.3 %, friction 90.0 %, size 77.3 % (scripted 92.5 %), combined 71.5 % |
+| In the work-order cell | runs on the cell's scene through the spot's station frame: 81.8 / 95.7 / 91.5 % of stand-ups per seed on the calibration orders |
+| Limitations | most failures are freezes in front of a tower; not trained with randomized cube size; seed 0's stand-ups time out more in the cell, where the cube comes from the learned grasp rather than the trained start |
+
+## Rescue or replace: recovery planner (`recovery_planner_seed{0,1,2}`) (Milestone 10)
+
+| | |
+|---|---|
+| Task | after a knock, for each fallen cube that could be rescued while a spare is left: rescue it or call a spare up the belt; after a failed rescue: retry or replace. 2 spares per order; an order counts only if complete within 1.5 × its undisturbed time ([recovery.md](recovery.md#the-learned-recovery-planner-f)) |
+| Policy | PPO, 64 × 64, 13 observations (`SymbolicCell.features`), no observation normalization; `model.zip` and `meta.json` (git commit, task, calibration odds and action times) |
+| Training | 500k decisions in the symbolic cell (`supervisor/symbolic.py`), γ = 1, 8 envs, about 10 min each |
+| Held-out result | symbolic cell: **94.3 %** (94.2 / 94.5 / 94.3) of 10,000 held-out games each, against the best hand-written rule 92.5 % (p < 1e-29 per seed); physics cell, `disturbance_suite_v1`: **86.2 %** of 470 knocked orders, against the best rule 88.3 % (p = 0.08) |
+| Limitations | trained in a symbolic cell that does not model a cube left for a spare as clutter; in physics those cubes get in the way of later placements, and the planner leaves more of them than it should. Use `symbolic.BEST_RULE` in physics. Ablations (`recovery_planner_blind-situation_*`, `_blind-clock_*`, `_perfect_*`) are published for the comparison |
 
 ## Pilots and failed attempts
 

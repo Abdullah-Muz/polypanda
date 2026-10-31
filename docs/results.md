@@ -221,3 +221,30 @@ Policies can command the hand (x, y, z, plus wrist yaw or full rotation) instead
 - **Transport was learned for the first time.** Two pilots failed first: one spun the wrist and flung the cube; in the other the policy's mean action drifted past its bounds, where clipping hid it from learning. The fixes were a 3-D action without wrist rotation and an out-of-bounds penalty. Failure analysis then showed the first learned transport carried too fast: test-time checks ruled out acceleration and confirmed speed. Retrained at 0.12 m/s, it matches the scripted carry.
 - **Learned transport and learned place match their scripted versions inside the full task.**
 - **The fully learned chain equals the v1.0 system** (paired p = 0.84 original, 0.93 wide), which had only one learned skill. It is about 40 % faster than scripted (about 7.5 s vs 12.4 s per cube) and less precise (4–7 mm vs 1.7 mm). Its weakest link is now the grasp.
+
+## Recovering from knocks (Milestone 10)
+
+The work-order cell with one knock per order: it reads its towers, notices the knock and rebuilds. Targets were committed before the work ([v3_targets.md](v3_targets.md)); full analysis: [recovery.md](recovery.md). Learned numbers pool 3 seeds.
+
+| New skill, one-shot held-out set (600 cases) | Learned (PPO) | Scripted | Target |
+|---|---|---|---|
+| Grasp a cube lying on its side | 84.8 % (79.0 / 84.0 / 91.5) | 84.0 % (p = 0.74) | 85 % |
+| Stand a held cube upright beside towers (+ turn chooser, shield, re-planning) | 87.7 % (89.5 / 90.5 / 83.0) | 93.0 % (p = 0.001) | 90 % |
+
+| Held-out disturbance suite (200 orders), recoverable knocks completed | Learned skills | Scripted skills | Target |
+|---|---|---|---|
+| One cube falls (D1) | **93.2 %** (218/234) | 96.2 % (76/79) | 90 % |
+| Part of a tower falls (D2) | **87.5 %** (28/32) | 8/8 | 85 % |
+| The whole tower falls (D3) | **91.5 %** (75/82) | 86.7 % (26/30) | 80 % |
+| All orders, every knock | 77.5 % | 78.5 % (p = 0.58) | |
+| Without recovery (v2 behaviour, scripted) | | 44/200 | |
+
+| Recovery planner, 2 spares, deadline 1.5 × undisturbed time | Symbolic cell (10,000 games per policy) | Physics cell (470 knocked orders) |
+|---|---|---|
+| Rescue every cube, replace the rest | 89.0 % | 84.3 % |
+| Best of 32 hand-written rules | 92.5 % | **88.3 %** |
+| **Learned planner** (PPO, 3 seeds) | **94.3 %** (p < 1e-29 vs best rule) | 86.2 % (p = 0.08 vs best rule) |
+
+- **Every recovery target is met with learned skills only**, level with the scripted cell on the same orders. About a third of knocks cannot be recovered by any robot; they are run and reported, not counted in the targets.
+- **Both new skills just miss their own targets** on one-shot sets, and neither was trained with randomized cube size.
+- **The learned planner beats every hand-written rule in the symbolic cell, not in physics.** Headroom checks before training had shown rules to be near-optimal; in physics, the cubes it leaves for spares get in the way of later placements, which the symbolic cell does not model.
