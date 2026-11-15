@@ -12,6 +12,10 @@ skipped: no choice of it can change them.
 `blind` hides parts of the observation, for the ablations in docs/v3_targets.md: "situation"
 (the cube's pose and nearness to a tower, and the counts of lying and upright fallen cubes,
 which include it) and "clock" (time used and time left).
+
+v3.1: `features` (13, v3.0's, or SymbolicCell.N_FEATURES) and `choices` (2: rescue or leave,
+v3.0's; 3: also clear, action 2) select the planner's view and answers; the defaults train
+exactly as v3.0 did.
 """
 
 import gymnasium as gym
@@ -32,22 +36,22 @@ from polypanda.supervisor.symbolic import (
 
 # feature indices (SymbolicCell.features); hiding only the cube's own pose (0, 1) left it
 # readable from the fallen-cube counts (9, 10): the first ablation runs (52111b3) were not blind
-HIDDEN = {"situation": (0, 1, 9, 10), "clock": (5, 6)}
+HIDDEN = {"situation": (0, 1, 9, 10, 13), "clock": (5, 6)}   # (13: v3.1's distance to a tower)
 
 
 class RecoveryPlannerEnv(gym.Env):
     def __init__(self, calibration: Calibration, task: Task = DEFAULT_TASK,
-                 blind: tuple[str, ...] = ()) -> None:
-        self.cal, self.task = calibration, task
-        self.hidden = [i for name in blind for i in HIDDEN[name]]
-        self.observation_space = spaces.Box(-2.0, 2.0, shape=(SymbolicCell.N_FEATURES,),
-                                            dtype=np.float32)
-        self.action_space = spaces.Discrete(2)
+                 blind: tuple[str, ...] = (), features: int = SymbolicCell.N_FEATURES_V30,
+                 choices: int = 2) -> None:
+        self.cal, self.task, self.n = calibration, task, features
+        self.hidden = [i for name in blind for i in HIDDEN[name] if i < features]
+        self.observation_space = spaces.Box(-2.0, 2.0, shape=(features,), dtype=np.float32)
+        self.action_space = spaces.Discrete(choices)
         self._game = None
         self.cell: SymbolicCell | None = None
 
     def _obs(self, decision: Decision) -> np.ndarray:
-        obs = np.clip(decision.features, -2.0, 2.0)
+        obs = np.clip(decision.features[:self.n], -2.0, 2.0)
         obs[self.hidden] = 0.0
         return obs
 
@@ -72,8 +76,8 @@ class RecoveryPlannerEnv(gym.Env):
 
     def step(self, action):
         try:
-            return self._obs(self._game.send(bool(action))), 0.0, False, False, {}
+            return self._obs(self._game.send(int(action))), 0.0, False, False, {}
         except StopIteration as end:
             done = bool(end.value)
-            return (np.zeros(SymbolicCell.N_FEATURES, dtype=np.float32), float(done), True, False,
+            return (np.zeros(self.n, dtype=np.float32), float(done), True, False,
                     {"is_success": done})

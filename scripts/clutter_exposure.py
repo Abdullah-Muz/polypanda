@@ -4,12 +4,9 @@ Usage: uv run python scripts/clutter_exposure.py [--out results/planner/clutter_
 
 For every learned place on a tower in evaluate_cell's _skills.csv files, it rebuilds which
 knocked cubes still lay on the table when the place started, and how far the nearest of them was
-from the tower. The attempts are taken in time order (t0) within each order: a knocked cube is on
-the table from the knock until a successful pick of a loose cube within 6 cm of where it lay
-takes it away (a cube moved by an attempt that failed is still counted where it first came to
-rest). A place that the cell itself saw with no other loose cube (loose_before = 0) has no
-clutter, whatever the rebuild says. Shown per run group: the v3.0 calibration run (rescue every
-recoverable cube, no spares) and the three v3.0 physics runs on disturbance_suite_v1.
+from the tower (supervisor.symbolic.tower_place_clutter, which the v3.1 clutter model is fitted
+with). Shown per run group: the v3.0 calibration run (rescue every recoverable cube, no spares)
+and the three v3.0 physics runs on disturbance_suite_v1.
 """
 
 import argparse
@@ -19,9 +16,7 @@ import json
 from collections import Counter, defaultdict
 from pathlib import Path
 
-import numpy as np
-
-from polypanda.supervisor.symbolic import TOWER_XY, _xy, target_kind
+from polypanda.supervisor.symbolic import tower_place_clutter
 
 GROUPS = {
     "calibration (v3.0, rescue every cube)": "*disturbance_calib_v1_recover_n200_skills.csv",
@@ -31,36 +26,18 @@ GROUPS = {
 }
 BANDS = (("none within 20 cm", 0.20, float("inf")), ("10-20 cm", 0.10, 0.20),
          ("6-10 cm", 0.06, 0.10), ("under 6 cm", 0.0, 0.06))
-MATCH = 0.06   # m: a successful loose pick this close to a fallen cube's rest takes it away
-
-
 def tower_places(path: str) -> list[dict]:
     """Every tower place in one _skills.csv with the nearest loose knocked cube's distance."""
     by_order = defaultdict(list)
     for r in csv.DictReader(open(path)):
         by_order[int(r["order"])].append(r)
-    out = []
-    for rows in by_order.values():
-        loose = [_xy(r) for r in rows if r["skill"] == "knock"]
-        for r in sorted((r for r in rows if r["skill"] != "knock"), key=lambda r: float(r["t0"])):
-            if (r["skill"] == "pick" and r["source"] not in ("belt", "buffer")
-                    and r["success"] == "True" and loose):
-                d = [float(np.linalg.norm(_xy(r) - c)) for c in loose]
-                if min(d) < MATCH:
-                    loose.pop(int(np.argmin(d)))
-            if r["skill"] == "place" and target_kind(_xy(r)) == "tower":
-                tower = TOWER_XY[int(np.argmin([np.linalg.norm(_xy(r) - t) for t in TOWER_XY]))]
-                seen = int(r["loose_before"] or 0) > 0
-                d = min((float(np.linalg.norm(c - tower)) for c in loose), default=9.0)
-                out.append({"ok": r["success"] == "True", "failure": r["failure"] or "timeout",
-                            "nearest": d if seen else 9.0, "level": int(r["level"])})
-    return out
+    return [p for rows in by_order.values() for p in tower_place_clutter(rows)]
 
 
 def summarize(places: list[dict]) -> dict:
     out = {"places": len(places), "failed": sum(not p["ok"] for p in places), "bands": {}}
     for name, lo, hi in BANDS:
-        rows = [p for p in places if lo <= p["nearest"] < hi]
+        rows = [p for p in places if lo <= min(p["nearest"], 9.0) < hi]   # (inf: none at all)
         ok = sum(p["ok"] for p in rows)
         out["bands"][name] = {"places": len(rows), "succeeded": ok,
                               "rate": ok / len(rows) if rows else None,

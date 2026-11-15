@@ -532,7 +532,7 @@ class ScriptedCell:
             near = min(np.linalg.norm(xy - cell.tower_xy(t))
                        for t in range(len(order.recipes))) < cfg_c.clear_radius
             cube = Loose(colour_of(k), view.loose[k]["pose"], True, bool(near),
-                         staged=k in staged, attempts=a)
+                         staged=k in staged, attempts=a, xy=xy.copy())
             poses = [s["pose"] for j, s in view.loose.items() if j not in written_off]
             elapsed = self.d.time - t0 + times["overhead"]  # (the symbolic clock starts there)
             features = decision_features(

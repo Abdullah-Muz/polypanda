@@ -13,6 +13,14 @@ Spares (v3 f): a written-off cube the towers still need is replaced by a spare o
 which rides the belt like an arrival, while spares last. The planner's decisions: when a fallen
 cube could be rescued and a spare could replace it, rescue or replace; after a failed rescue
 attempt, retry or replace. `play` yields a Decision at each, and is sent True to replace.
+
+Clutter (v3.1, docs/v3_1_targets.md): a fallen cube rests where a calibration knock left it,
+turned to the tower knocked here, and a cube left for a spare stays there on the floor. With a
+clutter model (Calibration.add_clutter), a place on a tower succeeds with its odds times a
+factor set by how near the nearest cube on the floor lies to that tower (CLUTTER_BANDS). The
+planner may also answer CLEAR: the cube is taken to the reject bin (its own odds and time), and
+off the floor if that succeeds, then replaced. Without a clutter model the cell plays exactly as
+in v3.0.
 """
 
 import csv
@@ -45,6 +53,48 @@ def _xy(row) -> np.ndarray:
     return float(row["radius"]) * np.array([np.cos(a), np.sin(a)])
 
 
+# v3.1 clutter: the nearest cube on the floor to a tower, by distance band (scripts/
+# clutter_exposure.py: under 6 cm places fail about 1 in 5; further out they barely do)
+CLUTTER_BANDS = ((0.06, "under 6 cm"), (0.20, "6-20 cm"))
+CLEAR_BAND = "none within 20 cm"
+MATCH = 0.06   # m: a loose pick or a clear this close to a fallen cube's rest takes it away
+
+
+def clutter_band(distance: float) -> str:
+    for edge, name in CLUTTER_BANDS:
+        if distance < edge:
+            return name
+    return CLEAR_BAND
+
+
+def _wrap(deg: float) -> float:
+    return (deg + 180.0) % 360.0 - 180.0
+
+
+def tower_place_clutter(rows: list[dict]) -> list[dict]:
+    """Every place on a tower in one order's _skills.csv rows, with the distance from that tower
+    to the nearest knocked cube still on the table when the place started. Rows are taken in
+    time order (t0): a knocked cube is on the table from the knock until a successful pick of a
+    loose cube, or a clear, within MATCH of where it lay takes it away (a cube moved by an
+    attempt that failed counts where it first came to rest). A place the cell itself saw with no
+    other loose cube (loose_before = 0) has none (distance inf)."""
+    loose = [_xy(r) for r in rows if r["skill"] == "knock"]
+    out = []
+    for r in sorted((r for r in rows if r["skill"] != "knock"), key=lambda r: float(r["t0"])):
+        if ((r["skill"] == "pick" and r["source"] not in ("belt", "buffer")
+             or r["skill"] == "clear") and r["success"] == "True" and loose):
+            d = [float(np.linalg.norm(_xy(r) - c)) for c in loose]
+            if min(d) < MATCH:
+                loose.pop(int(np.argmin(d)))
+        if r["skill"] == "place" and target_kind(_xy(r)) == "tower":
+            tower = TOWER_XY[int(np.argmin([np.linalg.norm(_xy(r) - t) for t in TOWER_XY]))]
+            seen = int(r["loose_before"] or 0) > 0
+            d = min((float(np.linalg.norm(c - tower)) for c in loose), default=float("inf"))
+            out.append({"ok": r["success"] == "True", "failure": r["failure"] or "timeout",
+                        "nearest": d if seen else float("inf"), "level": int(r["level"])})
+    return out
+
+
 def target_kind(xy) -> str:
     """Where a place puts its cube: a tower, a buffer slot or a staging spot."""
     if min(np.linalg.norm(xy - t) for t in TOWER_XY) < 0.03:
@@ -70,8 +120,13 @@ def situation(row) -> tuple:
 
 
 def action(row) -> str | None:
-    """Which timed action a skill attempt is (a lying cube's grasp is part of its stand-up)."""
+    """Which timed action a skill attempt is (a lying cube's grasp is part of its stand-up, a
+    clear's grasp part of the clear)."""
+    if row["skill"] == "clear":
+        return "clear"
     if row["skill"] == "pick":
+        if row["source"] == "clear":
+            return None
         if row["source"] in ("belt", "buffer"):
             return f"pick_{row['source']}"
         return "pick_up" if row["pose"] == "upright" else None
@@ -97,14 +152,65 @@ class Calibration:
     times: dict = field(default_factory=dict)
     knocks: dict = field(default_factory=dict)   # (seed, order) -> fallen cubes' rest states
     by_height: dict = field(default_factory=lambda: defaultdict(list))  # knocked height -> those
+    # v3.1 (add_clutter): tower-place odds factor per clutter band, the clear's odds by pose
+    clutter: dict | None = None
+    clear_odds: dict = field(default_factory=dict)
+    clutter_counts: dict = field(default_factory=dict)   # places, clears behind the fit
 
     def p(self, key: tuple) -> float:
         return self.odds[key]
 
     def perfect(self) -> "Calibration":
-        """Every skill always succeeds (undisturbed times; an ablation)."""
+        """Every skill always succeeds (undisturbed times; an ablation): clutter costs nothing
+        and every clear succeeds."""
         return Calibration({k: 1.0 for k in self.odds}, self.counts, self.times, self.knocks,
-                           self.by_height)
+                           self.by_height, None, {k: 1.0 for k in self.clear_odds},
+                           self.clutter_counts)
+
+    def add_clutter(self, skills_csvs: list[Path]) -> "Calibration":
+        """v3.1 (docs/v3_1_targets.md, 2026-11-14): this calibration plus a clutter model and
+        the clear action, from the _skills.csv (and _episodes.csv) files of the v3.1
+        calibration run (random rescue / leave / clear). Only these come from that run:
+        - per clutter band, the factor on a tower place's odds: its success rate there over the
+          rate with no cube on the floor within 20 cm (Laplace-smoothed, pooled over levels);
+        - the clear's odds by the cube's pose (ending in the bin, Laplace-smoothed);
+        - the clear's time: what the orders' durations leave over after every other action at
+          this calibration's times, fitted on the number of clears (least squares, no
+          intercept). Every other odds and time stays this calibration's."""
+        places, clears, n_clears, residual = defaultdict(list), defaultdict(list), [], []
+        for path in sorted(skills_csvs):
+            by_order, used = defaultdict(list), defaultdict(Counter)
+            for r in csv.DictReader(open(path)):
+                by_order[int(r["order"])].append(r)
+                if r["skill"] == "clear":
+                    clears[r["pose"]].append(r["success"] == "True")
+                if r["skill"] != "knock" and (a := action(r)) is not None:
+                    used[int(r["order"])][a] += 1
+            for rows in by_order.values():
+                for p in tower_place_clutter(rows):
+                    places[clutter_band(p["nearest"])].append(p["ok"])
+            episodes = Path(str(path).replace("_skills.csv", "_episodes.csv"))
+            for e in csv.DictReader(open(episodes)):
+                c = used[int(e["index"])]
+                c["reject"] = int(e["rejected"])
+                known = sum(self.times[a] * c[a] for a in ACTIONS) + self.times["overhead"]
+                n_clears.append(c["clear"])
+                residual.append(float(e["sim_s"]) - known)
+
+        def rate(v):
+            return (sum(v) + 1) / (len(v) + 2)
+        base = rate(places[CLEAR_BAND])
+        n, res = np.array(n_clears, dtype=float), np.array(residual)
+        times = dict(self.times, clear=float(n @ res / (n @ n)) if n.any() else 0.0)
+        return Calibration(
+            self.odds, self.counts, times, self.knocks, self.by_height,
+            {band: rate(places[band]) / base for _, band in CLUTTER_BANDS} | {CLEAR_BAND: 1.0},
+            {pose: rate(v) for pose, v in clears.items()},
+            {"places": {b: len(v) for b, v in places.items()},
+             "clears": {pose: len(v) for pose, v in clears.items()}})
+
+    def clutter_factor(self, distance: float) -> float:
+        return 1.0 if self.clutter is None else self.clutter[clutter_band(distance)]
 
     @classmethod
     def from_calibration_run(cls, root: Path = Path()) -> "Calibration":
@@ -115,7 +221,9 @@ class Calibration:
         """From evaluate_cell's _skills.csv files of runs on `suite` (each with its
         _episodes.csv): one file per seed, named ..._seed<k>_..."""
         cal, ok = cls(), defaultdict(list)
-        heights = [r and r["height"] for r in json.loads(Path(suite).read_text())["orders"]]
+        orders = json.loads(Path(suite).read_text())["orders"]
+        heights = [r and r["height"] for r in orders]
+        towers = [r and r["tower"] for r in orders]
         X, y = [], []
         for path in sorted(skills_csvs):
             seed = int(str(path).split("_seed")[1][0])
@@ -124,9 +232,13 @@ class Calibration:
                 if r["skill"] not in ("pick", "place", "standup", "knock"):
                     continue                         # (v3.1 rows, e.g. clear: not v3.0 odds)
                 if r["skill"] == "knock":
-                    fallen[int(r["order"])].append(
+                    i = int(r["order"])
+                    fallen[i].append(
                         {"pose": r["pose"], "recoverable": r["recoverable"] == "True",
-                         "near": near_tower(_xy(r))})
+                         "near": near_tower(_xy(r)),
+                         # (v3.1) where it lay: radius, and angle from the knocked tower
+                         "r": float(r["radius"]),
+                         "da": _wrap(float(r["angle"]) - _CFG.tower_angles[towers[i]])})
                     continue
                 ok[situation(r)].append(r["success"] == "True")
                 if (a := action(r)) is not None:
@@ -162,6 +274,7 @@ class Loose:
     attempts: int = 0
     staged: bool = False
     asked: int = -1      # attempts when the planner was last asked about it
+    xy: np.ndarray | None = None   # (v3.1) where it lies; None: unknown, or moved to staging
 
 
 def decision_features(cube: Loose, retry: bool, spares: int, max_spares: int, t: float,
@@ -169,16 +282,24 @@ def decision_features(cube: Loose, retry: bool, spares: int, max_spares: int, t:
                       loose_poses: list[str], times: dict) -> np.ndarray:
     """What the planner sees at a decision, scaled to about [0, 1]; the symbolic and the physics
     cell (ScriptedCell.run_mixed_order) both build it here. `queue`: arrivals (and spares) still
-    to come up the belt; `loose_poses`: every fallen cube still loose, this one included."""
+    to come up the belt; `loose_poses`: every fallen cube still loose, this one included.
+    The first 13 are v3.0's (a v3.0 planner sees only those); v3.1 adds the cube's distance to
+    its nearest tower (in 20 cm, at most 1) and the cubes that tower still needs (in 4)."""
     horizon = deadline or 1e9
     left = sum(len(r) - p for r, p in zip(planner.recipes, planner.placed, strict=True))
     work = left * (times["pick_belt"] + times["place_tower"])
     ready = any(planner.next_colour(k) == cube.colour for k in range(len(planner.recipes)))
+    if cube.xy is None or cube.staged:
+        gap, needs = 1.0, 0.0
+    else:
+        d = [float(np.linalg.norm(cube.xy - t)) for t in TOWER_XY[:len(planner.recipes)]]
+        k = int(np.argmin(d))
+        gap, needs = min(1.0, d[k] / CLEAR_RADIUS), len(planner.recipes[k]) - planner.placed[k]
     return np.array([
         cube.pose == "lying", cube.near, retry, cube.staged, spares / max(1, max_spares),
         t / horizon, (horizon - t - work) / horizon, queue / 14, left / 12,
         loose_poses.count("lying") / 4, loose_poses.count("upright") / 4, ready,
-        deadline is not None], dtype=np.float32)
+        deadline is not None, gap, needs / 4], dtype=np.float32)
 
 
 @dataclass
@@ -230,10 +351,11 @@ DEFAULT_TASK = Task()  # the learned planner's task (docs/v3_targets.md, 2026-10
 
 class SymbolicCell:
     """One order. `play()` is a generator: it yields a Decision whenever the planner has a
-    choice and must be sent True (replace) or False (rescue); it returns whether the order was
-    completed (by the deadline, if any). `result()` drives it with a policy."""
+    choice and must be sent RESCUE (or False), LEAVE (or True) or CLEAR; it returns whether the
+    order was completed (by the deadline, if any). `result()` drives it with a policy."""
 
-    N_FEATURES = 13
+    N_FEATURES = 15        # (decision_features; a v3.0 planner sees the first 13)
+    N_FEATURES_V30 = 13
 
     def __init__(self, order: WorkOrder, knock, fallen: list[dict] | None, cal: Calibration,
                  rng: np.random.Generator, task: Task = DEFAULT_TASK,
@@ -247,11 +369,21 @@ class SymbolicCell:
         self.slot: dict[int, str] = {}
         self.spares, self.staged, self.failed, self.knocked = task.spares, 0, False, False
         self.t = cal.times["overhead"]
+        self.floor: list[np.ndarray] = []   # (v3.1) written-off cubes left where they lie
+        self.cleared = self.cleared_ok = 0
 
     # --- skills -----------------------------------------------------------------------------
-    def roll(self, key: tuple) -> bool:
+    def roll(self, key: tuple, factor: float = 1.0) -> bool:
         self.t += self.cal.times.get(_time_key(key) or "", 0.0)
-        return bool(self.rng.random() < self.cal.p(key))
+        p = self.cal.p(key) if factor == 1.0 else min(1.0, self.cal.p(key) * factor)
+        return bool(self.rng.random() < p)
+
+    def nearest_floor_cube(self, t: int) -> float:
+        """Distance from tower t to the nearest cube on the floor: written off, or loose and
+        not yet moved to a staging spot (inf: none)."""
+        cubes = self.floor + [c.xy for c in self.loose if c.xy is not None and not c.staged]
+        return min((float(np.linalg.norm(xy - TOWER_XY[t])) for xy in cubes),
+                   default=float("inf"))
 
     def needed(self, colour: str) -> bool:
         return self.planner.demand(colour) > 0
@@ -277,18 +409,20 @@ class SymbolicCell:
                                                          strict=True))
                 and (self.deadline is None or self.t <= self.deadline))
 
-    def result(self, policy: Callable[[Decision], bool] | None = None) -> bool:
+    def result(self, policy: Callable[[Decision], bool | int] | None = None) -> bool:
         """Play the order with `policy` (None: always rescue)."""
         game = self.play()
         try:
             decision = next(game)
             while True:
-                decision = game.send(bool(policy and policy(decision)))
+                decision = game.send(RESCUE if policy is None else int(policy(decision)))
         except StopIteration as end:
             return end.value
 
     def stack(self, colour: str, t: int):
-        if not self.roll(("place", "tower", len(self.towers[t]))):
+        factor = (1.0 if self.cal.clutter is None
+                  else self.cal.clutter_factor(self.nearest_floor_cube(t)))
+        if not self.roll(("place", "tower", len(self.towers[t])), factor):
             self.failed = True
             return
         self.towers[t].append(colour)
@@ -297,7 +431,9 @@ class SymbolicCell:
             self.knocked = True
             fallen = self.fallen or []
             for j, (st, c) in enumerate(zip(fallen, reversed(self.towers[t]), strict=False)):
-                self.loose.append(Loose(c, st["pose"], st["recoverable"], st["near"], j))
+                xy = (station_xy(_CFG.tower_angles[t] + st["da"], st["r"]) if "da" in st
+                      else None)
+                self.loose.append(Loose(c, st["pose"], st["recoverable"], st["near"], j, xy=xy))
             del self.towers[t][len(self.towers[t]) - len(fallen):]
             self.planner.placed[t] = len(self.towers[t])
             yield from self.recover()
@@ -320,13 +456,26 @@ class SymbolicCell:
         else:
             self.t += self.cal.times["reject"]
 
-    def write_off(self, c: Loose) -> None:
+    def write_off(self, c: Loose, gone: bool = False) -> None:
+        """Give up on cube c (and call a spare, if one is needed and left). It stays on the
+        floor where it lies unless `gone` (cleared into the bin) or moved to a staging spot."""
         self.loose.remove(c)
         if c.staged:
             self.staged -= 1
+        elif c.xy is not None and not gone:
+            self.floor.append(c.xy)
         if self.needed(c.colour) and self.spares > 0:
             self.spares -= 1
             self.queue.append((c.colour, True))
+
+    def clear(self, c: Loose) -> None:
+        """v3.1: take cube c to the reject bin (its odds by pose, its fitted time), then write
+        it off; if the clear fails, it stays on the floor."""
+        self.t += self.cal.times.get("clear", 0.0)
+        ok = bool(self.rng.random() < self.cal.clear_odds.get(c.pose, 0.0))
+        self.cleared += 1
+        self.cleared_ok += ok
+        self.write_off(c, gone=ok)
 
     def recover(self):
         while not self.failed:
@@ -338,8 +487,12 @@ class SymbolicCell:
                       and not (c.staged and c.attempts == 0)):
                     c.asked = c.attempts
                     retry = c.attempts > 0
-                    if (yield Decision(c, retry, self.features(c, retry))):
+                    choice = yield Decision(c, retry, self.features(c, retry))
+                    choice = RESCUE if choice is None else int(choice)
+                    if choice == LEAVE:
                         self.write_off(c)
+                    elif choice == CLEAR:
+                        self.clear(c)
             if not self.loose:
                 return
             near = [c for c in self.loose if not c.staged and (c.pose == "lying" or c.near)]
@@ -351,7 +504,7 @@ class SymbolicCell:
                     ok = self.roll(("pick", "loose", "upright")) and \
                         self.roll(("place", "stage", 0))
                 if ok:
-                    c.pose, c.near, c.staged = "upright", False, True
+                    c.pose, c.near, c.staged, c.xy = "upright", False, True, None
                     self.staged += 1
                 else:
                     c.attempts += 1
@@ -419,10 +572,13 @@ def load_planner(run_dir: Path) -> Callable[[Decision], bool]:
 
     model = PPO.load(Path(run_dir) / "model.zip", device="cpu")
     meta = json.loads((Path(run_dir) / "meta.json").read_text())
-    hidden = [i for b in meta["blind"] for i in HIDDEN[b]]
+    n = model.observation_space.shape[0]           # (a v3.0 planner: the first 13 features)
+    hidden = [i for b in meta["blind"] for i in HIDDEN[b] if i < n]
+    two_way = model.action_space.n == 2            # (v3.0: rescue or leave)
 
-    def policy(d: Decision) -> bool:
-        obs = np.clip(d.features, -2.0, 2.0)
+    def policy(d: Decision) -> bool | int:
+        obs = np.clip(d.features[:n], -2.0, 2.0)
         obs[hidden] = 0.0
-        return int(model.predict(obs, deterministic=True)[0]) == 1
+        a = int(model.predict(obs, deterministic=True)[0])
+        return a == 1 if two_way else a
     return policy

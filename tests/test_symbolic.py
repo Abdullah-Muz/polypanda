@@ -2,6 +2,7 @@
 spares and the learned planner's rescue-or-replace decisions."""
 
 import numpy as np
+import pytest
 
 from polypanda.simulation.disturbances import Disturbance, Knock
 from polypanda.simulation.workcell import WorkOrder
@@ -98,6 +99,89 @@ def test_the_rule_family():
     assert not RESCUE_ALL(d) and rule(d)
     assert not rule(Decision(d.cube, True, d.features))   # after a failure: retry
     assert "replace lying near a tower" in str(rule)
+
+
+def clutter_cal(under_6cm: float = 0.0, clear: float = 1.0) -> Calibration:
+    from polypanda.supervisor.symbolic import CLEAR_BAND, CLUTTER_BANDS
+
+    cal = calibration()
+    cal.clutter = {CLUTTER_BANDS[0][1]: under_6cm, CLUTTER_BANDS[1][1]: 1.0, CLEAR_BAND: 1.0}
+    cal.clear_odds = {"upright": clear, "lying": clear}
+    cal.times["clear"] = 7.0
+    return cal
+
+
+def at(da: float):
+    """A fallen upright cube at the station radius, `da` degrees from the knocked tower."""
+    return [{"pose": "upright", "recoverable": True, "near": True, "r": 0.5, "da": da}]
+
+
+def test_a_cube_left_for_a_spare_stays_on_the_floor_and_gets_in_the_way():
+    """v3.1: with a clutter model, a cube left where it fell (3 deg from tower A: 2.6 cm) makes
+    the places on that tower riskier (here: certain to fail); rescued, cleared or far away, it
+    does not."""
+    from polypanda.supervisor.symbolic import CLEAR, LEAVE
+
+    spares = Task(spares=2, slack=None)
+    ok, cell = play(at(3.0), lambda d: LEAVE, clutter_cal(), spares)
+    assert not ok and len(cell.floor) == 1
+    assert cell.nearest_floor_cube(0) < 0.06 and cell.nearest_floor_cube(1) > 0.2
+    assert play(at(3.0), lambda d: LEAVE, calibration(), spares)[0]      # (v3.0: no clutter)
+    assert play(at(40.0), lambda d: LEAVE, clutter_cal(), spares)[0]     # far from tower A
+    assert play(at(3.0), None, clutter_cal(), spares)[0]                 # rescued: moved away
+    ok, cell = play(at(3.0), lambda d: CLEAR, clutter_cal(), spares)
+    assert ok and not cell.floor and (cell.cleared, cell.cleared_ok) == (1, 1)
+    t_leave = play(at(40.0), lambda d: LEAVE, clutter_cal(), spares)[1].t
+    assert cell.t == t_leave + 7.0                                       # the clear's time
+    ok, cell = play(at(3.0), lambda d: CLEAR, clutter_cal(clear=0.0), spares)
+    assert not ok and len(cell.floor) == 1 and (cell.cleared, cell.cleared_ok) == (1, 0)
+
+
+def test_the_planner_sees_how_near_the_cube_lies_to_a_tower_that_still_needs_cubes():
+    asked = []
+    play(at(3.0), lambda d: asked.append(d) or False, clutter_cal(), Task(spares=2, slack=None))
+    f = asked[0].features
+    assert f.shape == (15,) and SymbolicCell.N_FEATURES == 15
+    assert f[13] == pytest.approx(2 * 0.5 * np.sin(np.radians(1.5)) / 0.20, abs=1e-4)
+    assert f[14] == pytest.approx(2 / 4)       # tower A: 1 of its 3 cubes stands
+
+
+def test_the_clutter_model_is_fitted_from_a_calibration_run(tmp_path):
+    """add_clutter: place odds factor per band (Laplace), clear odds by pose, and the clear's
+    time from what the order durations leave over at the calibration's other times."""
+    import csv
+
+    from polypanda.supervisor.symbolic import CLEAR_BAND, CLUTTER_BANDS
+
+    cols = ["skill", "success", "failure", "order", "source", "pose", "radius", "angle",
+            "loose_before", "t0", "level"]
+    near, tower = (0.5, -37.0), (0.5, -40.0)               # tower A at -40 deg; 2.6 cm apart
+
+    def row(skill, order, t0, at, success="True", loose=0, level=0, source="", pose="upright"):
+        return dict(zip(cols, [skill, success, "" if success == "True" else "toppled", order,
+                               source, pose, *at, loose, t0, level], strict=True))
+    rows = [row("knock", 0, "", near, success=""),
+            row("place", 0, 1, tower), row("place", 0, 2, tower, "False", loose=1),
+            row("clear", 0, 3, near, source="clear"), row("place", 0, 4, tower),
+            row("place", 1, 1, tower)]
+    path = tmp_path / "run_seed0_skills.csv"
+    with open(path, "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=cols)
+        w.writeheader()
+        w.writerows(rows)
+    with open(tmp_path / "run_seed0_episodes.csv", "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=["index", "rejected", "sim_s"])
+        w.writeheader()
+        w.writerows([{"index": 0, "rejected": 0, "sim_s": 5 + 3 * 10 + 12},
+                     {"index": 1, "rejected": 0, "sim_s": 5 + 10}])
+    cal = calibration().add_clutter([path])
+    assert cal.clutter[CLUTTER_BANDS[0][1]] == pytest.approx((1 / 3) / (4 / 5))
+    assert cal.clutter[CLEAR_BAND] == 1.0
+    assert cal.clear_odds == {"upright": pytest.approx(2 / 3)}
+    assert cal.times["clear"] == pytest.approx(12.0)
+    assert cal.odds == calibration().odds                   # every other odds stays
+    assert cal.clutter_counts["places"] == {CLUTTER_BANDS[0][1]: 1, CLUTTER_BANDS[1][1]: 0,
+                                            CLEAR_BAND: 3}
 
 
 def test_random_choices_repeat_per_order_and_cover_every_answer():
