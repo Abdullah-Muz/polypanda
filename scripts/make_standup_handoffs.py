@@ -24,6 +24,7 @@ from pathlib import Path
 import mujoco
 import numpy as np
 
+from polypanda.environments.grasp import GRIPPER_OPEN
 from polypanda.simulation.workcell import Workcell, WorkOrder
 from polypanda.supervisor.cell import LearnedCell, LearnedSkill
 from polypanda.supervisor.symbolic import CALIBRATION_RUNS
@@ -70,7 +71,7 @@ def main() -> None:
         ctl.d.qpos[cube.qpos:cube.qpos + 7] = [x, y, cube.half_size[0], *q]
         ctl.d.qvel[:] = 0.0
         mujoco.mj_forward(ctl.m, ctl.d)
-        ctl.q_cmd = ctl.home.copy()
+        ctl.q_cmd, ctl.grip = ctl.home.copy(), GRIPPER_OPEN   # (open, as before any cell pick)
         ctl.to_carry()
         ctl.step(20)
         ctl.source, ctl.order_index = "loose", i
