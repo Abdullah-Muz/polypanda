@@ -25,6 +25,27 @@ def test_explicit_placements_rest_lying_or_upright():
     assert not info["lying"] and obs[OBS_SLICES["cube_tilt"]][0] < 1e-3
 
 
+def test_training_randomizes_cube_size_only_when_asked_and_explicit_placements_stay_nominal():
+    """v3.1: size_scale draws the cube's size per random episode (constant density); without it
+    no draw is made, so earlier configs replay their episodes unchanged."""
+    from polypanda.environments.grasp import RandomizationConfig
+
+    nominal = GraspV4Env(CFG.for_evaluation()).cube.half_size.copy()
+    cfg = replace(CFG, randomization=replace(CFG.randomization, size_scale=(0.85, 1.15)))
+    env = GraspV4Env(cfg)
+    sizes = []
+    for s in range(12):
+        env.reset(seed=s)
+        sizes.append(env.cube_scales["size"])
+        assert np.allclose(env.cube.half_size, nominal * sizes[-1])
+    assert min(sizes) >= 0.85 and max(sizes) <= 1.15 and np.ptp(sizes) > 0.1
+    env.reset(seed=0, options={"cube": (0.5, 0.1, 0.7)})
+    assert np.allclose(env.cube.half_size, nominal)
+    rng = np.random.default_rng(0)
+    assert RandomizationConfig().draw_size(rng) == 1.0
+    assert rng.random() == np.random.default_rng(0).random()       # (nothing drawn)
+
+
 def test_random_placements_lie_at_the_configured_rate():
     env = GraspV4Env(CFG.for_evaluation())
     lying = [env.reset(seed=s)[1]["lying"] for s in range(80)]

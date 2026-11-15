@@ -79,6 +79,11 @@ class StandUpStartConfig:
     # only: the policy still learns from reward alone (no imitation loss).
     demo_prob: float = 0.0
     demo_steps: tuple[int, int] = (0, 120)
+    # v3.1, training only: this fraction of the episodes hold the cube as the learned lying-cube
+    # grasp really hands it over (scripts/make_standup_handoffs.py: its pose in the hand,
+    # recorded in the cell), drawn from these files, instead of the synthetic grip above
+    handoff_prob: float = 0.0
+    handoffs: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -244,7 +249,8 @@ class StandUpConfig:
     def for_evaluation(self) -> "StandUpConfig":
         """Every episode starts from the carry posture with the nominal cube; no training
         devices (helpful and demonstration starts, the wrong-turn rule)."""
-        return replace(self, start=replace(self.start, helpful_prob=0.0, demo_prob=0.0),
+        return replace(self, start=replace(self.start, helpful_prob=0.0, demo_prob=0.0,
+                                           handoff_prob=0.0),
                        randomization=RandomizationConfig(),
                        command=replace(self.command, enforce=False, explore=0.0))
 
@@ -336,6 +342,10 @@ class StandUpEnv(gym.Env):
         ep = {"spot": spot, "yaw": float(rng.uniform(-np.pi, np.pi)),
               "offset": float(rng.uniform(-s.grip_offset, s.grip_offset)),
               "grip_z": float(rng.uniform(*s.grip_z)), "tower": None, "helpful": helpful}
+        if s.handoff_prob > 0 and rng.uniform() < s.handoff_prob:   # (no draw when off)
+            p_rel, q_rel = self._handoffs()
+            k = int(rng.integers(len(p_rel)))
+            ep["p_rel"], ep["q_rel"] = p_rel[k].tolist(), q_rel[k].tolist()
         if rng.uniform() < t.prob:
             for _ in range(100):  # gives up quietly (no tower) if none fits
                 d, b = rng.uniform(*t.distance), rng.uniform(-np.pi, np.pi)
@@ -375,6 +385,11 @@ class StandUpEnv(gym.Env):
                                   long_axis])
         p_rel = np.array([ep["offset"], 0.0, 0.0]) + R0.T @ [0.0, 0.0, ep["grip_z"]]
         R_rel = R0.T @ R_cube
+        if "q_rel" in ep:            # v3.1: a grip the learned grasp really handed over
+            p_rel = np.asarray(ep["p_rel"], dtype=float)
+            R_rel = np.zeros(9)
+            mujoco.mju_quat2Mat(R_rel, np.asarray(ep["q_rel"], dtype=float))
+            R_rel = R_rel.reshape(3, 3)
         if ep.get("helpful"):
             R = _hand_R(ep["turn"])
             centre = np.array([*(self.spot + ep["shift"]), c.half_size[2] + ep["height"]])
@@ -400,6 +415,17 @@ class StandUpEnv(gym.Env):
         self._attach()
         mujoco.mj_step(m, d, nstep=20)                   # fingers settle on the faces
         return True
+
+    def _handoffs(self) -> tuple[np.ndarray, np.ndarray]:
+        """The recorded grips (start.handoffs), loaded once: positions and rotations in the
+        hand."""
+        if getattr(self, "_handoff_pool", None) is None:
+            files = [np.load(f) for f in self.config.start.handoffs]
+            if not files:
+                raise ValueError("start.handoff_prob > 0 needs start.handoffs files")
+            self._handoff_pool = (np.concatenate([f["p_rel"] for f in files]),
+                                  np.concatenate([f["q_rel"] for f in files]))
+        return self._handoff_pool
 
     def _attach(self) -> None:
         """Grasp assist, as Workcell.attach: weld the cube to the hand where it is now."""
@@ -434,7 +460,8 @@ class StandUpEnv(gym.Env):
             if rnd.enabled:
                 lo, hi = np.log(rnd.mass_scale)
                 self._randomize(float(np.exp(self.np_random.uniform(lo, hi))),
-                                float(self.np_random.uniform(*rnd.friction_scale)))
+                                float(self.np_random.uniform(*rnd.friction_scale)),
+                                rnd.draw_size(self.np_random))
             helpful = self.np_random.uniform() < s.helpful_prob
             demo = 0  # (no draws when demo starts are off: earlier runs replay unchanged)
             if not helpful and s.demo_prob > 0 and self.np_random.uniform() < s.demo_prob:

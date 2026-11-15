@@ -126,10 +126,18 @@ class RandomizationConfig:
     # Like the curriculum, never applied to explicit placements or to validation.
     mass_scale: tuple[float, float] = (1.0, 1.0)
     friction_scale: tuple[float, float] = (1.0, 1.0)
+    # v3.1: cube size uniform in this scale range, at constant density (the mass scale applies
+    # on top of the volume's); drawn only when set, so earlier configs replay unchanged
+    size_scale: tuple[float, float] = (1.0, 1.0)
 
     @property
     def enabled(self) -> bool:
-        return self.mass_scale != (1.0, 1.0) or self.friction_scale != (1.0, 1.0)
+        return (self.mass_scale != (1.0, 1.0) or self.friction_scale != (1.0, 1.0)
+                or self.size_scale != (1.0, 1.0))
+
+    def draw_size(self, rng: np.random.Generator) -> float:
+        """A size scale (no draw when size is not randomized)."""
+        return 1.0 if self.size_scale == (1.0, 1.0) else float(rng.uniform(*self.size_scale))
 
 
 @dataclass(frozen=True)
@@ -243,11 +251,11 @@ class GraspEnv(gym.Env):
         if g.torsional_friction:
             self.model.geom_condim[self.cube.geom] = 4
 
-    def _randomize(self, mass: float, friction: float) -> None:
+    def _randomize(self, mass: float, friction: float, size: float = 1.0) -> None:
         if self._physics is None:
             self._physics = CubePhysics(self.model, self.cube)
-        self._physics.apply(mass_scale=mass, friction_scale=friction)
-        self.cube_scales = {"mass": mass, "friction": friction}
+        self._physics.apply(mass_scale=mass, friction_scale=friction, size_scale=size)
+        self.cube_scales = {"mass": mass, "friction": friction, "size": size}
 
     # --- measurements ------------------------------------------------------------------
     def _tcp_R(self) -> np.ndarray:
@@ -302,7 +310,8 @@ class GraspEnv(gym.Env):
             if rnd.enabled:  # training-only domain randomization; no draws when disabled
                 lo, hi = np.log(rnd.mass_scale)
                 self._randomize(mass=float(np.exp(self.np_random.uniform(lo, hi))),
-                                friction=float(self.np_random.uniform(*rnd.friction_scale)))
+                                friction=float(self.np_random.uniform(*rnd.friction_scale)),
+                                size=rnd.draw_size(self.np_random))
         if "cube" in options and self._physics is not None:
             self._randomize(mass=1.0, friction=1.0)  # explicit placements use the nominal cube
         self._place_cube(x, y, yaw, options)

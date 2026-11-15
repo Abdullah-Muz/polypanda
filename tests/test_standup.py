@@ -53,6 +53,37 @@ def test_helpful_starts_are_training_only_and_hold_the_cube_turned_up():
     assert all(ev.reset(seed=s)[1]["start"] == "carry" for s in range(4))
 
 
+def test_handoff_starts_hold_the_cube_as_recorded_in_training_only(tmp_path):
+    """v3.1: a hand-off start holds the cube as the learned grasp handed it over (its recorded
+    pose in the hand), with the cube size randomized too; evaluation keeps the synthetic grip."""
+    import mujoco
+
+    turn = np.radians(6.0)    # the long axis 6 deg off the hand's x, 1.4 cm below the TCP
+    R = np.array([[np.cos(turn), 0.0, np.sin(turn)], [0.0, 1.0, 0.0],
+                  [-np.sin(turn), 0.0, np.cos(turn)]]) @ np.array(
+        [[0.0, 0.0, 1.0], [0.0, -1.0, 0.0], [1.0, 0.0, 0.0]])
+    q = np.zeros(4)
+    mujoco.mju_mat2Quat(q, R.flatten())
+    pool = tmp_path / "handoffs.npz"
+    np.savez(pool, p_rel=np.array([[0.003, 0.0, -0.014]]), q_rel=q[None])
+    cfg = replace(CFG, start=replace(CFG.start, handoff_prob=1.0, handoffs=(str(pool),)),
+                  randomization=replace(CFG.randomization, size_scale=(0.85, 1.15)))
+    env = StandUpEnv(cfg)
+    env.reset(seed=2)
+    d = env.data
+    R_site = d.site_xmat[env.arm.tcp_site].reshape(3, 3)
+    p = R_site.T @ (d.xpos[env.cube.body] - d.site_xpos[env.arm.tcp_site])
+    axis = R_site.T @ d.xmat[env.cube.body].reshape(3, 3)[:, 2]
+    assert np.allclose(p, [0.003, 0.0, -0.014], atol=0.003)
+    assert np.degrees(np.arccos(abs(axis[0]))) == pytest.approx(6.0, abs=1.5)
+    assert d.eq_active[env.assist] and env.cube.half_size[0] != pytest.approx(0.02, abs=1e-6)
+    ev = StandUpEnv(cfg.for_evaluation())
+    ev.reset(seed=2)
+    axis = ev.data.site_xmat[ev.arm.tcp_site].reshape(3, 3).T @ \
+        ev.data.xmat[ev.cube.body].reshape(3, 3)[:, 2]
+    assert abs(axis[0]) > 0.999                                    # synthetic: along x
+
+
 def test_the_scripted_stand_up_releases_the_cube_upright_on_the_spot(env):
     s = generate_standup_set(env, "t", 3, 7)
     for i, ep in enumerate(s.episodes):

@@ -1,0 +1,82 @@
+# v3.1 skill round, grasp round 1 (docs/v3_1_targets.md): round 5
+# (configs/grasp_anypose5_cartesian.yaml) with cube size randomized, as the v3 targets asked and
+# v3.0 did not do. Diagnosis before this round (v3.0 calibration log and grasp_upright_v1): seed
+# 0 topples upright cubes it reaches for close to the base (x < 0.40 m: 29/39 on upright_v1, all
+# knocked_over; seeds 1-2 37-38/39; 208/267 such picks in the cell's staging ring, seeds 1-2
+# 100 %); lying cubes near the base are fine for every seed.
+# Changes, set before any v3.1 training: randomization.size_scale [0.85, 1.15] (the robustness
+# suite's range; size is not observed: the policy must cope blind), placement.near_prob 0.4
+# (was 0.3: upright cubes near the base 12 % of episodes, was 9 %); everything else as round 5.
+
+action:
+  max_delta: 0.015
+  n_substeps: 25
+  max_lead: null
+  space: cartesian
+  cartesian:
+    dof: 4
+    max_step: 0.01
+    max_rot: 0.05
+    max_tilt: 0.6
+    max_lead: 0.03
+    box_low: [0.15, -0.5, 0.01]
+    box_high: [0.85, 0.5, 0.6]
+    ik_iters: 2
+    posture_gain: 0.02
+
+placement:
+  x_range: [0.30, 0.78]
+  y_range: [-0.20, 0.20]
+  near_prob: 0.4             # v3.1 r1 (was 0.3): x from near_x (the staging ring)
+  near_x: [0.30, 0.40]
+
+resting:
+  lying_prob: 0.7           # round 5 (was 0.6)
+  max_lying_turn: 0.52
+  lying_gate_z_below: 0.015
+
+gripper:                    # round 4: as simulation.workcell.WorkcellConfig
+  finger_stiffness: 1000.0
+  torsional_friction: true
+
+gate:
+  xy_tol: 0.01
+  z_tol: 0.01
+  align_tol: 0.15
+  tilt_tol: 0.15
+  dwell_steps: 2
+  reopen_gap: 0.02
+  reopen_steps: 10
+
+episode:
+  horizon: 300
+  max_cube_tilt: 1.047
+
+success:
+  lift: 0.05
+
+reward:
+  approach: 20.0
+  align: 1.0
+  lift: 20.0
+  lift_cap: 0.10
+  hold: 0.5
+  action: 0.005
+  gripper_tilt: 0.1
+  floor: 0.1
+  knocked_over: 5.0
+
+curriculum:               # training only; validation and evaluation start every episode from home
+  pregrasp_start_prob: 0.3
+  preclose_start_prob: 0.2
+
+randomization:
+  mass_scale: [0.7, 1.4]
+  friction_scale: [0.7, 1.3]
+  size_scale: [0.85, 1.15]  # v3.1 r1: cube size (constant density)
+
+check:
+  min_lift: 0.02
+  window: 5
+  max_slip: 0.002
+  max_slip_rot: 0.05
