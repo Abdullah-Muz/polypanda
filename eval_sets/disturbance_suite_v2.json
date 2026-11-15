@@ -1,0 +1,1195 @@
+{
+ "meta": {
+  "orders": "Layer 2 evaluation orders (CellEvalConfig mixed, seed 20261203)",
+  "n": 200,
+  "seed": 20261204,
+  "no_knock": 0.2,
+  "version": 1
+ },
+ "orders": [
+  {
+   "tower": 0,
+   "height": 4,
+   "push": "push_top",
+   "angle": 1.3297089104413395,
+   "strength": 1.5110202932629364
+  },
+  {
+   "tower": 1,
+   "height": 2,
+   "push": "shove_middle",
+   "angle": 3.106210356913165,
+   "strength": 1.4990687365661999
+  },
+  null,
+  {
+   "tower": 2,
+   "height": 3,
+   "push": "push_top",
+   "angle": 1.9415933535394208,
+   "strength": 1.732315112873017
+  },
+  {
+   "tower": 0,
+   "height": 2,
+   "push": "shove_middle",
+   "angle": 0.11572087232353198,
+   "strength": 1.4439734506017747
+  },
+  {
+   "tower": 2,
+   "height": 2,
+   "push": "shove_top",
+   "angle": 5.95153019451077,
+   "strength": 1.1668281649154784
+  },
+  {
+   "tower": 1,
+   "height": 2,
+   "push": "shove_middle",
+   "angle": 0.49504455296422983,
+   "strength": 1.0639570556869231
+  },
+  null,
+  {
+   "tower": 2,
+   "height": 4,
+   "push": "shove_middle",
+   "angle": 0.9725583801252634,
+   "strength": 1.4388934857570925
+  },
+  {
+   "tower": 1,
+   "height": 3,
+   "push": "shove_middle",
+   "angle": 2.2006694062364724,
+   "strength": 0.6579925289562214
+  },
+  {
+   "tower": 0,
+   "height": 2,
+   "push": "push_top",
+   "angle": 1.6949536652835397,
+   "strength": 1.87455376933873
+  },
+  {
+   "tower": 0,
+   "height": 2,
+   "push": "push_top",
+   "angle": 0.34947216324920216,
+   "strength": 2.0811725883633434
+  },
+  {
+   "tower": 2,
+   "height": 3,
+   "push": "push_top",
+   "angle": 4.411918909484312,
+   "strength": 1.606476588797543
+  },
+  null,
+  null,
+  {
+   "tower": 0,
+   "height": 3,
+   "push": "shove_middle",
+   "angle": 0.6642851941615523,
+   "strength": 1.174047439619359
+  },
+  null,
+  null,
+  {
+   "tower": 0,
+   "height": 4,
+   "push": "shove_top",
+   "angle": 2.452622599628808,
+   "strength": 0.989972958227926
+  },
+  null,
+  null,
+  {
+   "tower": 0,
+   "height": 2,
+   "push": "shove_top",
+   "angle": 0.512818984128312,
+   "strength": 1.3385850927431484
+  },
+  {
+   "tower": 2,
+   "height": 2,
+   "push": "shove_middle",
+   "angle": 2.574186118170224,
+   "strength": 1.3600730064778728
+  },
+  null,
+  {
+   "tower": 0,
+   "height": 2,
+   "push": "shove_middle",
+   "angle": 5.084165920496134,
+   "strength": 0.7194931234183732
+  },
+  {
+   "tower": 1,
+   "height": 2,
+   "push": "shove_middle",
+   "angle": 3.1067188685446006,
+   "strength": 0.999950533193847
+  },
+  {
+   "tower": 0,
+   "height": 3,
+   "push": "push_top",
+   "angle": 6.138449962027013,
+   "strength": 1.8059467934589106
+  },
+  {
+   "tower": 2,
+   "height": 2,
+   "push": "push_top",
+   "angle": 3.157780518045741,
+   "strength": 1.4143963698963828
+  },
+  {
+   "tower": 1,
+   "height": 2,
+   "push": "push_top",
+   "angle": 4.693154981387335,
+   "strength": 2.307152645478976
+  },
+  {
+   "tower": 2,
+   "height": 2,
+   "push": "shove_top",
+   "angle": 0.9537195179327768,
+   "strength": 0.7349606401164789
+  },
+  null,
+  {
+   "tower": 1,
+   "height": 2,
+   "push": "shove_middle",
+   "angle": 0.7376785276466081,
+   "strength": 0.8161886593870704
+  },
+  {
+   "tower": 1,
+   "height": 4,
+   "push": "shove_middle",
+   "angle": 2.2673772755080086,
+   "strength": 0.6127051221519799
+  },
+  {
+   "tower": 0,
+   "height": 2,
+   "push": "push_top",
+   "angle": 5.518042918447381,
+   "strength": 1.4210242806863982
+  },
+  {
+   "tower": 1,
+   "height": 2,
+   "push": "shove_middle",
+   "angle": 2.9724731821169645,
+   "strength": 1.4974073686586813
+  },
+  {
+   "tower": 2,
+   "height": 3,
+   "push": "shove_middle",
+   "angle": 1.5595374309350771,
+   "strength": 1.4294292903550265
+  },
+  {
+   "tower": 1,
+   "height": 2,
+   "push": "push_top",
+   "angle": 4.102641761263478,
+   "strength": 2.1751014671239375
+  },
+  {
+   "tower": 2,
+   "height": 2,
+   "push": "shove_top",
+   "angle": 2.5834192584030586,
+   "strength": 1.2828213076791255
+  },
+  {
+   "tower": 1,
+   "height": 2,
+   "push": "push_top",
+   "angle": 1.8768707543335144,
+   "strength": 1.495900249148165
+  },
+  null,
+  {
+   "tower": 1,
+   "height": 2,
+   "push": "push_top",
+   "angle": 5.764751093566862,
+   "strength": 2.1684785415768824
+  },
+  null,
+  {
+   "tower": 0,
+   "height": 2,
+   "push": "shove_top",
+   "angle": 4.991474044023164,
+   "strength": 1.4207077230676366
+  },
+  null,
+  {
+   "tower": 1,
+   "height": 3,
+   "push": "shove_middle",
+   "angle": 0.025187275264682063,
+   "strength": 0.9541612984111469
+  },
+  null,
+  {
+   "tower": 0,
+   "height": 2,
+   "push": "push_top",
+   "angle": 0.294923361273592,
+   "strength": 1.762967931921288
+  },
+  {
+   "tower": 2,
+   "height": 3,
+   "push": "push_top",
+   "angle": 5.498364177743615,
+   "strength": 1.8035871945535147
+  },
+  {
+   "tower": 0,
+   "height": 2,
+   "push": "push_top",
+   "angle": 6.282432301649148,
+   "strength": 2.3342248643557015
+  },
+  {
+   "tower": 1,
+   "height": 3,
+   "push": "shove_top",
+   "angle": 4.618486740971528,
+   "strength": 0.6668767204018757
+  },
+  {
+   "tower": 0,
+   "height": 3,
+   "push": "push_top",
+   "angle": 2.3005182850109662,
+   "strength": 1.0663178811543443
+  },
+  {
+   "tower": 0,
+   "height": 2,
+   "push": "push_top",
+   "angle": 4.616309155724527,
+   "strength": 2.1867911227191046
+  },
+  {
+   "tower": 1,
+   "height": 3,
+   "push": "shove_top",
+   "angle": 1.2450314526142128,
+   "strength": 0.8758630450349639
+  },
+  null,
+  {
+   "tower": 1,
+   "height": 2,
+   "push": "shove_top",
+   "angle": 6.086045628562963,
+   "strength": 0.9583859135139376
+  },
+  {
+   "tower": 2,
+   "height": 2,
+   "push": "push_top",
+   "angle": 5.500554616757811,
+   "strength": 1.782146530474432
+  },
+  {
+   "tower": 2,
+   "height": 2,
+   "push": "push_top",
+   "angle": 3.667058929856013,
+   "strength": 1.240840678127744
+  },
+  {
+   "tower": 1,
+   "height": 2,
+   "push": "push_top",
+   "angle": 1.7045496296172444,
+   "strength": 1.0529681649816565
+  },
+  null,
+  {
+   "tower": 0,
+   "height": 2,
+   "push": "push_top",
+   "angle": 0.570741622841871,
+   "strength": 1.763704042692001
+  },
+  {
+   "tower": 1,
+   "height": 2,
+   "push": "push_top",
+   "angle": 6.281178082197573,
+   "strength": 1.8538580467535353
+  },
+  {
+   "tower": 0,
+   "height": 2,
+   "push": "push_top",
+   "angle": 3.8841466339559187,
+   "strength": 1.6412231054044706
+  },
+  {
+   "tower": 2,
+   "height": 2,
+   "push": "push_top",
+   "angle": 1.5268104108279874,
+   "strength": 1.5824593744972728
+  },
+  null,
+  {
+   "tower": 0,
+   "height": 3,
+   "push": "shove_top",
+   "angle": 3.079841671037893,
+   "strength": 0.9616710231234925
+  },
+  {
+   "tower": 1,
+   "height": 2,
+   "push": "push_top",
+   "angle": 2.7822366505912894,
+   "strength": 1.0492769862286493
+  },
+  null,
+  {
+   "tower": 0,
+   "height": 2,
+   "push": "shove_middle",
+   "angle": 6.186151097408693,
+   "strength": 1.1016121322911037
+  },
+  {
+   "tower": 1,
+   "height": 3,
+   "push": "shove_top",
+   "angle": 6.138936937071684,
+   "strength": 1.1096700011910907
+  },
+  {
+   "tower": 2,
+   "height": 4,
+   "push": "shove_middle",
+   "angle": 2.843295107475279,
+   "strength": 0.7646146704137328
+  },
+  {
+   "tower": 2,
+   "height": 2,
+   "push": "shove_middle",
+   "angle": 3.415091467372221,
+   "strength": 0.9697429003540525
+  },
+  {
+   "tower": 0,
+   "height": 2,
+   "push": "shove_top",
+   "angle": 2.9709455594221534,
+   "strength": 0.700347890873352
+  },
+  {
+   "tower": 0,
+   "height": 3,
+   "push": "shove_middle",
+   "angle": 3.0287534415209794,
+   "strength": 0.6392750888348141
+  },
+  {
+   "tower": 2,
+   "height": 2,
+   "push": "shove_top",
+   "angle": 5.150322569218144,
+   "strength": 0.7563214982787944
+  },
+  null,
+  {
+   "tower": 2,
+   "height": 4,
+   "push": "shove_top",
+   "angle": 1.3509678021368983,
+   "strength": 1.3088849024833062
+  },
+  {
+   "tower": 0,
+   "height": 4,
+   "push": "shove_middle",
+   "angle": 0.19896658120883656,
+   "strength": 1.1295195457068823
+  },
+  {
+   "tower": 0,
+   "height": 2,
+   "push": "push_top",
+   "angle": 3.9885371454241842,
+   "strength": 1.0857090107489407
+  },
+  {
+   "tower": 1,
+   "height": 2,
+   "push": "shove_top",
+   "angle": 4.309114659090625,
+   "strength": 1.3764356683378134
+  },
+  {
+   "tower": 1,
+   "height": 2,
+   "push": "shove_top",
+   "angle": 0.36265131871768913,
+   "strength": 1.4639018255376495
+  },
+  {
+   "tower": 1,
+   "height": 2,
+   "push": "shove_top",
+   "angle": 5.365844214643935,
+   "strength": 0.8288165232159818
+  },
+  {
+   "tower": 1,
+   "height": 2,
+   "push": "shove_middle",
+   "angle": 4.005832917475789,
+   "strength": 1.2945104771201117
+  },
+  null,
+  {
+   "tower": 1,
+   "height": 2,
+   "push": "shove_top",
+   "angle": 0.49394714152253516,
+   "strength": 0.6626504282476838
+  },
+  {
+   "tower": 1,
+   "height": 2,
+   "push": "shove_middle",
+   "angle": 1.3147885483865407,
+   "strength": 1.2700622839041424
+  },
+  {
+   "tower": 0,
+   "height": 2,
+   "push": "shove_middle",
+   "angle": 2.5477501341633233,
+   "strength": 0.9543706677753663
+  },
+  {
+   "tower": 0,
+   "height": 2,
+   "push": "shove_top",
+   "angle": 1.9243203750041948,
+   "strength": 1.2062842552664241
+  },
+  null,
+  {
+   "tower": 0,
+   "height": 3,
+   "push": "push_top",
+   "angle": 4.77360352556038,
+   "strength": 2.1437100394555646
+  },
+  null,
+  {
+   "tower": 0,
+   "height": 4,
+   "push": "shove_top",
+   "angle": 1.8286790760001166,
+   "strength": 1.3337473921029135
+  },
+  {
+   "tower": 0,
+   "height": 2,
+   "push": "shove_top",
+   "angle": 3.8906913710218465,
+   "strength": 1.1363974553301455
+  },
+  {
+   "tower": 0,
+   "height": 2,
+   "push": "shove_middle",
+   "angle": 5.555718142333273,
+   "strength": 0.7107726283934339
+  },
+  {
+   "tower": 1,
+   "height": 3,
+   "push": "shove_top",
+   "angle": 6.140978132944426,
+   "strength": 1.0430073752600968
+  },
+  {
+   "tower": 0,
+   "height": 2,
+   "push": "shove_top",
+   "angle": 0.6039726314906498,
+   "strength": 1.425799307488889
+  },
+  {
+   "tower": 2,
+   "height": 2,
+   "push": "push_top",
+   "angle": 0.5665936519449832,
+   "strength": 1.9894339238869627
+  },
+  {
+   "tower": 2,
+   "height": 3,
+   "push": "shove_top",
+   "angle": 0.9000082328954657,
+   "strength": 1.2096222734444413
+  },
+  {
+   "tower": 2,
+   "height": 2,
+   "push": "push_top",
+   "angle": 0.5769740205699866,
+   "strength": 1.0606850084457276
+  },
+  {
+   "tower": 1,
+   "height": 2,
+   "push": "shove_middle",
+   "angle": 3.1051587555937488,
+   "strength": 1.1722951395231647
+  },
+  null,
+  {
+   "tower": 2,
+   "height": 2,
+   "push": "shove_top",
+   "angle": 3.087886915733974,
+   "strength": 1.2175047787116977
+  },
+  {
+   "tower": 2,
+   "height": 2,
+   "push": "push_top",
+   "angle": 0.7899671017737081,
+   "strength": 2.1723261470289903
+  },
+  {
+   "tower": 2,
+   "height": 2,
+   "push": "push_top",
+   "angle": 2.5728819756549455,
+   "strength": 1.0715655097149637
+  },
+  null,
+  {
+   "tower": 1,
+   "height": 4,
+   "push": "push_top",
+   "angle": 3.6959304052530038,
+   "strength": 2.337253798120196
+  },
+  {
+   "tower": 0,
+   "height": 2,
+   "push": "shove_middle",
+   "angle": 4.8483202051695775,
+   "strength": 1.0094073199948057
+  },
+  {
+   "tower": 0,
+   "height": 3,
+   "push": "shove_middle",
+   "angle": 5.06562500394597,
+   "strength": 1.2932408180201147
+  },
+  null,
+  null,
+  {
+   "tower": 0,
+   "height": 2,
+   "push": "push_top",
+   "angle": 3.407663314001907,
+   "strength": 1.436250194453179
+  },
+  {
+   "tower": 2,
+   "height": 2,
+   "push": "shove_top",
+   "angle": 2.7202731007032774,
+   "strength": 0.8171185947029062
+  },
+  {
+   "tower": 2,
+   "height": 2,
+   "push": "shove_middle",
+   "angle": 0.21610144277734764,
+   "strength": 1.3767407286745676
+  },
+  {
+   "tower": 2,
+   "height": 2,
+   "push": "shove_middle",
+   "angle": 4.280312510454731,
+   "strength": 0.6560528878308872
+  },
+  {
+   "tower": 1,
+   "height": 4,
+   "push": "push_top",
+   "angle": 2.1033561761359802,
+   "strength": 1.04448466601915
+  },
+  null,
+  {
+   "tower": 0,
+   "height": 4,
+   "push": "push_top",
+   "angle": 1.5532273044785887,
+   "strength": 2.0754692150459997
+  },
+  {
+   "tower": 1,
+   "height": 2,
+   "push": "shove_top",
+   "angle": 4.514151838974483,
+   "strength": 0.6462847099126372
+  },
+  {
+   "tower": 1,
+   "height": 3,
+   "push": "shove_middle",
+   "angle": 1.4712534627706793,
+   "strength": 1.0076024939112902
+  },
+  {
+   "tower": 0,
+   "height": 3,
+   "push": "push_top",
+   "angle": 2.5779262037687443,
+   "strength": 1.2694875242723116
+  },
+  {
+   "tower": 0,
+   "height": 2,
+   "push": "shove_top",
+   "angle": 6.280852689628855,
+   "strength": 0.9612186826197147
+  },
+  {
+   "tower": 0,
+   "height": 2,
+   "push": "shove_top",
+   "angle": 2.7184414106668604,
+   "strength": 1.1021405041571928
+  },
+  {
+   "tower": 0,
+   "height": 3,
+   "push": "push_top",
+   "angle": 5.927212079809329,
+   "strength": 1.1898793237566108
+  },
+  {
+   "tower": 0,
+   "height": 2,
+   "push": "push_top",
+   "angle": 1.8505311214495423,
+   "strength": 1.5800154582956814
+  },
+  {
+   "tower": 0,
+   "height": 2,
+   "push": "shove_middle",
+   "angle": 4.238900894480869,
+   "strength": 0.8091971258010321
+  },
+  {
+   "tower": 1,
+   "height": 3,
+   "push": "shove_middle",
+   "angle": 3.5592032592325102,
+   "strength": 1.451898359971671
+  },
+  {
+   "tower": 2,
+   "height": 2,
+   "push": "push_top",
+   "angle": 4.579745476425002,
+   "strength": 2.1454969824447585
+  },
+  {
+   "tower": 2,
+   "height": 2,
+   "push": "push_top",
+   "angle": 1.3475132713498947,
+   "strength": 1.9835458590817905
+  },
+  {
+   "tower": 0,
+   "height": 2,
+   "push": "shove_top",
+   "angle": 4.275530608389449,
+   "strength": 0.9617182501235712
+  },
+  {
+   "tower": 1,
+   "height": 2,
+   "push": "shove_middle",
+   "angle": 5.410708158331916,
+   "strength": 1.346753667105614
+  },
+  {
+   "tower": 0,
+   "height": 2,
+   "push": "shove_middle",
+   "angle": 2.706924677826698,
+   "strength": 1.016632159840953
+  },
+  {
+   "tower": 2,
+   "height": 2,
+   "push": "push_top",
+   "angle": 5.120883166183041,
+   "strength": 1.2415179548568585
+  },
+  {
+   "tower": 2,
+   "height": 4,
+   "push": "shove_middle",
+   "angle": 1.6962676978533306,
+   "strength": 0.9930651058032827
+  },
+  {
+   "tower": 2,
+   "height": 2,
+   "push": "shove_top",
+   "angle": 1.9016350809603428,
+   "strength": 0.6827128096391961
+  },
+  {
+   "tower": 0,
+   "height": 4,
+   "push": "shove_top",
+   "angle": 5.5139152262889715,
+   "strength": 1.1995285366607102
+  },
+  {
+   "tower": 1,
+   "height": 2,
+   "push": "push_top",
+   "angle": 1.9082453607035135,
+   "strength": 2.2967826879910556
+  },
+  {
+   "tower": 1,
+   "height": 3,
+   "push": "shove_middle",
+   "angle": 0.4718459432730147,
+   "strength": 0.7064096578310611
+  },
+  {
+   "tower": 2,
+   "height": 2,
+   "push": "shove_top",
+   "angle": 1.661733219676191,
+   "strength": 1.4973186964494123
+  },
+  {
+   "tower": 1,
+   "height": 2,
+   "push": "shove_middle",
+   "angle": 6.018462540083397,
+   "strength": 1.2882609086554118
+  },
+  {
+   "tower": 0,
+   "height": 3,
+   "push": "shove_top",
+   "angle": 5.1258732325177405,
+   "strength": 1.2131914551303669
+  },
+  {
+   "tower": 2,
+   "height": 2,
+   "push": "shove_middle",
+   "angle": 4.027153160889976,
+   "strength": 1.1140636545841223
+  },
+  null,
+  {
+   "tower": 0,
+   "height": 2,
+   "push": "shove_top",
+   "angle": 1.8420885546201233,
+   "strength": 0.7721423820543949
+  },
+  {
+   "tower": 1,
+   "height": 3,
+   "push": "push_top",
+   "angle": 2.5235759926866526,
+   "strength": 2.246662569491533
+  },
+  {
+   "tower": 2,
+   "height": 3,
+   "push": "shove_top",
+   "angle": 1.410941582758995,
+   "strength": 0.9945990258917433
+  },
+  null,
+  {
+   "tower": 1,
+   "height": 2,
+   "push": "shove_top",
+   "angle": 4.9472052715753225,
+   "strength": 0.6777522700138569
+  },
+  {
+   "tower": 0,
+   "height": 2,
+   "push": "shove_top",
+   "angle": 5.61134496377628,
+   "strength": 1.4963760657541783
+  },
+  {
+   "tower": 0,
+   "height": 3,
+   "push": "shove_top",
+   "angle": 0.6123221995489704,
+   "strength": 0.8849422915844822
+  },
+  {
+   "tower": 2,
+   "height": 3,
+   "push": "shove_top",
+   "angle": 1.3464196283960452,
+   "strength": 1.1565589893537633
+  },
+  {
+   "tower": 2,
+   "height": 3,
+   "push": "shove_middle",
+   "angle": 3.2815309632855683,
+   "strength": 1.1745551057224275
+  },
+  {
+   "tower": 1,
+   "height": 2,
+   "push": "shove_top",
+   "angle": 0.4382663386296916,
+   "strength": 0.6637856223685995
+  },
+  {
+   "tower": 0,
+   "height": 2,
+   "push": "shove_middle",
+   "angle": 5.583011848551937,
+   "strength": 1.2281028193733705
+  },
+  {
+   "tower": 1,
+   "height": 2,
+   "push": "shove_top",
+   "angle": 1.0283484116267325,
+   "strength": 1.0564794525963004
+  },
+  {
+   "tower": 2,
+   "height": 2,
+   "push": "shove_top",
+   "angle": 3.667726603400414,
+   "strength": 1.173513474281859
+  },
+  {
+   "tower": 1,
+   "height": 2,
+   "push": "shove_middle",
+   "angle": 0.3475046483254584,
+   "strength": 1.084063102734187
+  },
+  {
+   "tower": 0,
+   "height": 3,
+   "push": "shove_top",
+   "angle": 5.438310466848696,
+   "strength": 0.7104098598624289
+  },
+  {
+   "tower": 2,
+   "height": 2,
+   "push": "shove_middle",
+   "angle": 1.3804360988719173,
+   "strength": 1.0424131467214446
+  },
+  null,
+  {
+   "tower": 1,
+   "height": 3,
+   "push": "shove_top",
+   "angle": 4.751803208599585,
+   "strength": 0.835765108971358
+  },
+  {
+   "tower": 2,
+   "height": 2,
+   "push": "push_top",
+   "angle": 5.105382577777509,
+   "strength": 1.8068065362743948
+  },
+  {
+   "tower": 2,
+   "height": 3,
+   "push": "shove_middle",
+   "angle": 6.0453144813095925,
+   "strength": 0.8847116556360253
+  },
+  {
+   "tower": 0,
+   "height": 3,
+   "push": "shove_middle",
+   "angle": 0.08706588138212312,
+   "strength": 1.3254821901766898
+  },
+  {
+   "tower": 0,
+   "height": 3,
+   "push": "shove_middle",
+   "angle": 3.9633878222829693,
+   "strength": 1.1591135955112803
+  },
+  {
+   "tower": 1,
+   "height": 2,
+   "push": "shove_middle",
+   "angle": 0.2356218055599816,
+   "strength": 0.8834068158621833
+  },
+  {
+   "tower": 1,
+   "height": 2,
+   "push": "shove_middle",
+   "angle": 2.2477646500858155,
+   "strength": 1.352488726938966
+  },
+  {
+   "tower": 0,
+   "height": 3,
+   "push": "push_top",
+   "angle": 1.823353552114918,
+   "strength": 1.6068129482197753
+  },
+  null,
+  {
+   "tower": 1,
+   "height": 4,
+   "push": "shove_middle",
+   "angle": 4.900456919201757,
+   "strength": 1.2416160785583177
+  },
+  {
+   "tower": 2,
+   "height": 2,
+   "push": "shove_middle",
+   "angle": 5.552013345340964,
+   "strength": 1.0430866150510205
+  },
+  {
+   "tower": 2,
+   "height": 3,
+   "push": "push_top",
+   "angle": 3.622168886361263,
+   "strength": 1.4297088802996294
+  },
+  {
+   "tower": 0,
+   "height": 3,
+   "push": "shove_top",
+   "angle": 0.6279234780434815,
+   "strength": 0.6279282368743783
+  },
+  {
+   "tower": 0,
+   "height": 4,
+   "push": "shove_top",
+   "angle": 5.99317969009976,
+   "strength": 0.7110182464779625
+  },
+  null,
+  {
+   "tower": 1,
+   "height": 3,
+   "push": "shove_top",
+   "angle": 4.514604166162115,
+   "strength": 1.4783583040710053
+  },
+  {
+   "tower": 2,
+   "height": 2,
+   "push": "shove_top",
+   "angle": 5.61522541126992,
+   "strength": 1.4418967197868158
+  },
+  {
+   "tower": 2,
+   "height": 2,
+   "push": "shove_middle",
+   "angle": 4.789325082913034,
+   "strength": 0.9626387793527131
+  },
+  {
+   "tower": 1,
+   "height": 3,
+   "push": "shove_top",
+   "angle": 5.58155296208042,
+   "strength": 0.6565090839973553
+  },
+  {
+   "tower": 2,
+   "height": 2,
+   "push": "shove_top",
+   "angle": 2.7108066681982366,
+   "strength": 0.7990655633957429
+  },
+  {
+   "tower": 0,
+   "height": 2,
+   "push": "shove_top",
+   "angle": 3.4296070487392334,
+   "strength": 0.6500161831225646
+  },
+  {
+   "tower": 0,
+   "height": 2,
+   "push": "push_top",
+   "angle": 5.256524951145086,
+   "strength": 1.2533803801121501
+  },
+  {
+   "tower": 1,
+   "height": 3,
+   "push": "push_top",
+   "angle": 0.131650171954796,
+   "strength": 1.8838931732130546
+  },
+  {
+   "tower": 2,
+   "height": 2,
+   "push": "shove_top",
+   "angle": 4.37033474997249,
+   "strength": 0.7677191626194971
+  },
+  null,
+  {
+   "tower": 0,
+   "height": 3,
+   "push": "push_top",
+   "angle": 5.9011828665842065,
+   "strength": 1.6643574320552292
+  },
+  {
+   "tower": 0,
+   "height": 2,
+   "push": "shove_middle",
+   "angle": 4.6581309186339945,
+   "strength": 0.7702707962465205
+  },
+  null,
+  {
+   "tower": 0,
+   "height": 2,
+   "push": "push_top",
+   "angle": 0.7059703506975048,
+   "strength": 1.8908682095789433
+  },
+  {
+   "tower": 2,
+   "height": 2,
+   "push": "push_top",
+   "angle": 1.4947677299028566,
+   "strength": 2.2092946155996422
+  },
+  {
+   "tower": 0,
+   "height": 3,
+   "push": "shove_middle",
+   "angle": 4.492756297355291,
+   "strength": 0.7889496448824097
+  },
+  {
+   "tower": 1,
+   "height": 2,
+   "push": "push_top",
+   "angle": 4.415907093007682,
+   "strength": 1.5184665001086364
+  },
+  {
+   "tower": 2,
+   "height": 2,
+   "push": "shove_top",
+   "angle": 0.28289363075399115,
+   "strength": 0.8877008134036167
+  },
+  null,
+  {
+   "tower": 1,
+   "height": 3,
+   "push": "shove_top",
+   "angle": 5.621792941578463,
+   "strength": 0.7463277022117455
+  },
+  {
+   "tower": 0,
+   "height": 4,
+   "push": "shove_top",
+   "angle": 6.121749666079595,
+   "strength": 1.262787541109958
+  },
+  {
+   "tower": 0,
+   "height": 2,
+   "push": "shove_middle",
+   "angle": 3.285773611961069,
+   "strength": 1.0894702691092433
+  },
+  {
+   "tower": 1,
+   "height": 2,
+   "push": "shove_middle",
+   "angle": 2.1375059530047626,
+   "strength": 1.1118986187987185
+  },
+  {
+   "tower": 2,
+   "height": 3,
+   "push": "push_top",
+   "angle": 0.05249173525287083,
+   "strength": 1.7547183804096214
+  },
+  {
+   "tower": 1,
+   "height": 4,
+   "push": "shove_middle",
+   "angle": 5.025151995388137,
+   "strength": 0.9019606205401094
+  },
+  {
+   "tower": 2,
+   "height": 3,
+   "push": "push_top",
+   "angle": 1.664206320811149,
+   "strength": 1.5528532910002395
+  },
+  null
+ ]
+}
