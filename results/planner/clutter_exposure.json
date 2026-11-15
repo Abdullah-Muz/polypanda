@@ -1,0 +1,194 @@
+{
+  "calibration (v3.0, rescue every cube)": {
+    "files": [
+      "cell_P-grasp_anypose5_seed0_best_L-place_stack_v3_seed0_best_S-standup_round11_seed0_best_aim-fixture_h1-4_mixed-s3_disturbance_calib_v1_recover_n200_skills.csv",
+      "cell_P-grasp_anypose5_seed1_best_L-place_stack_v3_seed1_best_S-standup_round11_seed1_best_aim-fixture_h1-4_mixed-s3_disturbance_calib_v1_recover_n200_skills.csv",
+      "cell_P-grasp_anypose5_seed2_best_L-place_stack_v3_seed2_best_S-standup_round11_seed2_best_aim-fixture_h1-4_mixed-s3_disturbance_calib_v1_recover_n200_skills.csv"
+    ],
+    "places": 5066,
+    "failed": 7,
+    "bands": {
+      "none within 20 cm": {
+        "places": 4995,
+        "succeeded": 4990,
+        "rate": 0.998998998998999,
+        "failures": {
+          "toppled": 2,
+          "timeout": 3
+        }
+      },
+      "10-20 cm": {
+        "places": 26,
+        "succeeded": 26,
+        "rate": 1.0,
+        "failures": {}
+      },
+      "6-10 cm": {
+        "places": 42,
+        "succeeded": 42,
+        "rate": 1.0,
+        "failures": {}
+      },
+      "under 6 cm": {
+        "places": 3,
+        "succeeded": 1,
+        "rate": 0.3333333333333333,
+        "failures": {
+          "toppled": 2
+        }
+      }
+    },
+    "within_20cm": {
+      "places": 71,
+      "succeeded": 69
+    }
+  },
+  "suite_v1, rescue every cube": {
+    "files": [
+      "cell_P-grasp_anypose5_seed0_best_L-place_stack_v3_seed0_best_S-standup_round11_seed0_best_aim-fixture_h1-4_mixed-s3_disturbance_suite_v1_recover_spares2-rescue-all_slack1.5_n200_skills.csv",
+      "cell_P-grasp_anypose5_seed1_best_L-place_stack_v3_seed1_best_S-standup_round11_seed1_best_aim-fixture_h1-4_mixed-s3_disturbance_suite_v1_recover_spares2-rescue-all_slack1.5_n200_skills.csv",
+      "cell_P-grasp_anypose5_seed2_best_L-place_stack_v3_seed2_best_S-standup_round11_seed2_best_aim-fixture_h1-4_mixed-s3_disturbance_suite_v1_recover_spares2-rescue-all_slack1.5_n200_skills.csv"
+    ],
+    "places": 5345,
+    "failed": 13,
+    "bands": {
+      "none within 20 cm": {
+        "places": 5234,
+        "succeeded": 5222,
+        "rate": 0.9977072984333206,
+        "failures": {
+          "toppled": 6,
+          "timeout": 5,
+          "dropped": 1
+        }
+      },
+      "10-20 cm": {
+        "places": 41,
+        "succeeded": 41,
+        "rate": 1.0,
+        "failures": {}
+      },
+      "6-10 cm": {
+        "places": 46,
+        "succeeded": 46,
+        "rate": 1.0,
+        "failures": {}
+      },
+      "under 6 cm": {
+        "places": 24,
+        "succeeded": 23,
+        "rate": 0.9583333333333334,
+        "failures": {
+          "toppled": 1
+        }
+      }
+    },
+    "within_20cm": {
+      "places": 111,
+      "succeeded": 110
+    }
+  },
+  "suite_v1, best rule": {
+    "files": [
+      "cell_P-grasp_anypose5_seed0_best_L-place_stack_v3_seed0_best_S-standup_round11_seed0_best_aim-fixture_h1-4_mixed-s3_disturbance_suite_v1_recover_spares2-best-rule_slack1.5_n200_skills.csv",
+      "cell_P-grasp_anypose5_seed1_best_L-place_stack_v3_seed1_best_S-standup_round11_seed1_best_aim-fixture_h1-4_mixed-s3_disturbance_suite_v1_recover_spares2-best-rule_slack1.5_n200_skills.csv",
+      "cell_P-grasp_anypose5_seed2_best_L-place_stack_v3_seed2_best_S-standup_round11_seed2_best_aim-fixture_h1-4_mixed-s3_disturbance_suite_v1_recover_spares2-best-rule_slack1.5_n200_skills.csv"
+    ],
+    "places": 5343,
+    "failed": 78,
+    "bands": {
+      "none within 20 cm": {
+        "places": 4628,
+        "succeeded": 4625,
+        "rate": 0.999351771823682,
+        "failures": {
+          "timeout": 3
+        }
+      },
+      "10-20 cm": {
+        "places": 236,
+        "succeeded": 235,
+        "rate": 0.9957627118644068,
+        "failures": {
+          "timeout": 1
+        }
+      },
+      "6-10 cm": {
+        "places": 140,
+        "succeeded": 135,
+        "rate": 0.9642857142857143,
+        "failures": {
+          "toppled": 4,
+          "timeout": 1
+        }
+      },
+      "under 6 cm": {
+        "places": 339,
+        "succeeded": 270,
+        "rate": 0.7964601769911505,
+        "failures": {
+          "dropped": 20,
+          "toppled": 37,
+          "timeout": 12
+        }
+      }
+    },
+    "within_20cm": {
+      "places": 715,
+      "succeeded": 640
+    }
+  },
+  "suite_v1, learned planner": {
+    "files": [
+      "cell_P-grasp_anypose5_seed0_best_L-place_stack_v3_seed0_best_S-standup_round11_seed0_best_aim-fixture_h1-4_mixed-s3_disturbance_suite_v1_recover_spares2-recovery_planner_seed0_slack1.5_n200_skills.csv",
+      "cell_P-grasp_anypose5_seed1_best_L-place_stack_v3_seed1_best_S-standup_round11_seed1_best_aim-fixture_h1-4_mixed-s3_disturbance_suite_v1_recover_spares2-recovery_planner_seed1_slack1.5_n200_skills.csv",
+      "cell_P-grasp_anypose5_seed2_best_L-place_stack_v3_seed2_best_S-standup_round11_seed2_best_aim-fixture_h1-4_mixed-s3_disturbance_suite_v1_recover_spares2-recovery_planner_seed2_slack1.5_n200_skills.csv"
+    ],
+    "places": 5357,
+    "failed": 79,
+    "bands": {
+      "none within 20 cm": {
+        "places": 4745,
+        "succeeded": 4727,
+        "rate": 0.9962065331928346,
+        "failures": {
+          "dropped": 7,
+          "toppled": 5,
+          "timeout": 6
+        }
+      },
+      "10-20 cm": {
+        "places": 225,
+        "succeeded": 220,
+        "rate": 0.9777777777777777,
+        "failures": {
+          "timeout": 1,
+          "dropped": 1,
+          "toppled": 3
+        }
+      },
+      "6-10 cm": {
+        "places": 131,
+        "succeeded": 128,
+        "rate": 0.9770992366412213,
+        "failures": {
+          "toppled": 3
+        }
+      },
+      "under 6 cm": {
+        "places": 256,
+        "succeeded": 203,
+        "rate": 0.79296875,
+        "failures": {
+          "dropped": 16,
+          "toppled": 24,
+          "timeout": 13
+        }
+      }
+    },
+    "within_20cm": {
+      "places": 612,
+      "succeeded": 551
+    }
+  }
+}
