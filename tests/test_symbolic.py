@@ -184,6 +184,33 @@ def test_the_clutter_model_is_fitted_from_a_calibration_run(tmp_path):
                                             CLEAR_BAND: 3}
 
 
+def test_clear_rules_answer_by_pose_and_distance_band():
+    from polypanda.supervisor.symbolic import (
+        CLEAR,
+        CLEAR_RULE_FAMILY,
+        LEAVE,
+        RESCUE,
+        TOWER_XY,
+        ClearRule,
+        cube_band,
+    )
+
+    assert len(CLEAR_RULE_FAMILY) == 3 ** 7 and len(set(CLEAR_RULE_FAMILY)) == 3 ** 7
+    rule = ClearRule((RESCUE, RESCUE, RESCUE, CLEAR, LEAVE, RESCUE), after=LEAVE)
+    t = TOWER_XY[0]
+
+    def ask(pose, offset, retry=False, staged=False):
+        cube = Loose("red", pose, True, True, xy=t + [offset, 0.0], staged=staged)
+        return rule(Decision(cube, retry, np.zeros(SymbolicCell.N_FEATURES)))
+    assert [cube_band(Loose("red", "lying", True, True, xy=t + [d, 0.0]))
+            for d in (0.03, 0.1, 0.3)] == [0, 1, 2]
+    assert ask("lying", 0.03) == CLEAR and ask("lying", 0.1) == LEAVE
+    assert ask("lying", 0.3) == RESCUE and ask("upright", 0.03) == RESCUE
+    assert ask("lying", 0.03, staged=True) == RESCUE         # staged: away from the towers
+    assert ask("lying", 0.03, retry=True) == LEAVE
+    assert "lying under 6 cm: clear" in str(rule)
+
+
 def test_random_choices_repeat_per_order_and_cover_every_answer():
     """v3.1 calibration: rescue, leave or clear at equal odds, the same stream for the same
     order whatever ran before it."""

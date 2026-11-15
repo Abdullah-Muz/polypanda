@@ -24,6 +24,7 @@ in v3.0.
 """
 
 import csv
+import itertools
 import json
 from collections import Counter, defaultdict
 from collections.abc import Callable, Generator
@@ -561,6 +562,43 @@ RULE_FAMILY = tuple(Rule(frozenset(s for s, b in zip(SITUATIONS, bits, strict=Tr
                     for bits in np.ndindex(2, 2, 2, 2) for after in (False, True))
 # the best of RULE_FAMILY on the selection orders (results/planner/symbolic_eval.json, 52111b3)
 BEST_RULE = Rule(frozenset({("lying", False), ("lying", True), ("upright", True)}), False)
+
+
+BAND_NAMES = ("under 6 cm", "6-20 cm", "further")   # (v3.1 rules: from the nearest tower)
+ANSWER_NAMES = {RESCUE: "rescue", LEAVE: "leave", CLEAR: "clear"}
+
+
+def cube_band(cube: Loose) -> int:
+    """v3.1: 0 within 6 cm of a tower, 1 within 20 cm, 2 further (or moved to staging)."""
+    if cube.xy is None or cube.staged:
+        return 2
+    d = min(float(np.linalg.norm(cube.xy - t)) for t in TOWER_XY)
+    return 0 if d < CLUTTER_BANDS[0][0] else 1 if d < CLUTTER_BANDS[1][0] else 2
+
+
+@dataclass(frozen=True)
+class ClearRule:
+    """v3.1 (docs/v3_1_targets.md): rescue, leave or clear a fallen cube by its pose (upright,
+    lying) and how near it lies to a tower (cube_band); after a failed rescue attempt, `after`
+    (RESCUE: retry). `answers[3 * lying + band]`."""
+    answers: tuple[int, ...] = (RESCUE,) * 6
+    after: int = RESCUE
+
+    def __call__(self, d: Decision) -> int:
+        if d.retry:
+            return self.after
+        return self.answers[3 * (d.cube.pose == "lying") + cube_band(d.cube)]
+
+    def __str__(self) -> str:
+        parts = [f"{pose} {band}: {ANSWER_NAMES[self.answers[3 * i + j]]}"
+                 for i, pose in enumerate(("upright", "lying"))
+                 for j, band in enumerate(BAND_NAMES)]
+        return "; ".join(parts) + f"; after a failed attempt: {ANSWER_NAMES[self.after]}"
+
+
+CLEAR_RULE_FAMILY = tuple(ClearRule(tuple(a), after)
+                          for a in itertools.product((RESCUE, LEAVE, CLEAR), repeat=6)
+                          for after in (RESCUE, LEAVE, CLEAR))
 
 
 def load_planner(run_dir: Path) -> Callable[[Decision], bool]:
