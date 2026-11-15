@@ -104,6 +104,50 @@ def test_a_spare_replaces_a_cube_lost_for_good_and_the_planner_can_choose_one():
     assert asked[0].features.shape == (SymbolicCell.N_FEATURES,) and asked[0].features[12] == 1
 
 
+@pytest.mark.parametrize("pose", [UPRIGHT, LYING])
+def test_a_cube_the_planner_clears_goes_to_the_bin_and_a_spare_replaces_it(pose):
+    """v3.1: a recovery planner may answer CLEAR: the fallen cube is grasped where it lies (no
+    stand-up), dropped in the reject bin, so it is no longer loose, and a spare replaces it."""
+    from polypanda.simulation.workcell import WorkcellConfig
+    from polypanda.supervisor.observe import observe
+    from polypanda.supervisor.symbolic import CLEAR
+
+    times = {"pick_belt": 16.0, "place_tower": 2.0, "overhead": 9.0}
+    ctl = MovesTheTopCube(Workcell.build(WorkcellConfig(n_cubes=7)))
+    ctl.pose = pose
+    log = []
+    towers = ctl.run_mixed_order(ORDER, np.random.default_rng(0), disturbance=KNOCK,
+                                 recover=True, log=log.append, spares=2, times=times,
+                                 replace=lambda d: CLEAR, deadline=400.0)
+    assert ctl.check(towers) == [True, True, True] and towers[0] == [0, 5, 3]
+    assert ctl.stats["cleared"] == 1 and ctl.stats["cleared_ok"] == 1
+    assert ctl.stats["replaced"] == 1 and ctl.stats["spares_used"] == 1
+    assert ctl.cell.in_bin(ctl.cell.cubes[1]) and 1 not in observe(ctl.cell).loose
+    assert any("clearing the green cube into the reject bin" in line for line in log)
+    assert ctl.ik_failures == 0
+
+
+def test_the_learned_cell_records_each_clear():
+    """v3.1 calibration: a clear is logged with its situation and outcome, like a skill."""
+    from polypanda.supervisor.cell import LearnedCell
+
+    cell = Workcell.build()
+    ctl = LearnedCell(cell)
+    cell.reset(ORDER, np.random.default_rng(0))
+    cube = cell.cubes[3]
+    a = np.radians(cell.config.tower_angles[0] + 15)
+    ctl.d.qpos[cube.qpos:cube.qpos + 7] = [0.5 * np.cos(a), 0.5 * np.sin(a), cube.half_size[0],
+                                           *LYING]
+    mujoco.mj_forward(ctl.m, ctl.d)
+    ctl.to_carry()
+    ctl.step(20)
+    ctl.source, ctl.order_index = "clear", 3
+    assert ctl.clear(cube, "lying") and cell.in_bin(cube)
+    (r,) = ctl.clears
+    assert r["success"] and r["failure"] is None and r["source"] == "clear"
+    assert r["pose"] == "lying" and r["order"] == 3 and r["t1"] > r["t0"]
+
+
 def test_the_learned_stand_up_env_runs_in_the_cell_on_the_held_cube():
     """d+: the stand-up env on the workcell's own scene, started from the scripted stand-up's
     hand-over point (the lying cube held at the carry height over a staging spot): its arm is

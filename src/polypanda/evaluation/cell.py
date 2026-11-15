@@ -82,7 +82,9 @@ class CellEpisode:
     fallen: int = 0              # cubes the knock threw off the tower
     deadline: float | None = None  # v3 f: simulated s the order had (success: complete by then)
     spares_used: int = 0         # v3 f: spare cubes called up the belt,
-    replaced: int = 0            # of which for cubes the recovery planner chose not to rescue
+    replaced: int = 0            # of which for cubes the recovery planner chose not to rescue,
+    cleared: int = 0             # v3.1: of which taken to the reject bin first,
+    cleared_ok: int = 0          # of which ended in the bin
 
 
 @lru_cache(maxsize=1)
@@ -122,6 +124,8 @@ def run_cell_order(ctl: LearnedCell, config: CellEvalConfig, index: int) -> Cell
         order = WorkOrder.random(rng, heights=config.heights)
     picks, places, steps, log = len(ctl.picks), len(ctl.places), [0], []
     ctl.order_index = index
+    if hasattr(getattr(ctl, "recovery_planner", None), "reset"):
+        ctl.recovery_planner.reset(index)        # (RandomChoice: its own stream per order)
 
     viewer = ctl.on_step  # (a viewer or a diagnostic hook still sees every step)
 
@@ -191,7 +195,8 @@ def run_cell_order(ctl: LearnedCell, config: CellEvalConfig, index: int) -> Cell
         buffered=stats.get("buffered", 0), rejected=stats.get("rejected", 0),
         needed_rejected=stats.get("needed_rejected", 0),
         deadline=None if deadline is None else round(deadline, 2),
-        spares_used=stats.get("spares_used", 0), replaced=stats.get("replaced", 0), **extra)
+        spares_used=stats.get("spares_used", 0), replaced=stats.get("replaced", 0),
+        cleared=stats.get("cleared", 0), cleared_ok=stats.get("cleared_ok", 0), **extra)
 
 
 def summarize_cell(episodes: list[CellEpisode], ctl: LearnedCell) -> dict:
@@ -251,6 +256,8 @@ def summarize_cell(episodes: list[CellEpisode], ctl: LearnedCell) -> dict:
         **({"disturbances": disturbances} if disturbances else {}),
         **({"spares": {"used": sum(e.spares_used for e in episodes),
                        "replaced": sum(e.replaced for e in episodes),
+                       "cleared": sum(e.cleared for e in episodes),
+                       "cleared_ok": sum(e.cleared_ok for e in episodes),
                        "orders_late": sum(e.failure == "late" for e in episodes)}}
            if any(e.deadline is not None or e.spares_used for e in episodes) else {}),
     }
@@ -263,6 +270,7 @@ def skill_attempts(ctl: LearnedCell) -> list[dict]:
     return ([{"skill": "pick", **r} for r in ctl.picks]
             + [{"skill": "place", **r} for r in ctl.places]
             + [{"skill": "standup", **r} for r in ctl.standups]
+            + [{"skill": "clear", **r} for r in ctl.clears]
             + [{"skill": "knock", **r} for r in ctl.knocks])
 
 

@@ -121,6 +121,8 @@ class Calibration:
             seed = int(str(path).split("_seed")[1][0])
             fallen, used = defaultdict(list), defaultdict(Counter)
             for r in csv.DictReader(open(path)):
+                if r["skill"] not in ("pick", "place", "standup", "knock"):
+                    continue                         # (v3.1 rows, e.g. clear: not v3.0 odds)
                 if r["skill"] == "knock":
                     fallen[int(r["order"])].append(
                         {"pose": r["pose"], "recoverable": r["recoverable"] == "True",
@@ -181,10 +183,39 @@ def decision_features(cube: Loose, retry: bool, spares: int, max_spares: int, t:
 
 @dataclass
 class Decision:
-    """A question for the planner: replace `cube` with a spare (True) or rescue it (False)?"""
+    """A question for the planner: replace `cube` with a spare (True) or rescue it (False)?
+    In the physics cell (v3.1) a policy may also answer CLEAR: take the cube to the reject bin,
+    then replace it with a spare."""
     cube: Loose
     retry: bool          # asked after a failed rescue attempt
     features: np.ndarray
+
+
+# a recovery planner's answers; a bool answer is RESCUE (False) or LEAVE (True)
+RESCUE, LEAVE, CLEAR = 0, 1, 2
+CHOICE_SEED = 20261205   # v3.1 calibration: the random choices' own stream (RandomChoice)
+
+
+class RandomChoice:
+    """v3.1 calibration (docs/v3_1_targets.md, 2026-11-14): rescue, leave or clear, drawn with
+    equal odds at every decision, from a stream seeded per order (`reset(order index)`), so
+    the calibration run sees the floors any planner can leave behind."""
+
+    def __init__(self, seed: int = CHOICE_SEED, choices: tuple[int, ...] = (RESCUE, LEAVE, CLEAR)
+                 ) -> None:
+        self.seed, self.choices = seed, choices
+        self.reset(0)
+
+    def reset(self, index: int) -> None:
+        self.rng = np.random.default_rng([self.seed, index])
+
+    def __call__(self, d: Decision) -> int:
+        return int(self.choices[self.rng.integers(len(self.choices))])
+
+    def __str__(self) -> str:
+        names = {RESCUE: "rescue", LEAVE: "leave", CLEAR: "clear"}
+        return (f"random {' / '.join(names[c] for c in self.choices)}, equal odds "
+                f"(seed {self.seed}, per order)")
 
 
 @dataclass(frozen=True)

@@ -70,8 +70,7 @@ def observe(cell: Workcell, held: int | None = None) -> CellView:
     for k in candidates:
         if k in used:
             continue
-        p = d.xpos[cell.cubes[k].body]
-        if np.abs(p[:2] - cell.reject_xy).max() < cfg.bin_size / 2:
-            continue  # rejected
+        if cell.in_bin(cell.cubes[k]):
+            continue  # rejected, or cleared away
         loose[k] = rest_state(cell, cell.cubes[k])
     return CellView(towers, parked, loose)

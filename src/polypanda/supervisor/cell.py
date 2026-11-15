@@ -69,6 +69,7 @@ class LearnedCell(ScriptedCell):
         self.standups: list[dict] = []  # per learned stand-up: success, steps, failure, command
         self.order_index: int | None = None  # the order being run, for the per-attempt records
         self.knocks: list[dict] = []    # per cube a knock threw off: order, kind, rest state
+        self.clears: list[dict] = []    # v3.1: per fallen cube taken to the reject bin
 
     def _loose_others(self, cube: CubeIndices) -> int:
         """Loose cubes other than `cube` (supervisor.observe): a rise across an attempt means
@@ -132,6 +133,25 @@ class LearnedCell(ScriptedCell):
             self.cell.attach(cube)
         self.to_carry()
         self._finish(result, situation, cube)
+
+    def lift_loose(self, cube: CubeIndices, pose: str) -> bool:
+        """With a learned grasp, which takes upright and lying cubes alike (d1), the cube is
+        picked where it lies (logged as a pick); otherwise as the scripted cell does."""
+        if self.grasp is None:
+            return super().lift_loose(cube, pose)
+        self.pick(cube)
+        return self.cell.attached(cube)
+
+    def clear(self, cube: CubeIndices, pose: str) -> bool:
+        """ScriptedCell.clear, recorded with its situation (v3.1 calibration): success when the
+        cube ends in the bin; failure not_held (the grasp failed) or missed_bin (dropped on the
+        way)."""
+        situation = self._situation(cube, self.d.xpos[cube.body][:2].copy())
+        ok = super().clear(cube, pose)
+        result = {"success": ok, "steps": None,
+                  "failure": None if ok else ("missed_bin" if self.clear_held else "not_held")}
+        self.clears.append(self._finish(result, situation, cube))
+        return ok
 
     def nearest_stack(self, xy, exclude: CubeIndices) -> tuple[float, float, float] | None:
         """(x, y, top height) of the stack of upright cubes (a tower, a buffered cube) nearest

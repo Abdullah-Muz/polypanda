@@ -42,7 +42,7 @@ from polypanda.simulation.scenes import CubeIndices, cube_yaw
 from polypanda.simulation.workcell import Workcell, WorkOrder, station_xy
 from polypanda.supervisor.observe import observe
 from polypanda.supervisor.planner import BUFFER, TOWER, GreedyPlanner
-from polypanda.supervisor.symbolic import Decision, Loose, decision_features
+from polypanda.supervisor.symbolic import CLEAR, RESCUE, Decision, Loose, decision_features
 
 CUBE_HEIGHT = 0.06
 
@@ -248,6 +248,33 @@ class ScriptedCell:
             return
         self.swing_to(float(np.arctan2(spot[1], spot[0])))
         self.place(cube, spot, 0)
+
+    def lift_loose(self, cube: CubeIndices, pose: str) -> bool:
+        """Grasp a loose cube where it lies and lift it, without standing it up: an upright cube
+        as at any station, a lying one across its width (grasp_lying); it ends in the carry
+        posture. Returns whether it is held."""
+        if pose == "lying":
+            held = self.grasp_lying(cube)[0]
+            self.to_carry()
+            return held
+        self.pick(cube)
+        return self.cell.attached(cube)
+
+    def clear(self, cube: CubeIndices, pose: str) -> bool:
+        """v3.1: take a fallen cube off the table into the reject bin, where it lies (no
+        stand-up), so it is not in the way of later places. Returns whether it ended in the bin;
+        `self.clear_held` says whether it was grasped at all."""
+        xy = self.d.xpos[cube.body][:2].copy()
+        self.swing_to(float(np.arctan2(xy[1], xy[0])))
+        self.clear_held = self.lift_loose(cube, pose)
+        if self.clear_held:
+            self.swing_to(np.radians(self.cell.config.reject_angle))
+            self.reject(cube)
+        else:
+            self.grip = GRIPPER_OPEN  # (not held: let go, it stays where it is)
+            self.step(self.config.grip_steps)
+            self.to_carry()
+        return self.cell.in_bin(cube)
 
     def line(self, start, end, quat, speed: float | None = None) -> None:
         """Straight move of the hand from `start` to `end` with a fixed orientation `quat`."""
@@ -493,12 +520,13 @@ class ScriptedCell:
                 if log:
                     log(f"spare {colour_of(k)} cube called up the belt")
 
-        def ask(k: int, view) -> bool:
-            """The recovery planner: replace cube k with a spare instead of rescuing it?"""
+        def ask(k: int, view) -> int:
+            """The recovery planner: rescue cube k, or replace it with a spare, leaving it where
+            it is (LEAVE) or taking it to the reject bin first (CLEAR, v3.1)?"""
             a = attempts.get(k, 0)
             if (replace is None or spares_left[0] <= 0 or planner.demand(colour_of(k)) <= 0
                     or asked.get(k) == a or (k in staged and a == 0)):
-                return False
+                return RESCUE
             asked[k] = a
             xy = self.d.xpos[cell.cubes[k].body][:2]
             near = min(np.linalg.norm(xy - cell.tower_xy(t))
@@ -510,7 +538,7 @@ class ScriptedCell:
             features = decision_features(
                 cube, a > 0, spares_left[0], spares, elapsed, deadline,
                 len(cell.order.arrivals) - len(handled), planner, poses, times)
-            return bool(replace(Decision(cube, a > 0, features)))
+            return int(replace(Decision(cube, a > 0, features)))   # (a bool: RESCUE or LEAVE)
 
         def stack(k: int, t: int) -> None:
             self.swing_to(np.radians(cfg.tower_angles[t]))
@@ -590,16 +618,35 @@ class ScriptedCell:
                             log(f"{colour_of(k)} cube written off ({state['pose']}, "
                                 f"{'in reach' if state['reachable'] else 'out of reach'})")
                         call_spare(k)
+                cleared = False
                 for k in list(usable):
-                    if ask(k, view):
-                        usable.remove(k)
-                        written_off.add(k)
-                        staged.discard(k)
-                        self.stats["written_off"] += 1
-                        self.stats["replaced"] += 1
+                    choice = ask(k, view)
+                    if choice == RESCUE:
+                        continue
+                    usable.remove(k)
+                    written_off.add(k)
+                    staged.discard(k)
+                    self.stats["written_off"] += 1
+                    self.stats["replaced"] += 1
+                    if choice == CLEAR:
                         if log:
-                            log(f"{colour_of(k)} cube left for a spare (recovery planner)")
-                        call_spare(k)
+                            log(f"clearing the {colour_of(k)} cube into the reject bin "
+                                f"(recovery planner)")
+                        self.source = "clear"
+                        ok = self.clear(cell.cubes[k], view.loose[k]["pose"])
+                        self.stats["cleared"] = self.stats.get("cleared", 0) + 1
+                        self.stats["cleared_ok"] = self.stats.get("cleared_ok", 0) + ok
+                        if log and not ok:
+                            log(f"  the {colour_of(k)} cube did not reach the bin; it stays "
+                                f"written off")
+                    elif log:
+                        log(f"{colour_of(k)} cube left for a spare (recovery planner)")
+                    call_spare(k)
+                    if choice == CLEAR:
+                        cleared = True     # (the arm moved: read the cell again)
+                        break
+                if cleared:
+                    continue
                 if not usable:
                     return
                 xy = {k: self.d.xpos[cell.cubes[k].body][:2].copy() for k in usable}

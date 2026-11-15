@@ -100,6 +100,25 @@ def test_the_rule_family():
     assert "replace lying near a tower" in str(rule)
 
 
+def test_random_choices_repeat_per_order_and_cover_every_answer():
+    """v3.1 calibration: rescue, leave or clear at equal odds, the same stream for the same
+    order whatever ran before it."""
+    from polypanda.supervisor.symbolic import CLEAR, LEAVE, RESCUE, RandomChoice
+
+    d = Decision(Loose("red", "lying", True, True), False, np.zeros(SymbolicCell.N_FEATURES))
+    policy = RandomChoice()
+    policy.reset(4)
+    first = [policy(d) for _ in range(9)]
+    policy.reset(5)
+    policy(d)
+    policy.reset(4)
+    assert [policy(d) for _ in range(9)] == first
+    draws = [policy(d) for _ in range(3000)]
+    assert {RESCUE, LEAVE, CLEAR} == set(draws)
+    assert all(abs(draws.count(c) / 3000 - 1 / 3) < 0.03 for c in (RESCUE, LEAVE, CLEAR))
+    assert "rescue / leave / clear" in str(policy)
+
+
 def test_the_planner_env_plays_orders_decision_by_decision():
     """v3 f: one episode per order, one step per decision, reward 1 for an order completed by
     its deadline; orders with nothing to decide are skipped; `blind` hides observation parts."""

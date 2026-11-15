@@ -374,6 +374,11 @@ class Workcell:
     def reject_xy(self) -> np.ndarray:
         return station_xy(self.config.reject_angle, self.config.radius)
 
+    def in_bin(self, cube: CubeIndices) -> bool:
+        """The cube is inside the reject bin's footprint (rejected, or cleared away)."""
+        p = self.data.xpos[cube.body]
+        return bool(np.abs(p[:2] - self.reject_xy).max() < self.config.bin_size / 2)
+
     def buffer_xy(self, slot: int) -> np.ndarray:
         return station_xy(self.config.buffer_angles[slot], self.config.radius)
 
