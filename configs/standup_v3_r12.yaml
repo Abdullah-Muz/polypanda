@@ -2,7 +2,8 @@
 # (configs/standup_v3_r11.yaml) with cube size randomized (v3.0's size robustness: 77.3 %
 # against 90.0 % nominal) and starts from real hand-offs: 30 % of training episodes hold the
 # cube as the learned lying-cube grasp hands it over in the cell (scripts/
-# make_standup_handoffs.py, v3.0's grasp, 3 seeds), instead of the synthetic grip.
+# make_standup_handoffs.py, v3.1's locked grasp grasp_anypose6, 3 seeds; amended 2026-11-15
+# before training, from v3.0's grasp), instead of the synthetic grip.
 # Changes, set before any v3.1 training: randomization.size_scale [0.85, 1.15],
 # start.handoff_prob 0.3; everything else as round 11.
 
@@ -30,9 +31,9 @@ start:
   demo_prob: 0.3
   demo_steps: [0, 120]
   handoff_prob: 0.3        # v3.1 r12: grips the learned grasp really hands over
-  handoffs: [data/handoff/standup_handoffs_grasp_anypose5_seed0.npz,
-             data/handoff/standup_handoffs_grasp_anypose5_seed1.npz,
-             data/handoff/standup_handoffs_grasp_anypose5_seed2.npz]
+  handoffs: [data/handoff/standup_handoffs_grasp_anypose6_seed0.npz,
+             data/handoff/standup_handoffs_grasp_anypose6_seed1.npz,
+             data/handoff/standup_handoffs_grasp_anypose6_seed2.npz]
 
 tower:
   prob: 0.8
