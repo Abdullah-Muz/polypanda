@@ -88,19 +88,19 @@ flowchart LR
     B -. "when its tower is ready" .-> G
     T --> C{tower check<br/>after a knock and<br/>at the end of the order}
     C -- "every tower stands" --> D([order done])
-    C -- "cubes have fallen" --> Q{rescue or spare?<br/>recovery planner<br/>PPO policy or rule}
+    C -- "a tower was knocked over:<br/>cubes have fallen" --> Q{rescue or spare?<br/>recovery planner<br/>PPO policy or rule}
     Q -- "rescue: lying, or near a tower" --> S[clear the towers, stand lying cubes up<br/>GRASP + STAND-UP<br/>PPO policies]
-    S --> G
+    S -- "REBUILD: routed like a new arrival" --> G
     Q -- "rescue: upright, clear of towers" --> G
     Q -. "spare: called up the belt<br/>also for cubes out of reach or leaning" .-> I
 ```
 
-*The recovery planner is asked only when the order has spares left; without spares the cell rescues every cube it can, and an order with a cube it cannot rescue fails.*
+*When a tower is knocked over, the cell rebuilds it: the knocked tower's missing cubes count as needed again, and each rescued cube (or its spare) goes back through the grasp and the planner like a new arrival, so the tower is stacked again in recipe order. The recovery planner is asked only when the order has spares left; without spares the cell rescues every cube it can, and an order with a cube it cannot rescue fails.*
 
 - **One environment per skill**, each with its own observations, success checks and gates. Skills trained in front of the robot run at any station through **station frames**: the scene is rotated into the frame the skill was trained in, and its hand motions are rotated back. [workcell.md](docs/workcell.md)
 - **Transitions are verified predicates, never timers.** A grasp counts only with both fingers in contact and the cube lifted and not slipping. In pick-and-place, switching on timers instead costs 18 points. [pick_and_place.md](docs/pick_and_place.md)
 - **Pick-and-place** runs under a finite-state-machine supervisor with verified handoffs, exact physics-state transfer between skill environments, and recovery (release, lift clear, return home, retry up to twice).
-- **Closed loop (v3):** after a knock and at the end of every order, the cell reads which cubes stand on each tower and which have fallen, and how each rests. Fallen cubes near a tower are moved to a staging ring first, lying cubes are stood upright, and each is then picked and routed like a new arrival; with spares, a recovery planner may call a replacement up the belt instead. [recovery.md](docs/recovery.md)
+- **Closed loop (v3): knocked-over towers are rebuilt.** After a knock and at the end of every order, the cell reads which cubes stand on each tower and which have fallen, and how each rests. Fallen cubes near a tower are moved to a staging ring first, lying cubes are stood upright, and each is then picked and routed like a new arrival until the knocked tower is rebuilt; with spares, a recovery planner may call a replacement up the belt instead. One cube, part of a tower or a whole tower can fall; the results table above shows how often each is rebuilt. [recovery.md](docs/recovery.md)
 - **Disclosed simplification:** in the simulator a firmly held cube slides out of the fingers during long carries, whatever the grip settings. In the cell, a verified grip is therefore welded to the hand while carrying, for learned and scripted skills alike. [workcell.md](docs/workcell.md#grasp-assist-a-disclosed-simplification)
 
 ## Quickstart
