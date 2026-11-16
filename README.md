@@ -86,8 +86,16 @@ flowchart LR
     P -- "needed later, slot free" --> B[PLACE in buffer<br/>PPO policy]
     P -- "surplus or buffer full" --> R[reject bin<br/>scripted]
     B -. "when its tower is ready" .-> G
-    T --> C([final tower check])
+    T --> C{tower check<br/>after a knock and<br/>at the end of the order}
+    C -- "every tower stands" --> D([order done])
+    C -- "cubes have fallen" --> Q{rescue or spare?<br/>recovery planner<br/>PPO policy or rule}
+    Q -- "rescue: lying, or near a tower" --> S[clear the towers, stand lying cubes up<br/>GRASP + STAND-UP<br/>PPO policies]
+    S --> G
+    Q -- "rescue: upright, clear of towers" --> G
+    Q -. "spare: called up the belt<br/>also for cubes out of reach or leaning" .-> I
 ```
+
+*The recovery planner is asked only when the order has spares left; without spares the cell rescues every cube it can, and an order with a cube it cannot rescue fails.*
 
 - **One environment per skill**, each with its own observations, success checks and gates. Skills trained in front of the robot run at any station through **station frames**: the scene is rotated into the frame the skill was trained in, and its hand motions are rotated back. [workcell.md](docs/workcell.md)
 - **Transitions are verified predicates, never timers.** A grasp counts only with both fingers in contact and the cube lifted and not slipping. In pick-and-place, switching on timers instead costs 18 points. [pick_and_place.md](docs/pick_and_place.md)
