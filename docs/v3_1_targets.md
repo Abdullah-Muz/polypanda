@@ -49,6 +49,20 @@ uv run python scripts/make_disturbance_suite.py --out eval_sets/disturbance_suit
 
 **Stopping rule:** at most 3 training rounds per skill. Each round starts from a root-cause diagnosis of the previous round's failures, and rounds are compared on the development sets only. After the last round, or earlier if a round meets the target on development, the chosen configuration is locked and run once on the one-shot set. The result is reported as it comes, whatever it is.
 
+*Locked on 2026-11-16, before either one-shot set was run. Both skills met their targets on development after one round each, so both stop there.*
+- *Grasp: round 1, `runs/grasp_anypose6_seed{0,1,2}`, best checkpoints (`configs/grasp_anypose6_cartesian_ppo.yaml`). Development: `results/grasp/round_grasp_anypose6.json`. Models, sha256 prefixes:*
+  - *seed 0: `best_model.zip` `897b90bf9e2a`, `best_vecnormalize.pkl` `c70cdec7c2e8`*
+  - *seed 1: `d17f8a091596`, `754b19539a97`*
+  - *seed 2: `4cae67a2bc88`, `10762481f437`*
+- *Stand-up: round 12, `runs/standup_round12_seed{0,1,2}`, best checkpoints, the turn direction chosen by each run's turn chooser (`turn_chooser_best.pt`, `scripts/train_turn_chooser.py --ensemble 5`). Config: `configs/standup_v3_r12_ppo.yaml`. Development: `results/standup/round_standup_round12.json`. Models, sha256 prefixes (model, normalizer, chooser):*
+  - *seed 0: `e5c25dc9f7ce`, `43ef8fdd1d99`, `1476c38bc477`*
+  - *seed 1: `62eae05022ea`, `57545a722b2e`, `220d2079f565`*
+  - *seed 2: `ce418cfd1874`, `bfb6f230dd22`, `2461153519d2`*
+- *Each one-shot run, once:*
+  - *the grasp on `grasp_lying_final_v2`, nominal and with the size condition (`evaluate_grasp_robustness.py --conditions size`);*
+  - *the stand-up on `standup_final_v2` with `--choose chooser`, nominal and with the size condition.*
+  - *Baselines on the same cases: the scripted skill (`scripted-v4` grasp, `scripted` stand-up), and the v3.0 skill. For the grasp that is `grasp_anypose5` (v3.0's cell grasp) and `grasp_anypose4` (v3.0's one-shot-tested grasp); for the stand-up, `standup_round11`.*
+
 ## The recovery planner and clutter
 
 **The task is v3.0's, unchanged:** 2 spares per order, a spare rides the belt like any arrival, and an order counts only if it is complete within 1.5 × its undisturbed time.
