@@ -145,11 +145,6 @@ def main() -> None:
               "versions": {"python": platform.python_version(), "mujoco": mujoco.__version__,
                            "numpy": np.__version__, "torch": torch.__version__},
               "summary": summary}
-    if args.compare:
-        with open(args.compare) as f:
-            other = [row["success"] == "True" for row in csv.DictReader(f)]
-        record["paired_comparison"] = {"against": str(args.compare),
-                                       **mcnemar_exact([e.success for e in episodes], other)}
     args.out_dir.mkdir(parents=True, exist_ok=True)
     (args.out_dir / f"{name}.json").write_text(json.dumps(record, indent=2) + "\n")
     with open(args.out_dir / f"{name}_episodes.csv", "w", newline="") as f:
@@ -162,6 +157,17 @@ def main() -> None:
             writer = csv.DictWriter(f, fieldnames=columns)
             writer.writeheader()
             writer.writerows(attempts)
+    if args.compare:  # after the results are written, so a bad compare file cannot lose a run
+        with open(args.compare) as f:
+            other = {int(row["index"]): row["success"] == "True" for row in csv.DictReader(f)}
+        mine = {e.index: e.success for e in episodes}
+        if set(other) != set(mine):
+            raise ValueError(f"the {len(other)} orders in {args.compare} do not match this "
+                             f"run's {len(mine)}; results were written, pair them separately")
+        record["paired_comparison"] = {"against": str(args.compare),
+                                       **mcnemar_exact([mine[i] for i in sorted(mine)],
+                                                       [other[i] for i in sorted(mine)])}
+        (args.out_dir / f"{name}.json").write_text(json.dumps(record, indent=2) + "\n")
 
     s = summary
     lo, hi = s["success_ci95"]
