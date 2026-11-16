@@ -1,0 +1,117 @@
+{
+  "name": "grasp_anypose6_seed2_best_grasp_lying_final_v2_size",
+  "condition": "size",
+  "grasp": "PPO grasp policy grasp_anypose6_seed2",
+  "grasp_provenance": {
+    "run_dir": "runs/grasp_anypose6_seed2",
+    "checkpoint": "best",
+    "policy_id": "grasp_anypose6_seed2",
+    "trained_at": "400c682c9bfc11cb32c1bf03ef73f50ba35cad4e"
+  },
+  "protocol": "GraspV4Env, 15 s horizon",
+  "gripper": {
+    "finger_stiffness": 1000.0,
+    "torsional_friction": true
+  },
+  "eval_set": {
+    "name": "grasp_lying_final_v2",
+    "n": 200,
+    "digest": "f6bacc6ad73a"
+  },
+  "perturbation_seed": 20261026,
+  "created_utc": "2026-11-16T19:44:24+00:00",
+  "git": {
+    "commit": "13f690c656e7dd344559e06a3ac9c12207042690",
+    "dirty": false
+  },
+  "versions": {
+    "python": "3.12.3",
+    "mujoco": "3.16.0",
+    "numpy": "2.5.4",
+    "torch": "2.14.1+cpu"
+  },
+  "summary": {
+    "episodes": 200,
+    "success_rate": 0.98,
+    "success_ci95": [
+      0.9497121344948062,
+      0.9921956998236058
+    ],
+    "first_success_s": {
+      "median": 3.1750000000000003,
+      "p90": 3.8000000000000003
+    },
+    "success_fraction_median": 0.79,
+    "retry_rate": 0.0,
+    "max_cube_tilt_deg": {
+      "median": 89.99999999999784,
+      "max": 90.0
+    },
+    "final_lift_cm_median": 9.95812382935108,
+    "floor_contact_episode_rate": 0.505,
+    "return": {
+      "mean": 121.8444249881974,
+      "std": 19.18366454731999
+    },
+    "by_region": {
+      "far": {
+        "n": 127,
+        "success_rate": 0.9921259842519685,
+        "success_ci95": [
+          0.9567449252236082,
+          0.9986087237687615
+        ]
+      },
+      "near": {
+        "n": 73,
+        "success_rate": 0.958904109589041,
+        "success_ci95": [
+          0.8859972266493555,
+          0.9859263147657112
+        ]
+      }
+    },
+    "failures": {
+      "never_closed": 4
+    },
+    "inference_latency_us": {
+      "median": 822.0275049097836,
+      "p99": 1742.453856859357
+    },
+    "wall_clock_s": 296.1,
+    "by_level": {
+      "0.85-0.925": {
+        "n": 60,
+        "success_rate": 0.9666666666666667,
+        "success_ci95": [
+          0.8863601247107462,
+          0.9908108735098498
+        ]
+      },
+      "0.925-1": {
+        "n": 49,
+        "success_rate": 0.9591836734693877,
+        "success_ci95": [
+          0.8628671652316889,
+          0.9887346030720717
+        ]
+      },
+      "1-1.075": {
+        "n": 52,
+        "success_rate": 1.0,
+        "success_ci95": [
+          0.9312054095871178,
+          1.0
+        ]
+      },
+      "1.075-1.15": {
+        "n": 39,
+        "success_rate": 1.0,
+        "success_ci95": [
+          0.9103301463997611,
+          1.0
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,332 @@
+{
+  "grasp": {
+    "set": "grasp_lying_final_v2",
+    "target": 85.0,
+    "configs": {
+      "grasp_anypose6": {
+        "nominal": {
+          "cases": 600,
+          "success": 97.83333333333333,
+          "ci95": [
+            96.3285379408066,
+            98.72950377079462
+          ],
+          "per_seed": {
+            "0": 95.5,
+            "1": 99.5,
+            "2": 98.5
+          },
+          "failures": {
+            "never_closed": 13
+          }
+        },
+        "size": {
+          "cases": 600,
+          "success": 96.66666666666667,
+          "ci95": [
+            94.90755207798911,
+            97.83200081137791
+          ],
+          "per_seed": {
+            "0": 93.0,
+            "1": 99.0,
+            "2": 98.0
+          },
+          "failures": {
+            "never_closed": 19,
+            "dropped": 1
+          }
+        },
+        "size_gap": -1.1666666666666572
+      },
+      "grasp_anypose5": {
+        "nominal": {
+          "cases": 600,
+          "success": 95.5,
+          "ci95": [
+            93.53189194367529,
+            96.88917212345754
+          ],
+          "per_seed": {
+            "0": 95.0,
+            "1": 95.0,
+            "2": 96.5
+          },
+          "failures": {
+            "never_closed": 22,
+            "dropped": 3,
+            "knocked_over": 2
+          },
+          "paired_new_vs_this": {
+            "only_first": 26,
+            "only_second": 12,
+            "p_value": 0.03355243967962451
+          }
+        },
+        "size": {
+          "cases": 600,
+          "success": 95.66666666666667,
+          "ci95": [
+            93.72635612213898,
+            97.02592063388445
+          ],
+          "per_seed": {
+            "0": 96.0,
+            "1": 93.5,
+            "2": 97.5
+          },
+          "failures": {
+            "never_closed": 22,
+            "knocked_over": 2,
+            "dropped": 2
+          },
+          "paired_new_vs_this": {
+            "only_first": 23,
+            "only_second": 17,
+            "p_value": 0.42959050784338615
+          }
+        },
+        "size_gap": 0.1666666666666714
+      },
+      "grasp_anypose4": {
+        "nominal": {
+          "cases": 600,
+          "success": 87.66666666666667,
+          "ci95": [
+            84.79338854199106,
+            90.06067914728376
+          ],
+          "per_seed": {
+            "0": 84.5,
+            "1": 88.0,
+            "2": 90.5
+          },
+          "failures": {
+            "never_closed": 60,
+            "knocked_over": 9,
+            "dropped": 5
+          },
+          "paired_new_vs_this": {
+            "only_first": 69,
+            "only_second": 8,
+            "p_value": 3.137352112678877e-13
+          }
+        },
+        "size": {
+          "cases": 600,
+          "success": 87.16666666666667,
+          "ci95": [
+            84.25204089809866,
+            89.60838872450437
+          ],
+          "per_seed": {
+            "0": 84.5,
+            "1": 85.5,
+            "2": 91.5
+          },
+          "failures": {
+            "never_closed": 66,
+            "knocked_over": 8,
+            "dropped": 3
+          },
+          "paired_new_vs_this": {
+            "only_first": 71,
+            "only_second": 14,
+            "p_value": 2.427174154689865e-10
+          }
+        },
+        "size_gap": -0.5
+      },
+      "scripted": {
+        "nominal": {
+          "cases": 200,
+          "success": 84.5,
+          "ci95": [
+            78.83919410627442,
+            88.86043148536146
+          ],
+          "per_seed": {
+            "0": 84.5
+          },
+          "failures": {
+            "dropped": 29,
+            "knocked_over": 2
+          },
+          "paired_new_vs_this": {
+            "only_first": 93,
+            "only_second": 13,
+            "p_value": 4.542762798571598e-16
+          }
+        },
+        "size": {
+          "cases": 200,
+          "success": 85.0,
+          "ci95": [
+            79.39430617334484,
+            89.2864734123727
+          ],
+          "per_seed": {
+            "0": 85.0
+          },
+          "failures": {
+            "dropped": 29,
+            "knocked_over": 1
+          },
+          "paired_new_vs_this": {
+            "only_first": 86,
+            "only_second": 16,
+            "p_value": 9.134661595410852e-13
+          }
+        },
+        "size_gap": 0.5
+      }
+    },
+    "target_met": true,
+    "size_bar_met": true
+  },
+  "standup": {
+    "set": "standup_final_v2",
+    "target": 90.0,
+    "configs": {
+      "standup_round12": {
+        "nominal": {
+          "cases": 600,
+          "success": 90.0,
+          "ci95": [
+            87.33917715791705,
+            92.15186817582611
+          ],
+          "per_seed": {
+            "0": 94.5,
+            "1": 90.5,
+            "2": 85.0
+          },
+          "failures": {
+            "never_released": 48,
+            "tower_hit": 6,
+            "not_stood": 4,
+            "toppled": 2
+          }
+        },
+        "size": {
+          "cases": 600,
+          "success": 88.33333333333333,
+          "ci95": [
+            85.51733941233279,
+            90.66157903250442
+          ],
+          "per_seed": {
+            "0": 93.0,
+            "1": 91.5,
+            "2": 80.5
+          },
+          "failures": {
+            "never_released": 57,
+            "not_stood": 6,
+            "toppled": 4,
+            "tower_hit": 3
+          }
+        },
+        "size_gap": -1.6666666666666714
+      },
+      "standup_round11": {
+        "nominal": {
+          "cases": 600,
+          "success": 88.16666666666667,
+          "ci95": [
+            85.3361127593803,
+            90.51159299656632
+          ],
+          "per_seed": {
+            "0": 94.0,
+            "1": 87.0,
+            "2": 83.5
+          },
+          "failures": {
+            "never_released": 54,
+            "not_stood": 9,
+            "tower_hit": 7,
+            "toppled": 1
+          },
+          "paired_new_vs_this": {
+            "only_first": 36,
+            "only_second": 25,
+            "p_value": 0.20003136851310316
+          }
+        },
+        "size": {
+          "cases": 600,
+          "success": 76.83333333333333,
+          "ci95": [
+            73.29316940097965,
+            80.03207351040638
+          ],
+          "per_seed": {
+            "0": 84.0,
+            "1": 81.5,
+            "2": 65.0
+          },
+          "failures": {
+            "never_released": 106,
+            "not_stood": 26,
+            "toppled": 6,
+            "tower_hit": 1
+          },
+          "paired_new_vs_this": {
+            "only_first": 94,
+            "only_second": 25,
+            "p_value": 1.3416994462479385e-10
+          }
+        },
+        "size_gap": -11.333333333333343
+      },
+      "scripted": {
+        "nominal": {
+          "cases": 200,
+          "success": 90.5,
+          "ci95": [
+            85.63973488560237,
+            93.83373863501365
+          ],
+          "per_seed": {
+            "0": 90.5
+          },
+          "failures": {
+            "tower_hit": 9,
+            "never_released": 8,
+            "toppled": 2
+          },
+          "paired_new_vs_this": {
+            "only_first": 34,
+            "only_second": 37,
+            "p_value": 0.8125886494061618
+          }
+        },
+        "size": {
+          "cases": 200,
+          "success": 90.0,
+          "ci95": [
+            85.05931364369145,
+            93.43300588284289
+          ],
+          "per_seed": {
+            "0": 90.0
+          },
+          "failures": {
+            "never_released": 12,
+            "tower_hit": 6,
+            "toppled": 2
+          },
+          "paired_new_vs_this": {
+            "only_first": 42,
+            "only_second": 52,
+            "p_value": 0.3533280324715825
+          }
+        },
+        "size_gap": -0.5
+      }
+    },
+    "target_met": true,
+    "size_bar_met": true
+  }
+}
