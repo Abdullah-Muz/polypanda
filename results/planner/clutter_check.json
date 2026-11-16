@@ -1,0 +1,56 @@
+{
+  "reps": 50,
+  "clutter_model": {
+    "factors": {
+      "under 6 cm": 0.8812897822445561,
+      "6-20 cm": 0.9821447807095499,
+      "none within 20 cm": 1.0
+    },
+    "clear_odds": {
+      "lying": 0.9542857142857143,
+      "upright": 0.9583333333333334
+    },
+    "clear_time_s": 19.205516017304575,
+    "places": {
+      "none within 20 cm": 4781,
+      "under 6 cm": 148,
+      "6-20 cm": 309
+    },
+    "clears": {
+      "lying": 173,
+      "upright": 22
+    },
+    "runs": [
+      "cell_P-grasp_anypose5_seed0_best_L-place_stack_v3_seed0_best_S-standup_round11_seed0_best_aim-fixture_h1-4_mixed-s3_disturbance_calib_v1_recover_spares2-random3_slack1.5_n200_skills.csv",
+      "cell_P-grasp_anypose5_seed1_best_L-place_stack_v3_seed1_best_S-standup_round11_seed1_best_aim-fixture_h1-4_mixed-s3_disturbance_calib_v1_recover_spares2-random3_slack1.5_n200_skills.csv",
+      "cell_P-grasp_anypose5_seed2_best_L-place_stack_v3_seed2_best_S-standup_round11_seed2_best_aim-fixture_h1-4_mixed-s3_disturbance_calib_v1_recover_spares2-random3_slack1.5_n200_skills.csv"
+    ]
+  },
+  "policies": {
+    "rescue every cube": {
+      "orders": 470,
+      "physics": 84.25531914893617,
+      "symbolic v3.0": 87.08510638297872,
+      "symbolic with clutter": 86.63829787234043
+    },
+    "best rule": {
+      "orders": 470,
+      "physics": 88.29787234042553,
+      "symbolic v3.0": 92.57872340425531,
+      "symbolic with clutter": 85.67234042553191
+    },
+    "learned planner": {
+      "orders": 470,
+      "physics": 86.17021276595744,
+      "symbolic v3.0": 93.2595744680851,
+      "symbolic with clutter": 86.38297872340425
+    }
+  },
+  "ranked_as_physics": false,
+  "within_3_points": {
+    "rescue every cube": true,
+    "best rule": true,
+    "learned planner": true
+  },
+  "passed": false
+}
