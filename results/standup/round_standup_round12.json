@@ -1,0 +1,125 @@
+{
+  "new": "standup_round12",
+  "old": "standup_round11",
+  "turn": "each run's turn chooser",
+  "sets": {
+    "standup_v1": {
+      "cases": 600,
+      "new": 93.5,
+      "old": 91.5,
+      "per_seed": {
+        "0": {
+          "new": 96.0,
+          "old": 94.5
+        },
+        "1": {
+          "new": 95.0,
+          "old": 90.5
+        },
+        "2": {
+          "new": 89.5,
+          "old": 89.5
+        }
+      },
+      "paired": {
+        "only_first": 30,
+        "only_second": 18,
+        "p_value": 0.11140289106101875
+      },
+      "failures": {
+        "new": {
+          "never_released": 33,
+          "tower_hit": 4,
+          "not_stood": 2
+        },
+        "old": {
+          "never_released": 43,
+          "not_stood": 4,
+          "tower_hit": 4
+        }
+      }
+    },
+    "standup_final_v1": {
+      "cases": 600,
+      "new": 92.83333333333333,
+      "old": 87.66666666666667,
+      "per_seed": {
+        "0": {
+          "new": 95.0,
+          "old": 89.5
+        },
+        "1": {
+          "new": 95.0,
+          "old": 90.5
+        },
+        "2": {
+          "new": 88.5,
+          "old": 83.0
+        }
+      },
+      "paired": {
+        "only_first": 47,
+        "only_second": 16,
+        "p_value": 0.00011705541630032301
+      },
+      "failures": {
+        "new": {
+          "never_released": 31,
+          "not_stood": 8,
+          "toppled": 3,
+          "tower_hit": 1
+        },
+        "old": {
+          "never_released": 62,
+          "not_stood": 6,
+          "toppled": 3,
+          "tower_hit": 3
+        }
+      }
+    }
+  },
+  "size": {
+    "standup_v1": {
+      "cases": 600,
+      "new": 89.5,
+      "old": 77.33333333333333,
+      "per_seed": {
+        "0": {
+          "new": 88.5,
+          "old": 78.5
+        },
+        "1": {
+          "new": 92.5,
+          "old": 79.5
+        },
+        "2": {
+          "new": 87.5,
+          "old": 74.0
+        }
+      },
+      "paired": {
+        "only_first": 94,
+        "only_second": 21,
+        "p_value": 3.240204200619262e-12
+      },
+      "failures": {
+        "new": {
+          "never_released": 47,
+          "not_stood": 8,
+          "tower_hit": 5,
+          "toppled": 3
+        },
+        "old": {
+          "never_released": 100,
+          "not_stood": 27,
+          "tower_hit": 6,
+          "toppled": 3
+        }
+      },
+      "gap_to_nominal": {
+        "new": -4.0,
+        "old": -14.166666666666671
+      }
+    }
+  }
+}
