@@ -88,10 +88,11 @@ flowchart LR
     B -. "when its tower is ready" .-> G
     T --> C{tower check<br/>after a knock and<br/>at the end of the order}
     C -- "every tower stands" --> D([order done])
-    C -- "a tower was knocked over:<br/>cubes have fallen" --> Q{rescue or spare?<br/>recovery planner<br/>PPO policy or rule}
+    C -- "a tower collapsed:<br/>cubes have fallen" --> Q{rescue or spare?<br/>recovery planner<br/>PPO policy or rule}
     Q -- "rescue: lying, or near a tower" --> S[clear the towers, stand lying cubes up<br/>GRASP + STAND-UP<br/>PPO policies]
-    S -- "REBUILD: routed like a new arrival" --> G
-    Q -- "rescue: upright, clear of towers" --> G
+    Q -- "rescue: upright, clear of towers" --> RB
+    S --> RB[REBUILD the collapsed tower<br/>its missing cubes are needed again:<br/>each is re-grasped and re-stacked]
+    RB --> G
     Q -. "spare: called up the belt<br/>also for cubes out of reach or leaning" .-> I
 ```
 
