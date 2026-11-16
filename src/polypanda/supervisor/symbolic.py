@@ -21,6 +21,10 @@ factor set by how near the nearest cube on the floor lies to that tower (CLUTTER
 planner may also answer CLEAR: the cube is taken to the reject bin (its own odds and time), and
 off the floor if that succeeds, then replaced. Without a clutter model the cell plays exactly as
 in v3.0.
+
+Time spread (v3.1, amendment of 2026-11-15): with Calibration.add_time_spread, every action's
+time gets Gaussian noise around its mean (its variance fitted on calibration runs), drawn from a
+stream of its own; without it every action takes its mean time, as in v3.0.
 """
 
 import csv
@@ -28,7 +32,7 @@ import itertools
 import json
 from collections import Counter, defaultdict
 from collections.abc import Callable, Generator
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 import numpy as np
@@ -157,13 +161,15 @@ class Calibration:
     clutter: dict | None = None
     clear_odds: dict = field(default_factory=dict)
     clutter_counts: dict = field(default_factory=dict)   # places, clears behind the fit
+    # v3.1 (add_time_spread): the variance (s^2) of each action's time; None: fixed times
+    time_var: dict | None = None
 
     def p(self, key: tuple) -> float:
         return self.odds[key]
 
     def perfect(self) -> "Calibration":
-        """Every skill always succeeds (undisturbed times; an ablation): clutter costs nothing
-        and every clear succeeds."""
+        """Every skill always succeeds (undisturbed times; an ablation): clutter costs nothing,
+        every clear succeeds, and every action takes its mean time."""
         return Calibration({k: 1.0 for k in self.odds}, self.counts, self.times, self.knocks,
                            self.by_height, None, {k: 1.0 for k in self.clear_odds},
                            self.clutter_counts)
@@ -212,6 +218,32 @@ class Calibration:
 
     def clutter_factor(self, distance: float) -> float:
         return 1.0 if self.clutter is None else self.clutter[clutter_band(distance)]
+
+    def add_time_spread(self, skills_csvs: list[Path]) -> "Calibration":
+        """v3.1 (docs/v3_1_targets.md, amendment of 2026-11-15): this calibration plus a spread
+        on each action's time, from the _skills.csv (and _episodes.csv) files of calibration
+        runs. An order's duration less its actions at this calibration's mean times (the clear's
+        too, if fitted) leaves a residual; its square is fitted on the order's action counts
+        (and a constant, the overhead's) by non-negative least squares, which gives each action
+        a variance. The mean times, and everything else, stay as they are."""
+        from scipy.optimize import nnls
+
+        names = ACTIONS + ("clear", "overhead")
+        X, y = [], []
+        for path in sorted(skills_csvs):
+            used = defaultdict(Counter)
+            for r in csv.DictReader(open(path)):
+                if r["skill"] != "knock" and (a := action(r)) is not None:
+                    used[int(r["order"])][a] += 1
+            episodes = Path(str(path).replace("_skills.csv", "_episodes.csv"))
+            for e in csv.DictReader(open(episodes)):
+                c = used[int(e["index"])]
+                c["reject"], c["overhead"] = int(e["rejected"]), 1
+                known = sum(self.times.get(a, 0.0) * c[a] for a in names)
+                X.append([c[a] for a in names])
+                y.append((float(e["sim_s"]) - known) ** 2)
+        var, _ = nnls(np.array(X, dtype=float), np.array(y))
+        return replace(self, time_var=dict(zip(names, map(float, var), strict=True)))
 
     @classmethod
     def from_calibration_run(cls, root: Path = Path()) -> "Calibration":
@@ -369,14 +401,25 @@ class SymbolicCell:
         self.loose: list[Loose] = []
         self.slot: dict[int, str] = {}
         self.spares, self.staged, self.failed, self.knocked = task.spares, 0, False, False
-        self.t = cal.times["overhead"]
+        # (v3.1) with a time spread, its own stream: the skills' outcomes stay those without it
+        self.time_rng = rng.spawn(1)[0] if cal.time_var else None
+        self.t = 0.0
+        self.spend("overhead")
         self.floor: list[np.ndarray] = []   # (v3.1) written-off cubes left where they lie
         self.cleared = self.cleared_ok = 0
 
     # --- skills -----------------------------------------------------------------------------
+    def spend(self, action: str | None) -> None:
+        """The time `action` takes: its mean, plus Gaussian noise with a time spread."""
+        if not action:
+            return
+        self.t += self.cal.times.get(action, 0.0)
+        if self.time_rng is not None and (var := self.cal.time_var.get(action, 0.0)) > 0:
+            self.t += float(self.time_rng.normal(0.0, np.sqrt(var)))
+
     def roll(self, key: tuple, factor: float = 1.0) -> bool:
-        self.t += self.cal.times.get(_time_key(key) or "", 0.0)
-        p = self.cal.p(key) if factor == 1.0 else min(1.0, self.cal.p(key) * factor)
+        self.spend(_time_key(key))
+        p =self.cal.p(key) if factor == 1.0 else min(1.0, self.cal.p(key) * factor)
         return bool(self.rng.random() < p)
 
     def nearest_floor_cube(self, t: int) -> float:
@@ -455,7 +498,7 @@ class SymbolicCell:
                 return
             self.slot[where] = colour
         else:
-            self.t += self.cal.times["reject"]
+            self.spend("reject")
 
     def write_off(self, c: Loose, gone: bool = False) -> None:
         """Give up on cube c (and call a spare, if one is needed and left). It stays on the
@@ -472,7 +515,7 @@ class SymbolicCell:
     def clear(self, c: Loose) -> None:
         """v3.1: take cube c to the reject bin (its odds by pose, its fitted time), then write
         it off; if the clear fails, it stays on the floor."""
-        self.t += self.cal.times.get("clear", 0.0)
+        self.spend("clear")
         ok = bool(self.rng.random() < self.cal.clear_odds.get(c.pose, 0.0))
         self.cleared += 1
         self.cleared_ok += ok

@@ -4,7 +4,8 @@ Usage: uv run python scripts/planner_gate_v31.py [--reps 50] [--family-reps 10] 
            [--out results/planner/gate_v31.json]
 
 The clutter-aware symbolic cell (the v3.0 calibration plus Calibration.add_clutter from the v3.1
-calibration run) plays the knocked calibration orders (each with the knock the v3.0 physics run
+calibration run, and the time spread from both calibration runs, Calibration.add_time_spread)
+plays the knocked calibration orders (each with the knock the v3.0 physics run
 saw, per skills seed) under the v3.0 task (2 spares, deadline 1.5 x the undisturbed time).
 - Rules: the 2,187 ClearRules (rescue, leave or clear by pose and distance band to the nearest
   tower; and after a failed attempt). Each is scored with `family-reps` rolls per order, the
@@ -55,7 +56,8 @@ def setup():
     runs = sorted(Path().glob(V31_RUNS + "_skills.csv"))
     if len(runs) != 3:
         raise SystemExit(f"expected the 3 v3.1 calibration runs, found {len(runs)}")
-    CAL = v30.add_clutter(runs)
+    CAL = v30.add_clutter(runs).add_time_spread(sorted(Path().glob(V30_RUNS + "_skills.csv"))
+                                                + runs)
     cfg = CellEvalConfig(mixed=True, seed=ORDERS_SEED, n=200)
     ORDERS = [mixed_order(np.random.default_rng([cfg.seed, i]), cfg.heights, cfg.surplus,
                           cfg.solvable_with)[0] for i in range(cfg.n)]
@@ -124,7 +126,8 @@ def main() -> None:
         "orders": n, "reps": args.reps, "family_reps": args.family_reps,
         "task": {"spares": TASK.spares, "slack": TASK.slack},
         "clutter_model": {"factors": CAL.clutter, "clear_odds": CAL.clear_odds,
-                          "clear_time_s": CAL.times["clear"], **CAL.clutter_counts},
+                          "clear_time_s": CAL.times["clear"], **CAL.clutter_counts,
+                          "time_sd_s": {a: v ** 0.5 for a, v in CAL.time_var.items()}},
         "rescue_all": rate(wins(lambda s, i: RESCUE_ALL, reps4, 5), reps4),
         "v30_best_rule": str(BEST_RULE),
         "v30_best_rule_rate": rate(wins(lambda s, i: BEST_RULE, reps4, 5), reps4),

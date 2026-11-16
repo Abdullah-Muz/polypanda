@@ -184,6 +184,52 @@ def test_the_clutter_model_is_fitted_from_a_calibration_run(tmp_path):
                                             CLEAR_BAND: 3}
 
 
+def test_the_time_spread_is_fitted_from_calibration_runs(tmp_path):
+    """add_time_spread: squared duration residuals (at the mean times) fitted on the action
+    counts and a constant: 1 belt pick, residual 3 s; 2 picks, sqrt 13; none, sqrt 5 -> a belt
+    pick's variance 4, the overhead's 5."""
+    import csv
+
+    cols = ["skill", "success", "order", "source", "pose"]
+    picks = [{"skill": "pick", "success": "True", "order": o, "source": "belt", "pose": "upright"}
+             for o in (0, 1, 1)]
+    path = tmp_path / "run_seed0_skills.csv"
+    with open(path, "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=cols)
+        w.writeheader()
+        w.writerows(picks)
+    with open(tmp_path / "run_seed0_episodes.csv", "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=["index", "rejected", "sim_s"])
+        w.writeheader()
+        w.writerows([{"index": 0, "rejected": 0, "sim_s": 5 + 10 + 3},
+                     {"index": 1, "rejected": 0, "sim_s": 5 + 20 + np.sqrt(13)},
+                     {"index": 2, "rejected": 0, "sim_s": 5 + np.sqrt(5)}])
+    cal = calibration().add_time_spread([path])
+    assert cal.time_var["pick_belt"] == pytest.approx(4.0)
+    assert cal.time_var["overhead"] == pytest.approx(5.0)
+    assert all(v == pytest.approx(0.0, abs=1e-9) for a, v in cal.time_var.items()
+               if a not in ("pick_belt", "overhead"))
+    assert cal.times == calibration().times and cal.odds == calibration().odds
+    assert calibration().time_var is None
+
+
+def test_a_time_spread_varies_durations_but_not_skill_outcomes():
+    """With a spread, each action's time is noisy (its own stream), so the skills' outcomes are
+    those of the same cell without it; undisturbed times (deadlines) stay fixed."""
+    from dataclasses import replace
+
+    cal = calibration(0.8)
+    noisy = replace(cal, time_var={a: 4.0 for a in (*ACTIONS, "overhead")})
+    times = []
+    for seed in range(40):
+        a = SymbolicCell(ORDER, KNOCK, fallen(), cal, np.random.default_rng(seed), NO_SPARES)
+        b = SymbolicCell(ORDER, KNOCK, fallen(), noisy, np.random.default_rng(seed), NO_SPARES)
+        assert a.result() == b.result() and a.towers == b.towers and a.failed == b.failed
+        times.append(b.t - a.t)
+    assert np.std(times) > 1.0 and abs(np.mean(times)) < 3.0
+    assert undisturbed_time(ORDER, noisy) == undisturbed_time(ORDER, cal)
+
+
 def test_clear_rules_answer_by_pose_and_distance_band():
     from polypanda.supervisor.symbolic import (
         CLEAR,

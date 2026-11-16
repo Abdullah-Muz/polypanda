@@ -5,7 +5,9 @@ Usage: uv run python scripts/clutter_check.py [--reps 50] [--out results/planner
 
 The symbolic cell: the v3.0 calibration (odds and action times, disturbance_calib_v1) plus the
 clutter model and the clear action fitted on the v3.1 calibration run (random rescue / leave /
-clear on the same calibration orders; Calibration.add_clutter). Nothing is fitted on the suite.
+clear on the same calibration orders; Calibration.add_clutter), and (amendment of 2026-11-15)
+the spread of the action times fitted on both calibration runs (Calibration.add_time_spread).
+Nothing is fitted on the suite.
 It plays every knocked order of disturbance_suite_v1, for each skills seed, with the knock
 outcome that seed's physics run saw (where each fallen cube came to rest), `reps` times with
 the same random streams for every policy, under the v3.0 task (2 spares, deadline 1.5 x the
@@ -27,6 +29,7 @@ from polypanda.simulation.disturbances import load_suite
 from polypanda.supervisor.planner import mixed_order
 from polypanda.supervisor.symbolic import (
     BEST_RULE,
+    CALIBRATION_RUNS,
     RESCUE_ALL,
     Calibration,
     SymbolicCell,
@@ -67,7 +70,8 @@ def main() -> None:
     v31_runs = sorted(Path().glob(V31_CALIBRATION + "_skills.csv"))
     if len(v31_runs) != 3:
         raise SystemExit(f"expected the 3 v3.1 calibration runs, found {len(v31_runs)}")
-    v31 = v30.add_clutter(v31_runs)
+    v30_runs = sorted(Path().glob(CALIBRATION_RUNS))
+    v31 = v30.add_clutter(v31_runs).add_time_spread(v30_runs + v31_runs)
     cfg = CellEvalConfig(mixed=True)
     orders = [mixed_order(np.random.default_rng([cfg.seed, i]), cfg.heights, cfg.surplus,
                           cfg.solvable_with)[0] for i in range(cfg.n)]
@@ -77,6 +81,7 @@ def main() -> None:
     report = {"reps": args.reps,
               "clutter_model": {"factors": v31.clutter, "clear_odds": v31.clear_odds,
                                 "clear_time_s": v31.times["clear"], **v31.clutter_counts,
+                                "time_sd_s": {a: v ** 0.5 for a, v in v31.time_var.items()},
                                 "runs": [p.name for p in v31_runs]},
               "policies": {}}
     for name, tag in POLICIES.items():
