@@ -106,6 +106,27 @@ The v3.1 cell (new skills, new planner) runs `disturbance_suite_v2` once, 3 seed
 - recoverable knocks completed: D1 at least 90 %, D2 at least 85 %, D3 at least 80 %;
 - undisturbed orders (D0): at least 99 %.
 
+*Locked on 2026-11-16, before any run on `disturbance_suite_v2`. Every configuration runs the suite's 200 orders once (`--seed 20261203 --n 200`), with v3.0's cell settings (`--mixed --slots 3 --aim fixture --recover`). Every run must record this commit with a clean tree.*
+
+*The skills:*
+- *v3.1: seed k uses `grasp_anypose6_seed{k}`, `place_stack_v3_seed{k}` and `standup_round12_seed{k}` (with its turn chooser), the models locked above.*
+- *v3.0: seed k uses `grasp_anypose5_seed{k}`, `place_stack_v3_seed{k}` and `standup_round11_seed{k}`.*
+
+| # | Configuration | Skills | Recovery | Runs | Used for |
+|---|---|---|---|---|---|
+| 1 | **the v3.1 cell** | v3.1 | `--spares 2 --slack 1.5 --recovery-planner clear-rule` | 3 seeds | the recovery target (against 2) and D0 |
+| 2 | the best rule | v3.1 | `--spares 2 --slack 1.5 --recovery-planner best-rule` | 3 seeds | the recovery target |
+| 3 | the v3.0 planner | v3.1 | `--spares 2 --slack 1.5 --recovery-planner run:runs/recovery_planner_seed{k}` | 3 seeds | beside, no target |
+| 4 | v3.1 recovery, no spares | v3.1 | none beyond `--recover` (rescue every cube, no deadline) | 3 seeds | the regression check (recoverable D1/D2/D3) and D0 |
+| 5 | the v3.0 cell | v3.0 | as 4 (v3.0's headline configuration) | 3 seeds | beside 4 |
+| 6 | the scripted cell | scripted | as 4 | 1 run | baseline |
+| 7 | the scripted cell, no recovery (v2) | scripted | none (no `--recover`) | 1 run | baseline |
+
+- *The recovery target compares 1 with 2 using `scripts/pair_cell_runs.py`. That is the exact McNemar test on knocked orders (D1–D3), pooled over the 3 seeds and paired by seed and order.*
+- *The regression check reads the recoverable knocks of 4, as v3.0 measured its targets.*
+- *D0 is read from 1 and 4.*
+- *Smoke-tested on 2 calibration orders (not on the suite), with configurations 1, 3 and 5.*
+
 ## Deliverables
 
 - Updated `recovery.md`, `results.md` and the model cards, with every v3.1 result next to its v3.0 result.
