@@ -644,6 +644,31 @@ CLEAR_RULE_FAMILY = tuple(ClearRule(tuple(a), after)
                           for after in (RESCUE, LEAVE, CLEAR))
 
 
+@dataclass(frozen=True)
+class ClutterClearRule:
+    """v3.1's recovery policy (docs/v3_1_targets.md, amendment of 2026-11-15, fixed before any
+    physics run): the v3.0 best rule, except that a cube it would leave for a spare, lying
+    within `within` of a tower of the order that still needs cubes, is cleared to the reject
+    bin instead. It reads the cube's distance and that tower's need from the decision features
+    (13 and 14), which the symbolic and the physics cell both build. (After a failed rescue
+    attempt the v3.0 best rule retries, so this rule does too.)"""
+    base: Rule = BEST_RULE
+    within: float = CLUTTER_BANDS[0][0]   # m: 6 cm
+
+    def __call__(self, d: Decision) -> int:
+        if not self.base(d):
+            return RESCUE
+        gap, needs = float(d.features[13]) * CLEAR_RADIUS, float(d.features[14])
+        return CLEAR if gap < self.within and needs > 0 else LEAVE
+
+    def __str__(self) -> str:
+        return (f"{self.base}; but clear to the bin a cube it would leave within "
+                f"{100 * self.within:g} cm of a tower that still needs cubes")
+
+
+CLEAR_NEAR_RULE = ClutterClearRule()
+
+
 def load_planner(run_dir: Path) -> Callable[[Decision], bool]:
     """A trained recovery planner (scripts/train_recovery_planner.py) as a policy: True to
     replace. It sees what it was trained to see (its run's `blind`)."""

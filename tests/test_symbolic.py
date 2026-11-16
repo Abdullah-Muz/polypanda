@@ -230,6 +230,26 @@ def test_a_time_spread_varies_durations_but_not_skill_outcomes():
     assert undisturbed_time(ORDER, noisy) == undisturbed_time(ORDER, cal)
 
 
+def test_the_clear_rule_bins_only_what_the_best_rule_would_leave_beside_an_unfinished_tower():
+    from polypanda.supervisor.symbolic import CLEAR, CLEAR_NEAR_RULE, LEAVE, RESCUE
+
+    def ask(pose, near, gap_m, needs, retry=False):
+        f = np.zeros(SymbolicCell.N_FEATURES, dtype=np.float32)
+        f[13], f[14] = min(1.0, gap_m / 0.20), needs / 4
+        return CLEAR_NEAR_RULE(Decision(Loose("red", pose, True, near), retry, f))
+    assert ask("upright", True, 0.03, 2) == CLEAR
+    assert ask("lying", True, 0.05, 1) == CLEAR
+    assert ask("upright", True, 0.03, 0) == LEAVE          # that tower is finished
+    assert ask("upright", True, 0.10, 2) == LEAVE          # 6-20 cm: as the best rule
+    assert ask("lying", False, 0.50, 2) == LEAVE
+    assert ask("upright", False, 0.50, 2) == RESCUE        # the best rule rescues it
+    assert ask("upright", True, 0.03, 2, retry=True) == RESCUE   # after a failure: retry
+    assert "6 cm of a tower that still needs cubes" in str(CLEAR_NEAR_RULE)
+    # in the cell: the knocked cube lies 2.6 cm from tower A, which still needs 2 cubes
+    ok, cell = play(at(3.0), CLEAR_NEAR_RULE, clutter_cal(), Task(spares=2, slack=None))
+    assert ok and (cell.cleared, cell.cleared_ok) == (1, 1) and not cell.floor
+
+
 def test_clear_rules_answer_by_pose_and_distance_band():
     from polypanda.supervisor.symbolic import (
         CLEAR,
