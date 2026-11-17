@@ -1,0 +1,97 @@
+{
+  "a": {
+    "0": "results/cell/cell_P-grasp_anypose6_seed0_best_L-place_stack_v3_seed0_best_S-standup_round12_seed0_best_aim-fixture_h1-4_mixed-s3_disturbance_suite_v2_recover_spares2-clear-rule_slack1.5_n200_episodes.csv",
+    "1": "results/cell/cell_P-grasp_anypose6_seed1_best_L-place_stack_v3_seed1_best_S-standup_round12_seed1_best_aim-fixture_h1-4_mixed-s3_disturbance_suite_v2_recover_spares2-clear-rule_slack1.5_n200_episodes.csv",
+    "2": "results/cell/cell_P-grasp_anypose6_seed2_best_L-place_stack_v3_seed2_best_S-standup_round12_seed2_best_aim-fixture_h1-4_mixed-s3_disturbance_suite_v2_recover_spares2-clear-rule_slack1.5_n200_episodes.csv"
+  },
+  "b": {
+    "0": "results/cell/cell_P-grasp_anypose6_seed0_best_L-place_stack_v3_seed0_best_S-standup_round12_seed0_best_aim-fixture_h1-4_mixed-s3_disturbance_suite_v2_recover_spares2-best-rule_slack1.5_n200_episodes.csv",
+    "1": "results/cell/cell_P-grasp_anypose6_seed1_best_L-place_stack_v3_seed1_best_S-standup_round12_seed1_best_aim-fixture_h1-4_mixed-s3_disturbance_suite_v2_recover_spares2-best-rule_slack1.5_n200_episodes.csv",
+    "2": "results/cell/cell_P-grasp_anypose6_seed2_best_L-place_stack_v3_seed2_best_S-standup_round12_seed2_best_aim-fixture_h1-4_mixed-s3_disturbance_suite_v2_recover_spares2-best-rule_slack1.5_n200_episodes.csv"
+  },
+  "kinds": [
+    "D1",
+    "D2",
+    "D3"
+  ],
+  "recoverable_only": false,
+  "warnings": [],
+  "pooled": {
+    "pairs": 465,
+    "a_rate": 0.8602150537634409,
+    "b_rate": 0.864516129032258,
+    "only_a": 11,
+    "only_b": 13,
+    "p_value": 0.8388197422027588
+  },
+  "by_seed": {
+    "0": {
+      "pairs": 150,
+      "a_rate": 0.74,
+      "b_rate": 0.74,
+      "only_a": 4,
+      "only_b": 4,
+      "p_value": 1.0
+    },
+    "1": {
+      "pairs": 157,
+      "a_rate": 0.9299363057324841,
+      "b_rate": 0.9171974522292994,
+      "only_a": 5,
+      "only_b": 3,
+      "p_value": 0.7265625
+    },
+    "2": {
+      "pairs": 158,
+      "a_rate": 0.9050632911392406,
+      "b_rate": 0.930379746835443,
+      "only_a": 2,
+      "only_b": 6,
+      "p_value": 0.2890625
+    }
+  },
+  "by_kind": {
+    "D1": {
+      "pairs": 329,
+      "a_rate": 0.9422492401215805,
+      "b_rate": 0.9422492401215805,
+      "only_a": 0,
+      "only_b": 0,
+      "p_value": 1.0
+    },
+    "D2": {
+      "pairs": 53,
+      "a_rate": 0.8679245283018868,
+      "b_rate": 0.9433962264150944,
+      "only_a": 0,
+      "only_b": 4,
+      "p_value": 0.125
+    },
+    "D3": {
+      "pairs": 83,
+      "a_rate": 0.5301204819277109,
+      "b_rate": 0.5060240963855421,
+      "only_a": 11,
+      "only_b": 9,
+      "p_value": 0.8238029479980469
+    }
+  },
+  "counts": {
+    "a": {
+      "cleared": 90,
+      "cleared_ok": 86,
+      "replaced": 487,
+      "spares_used": 581,
+      "rescued": 119,
+      "left": 397
+    },
+    "b": {
+      "cleared": 0,
+      "cleared_ok": 0,
+      "replaced": 487,
+      "spares_used": 581,
+      "rescued": 175,
+      "left": 487
+    }
+  }
+}
