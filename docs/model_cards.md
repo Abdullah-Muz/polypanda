@@ -22,9 +22,9 @@ Trained policies are published as GitHub Release assets: `scripts/fetch_models.s
 | Transport | `transport_slow_seed{0,1,2}` | pick-and-place (the cell's moves are scripted) |
 | Place on a table | `place_cart_seed{0,1,2}` | pick-and-place |
 | Place on a tower | `place_stack_v3_seed{0,1,2}`, **aimed at the fixture** | the work-order cell |
-| Grasp, upright or lying (v3) | `grasp_anypose5_seed{0,1,2}` for recovery in the cell; `grasp_anypose4_seed{0,1,2}` is the one-shot-tested version | the cell with recovery |
-| Stand a cube upright (v3) | `standup_round11_seed{0,1,2}` with its turn chooser, shield and re-planning | the cell with recovery |
-| Rescue or replace (v3) | `recovery_planner_seed{0,1,2}` | the cell with spares and a deadline; the best hand-written rule did better in physics |
+| Grasp, upright or lying (v3) | `grasp_anypose6_seed{0,1,2}` (v3.1); seed 0 knocks over rotated upright cubes in the cell, see its card | the cell with recovery |
+| Stand a cube upright (v3) | `standup_round12_seed{0,1,2}` (v3.1) with its own turn chooser, shield and re-planning | the cell with recovery |
+| Rescue, replace or clear (v3) | a hand-written rule: the clear rule (v3.1, `symbolic.CLEAR_NEAR_RULE`) or the best rule (`symbolic.BEST_RULE`), level in physics (p = 0.84); `recovery_planner_seed{0,1,2}` is published for comparison | the cell with spares and a deadline |
 
 ## Reach: PPO v2 (`reach_ppo_v2_seed{0,1,2}`), recommended
 
@@ -127,7 +127,7 @@ v1 plus a charge for every millimetre a tower cube moves, failing at 5 mm. Not c
 | Use | the cell aims it at the fixture by default (`LearnedCell(aim="fixture")`). Aimed at the cube below, as trained, its small repeatable error adds up into a leaning stack: 20 of 165 Layer 1 and 38 of 124 Layer 2 orders failed ([workcell.md](workcell.md#v3-in-the-cell-a-root-cause-analysis)) |
 | Limitations | seed 0 nudges towers most and has 4 of the 5 Layer 2 failures; a first cube placed 6–8 mm off on the table can leave an overhang that creeps |
 
-## Grasp a cube upright or lying on its side: round 4 (`grasp_anypose4_seed{0,1,2}`) and round 5 (`grasp_anypose5_seed{0,1,2}`) (Milestone 10)
+## Grasp a cube upright or lying on its side: round 4 (`grasp_anypose4_seed{0,1,2}`) and round 5 (`grasp_anypose5_seed{0,1,2}`) (Milestone 10, superseded by v3.1)
 
 | | |
 |---|---|
@@ -137,7 +137,7 @@ v1 plus a charge for every millimetre a tower cube moves, failing at 5 mm. Not c
 | In the work-order cell | round 5 does every pick in v3 recovery: 96.6–99.6 % of about 2400 picks per seed |
 | Limitations | not trained with randomized cube size: on upright cubes it loses ground to a different size or friction (84 % vs scripted 92 %); seed 0 knocks over and times out on cubes far more often than seeds 1–2; misses are mostly fingers that never close on a lying cube |
 
-## Stand a held cube upright beside towers: round 11 (`standup_round11_seed{0,1,2}`) (Milestone 10)
+## Stand a held cube upright beside towers: round 11 (`standup_round11_seed{0,1,2}`) (Milestone 10, superseded by v3.1)
 
 | | |
 |---|---|
@@ -148,6 +148,29 @@ v1 plus a charge for every millimetre a tower cube moves, failing at 5 mm. Not c
 | In the work-order cell | runs on the cell's scene through the spot's station frame: 81.8 / 95.7 / 91.5 % of stand-ups per seed on the calibration orders |
 | Limitations | most failures are freezes in front of a tower; not trained with randomized cube size; seed 0's stand-ups time out more in the cell, where the cube comes from the learned grasp rather than the trained start |
 
+## Grasp a cube upright or lying on its side: v3.1 round 1 (`grasp_anypose6_seed{0,1,2}`) (Milestone 11), recommended
+
+| | |
+|---|---|
+| Task | as round 5 (`GraspV4Env`, `grasp_v4`, hand motion `cartesian-v1-4d`, the cell's gripper), now with cube size randomized ×0.85–1.15 at constant density (not observed) |
+| Training | 1M steps warm-started from `grasp_anypose5` (best), learning rate 3e-4 → 3e-5; 40 % of cubes near the base (x 0.30–0.40 m, was 30 %); otherwise as round 5 (`configs/grasp_anypose6_cartesian{,_ppo}.yaml`) |
+| Files (sha256 prefix) | seed 0 `best_model.zip` `897b90bf9e2a`, `best_vecnormalize.pkl` `c70cdec7c2e8`; seed 1 `d17f8a091596`, `754b19539a97`; seed 2 `4cae67a2bc88`, `10762481f437` (locked at 13f690c) |
+| Held-out result | **97.8 %** (96.3–98.7) on the one-shot lying set `grasp_lying_final_v2` (95.5 / 99.5 / 98.5; target 85 %); size varied 96.7 % (bar met, −1.2). Paired on the same cases: `anypose5` 95.5 % (p = 0.034), `anypose4` 87.7 %, scripted 84.5 %. Development: lying 97.0–97.8 % (v3.0 92.7–94.8 %), upright 95.0 % (v3.0 95.2 %) |
+| In the work-order cell | `disturbance_suite_v2`, rescue every cube, no spares: 91.1 / 99.5 / 99.5 % of 2384 / 2378 / 2403 picks per seed (v3.0's `anypose5` on the same orders: 97.4 / 99.2 / 99.8 %). Seed 0 knocks over 32 of 1590 belt picks and 35 of 224 upright floor picks; seeds 1 and 2 knock over 2 picks each |
+| Limitations | **seed 0, in the cell:** upright cubes turned 5–15° clockwise on the belt, or 35–45° on the floor, get knocked over (a finger lands on the top edge while the gripper is open, or the hand turns too little and never closes); v3.0's seed 0 had the same floor weakness on the other side of 45°. Upright cubes smaller than about ×0.95: the hand rests more than 1 cm below the centre and the fixed closing window never fires (seed 2: 62 % on these cubes). Seed 0 also knocks over the largest upright cubes (79.5 %). See [recovery.md](recovery.md#seed-0s-grasp-in-the-cell-what-the-skill-tests-missed) and [v3_2_candidates.md](v3_2_candidates.md) |
+
+## Stand a held cube upright beside towers: v3.1 round 12 (`standup_round12_seed{0,1,2}`) (Milestone 11), recommended
+
+| | |
+|---|---|
+| Task | as round 11 (`StandUpV3Env`, `standup`, hand motion `cartesian-v1-6d`), now with cube size randomized ×0.85–1.15 at constant density, and 30 % of training episodes starting from the grips the v3.1 grasp really hands over (`data/handoff/standup_handoffs_grasp_anypose6_seed{0,1,2}.npz`: 193 / 195 / 200 recorded hand-offs) |
+| Policy | commanded, as round 11; each run has its own turn chooser (`turn_chooser_best.pt`, 5 networks, 600 of the run's starts, `scripts/train_turn_chooser.py --ensemble 5`): on held-out starts 94.2 / 95.8 / 95.0 % (a random reachable command: 93.4 / 96.5 / 89.9 %); shield and re-planning as round 11 |
+| Training | 600k steps warm-started from round 11 (best), learning rate 3e-4 → 3e-5 (`configs/standup_v3_r12{,_ppo}.yaml`) |
+| Files (sha256 prefix: model, normalizer, chooser) | seed 0 `e5c25dc9f7ce`, `43ef8fdd1d99`, `1476c38bc477`; seed 1 `62eae05022ea`, `57545a722b2e`, `220d2079f565`; seed 2 `ce418cfd1874`, `bfb6f230dd22`, `2461153519d2` (locked at 13f690c) |
+| Held-out result | **90.0 %** (87.3–92.2) on the one-shot set `standup_final_v2` (94.5 / 90.5 / 85.0; target 90 %); size varied 88.3 % (bar met, −1.7; round 11: 76.8 %). Paired: round 11 88.2 % (p = 0.2), scripted 90.5 % (p = 0.81). Development: `standup_final_v1` 92.8 % (round 11 87.7 %, p = 0.0001) |
+| In the work-order cell | `disturbance_suite_v2`, rescue every cube, no spares: 89.0 / 94.9 / 90.6 % of 209 / 177 / 191 stand-ups per seed (round 11 on the same orders: 83.5 / 95.2 / 91.4 %) |
+| Limitations | most failures are still freezes where the cube is never released (48 of 60 one-shot failures); seed 2 is the weakest on the one-shot set (85.0 %); the chooser beats a random reachable command only for seed 2 |
+
 ## Rescue or replace: recovery planner (`recovery_planner_seed{0,1,2}`) (Milestone 10)
 
 | | |
@@ -156,7 +179,7 @@ v1 plus a charge for every millimetre a tower cube moves, failing at 5 mm. Not c
 | Policy | PPO, 64 × 64, 13 observations (`SymbolicCell.features`), no observation normalization; `model.zip` and `meta.json` (git commit, task, calibration odds and action times) |
 | Training | 500k decisions in the symbolic cell (`supervisor/symbolic.py`), γ = 1, 8 envs, about 10 min each |
 | Held-out result | symbolic cell: **94.3 %** (94.2 / 94.5 / 94.3) of 10,000 held-out games each, against the best hand-written rule 92.5 % (p < 1e-29 per seed); physics cell, `disturbance_suite_v1`: **86.2 %** of 470 knocked orders, against the best rule 88.3 % (p = 0.08) |
-| Limitations | trained in a symbolic cell that does not model a cube left for a spare as clutter; in physics those cubes get in the way of later placements, and the planner leaves more of them than it should. Use `symbolic.BEST_RULE` in physics. Ablations (`recovery_planner_blind-situation_*`, `_blind-clock_*`, `_perfect_*`) are published for the comparison |
+| Limitations | trained in a symbolic cell that does not model a cube left for a spare as clutter; in physics those cubes get in the way of later placements, and the planner leaves more of them than it should. Use `symbolic.BEST_RULE` in physics. On `disturbance_suite_v2` with the v3.1 skills (v3.1 final run): 84.3 % of 465 knocked orders, against the best rule 86.5 % and the v3.1 clear rule 86.0 %. Ablations (`recovery_planner_blind-situation_*`, `_blind-clock_*`, `_perfect_*`) are published for the comparison |
 
 ## Pilots and failed attempts
 

@@ -248,3 +248,32 @@ The work-order cell with one knock per order: it reads its towers, notices the k
 - **Every recovery target is met with learned skills only**, level with the scripted cell on the same orders. About a third of knocks cannot be recovered by any robot; they are run and reported, not counted in the targets.
 - **Both new skills just miss their own targets** on one-shot sets, and neither was trained with randomized cube size.
 - **The learned planner beats every hand-written rule in the symbolic cell, not in physics.** Headroom checks before training had shown rules to be near-optimal; in physics, the cubes it leaves for spares get in the way of later placements, which the symbolic cell does not model.
+
+## v3.1: new skills and a clutter-clearing rule (Milestone 11)
+
+Targets were committed before the work ([v3_1_targets.md](v3_1_targets.md)); full analysis: [recovery.md](recovery.md#v31-milestone-11-new-skills-and-clearing-clutter). Learned numbers pool 3 seeds (600 cases), with Wilson 95 % intervals and exact McNemar tests paired on the same cases. v3.0's numbers sit beside every v3.1 number.
+
+| Skill, fresh one-shot set (600 cases) | **v3.1 learned** | v3.0 learned, same cases | Scripted | Size ×0.85–1.15 (v3.1) | Target |
+|---|---|---|---|---|---|
+| Grasp a cube lying on its side, `grasp_lying_final_v2` | **97.8 %** (96.3–98.7) | 95.5 % (`anypose5`, p = 0.034); 87.7 % (`anypose4`, p = 3e-13) | 84.5 % (p = 5e-16) | 96.7 % (gap −1.2; bar 5) | 85 %: **met** |
+| Stand a held cube upright beside towers, `standup_final_v2` | **90.0 %** (87.3–92.2) | 88.2 % (round 11, p = 0.2) | 90.5 % (p = 0.81) | 88.3 % (gap −1.7); v3.0 76.8 % (p = 1e-10) | 90 %: **met** |
+
+v3.0's own one-shot results were 84.8 % (grasp) and 87.7 % (stand-up), both just short. Both v3.1 skills were trained with a randomized cube size.
+
+| Held-out disturbance suite v2 (200 new orders, 3 seeds) | **v3.1 cell**: clear rule, 2 spares, deadline | Best rule, same skills and spares | v3.0 learned planner, same skills and spares | v3.1 skills, no spares | v3.0 cell | Scripted, recovery | Scripted, no recovery |
+|---|---|---|---|---|---|---|---|
+| All orders | **87.0 %** | 87.2 % | 85.7 % | 78.0 % | 81.5 % | 82.0 % | 21.5 % |
+| Knocked orders (D1–D3) | **86.0 %** | 86.5 % | 84.3 % | 75.4 % | 77.5 % | 77.2 % | 0.6 % |
+| No knock (D0, planned controls) | 96.3 % | 95.4 % | 96.3 % | 95.4 % | 96.3 % | 36/36 | 36/36 |
+
+| Target or regression bar | Result | Bar | |
+|---|---|---|---|
+| Knocked orders: clear rule better than the best rule | 86.0 % vs 86.5 %; 11 vs 13 orders only one completed; p = 0.84 | p < 0.05 | **missed** |
+| Recoverable D1 (v3.1 skills, no spares) | 90.6 % (242/267) | 90 % | met |
+| Recoverable D2 | 89.2 % (33/37) | 85 % | met |
+| Recoverable D3 | 89.8 % (53/59) | 80 % | met |
+| No knock (D0) | 96.3 % (v3.1 cell), 95.4 % (no spares) | 99 % | **missed** (all misses on seed 0; the v3.0 cell: 96.3 %) |
+
+- **Both new skills meet their targets,** and the stand-up is now level with the scripted planner.
+- **The clear rule removed the clutter but not the losses.** Tower places with a loose cube within 6 cm fell from 243 to 19, and failed places from 119 to 71. But failed places are mostly retried, and clearing costs time: 37 knocked orders finished late against 26.
+- **Seed 0's grasp is the weak point.** It knocks over 2.0 % of upright belt cubes and 16 % of upright floor cubes in the cell; seeds 1–2 almost never do. Both trace to the cube's rotation relative to the hand. On seeds 1 and 2, the v3.1 cell completes 93.5 % of all orders and every order with no knock. Proposed fixes: [v3_2_candidates.md](v3_2_candidates.md).

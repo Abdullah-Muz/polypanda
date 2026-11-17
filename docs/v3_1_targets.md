@@ -131,3 +131,14 @@ The v3.1 cell (new skills, new planner) runs `disturbance_suite_v2` once, 3 seed
 
 - Updated `recovery.md`, `results.md` and the model cards, with every v3.1 result next to its v3.0 result.
 - A v3.1 release: models archive, release notes, verified from a fresh clone.
+
+## Results, as they came (2026-11-17)
+
+- **Grasp, one-shot** (6d50e22): 97.8 % on `grasp_lying_final_v2` (target 85 %), size varied 96.7 % (gap −1.2, bar 5). **Met.**
+- **Stand-up, one-shot** (6d50e22): 90.0 % on `standup_final_v2` (target 90 %), size varied 88.3 % (gap −1.7, bar 5). **Met.**
+- **The recovery planner:** the clutter-aware symbolic cell failed its check twice (amendments above). No planner was trained, and the headroom gate was not run.
+- **The final cell run** (locked in 37230c4, results in 285e445; every run recorded the lock commit with a clean tree):
+  - **Recovery target:** on the 465 knocked orders, the clear rule completed 86.0 % and the best rule 86.5 %. 11 orders were completed only with the clear rule, 13 only with the best rule (exact McNemar p = 0.84; `results/cell/v31_final_target_clear-rule_vs_best-rule.json`). Both runs labelled the same orders as knocked, so the pairing dropped none. **Missed.**
+  - **Regression check, configuration 4:** recoverable D1 90.6 % (242/267), D2 89.2 % (33/37), D3 89.8 % (53/59). **Met.**
+  - **D0:** read on the suite's 36 planned controls per seed, as in v3.0. Configuration 1: 96.3 % (104/108); configuration 4: 95.4 % (103/108). **Missed.** Every miss is on seed 0, mostly the grasp knocking a cube over. The v3.0 cell on the same orders: 96.3 %. The cell's own D0 label, which also counts planned-knock orders that failed before their knock was due: 88.9 % and 83.7 %.
+- **The grasp near other cubes** (no separate target): v3.1's seed 0 grasp knocks over upright cubes in the cell, on the belt (2.0 %) and on the floor (16 %). It was diagnosed, but not fixed in v3.1: [recovery.md](recovery.md#seed-0s-grasp-in-the-cell-what-the-skill-tests-missed), [v3_2_candidates.md](v3_2_candidates.md).

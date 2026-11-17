@@ -19,7 +19,10 @@ next time a cube is placed on a tower at least 2 cubes tall, that tower is knock
 notices and rebuilds it (with --standup run:DIR, lying cubes are stood up by the learned stand-up;
 --pick run:runs/grasp_anypose5_seed1 grasps them). --auto-knock knocks one random tower in every
 order, as the disturbance suites do. --spares N with --recovery-planner rescue-all | best-rule |
-run:DIR calls spare cubes up the belt. (K also toggles the viewer's skybox; the hall hides it.)
+clear-rule | run:DIR calls spare cubes up the belt (clear-rule, v3.1: a cube left for a spare
+within 6 cm of a tower that still needs cubes goes to the reject bin first); --slack S sets the
+deadline, S x the order's undisturbed time. (K also toggles the viewer's skybox; the hall hides
+it.)
 """
 
 import argparse
@@ -35,7 +38,13 @@ from polypanda.simulation.disturbances import Knock, make_suite
 from polypanda.simulation.workcell import TOWERS, Workcell, WorkcellConfig, WorkOrder
 from polypanda.supervisor.cell import LearnedCell
 from polypanda.supervisor.planner import mixed_order
-from polypanda.supervisor.symbolic import BEST_RULE, Calibration, load_planner
+from polypanda.supervisor.symbolic import (
+    BEST_RULE,
+    CLEAR_NEAR_RULE,
+    Calibration,
+    load_planner,
+    undisturbed_time,
+)
 from polypanda.visualization.viewer import fast_rendering
 
 KEY_K = 75  # GLFW key code
@@ -74,7 +83,11 @@ def main() -> None:
                         help="v3, with --recover: one random knock per order")
     parser.add_argument("--spares", type=int, default=0, help="v3, with --recover: spare cubes")
     parser.add_argument("--recovery-planner", default="rescue-all",
-                        help="v3, with --spares: rescue-all, best-rule or run:<planner run dir>")
+                        help="v3, with --spares: rescue-all, best-rule, clear-rule (v3.1) or "
+                             "run:<planner run dir>")
+    parser.add_argument("--slack", type=float,
+                        help="v3, with --recover: an order counts only if complete within "
+                             "slack x its undisturbed time (the v3.0 and v3.1 task: 1.5)")
     parser.add_argument("--replay", type=int, metavar="INDEX",
                         help="replay evaluation order INDEX exactly as evaluate_cell.py ran it "
                              "(same order, knock, jitter and policies), again and again")
@@ -94,10 +107,15 @@ def main() -> None:
     if args.spares:
         if args.recovery_planner == "best-rule":
             replace = BEST_RULE
+        elif args.recovery_planner == "clear-rule":
+            replace = CLEAR_NEAR_RULE
         elif args.recovery_planner.startswith("run:"):
             replace = load_planner(Path(args.recovery_planner[4:]))
-        spares = {"spares": args.spares, "replace": replace,
-                  "times": Calibration.from_calibration_run().times}
+        elif args.recovery_planner != "rescue-all":
+            parser.error("--recovery-planner must be rescue-all, best-rule, clear-rule or run:DIR")
+    calibration = Calibration.from_calibration_run() if args.spares or args.slack else None
+    if args.spares or args.slack:
+        spares = {"spares": args.spares, "replace": replace, "times": calibration.times}
     cell = Workcell.build(WorkcellConfig(n_cubes=(14 if args.mixed else 12) + args.spares))
     if not args.shadows:
         fast_rendering(cell.model)
@@ -138,7 +156,7 @@ def main() -> None:
                 config = CellEvalConfig(seed=args.orders_seed, mixed=True, recover=args.recover,
                                         disturbances=(str(args.disturbances)
                                                       if args.disturbances else None),
-                                        spares=args.spares)
+                                        spares=args.spares, slack=args.slack)
                 while True:
                     for lamps in (("green", "amber", "red"), ("red",), ("amber",), ("green",)):
                         cell.set_stack_light(*lamps)
@@ -173,6 +191,9 @@ def main() -> None:
                     if knock is not None:
                         print(f"  a knock will hit tower {TOWERS[knock.tower]} at height "
                               f"{knock.height}")
+                    if args.slack:
+                        spares["deadline"] = args.slack * undisturbed_time(order, calibration)
+                        print(f"  deadline: {spares['deadline']:.0f} s simulated")
                     towers = controller.run_mixed_order(order, rng, slots=args.slots,
                                                         batch_choice=args.batch_choice,
                                                         log=lambda s: print("  " + s),

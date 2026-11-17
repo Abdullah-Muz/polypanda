@@ -1,6 +1,6 @@
 """Package trained runs for a GitHub Release: policies, normalization statistics and provenance.
 
-Usage: uv run python scripts/package_models.py --tag v3.0
+Usage: uv run python scripts/package_models.py --tag v3.1
 Writes dist/polypanda-models-<tag>.tar.gz containing runs/<name>/ for every run listed in RUNS
 (only what loading and auditing need: metadata, configs, best and final checkpoints with their
 observation normalization, validation history and learning curves; no TensorBoard logs or
@@ -37,6 +37,8 @@ RUNS = [
     "grasp_anypose_seed0", "grasp_anypose_seed1",
     *(f"grasp_anypose{r}_seed{s}" for r in (3, 4, 5) for s in range(3)),
     *(f"standup_round{r}_seed{s}" for r in (2, 4, 5, 6, 7, 8, 9, 10, 11) for s in range(3)),
+    # v3.1: Milestone 11 (docs/recovery.md): the grasp's round 1 and the stand-up's round 12
+    *(f"{name}_seed{s}" for name in ("grasp_anypose6", "standup_round12") for s in range(3)),
 ]
 # Stopped early (docs/workcell.md: the three stacking v3 attempts that did not learn; v3: the
 # lying-cube grasp's round 2, the first stand-up and its round 3)
@@ -50,7 +52,7 @@ PLANNERS = [f"recovery_planner{tag}_seed{s}" for tag in ("", "_blind-situation",
 FILES = ["metadata.yaml", "config.yaml", "env_config.yaml", "best_model.zip",
          "best_vecnormalize.pkl", "final_model.zip", "final_vecnormalize.pkl",
          "learning_curves.png", "eval/evaluations.npz",
-         "turn_chooser_best.pt", "turn_outcomes_best.npz"]   # (v3 stand-up rounds 6-11)
+         "turn_chooser_best.pt", "turn_outcomes_best.npz"]   # (v3 stand-up rounds 6-12)
 STOPPED_FILES = ["config.yaml", "env_config.yaml", "eval/evaluations.npz"]
 PLANNER_FILES = ["model.zip", "meta.json"]
 SHARED = ["choosers"]   # directories under runs/ packaged whole
@@ -62,7 +64,7 @@ def sha256(data: bytes) -> str:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--tag", default="v3.0")
+    parser.add_argument("--tag", default="v3.1")
     parser.add_argument("--runs-dir", type=Path, default=Path("runs"))
     parser.add_argument("--out-dir", type=Path, default=Path("dist"))
     args = parser.parse_args()

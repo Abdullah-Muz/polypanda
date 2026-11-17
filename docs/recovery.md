@@ -1,8 +1,10 @@
-# Recovering from knocks (Milestone 10, v3.0)
+# Recovering from knocks (Milestones 10–11, v3.0 and v3.1)
 
 In v2 the cell built its towers blind: once a cube was placed, the controller assumed it stayed there. v3 closes the loop. The cell reads the towers as they physically stand, notices when one is knocked, and rebuilds it. Recovery needs two skills the robot did not have: grasping a cube that lies on its side, and standing it upright beside the other towers. Both are learned with PPO. On top of them, a learned planner decides, for each fallen cube, whether to rescue it or to replace it with a spare.
 
 Every target was committed before the work it measures ([v3_targets.md](v3_targets.md)), including two dated amendments made when measurements showed a target could not mean what it said. Every result is reported as it came, misses included.
+
+*v3.1 (Milestone 11) retrained both new skills, which now meet their targets, and replaced the planner with a hand-written rule that clears clutter, which did not beat the best rule (86.0 % against 86.5 % of knocked orders, p = 0.84). It has its own section: [v3.1](#v31-milestone-11-new-skills-and-clearing-clutter). The sections before it describe v3.0.*
 
 **Headline:**
 - **The cell recovers from knocks with learned skills only.** On a held-out suite of 200 orders with one knock each (3 seeds), the learned cell completes 93.2 % of orders after a single cube falls, 87.5 % after part of a tower falls and 91.5 % after a whole tower falls, counting the knocks a robot can physically recover from. Targets: 90 / 85 / 80 %. That is level with the scripted cell on the same orders (77.5 % against 78.5 % of all orders, p = 0.58).
@@ -167,6 +169,231 @@ Run once on the held-out suite with spares and the deadline (all learned skills,
 5. **A simulator that matches the averages can still miss a mechanism.** The symbolic cell reproduced every rate it was calibrated on, but not the clutter that the planner's own choices created.
 6. **Selection on a development set costs points.** The stand-up went from 91.5 % on its development set, where 11 rounds were compared, to 87.7 % on its one-shot set.
 
+## v3.1 (Milestone 11): new skills, and clearing clutter
+
+v3.0 left three things short. Both new skills missed their one-shot targets by a little, neither was trained with a varied cube size, and the learned recovery planner lost to the best hand-written rule in physics, because cubes left for a spare got in the way. v3.1 is one more round on each, under the same rules. The targets were committed before the work ([v3_1_targets.md](v3_1_targets.md)), the one-shot sets and the cell's suite are new, every run uses 3 seeds, and every result is reported as it came.
+
+**Headline:**
+- **Both skills now meet their targets on fresh one-shot sets.**
+  - Grasping a lying cube: **97.8 %** (target 85 %; v3.0 84.8 % on its own one-shot set).
+  - Standing a cube upright beside towers: **90.0 %** (target 90 %; v3.0 87.7 %).
+  - Each lost under 2 points when the cube size was varied.
+- **The recovery target was missed.** The cell's recovery is a hand-written rule that clears clutter. It is the v3.0 best rule, except that a cube it would leave for a spare is taken to the reject bin when it lies within 6 cm of a tower that still needs cubes.
+  - On the new held-out suite, the clear rule completed **86.0 %** of knocked orders, against **86.5 %** for the best rule (p = 0.84). The target asked for a significant gain.
+  - The rule did remove the clutter: places with a loose cube within 6 cm of the tower fell from 243 to 19. But clearing costs time, and the orders it saved from a failed place were matched by orders that ran late.
+- **The v3 recovery targets still hold for recoverable knocks.** Without spares, the cell completes D1 90.6 %, D2 89.2 % and D3 89.8 % (bars 90 / 85 / 80 %).
+- **D0 missed its bar.** Orders with no knock completed 95.4–96.3 % (bar 99 %), every miss on seed 0. The v3.0 cell misses it on the same orders too (96.3 %).
+- **A weakness found in the cell, not in the skill tests.** Seed 0's new grasp knocks over upright cubes:
+  - on the belt: 32 of 1,590 picks;
+  - on the floor: 35 of 224 picks.
+  - Both were traced to one cause, the cube's rotation relative to the hand. On seeds 1 and 2, the v3.1 cell completes 93.5 % of all orders, and every order with no knock (72/72).
+
+| Part | What | Result |
+|---|---|---|
+| Grasp, round 1 | size randomized, more practice near the base | one-shot **97.8 %** (target 85 %); size varied 96.7 % |
+| Stand-up, round 12 | size randomized, starts from the new grasp's real hand-offs | one-shot **90.0 %** (target 90 %); size varied 88.3 % |
+| Recovery planner | clutter-aware symbolic cell, then a hand-written clearing rule | the symbolic cell failed its check twice; no planner was trained |
+| Final cell run | `disturbance_suite_v2`, 7 configurations | clear rule 86.0 % vs best rule 86.5 % of knocked orders (p = 0.84): **target missed**. Regression bars D1–D3 met, D0 missed |
+
+### The grasp, round 1 (`grasp_anypose6`)
+
+Round 1 continued training from v3.0's cell grasp (`grasp_anypose5`) for 1M steps, with the same reward and schedule (learning rate 3e-4 → 3e-5). Two settings changed:
+- **Cube size randomized**, ×0.85–1.15 at constant density, as the v3 targets had asked. The policy is not told the size.
+- **More practice near the base:** 40 % of training cubes at x 0.30–0.40 m, up from 30 %, aimed at v3.0 seed 0 knocking over upright cubes there.
+
+**Development sets** (3 seeds, 600 cases each; seeds 0 / 1 / 2 in brackets; p from an exact paired McNemar test against v3.0's grasp on the same cases):
+
+| Set | v3.1 (round 1) | v3.0 (`grasp_anypose5`) | p |
+|---|---|---|---|
+| Lying, `grasp_lying_v1` | **97.0 %** (93.0 / 98.0 / 100) | 92.7 % (90.5 / 93.5 / 94.0) | 0.0004 |
+| Lying, `grasp_lying_final_v1` (v3.0's one-shot set) | **97.8 %** (95.5 / 99.0 / 99.0) | 94.8 % (94.0 / 93.5 / 97.0) | 0.008 |
+| Upright, `grasp_upright_v1` | 95.0 % (91.5 / 95.5 / 98.0) | 95.2 % (91.5 / 97.0 / 97.0) | 1.0 |
+| Upright near the base, x < 0.40 m (117 cases) | 94.0 % (87.2 / 100 / 94.9) | 88.9 % (74.4 / 97.4 / 94.9) | 0.11 |
+| Lying, size ×0.85–1.15 | **97.0 %** (94.0 / 97.5 / 99.5) | 92.3 % (90.5 / 91.5 / 95.0) | 0.0001 |
+| Upright, size ×0.85–1.15 | 87.8 % (85.5 / 95.0 / 83.0) | 91.3 % (86.5 / 95.5 / 92.0) | 0.02 |
+
+- Lying cubes, the skill's job, improved clearly and lose nothing when the size changes (97.0 % both ways).
+- Upright cubes of normal size did not change.
+- Upright cubes of varied size got worse: 7.2 points below normal size, against 3.8 for v3.0, mostly on the smallest cubes.
+
+**Why small upright cubes fail.**
+- The gripper closes by a fixed rule, not by the policy's choice: the hand must be within 1 cm of the cube's centre, both sideways and in height.
+- The policies come down until the palm rests on the cube's top. On a normal cube that leaves the hand just inside the window. On the smallest cubes it is more than 1 cm below the centre, and the hand waits there until time runs out.
+- Below ×0.925, seed 2 succeeds 57 % of the time. v3.0's grasp has the same trap (73 % and 82 % on these cubes for seeds 0 and 2).
+
+*What-if, evaluation only, not a result:* the window was widened to accept a hand up to 1.5 cm below the centre, as the rule for lying cubes already does. With no retraining, the 74 small upright cases then succeed 95.9 % for seed 2 (62.2 % as is) and 93.2 % for seed 0 (78.4 % as is). This is a candidate for v3.2.
+
+**Decision:** round 1 met the target on development. Under the stopping rule it was locked (13f690c) and run once on the fresh one-shot set.
+
+### The stand-up, round 12 (`standup_round12`)
+
+Round 12 continued from v3.0's stand-up (round 11) for 600k steps, as round 11 was trained. Two settings changed:
+- **Cube size randomized**, ×0.85–1.15 at constant density.
+- **Starts from real hand-offs.** 30 % of training episodes hold the cube exactly as the new grasp hands it over in the cell, not only as v3.0's synthetic grip holds it. The hand-offs were recorded from `grasp_anypose6` after the grasp was locked: 193, 195 and 200 held grasps of 200 per seed. *Amended before training: the plan first used v3.0's grasp.*
+
+**The turn chooser.** Each run gets its own, an ensemble of 5 small networks trained on 600 of the run's own starts.
+- On held-out starts, it picks a direction that works 94.2 / 95.8 / 95.0 % of the time (seeds 0 / 1 / 2).
+- Picking a random reachable direction does nearly as well (93.4 / 96.5 / 89.9 %). Only seed 2's chooser clearly beats random.
+
+**Development sets** (3 seeds, 600 starts each, each run's chooser; p against round 11, paired):
+
+| Set | v3.1 (round 12) | v3.0 (round 11) | p |
+|---|---|---|---|
+| `standup_v1` | **93.5 %** (96.0 / 95.0 / 89.5) | 91.5 % (94.5 / 90.5 / 89.5) | 0.11 |
+| `standup_final_v1` (v3.0's one-shot set) | **92.8 %** (95.0 / 95.0 / 88.5) | 87.7 % (89.5 / 90.5 / 83.0) | 0.0001 |
+| `standup_v1`, size ×0.85–1.15 | **89.5 %** (88.5 / 92.5 / 87.5) | 77.3 % (78.5 / 79.5 / 74.0) | 3e-12 |
+
+- Varying the size now costs 4.0 points instead of 14.2.
+- Most failures are still freezes, where the cube is never released (31 against 62 on `standup_final_v1`).
+
+### One-shot results
+
+Each skill was run once on its fresh one-shot set, with the locked configuration (6d50e22). Wilson 95 % intervals; p from exact McNemar tests paired on the same cases.
+
+| Grasp a lying cube, `grasp_lying_final_v2` | Nominal (600) | Size ×0.85–1.15 | Paired p (nominal) |
+|---|---|---|---|
+| **v3.1 grasp (`grasp_anypose6`)** | **97.8 %** (96.3–98.7); 95.5 / 99.5 / 98.5 | 96.7 % (94.9–97.8); gap −1.2 | |
+| v3.0 cell grasp (`grasp_anypose5`) | 95.5 % (93.5–96.9) | 95.7 % | 0.034 (26 only v3.1, 12 only v3.0) |
+| v3.0 one-shot-tested grasp (`grasp_anypose4`) | 87.7 % | 87.2 % | 3e-13 |
+| Scripted any-pose grasp (same actions, 200) | 84.5 % | 85.0 % | 5e-16 |
+
+- Target 85 %: met.
+- Size bar (within 5 points): met (−1.2).
+- The remaining misses are fingers that never close (13 of 600).
+
+| Stand a cube upright, `standup_final_v2` | Nominal (600) | Size ×0.85–1.15 | Paired p (nominal) |
+|---|---|---|---|
+| **v3.1 stand-up (round 12, its chooser)** | **90.0 %** (87.3–92.2); 94.5 / 90.5 / 85.0 | 88.3 % (85.5–90.7); gap −1.7 | |
+| v3.0 stand-up (round 11) | 88.2 % (85.3–90.5) | 76.8 % (p = 1e-10 against v3.1) | 0.2 (36 only v3.1, 25 only v3.0) |
+| Scripted 16-direction planner (200) | 90.5 % | 90.0 % | 0.81 |
+
+- Target 90 %: met, exactly.
+- Size bar: met (−1.7).
+- The stand-up is now level with the scripted planner. In v3.0 it was 5 points behind (p = 0.001), and it no longer falls apart when the size changes.
+- Seed 2 is the weakest (85.0 %).
+- Most failures are still freezes (48 of 60).
+
+### The recovery planner and clutter
+
+The plan was to make the symbolic cell see clutter, then train a new planner in it that could also clear a cube into the reject bin.
+- **New calibration run.** v3.0's calibration log held almost no clutter: its recovery rescued every reachable cube, so only 3 of its 5,066 tower places had a knocked cube within 6 cm of the tower. A new physics calibration run on the 200 calibration orders drew rescue, leave or clear at random for every decision, so the data covers the floors any planner can leave behind. The rate of failed places beside clutter was fitted from that run.
+- **The check failed twice.** Before any planner training, the clutter-aware symbolic cell had to rank v3.0's three physics results on `disturbance_suite_v1` in the right order, each within 3 points: best rule 88.3 %, learned planner 86.2 %, rescue every cube 84.3 %.
+  - First run: 85.7 / 86.4 / 86.6 %. Each was within 3 points, but in the wrong order.
+  - The diagnosis found that the clutter part matched physics, and the error was in v3.0's time model, which gave every action a fixed time. One revision added each action's measured time spread.
+  - Re-run: 85.5 / 86.2 / 86.3 %, wrong again.
+  - The remaining cause is that in physics a failed skill is usually retried at a cost in time, while the symbolic cell ends the order. That revision is left for v3.2.
+- **Decision.** Per the amendment written before the re-run, no planner was trained on the symbolic cell, and the user chose v3.1's recovery: **the clear rule**.
+  - The clear rule is the v3.0 best rule, except that a cube it would leave for a spare is taken to the reject bin and then replaced by a spare, when it lies within 6 cm of a tower of the order that still needs cubes.
+  - The 6 cm line comes from the clutter measurements. Under 6 cm, places on that tower fail about 1 in 5 (v3.0 suite_v1 runs) or about 1 in 8 (v3.1 calibration run). From 6 to 20 cm they barely do.
+  - The rule was fixed in advance, not tuned in the symbolic cell or on any suite (`ClutterClearRule`; `evaluate_cell.py --recovery-planner clear-rule`).
+
+### The final cell run (`disturbance_suite_v2`)
+
+Every configuration ran the suite's 200 held-out orders once (`--seed 20261203 --n 200`). The learned configurations used 3 seeds, the scripted ones 1 run. The configuration was locked in 37230c4 before any run, and the results are in 285e445. Every run recorded the lock commit with a clean tree.
+
+**The target:** the clear rule (1) against the best rule (2), with the same v3.1 skills, 2 spares and the 1.5× deadline. Knocked orders D1–D3 were pooled, with an exact McNemar test paired by seed and order (`scripts/pair_cell_runs.py`, `results/cell/v31_final_target_clear-rule_vs_best-rule.json`). Both runs labelled the same 465 orders as knocked, so no order had to be dropped.
+
+| Knocked orders | Clear rule (v3.1 cell) | Best rule | Only clear / only best | p |
+|---|---|---|---|---|
+| **Pooled, 3 seeds (465)** | **86.0 %** (82.6–88.9) | **86.5 %** (83.0–89.3) | 11 / 13 | **0.84** |
+| Seed 0 (150) | 74.0 % | 74.0 % | 4 / 4 | 1 |
+| Seed 1 (157) | 93.0 % | 91.7 % | 5 / 3 | 0.73 |
+| Seed 2 (158) | 90.5 % | 93.0 % | 2 / 6 | 0.29 |
+| D1, one cube (329) | 94.2 % | 94.2 % | 0 / 0 | 1 |
+| D2, part of a tower (53) | 86.8 % | 94.3 % | 0 / 4 | 0.13 |
+| D3, the whole tower (83) | 53.0 % | 50.6 % | 11 / 9 | 0.82 |
+
+**The target is missed.** The clear rule is not better than the best rule, and not significantly worse.
+
+**What the clear rule did** (over the 465 knocked orders):
+
+| | Clear rule | Best rule |
+|---|---|---|
+| Cubes cleared to the reject bin | 90 (86 landed in the bin) | 0 |
+| Cubes rescued | 119 | 175 |
+| Cubes left for a spare | 397 | 487 |
+| Spares used | 581 | 581 |
+| Tower places with a loose cube within 6 cm (all 600 orders) | 19 (14 succeeded) | 243 (194 succeeded) |
+| Failed tower places (all 600 orders) | 71 | 119 |
+| Knocked orders failed only by the deadline | 37 | 26 |
+| Knocked orders ended by a failed place | 1 | 5 |
+
+**Why it did not help.**
+- The rule removed the mechanism it was written for. Places beside a loose cube almost disappeared, and failed places fell by 40 %.
+- But a failed place is usually retried, so few orders were lost to clutter in the first place.
+- Each clearing costs a pick and a drop, and that time showed up as late orders.
+- Clutter was a real cost in v3.0's physics runs, but on this suite and with these skills it was too small to win orders back.
+
+**The regression check** (v3's recovery targets, read from configuration 4: v3.1 skills, rescue every cube, no spares):
+
+| Knocks (recoverable only) | Target | v3.1 skills (4) | v3.0 cell (5) | Scripted (6) |
+|---|---|---|---|---|
+| D1, one cube | ≥ 90 % | **90.6 %** (242/267) | 94.8 % (254/268) | 94.0 % (78/83) |
+| D2, part of a tower | ≥ 85 % | **89.2 %** (33/37) | 79.5 % (35/44) | 76.5 % (13/17) |
+| D3, the whole tower | ≥ 80 % | **89.8 %** (53/59) | 88.2 % (60/68) | 92.3 % (24/26) |
+| No knock (D0), the suite's planned controls | ≥ 99 % | **95.4 %** (103/108); v3.1 cell (1): **96.3 %** (104/108) | 96.3 % (104/108) | 36/36 |
+
+- **D1, D2 and D3 are met.** The v3.0 cell misses D2 on these orders.
+- **D0 is missed.** It is read, as in v3.0, on the suite's 36 planned no-knock orders per seed. Every miss is on seed 0, in v3.1 and in v3.0 alike:
+  - v3.1 cell: 4 of 4 began with the grasp knocking a cube over;
+  - configuration 4: 4 of 5;
+  - v3.0 cell: 2 of 4, the other 2 a tower out of tolerance.
+- The cell's own D0 label is lower: 88.9 % for the v3.1 cell, 83.7 % for configuration 4. It also counts planned-knock orders that failed before their knock was due, and those are again seed 0's knock-overs.
+
+**Side by side** (all 200 orders per seed):
+
+| Configuration | All orders | No knock (planned) | Knocked D1–D3 | Late | Spares used |
+|---|---|---|---|---|---|
+| **1 v3.1 cell: clear rule, spares, deadline** | **87.0 %** (522/600) | 96.3 % | 86.0 % | 37 | 599 |
+| 2 best rule (v3.1 skills, spares, deadline) | 87.2 % (523/600) | 95.4 % | 86.5 % | 26 | 599 |
+| 3 v3.0 learned planner (v3.1 skills, spares, deadline) | 85.7 % (514/600) | 96.3 % | 84.3 % | 29 | 508 |
+| 4 v3.1 skills, rescue every cube, no spares | 78.0 % (468/600) | 95.4 % | 75.4 % | | |
+| 5 v3.0 cell (no spares) | 81.5 % (489/600) | 96.3 % | 77.5 % | | |
+| 6 scripted cell, recovery (1 run) | 82.0 % (164/200) | 36/36 | 77.2 % | | |
+| 7 scripted cell, no recovery (v2, 1 run) | 21.5 % (43/200) | 36/36 | 0.6 % | | |
+
+- **Spares and a rule matter most.** With spares and the deadline, the v3.1 cell completes 87.0 % of all orders, against 78.0 % without spares and 82.0 % for the scripted cell. Without recovery, only 21.5 % are completed.
+- **Seed by seed, all orders:**
+
+  | Seed | Clear rule (1) | v3.1, no spares (4) | v3.0 cell (5) |
+  |---|---|---|---|
+  | 0 | 74.0 % | 62.0 % | 72.0 % |
+  | 1 | 94.5 % | 86.0 % | 85.0 % |
+  | 2 | 92.5 % | 86.0 % | 87.5 % |
+
+  Like for like (4 against 5), the v3.1 skills trail the v3.0 cell only because of seed 0. Seeds 1 and 2 are level.
+- **Seeds 1 and 2 only** (a side note; the results above use all 3 seeds): the v3.1 cell completes 93.5 % of all orders and 72/72 orders with no knock.
+
+### Seed 0's grasp in the cell: what the skill tests missed
+
+The one-shot set tests lying cubes in the grasp's own scene. In the cell, seed 0's new grasp knocks over cubes the other two seeds never touch:
+
+| Pick (configuration 4, 200 orders) | v3.1 seed 0 | v3.1 seeds 1, 2 | v3.0 seed 0 |
+|---|---|---|---|
+| Upright cube on the belt | 32 / 1,590 knocked over (2.0 %) | 0 / 1,696 each | 0 / 1,688 |
+| Upright cube on the floor, after a knock | 35 / 224 (16 %) | 0 / 205, 0 / 212 | 52 / 278 (19 %) |
+
+Every failure was replayed in a fresh cell, with the contacts between the fingers and the cube recorded. The belt ones reproduced 31 of 32, the floor ones 35 of 35. The cause is one thing: **how far the cube is turned relative to the hand.**
+- **Belt cubes** arrive turned up to ±15°.
+  - 29 of the 32 knock-overs were cubes turned 5–15° clockwise.
+  - At that rotation, the hand comes down 2.3–2.8 cm outward of the cube's centre, as it always does slightly. A finger lands on the cube's top corner while the gripper is still open, and the cube tips over at once.
+  - Successful picks at the same rotation follow almost the same path, so this is a thin margin rather than a wrong strategy.
+- **Floor cubes** near the base are mostly cubes the stand-up has just turned upright on the staging ring, 0.36 m from the base, now picked again.
+  - 31 of the 35 knocked picks follow a successful stand-up at the same spot in the same order.
+  - Those cubes can be at any rotation. Turned under 10°: 0 knocked over of 57. Turned 35–45°: 28 of 41.
+  - It fails in two ways. In 22 cases the hand turns 8–11° too little, stops 1.4–1.9 cm off-centre, and never gets to close before the cube falls. In 13 cases a finger lands on the top edge on the way down, as on the belt.
+- **v3.0's seed 0 had the same floor weakness, on the other side of 45°.** The same 228 standing-cube poses were run in the grasp's own scene. Of cubes turned +26..+45°, v3.0 seed 0 knocked over 18 of 48. Of cubes turned −45..−36°, v3.1 seed 0 knocked over 10 of 24. Round 1's training moved the weak side; it did not remove it. v3.1 seeds 1 and 2 knocked over 0 and 5 of 228.
+
+The fixes are proposed for v3.2 in [v3_2_candidates.md](v3_2_candidates.md): a cell-like pick check per seed before any grasp is locked, plus training changes.
+
+### What I learned (v3.1)
+
+1. **Removing a mechanism is not the same as winning orders.** The clear rule did exactly what it was designed to do: clutter beside towers almost vanished and failed places fell by 40 %. But failed places were mostly retried anyway, and clearing cost time, so completed orders did not move. A fix should be judged on the outcome that counts before it is built. Here, that meant measuring how many orders the clutter actually cost.
+2. **Train on what the task varies.** Randomizing the cube size cost nothing on lying cubes, and cut the stand-up's size loss from 14 to 4 points.
+3. **A fixed closing rule is part of the policy's world.** The small-cube failures were a 1 cm window, not a learning problem. Widening it fixes most of them without retraining.
+4. **Test a skill where it will run, seed by seed.** The one-shot grasp set was met easily. But the cell feeds cubes at rotations and heights that set does not cover, and one seed of three had a thin margin there. Pooled over seeds, it hid behind the other two until the cell run.
+5. **Hand-offs between learned skills matter.** Training the stand-up on the grips the real grasp produces is part of why it no longer loses to the scripted planner.
+
 ## Reproduce
 
 ```bash
@@ -179,4 +406,13 @@ uv run python scripts/train_recovery_planner.py --seed 0           # f: about 10
 uv run python scripts/evaluate_recovery_planner.py runs/recovery_planner_seed{0,1,2}
 uv run python scripts/evaluate_cell.py ... --spares 2 --slack 1.5 \
     --recovery-planner run:runs/recovery_planner_seed1             # g, one seed
+# v3.1: the final cell run, one seed (configurations 1 and 4; all 7 in docs/v3_1_targets.md)
+uv run python scripts/evaluate_cell.py --mixed --slots 3 --aim fixture --recover \
+    --disturbances eval_sets/disturbance_suite_v2.json --seed 20261203 --n 200 \
+    --pick run:runs/grasp_anypose6_seed1 --place run:runs/place_stack_v3_seed1 \
+    --standup run:runs/standup_round12_seed1 \
+    --spares 2 --slack 1.5 --recovery-planner clear-rule              # 1; without the last line: 4
+uv run python scripts/pair_cell_runs.py \
+    --a results/cell/*anypose6*spares2-clear-rule*_episodes.csv \
+    --b results/cell/*anypose6*spares2-best-rule*_episodes.csv     # the target: 1 against 2
 ```
