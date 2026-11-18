@@ -202,3 +202,67 @@ def test_v2_is_unchanged_by_the_v4_hooks():
     for s in range(5):
         env.reset(seed=s)
         assert env.data.xmat[env.cube.body][8] > 0.999
+
+
+def _rel_deg(env) -> float:
+    """The cube's rotation relative to a hand facing its centre, wrapped to +-45 deg."""
+    p = env.data.xpos[env.cube.body]
+    R = env.data.xmat[env.cube.body].reshape(3, 3)
+    d = np.degrees(np.arctan2(R[1, 0], R[0, 0]) - np.arctan2(p[1], p[0]))
+    return (d + 45.0) % 90.0 - 45.0
+
+
+def test_v32_cell_like_placements_stand_where_and_as_the_cell_presents_cubes():
+    """v3.2 (F2, F3): near-base cubes straight ahead, turned near 45 deg; belt cubes at the
+    infeed's spot and spread. Off by default (no draws), and never in evaluation."""
+    edge = replace(CFG, placement=replace(CFG.placement, near_upright_prob=1.0, edge_prob=1.0),
+                   resting=replace(CFG.resting, lying_prob=1.0))
+    env = GraspV4Env(edge)
+    for s in range(8):
+        _, info = env.reset(seed=s)
+        p = env.data.xpos[env.cube.body]
+        assert env.cell_like == "near_upright" and not info["lying"]       # stands, always
+        assert 0.30 <= p[0] <= 0.40 and abs(p[1]) <= 0.02
+        assert 35.0 - 1e-6 <= abs(_rel_deg(env)) <= 45.0 + 1e-6
+    belt = GraspV4Env(replace(CFG, placement=replace(CFG.placement, belt_prob=1.0)))
+    for s in range(8):
+        belt.reset(seed=s)
+        p = belt.data.xpos[belt.cube.body]
+        assert belt.cell_like == "belt" and 0.485 <= p[0] <= 0.515 and abs(p[1]) <= 0.015
+        assert abs(_rel_deg(belt)) <= 15.0 + 1e-6
+    ev = edge.for_evaluation().placement
+    assert ev.near_upright_prob == 0.0 and ev.belt_prob == 0.0
+    plain = GraspV4Env(CFG)
+    plain.reset(seed=3)
+    assert plain.cell_like is None
+
+
+def test_v32_large_cubes_are_drawn_only_when_asked():
+    cfg = replace(CFG, randomization=replace(CFG.randomization, size_scale=(0.85, 1.15),
+                                             large_prob=1.0))
+    env = GraspV4Env(cfg)
+    for s in range(6):
+        env.reset(seed=s)
+        assert 1.05 <= env.cube_scales["size"] <= 1.15
+
+
+def test_v32_finger_on_top_is_charged_only_when_asked():
+    on = replace(CFG.for_evaluation(), reward=replace(CFG.reward, finger_top=0.2))
+    env = GraspV4Env(on)
+    env.reset(seed=0, options={"cube": (0.5, 0.0, 0.3)})
+    _, _, _, _, info = env.step(np.zeros(env.action_space.shape))
+    assert info["reward_terms"]["finger_top"] == 0.0   # the hand starts far above the cube
+    # raise the cube under the open left finger until they touch: a finger on its top face
+    tip = env.data.xpos[env.model.body("left_finger").id].copy()
+    touched = False
+    for z in np.arange(0.03, tip[2], 0.002):
+        env.data.qpos[env.cube.qpos:env.cube.qpos + 3] = [tip[0], tip[1], z]
+        mujoco.mj_forward(env.model, env.data)
+        if env._finger_on_top():
+            touched = True
+            break
+    assert touched
+    off = GraspV4Env(CFG.for_evaluation())
+    off.reset(seed=0, options={"cube": (0.5, 0.0, 0.3)})
+    _, _, _, _, info = off.step(np.zeros(off.action_space.shape))
+    assert "finger_top" not in info["reward_terms"]

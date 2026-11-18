@@ -1,0 +1,96 @@
+# v3.2 grasp round 1 (docs/v3_2_targets.md): v3.1's grasp (configs/grasp_anypose6_cartesian.yaml)
+# trained on the cell's failure cases. Diagnosis before this round (docs/recovery.md, v3.1; the
+# pick-check baselines in docs/v3_2_targets.md): seed 0 knocks over upright cubes on the belt
+# turned -15..-5 deg (a finger lands on the top corner while the gripper is open), upright cubes
+# near the base turned 35-45 deg (under-rotation, or a finger on the top edge), and large upright
+# cubes (32/45 over x1.075). Rotation is already drawn uniformly; what training rarely sees is the
+# cell's situation: an upright cube near the base straight ahead of the hand, turned near 45 deg
+# (about 1 % of episodes). Changes, set before any v3.2 training:
+#   F2 placement.near_upright_prob 0.12 (edge_prob 0.5: half of them turned 35-45 deg)
+#   F3 placement.belt_prob 0.08 (the infeed's spot and +-15 deg); reward.finger_top 0.2 per step
+#   F4 randomization.large_prob 0.15 (size x1.05-1.15)
+# F1 (a wider closing window) is not in this round: the small-cube trap it addresses did not
+# show through the cell's pick (docs/v3_2_targets.md, baselines). Everything else as v3.1.
+
+action:
+  max_delta: 0.015
+  n_substeps: 25
+  max_lead: null
+  space: cartesian
+  cartesian:
+    dof: 4
+    max_step: 0.01
+    max_rot: 0.05
+    max_tilt: 0.6
+    max_lead: 0.03
+    box_low: [0.15, -0.5, 0.01]
+    box_high: [0.85, 0.5, 0.6]
+    ik_iters: 2
+    posture_gain: 0.02
+
+placement:
+  x_range: [0.30, 0.78]
+  y_range: [-0.20, 0.20]
+  near_prob: 0.4
+  near_x: [0.30, 0.40]
+  near_upright_prob: 0.12   # v3.2 F2: upright, near the base, straight ahead of the hand
+  near_upright_y: [-0.02, 0.02]
+  edge_prob: 0.5            # of those, turned 35-45 deg either way
+  belt_prob: 0.08           # v3.2 F3: upright where the infeed delivers cubes
+  belt_x: [0.485, 0.515]
+  belt_y: [-0.015, 0.015]
+  belt_yaw: 15.0
+
+resting:
+  lying_prob: 0.7           # of the other episodes, as v3.1
+  max_lying_turn: 0.52
+  lying_gate_z_below: 0.015
+
+gripper:
+  finger_stiffness: 1000.0
+  torsional_friction: true
+
+gate:
+  xy_tol: 0.01
+  z_tol: 0.01
+  align_tol: 0.15
+  tilt_tol: 0.15
+  dwell_steps: 2
+  reopen_gap: 0.02
+  reopen_steps: 10
+
+episode:
+  horizon: 300
+  max_cube_tilt: 1.047
+
+success:
+  lift: 0.05
+
+reward:
+  approach: 20.0
+  align: 1.0
+  lift: 20.0
+  lift_cap: 0.10
+  hold: 0.5
+  action: 0.005
+  gripper_tilt: 0.1
+  floor: 0.1
+  knocked_over: 5.0
+  finger_top: 0.2           # v3.2 F3: per step a finger touches the cube's top while open
+
+curriculum:
+  pregrasp_start_prob: 0.3
+  preclose_start_prob: 0.2
+
+randomization:
+  mass_scale: [0.7, 1.4]
+  friction_scale: [0.7, 1.3]
+  size_scale: [0.85, 1.15]
+  large_prob: 0.15          # v3.2 F4: size from large_scale instead
+  large_scale: [1.05, 1.15]
+
+check:
+  min_lift: 0.02
+  window: 5
+  max_slip: 0.002
+  max_slip_rot: 0.05

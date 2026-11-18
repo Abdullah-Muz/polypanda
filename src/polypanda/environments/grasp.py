@@ -65,6 +65,19 @@ class PlacementConfig:
     # seed 0 knocked 7 of its upright staged cubes over there (d+ development suite)
     near_prob: float = 0.0
     near_x: tuple[float, float] = (0.30, 0.40)
+    # v3.2 (training; docs/v3_2_targets.md, F2 and F3): cubes standing where the cell picks them.
+    # With probability near_upright_prob, an upright cube near the base (x from near_x), almost
+    # straight ahead of the hand (y from near_upright_y), turned relative to the hand uniformly
+    # over +-45 deg, or, for edge_prob of them, 35-45 deg either way. With probability
+    # belt_prob, an upright cube where the infeed delivers it (x from belt_x, y from belt_y),
+    # turned up to belt_yaw deg either way. Off by default: no draws, earlier configs replay.
+    near_upright_prob: float = 0.0
+    near_upright_y: tuple[float, float] = (-0.02, 0.02)
+    edge_prob: float = 0.5
+    belt_prob: float = 0.0
+    belt_x: tuple[float, float] = (0.485, 0.515)
+    belt_y: tuple[float, float] = (-0.015, 0.015)
+    belt_yaw: float = 15.0
 
 
 @dataclass(frozen=True)
@@ -103,6 +116,9 @@ class GraspRewardConfig:
     knocked_over: float = 5.0  # once, when the cube tips past max_cube_tilt
     push: float = 0.0          # v2: per metre the cube moves horizontally with the fingers open
     pushed_away: float = 0.0   # v2: once, when the cube is pushed beyond episode.max_push
+    # v3.2 (F3): per step a finger touches the cube's upper part (above 0.6 of its half height
+    # over the centre) while the gripper is open: how v3.1 seed 0 tipped cubes over in the cell
+    finger_top: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -129,14 +145,19 @@ class RandomizationConfig:
     # v3.1: cube size uniform in this scale range, at constant density (the mass scale applies
     # on top of the volume's); drawn only when set, so earlier configs replay unchanged
     size_scale: tuple[float, float] = (1.0, 1.0)
+    # v3.2 (F4): this share of episodes draws its size from large_scale instead (no draw when 0)
+    large_prob: float = 0.0
+    large_scale: tuple[float, float] = (1.05, 1.15)
 
     @property
     def enabled(self) -> bool:
         return (self.mass_scale != (1.0, 1.0) or self.friction_scale != (1.0, 1.0)
-                or self.size_scale != (1.0, 1.0))
+                or self.size_scale != (1.0, 1.0) or self.large_prob > 0)
 
     def draw_size(self, rng: np.random.Generator) -> float:
         """A size scale (no draw when size is not randomized)."""
+        if self.large_prob > 0 and rng.uniform() < self.large_prob:
+            return float(rng.uniform(*self.large_scale))
         return 1.0 if self.size_scale == (1.0, 1.0) else float(rng.uniform(*self.size_scale))
 
 
@@ -197,7 +218,8 @@ class GraspConfig:
         """The task as evaluated: every episode starts from home with the nominal cube on the
         table, placed over the whole region (no extra near-base draws)."""
         return replace(self, curriculum=CurriculumConfig(), randomization=RandomizationConfig(),
-                       placement=replace(self.placement, near_prob=0.0))
+                       placement=replace(self.placement, near_prob=0.0, near_upright_prob=0.0,
+                                         belt_prob=0.0))
 
 
 def alignment_error(R_tcp: np.ndarray, cube_yaw_value: float) -> float:
@@ -238,6 +260,7 @@ class GraspEnv(gym.Env):
         self._ik = None  # built on first curriculum reset
         self._physics = None  # built on first randomized reset
         self.cube_scales = {"mass": 1.0, "friction": 1.0}
+        self.cell_like: str | None = None   # v3.2: this episode's cell-like placement, if any
 
     @property
     def elapsed_steps(self) -> int:
@@ -297,13 +320,19 @@ class GraspEnv(gym.Env):
             self.data.qpos[self.arm.arm_qpos] = np.clip(q, self.adapter.low, self.adapter.high)
             mujoco.mj_forward(self.model, self.data)
         pregrasp = False
+        self.cell_like = None
         if "cube" in options:
             x, y, yaw = (float(v) for v in options["cube"])
         else:
-            near = cfg.near_prob > 0 and self.np_random.uniform() < cfg.near_prob  # (no draw off)
-            x = self.np_random.uniform(*(cfg.near_x if near else cfg.x_range))
-            y = self.np_random.uniform(*cfg.y_range)
-            yaw = self.np_random.uniform(-np.pi, np.pi)
+            cell_like = self._draw_cell_like()
+            if cell_like is not None:
+                self.cell_like, x, y, yaw = cell_like
+            else:
+                # (no draw when near_prob is 0)
+                near = cfg.near_prob > 0 and self.np_random.uniform() < cfg.near_prob
+                x = self.np_random.uniform(*(cfg.near_x if near else cfg.x_range))
+                y = self.np_random.uniform(*cfg.y_range)
+                yaw = self.np_random.uniform(-np.pi, np.pi)
             prob = self.config.curriculum.pregrasp_start_prob
             pregrasp = prob > 0 and self.np_random.uniform() < prob  # no draw when disabled
             rnd = self.config.randomization
@@ -332,6 +361,44 @@ class GraspEnv(gym.Env):
         info = {"cube": (x, y, yaw), "distance": m["distance"],
                 "start": "pregrasp" if pregrasp else "home"}
         return self._observation(m), info
+
+    def _draw_cell_like(self) -> tuple[str, float, float, float] | None:
+        """v3.2 training: maybe an upright cube placed as the cell presents it (placement
+        near_upright_prob, belt_prob): (kind, x, y, yaw), or None. No draw when both are 0."""
+        cfg, rng = self.config.placement, self.np_random
+        total = cfg.near_upright_prob + cfg.belt_prob
+        if total <= 0:
+            return None
+        u = rng.uniform()
+        if u >= total:
+            return None
+        if u < cfg.near_upright_prob:
+            x, y = rng.uniform(*cfg.near_x), rng.uniform(*cfg.near_upright_y)
+            if rng.uniform() < cfg.edge_prob:
+                rel = rng.choice([-1.0, 1.0]) * rng.uniform(35.0, 45.0)
+            else:
+                rel = rng.uniform(-45.0, 45.0)
+            kind = "near_upright"
+        else:
+            x, y = rng.uniform(*cfg.belt_x), rng.uniform(*cfg.belt_y)
+            rel, kind = rng.uniform(-cfg.belt_yaw, cfg.belt_yaw), "belt"
+        # turned relative to the hand, which in the cell faces the cube's centre
+        return kind, float(x), float(y), float(np.arctan2(y, x) + np.radians(rel))
+
+    def _finger_on_top(self) -> bool:
+        """A finger touches the cube's upper part (above 0.6 of its vertical half extent over
+        the centre): the start of v3.1 seed 0's knock-overs in the cell."""
+        if not hasattr(self, "_finger_bodies"):
+            self._finger_bodies = {self.model.body(n).id for n in ("left_finger", "right_finger")}
+        R = self.data.xmat[self.cube.body].reshape(3, 3)
+        half_z = float(np.abs(R[2]) @ self.cube.half_size)   # vertical half extent, any pose
+        top = self.data.xpos[self.cube.body][2] + 0.6 * half_z
+        for i in range(self.data.ncon):
+            c = self.data.contact[i]
+            bodies = {self.model.geom_bodyid[c.geom1], self.model.geom_bodyid[c.geom2]}
+            if self.cube.body in bodies and bodies & self._finger_bodies and c.pos[2] > top:
+                return True
+        return False
 
     def _place_cube(self, x: float, y: float, yaw: float, options: dict) -> None:
         """Set the cube down at the start of an episode (upright; GraspV4Env may lay it down)."""
@@ -430,6 +497,9 @@ class GraspEnv(gym.Env):
             "knocked_over": -r.knocked_over if knocked else 0.0,
             **bound_terms,
         }
+        if r.finger_top > 0:   # v3.2 (F3); not computed when off
+            terms["finger_top"] = (-r.finger_top if not self.closed and self._finger_on_top()
+                                   else 0.0)
         self._prev = {"distance": m["distance"], "align": abs(m["align"]), "lift": lifted}
         terminated = knocked
         truncated = not terminated and self._steps >= cfg.episode.horizon
@@ -713,6 +783,8 @@ class GraspV4Env(GraspV2Env):
     def _place_cube(self, x: float, y: float, yaw: float, options: dict) -> None:
         if "cube" in options:
             lying = bool(options.get("lying", False))
+        elif getattr(self, "cell_like", None):   # v3.2: cell-like cubes always stand
+            lying = False
         else:
             p = self.config.resting.lying_prob
             lying = p > 0 and self.np_random.uniform() < p  # no draw when disabled
