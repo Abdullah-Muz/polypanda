@@ -1,5 +1,7 @@
 # v3.2 candidates (a proposal, not decisions)
 
+*The grasp round and the pick checks were adopted on 2026-11-17, with their bars, in [v3_2_targets.md](v3_2_targets.md). It differs from this proposal in one way: the floor set holds nominal cubes, and cube size is a separate condition on the same cases with its own bar.*
+
 *Written on 2026-11-16 and 2026-11-17, from the v3.1 diagnoses and the final cell run. Nothing here is decided. It collects what the v3.1 diagnoses point at, a check that would have caught the cell failures before the grasp was locked, and how each fix could be measured, in the style of [v3_1_targets.md](v3_1_targets.md). If a candidate is adopted, its bar is committed before any v3.2 training, under the project's usual rules: 3 seeds, held-out sets drawn before training, Wilson 95 % intervals, exact McNemar tests on paired cases, a scripted baseline and the previous version beside every result.*
 
 ## What the v3.1 final run says

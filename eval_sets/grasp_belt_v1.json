@@ -1,0 +1,2609 @@
+{
+ "name": "grasp_belt_v1",
+ "kind": "belt",
+ "seed": 20261210,
+ "n": 200,
+ "digest": "df27cd6acc2b",
+ "cases": [
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.012209451475598005,
+   "yaw_rel": 7.144736338634722,
+   "queued": 0,
+   "towers": [
+    1,
+    0,
+    0
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.0035358744691164484,
+   "yaw_rel": -9.992585164400774,
+   "queued": 0,
+   "towers": [
+    2,
+    0,
+    0
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.012349781258795671,
+   "yaw_rel": -10.539938968938287,
+   "queued": 0,
+   "towers": [
+    0,
+    3,
+    2
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.008466660528427681,
+   "yaw_rel": 14.908869291009744,
+   "queued": 1,
+   "towers": [
+    3,
+    0,
+    2
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.0025071791583596292,
+   "yaw_rel": -14.978898591156074,
+   "queued": 2,
+   "towers": [
+    3,
+    2,
+    2
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.014506633038962498,
+   "yaw_rel": -3.1968412890871623,
+   "queued": 2,
+   "towers": [
+    3,
+    2,
+    1
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.006629054486320188,
+   "yaw_rel": 14.70934996734421,
+   "queued": 2,
+   "towers": [
+    1,
+    1,
+    1
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.003192939914610147,
+   "yaw_rel": -9.855302244207902,
+   "queued": 1,
+   "towers": [
+    3,
+    2,
+    2
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.00011355002878197205,
+   "yaw_rel": -1.8602184217775726,
+   "queued": 1,
+   "towers": [
+    2,
+    2,
+    2
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.0028186644327903524,
+   "yaw_rel": 1.8052112332890964,
+   "queued": 0,
+   "towers": [
+    3,
+    1,
+    3
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.00032681570791451113,
+   "yaw_rel": 6.468516530362759,
+   "queued": 2,
+   "towers": [
+    3,
+    3,
+    1
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.011112233110503307,
+   "yaw_rel": -11.600096314475739,
+   "queued": 2,
+   "towers": [
+    0,
+    1,
+    3
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.006438421861867865,
+   "yaw_rel": -14.496695489425989,
+   "queued": 1,
+   "towers": [
+    2,
+    2,
+    3
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.01219040258297421,
+   "yaw_rel": 8.738743937788925,
+   "queued": 2,
+   "towers": [
+    1,
+    2,
+    0
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.0031938656975690795,
+   "yaw_rel": 2.1485585604581026,
+   "queued": 2,
+   "towers": [
+    1,
+    0,
+    3
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.011903884724407714,
+   "yaw_rel": 10.885706027240033,
+   "queued": 1,
+   "towers": [
+    1,
+    2,
+    1
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.005654389533139383,
+   "yaw_rel": 2.8382843648360705,
+   "queued": 0,
+   "towers": [
+    1,
+    3,
+    3
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.008309937079967432,
+   "yaw_rel": 3.8175060985577183,
+   "queued": 0,
+   "towers": [
+    3,
+    2,
+    3
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.012053167539589588,
+   "yaw_rel": -13.736701957078889,
+   "queued": 2,
+   "towers": [
+    0,
+    0,
+    2
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.005920955140287672,
+   "yaw_rel": -2.5581366629879536,
+   "queued": 0,
+   "towers": [
+    2,
+    1,
+    0
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.006257330104618972,
+   "yaw_rel": 2.6187910570664386,
+   "queued": 1,
+   "towers": [
+    1,
+    1,
+    2
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.012367029430163247,
+   "yaw_rel": 3.6942970321988966,
+   "queued": 1,
+   "towers": [
+    1,
+    1,
+    3
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.008359433828005167,
+   "yaw_rel": 5.421424332534837,
+   "queued": 0,
+   "towers": [
+    3,
+    0,
+    0
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.009966843522561306,
+   "yaw_rel": -5.9804399063706875,
+   "queued": 1,
+   "towers": [
+    0,
+    2,
+    0
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.010202342073875346,
+   "yaw_rel": -12.512914310919367,
+   "queued": 1,
+   "towers": [
+    2,
+    2,
+    1
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.005031438692301476,
+   "yaw_rel": -2.703081295107964,
+   "queued": 1,
+   "towers": [
+    2,
+    1,
+    3
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.012216295637414776,
+   "yaw_rel": -4.746686259406282,
+   "queued": 0,
+   "towers": [
+    3,
+    1,
+    2
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.010132111599524686,
+   "yaw_rel": 3.09806832771908,
+   "queued": 1,
+   "towers": [
+    1,
+    1,
+    3
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.01164844446569845,
+   "yaw_rel": 14.812267737376928,
+   "queued": 0,
+   "towers": [
+    3,
+    3,
+    2
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.012125929104000448,
+   "yaw_rel": 12.566060282118219,
+   "queued": 1,
+   "towers": [
+    0,
+    3,
+    0
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.008322115871347617,
+   "yaw_rel": 6.937840954002414,
+   "queued": 2,
+   "towers": [
+    3,
+    0,
+    0
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.006717194389820207,
+   "yaw_rel": -3.1849953733666663,
+   "queued": 0,
+   "towers": [
+    3,
+    0,
+    2
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.009280592335409631,
+   "yaw_rel": 2.558754351692002,
+   "queued": 1,
+   "towers": [
+    1,
+    2,
+    3
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.011019428279349333,
+   "yaw_rel": 0.8410086345523666,
+   "queued": 1,
+   "towers": [
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.0009097373532580416,
+   "yaw_rel": -11.67054537198948,
+   "queued": 1,
+   "towers": [
+    0,
+    0,
+    3
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.006425173487573262,
+   "yaw_rel": -2.2970688496492127,
+   "queued": 1,
+   "towers": [
+    2,
+    3,
+    1
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.013055223943300585,
+   "yaw_rel": -1.1032497765235227,
+   "queued": 0,
+   "towers": [
+    3,
+    1,
+    0
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.0005544649846444243,
+   "yaw_rel": 9.549348891332404,
+   "queued": 1,
+   "towers": [
+    1,
+    0,
+    0
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.009163591417056235,
+   "yaw_rel": 9.07560735273184,
+   "queued": 2,
+   "towers": [
+    1,
+    1,
+    1
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.01348925374146073,
+   "yaw_rel": 11.92668468416883,
+   "queued": 1,
+   "towers": [
+    1,
+    1,
+    1
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.0068001487786177196,
+   "yaw_rel": 13.969235266529711,
+   "queued": 2,
+   "towers": [
+    0,
+    3,
+    1
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.009526105985526074,
+   "yaw_rel": -1.9875442481074117,
+   "queued": 0,
+   "towers": [
+    1,
+    1,
+    2
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.008239720740485817,
+   "yaw_rel": -14.678072985454579,
+   "queued": 2,
+   "towers": [
+    1,
+    2,
+    0
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.0060357315756247205,
+   "yaw_rel": -7.2194817989329705,
+   "queued": 1,
+   "towers": [
+    1,
+    2,
+    0
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.008648140370579111,
+   "yaw_rel": 13.134882437027901,
+   "queued": 1,
+   "towers": [
+    1,
+    3,
+    1
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.008149391626844289,
+   "yaw_rel": 10.277911612607518,
+   "queued": 2,
+   "towers": [
+    3,
+    1,
+    3
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.008387444035787561,
+   "yaw_rel": -14.312040941347075,
+   "queued": 2,
+   "towers": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.0033345424045890023,
+   "yaw_rel": 13.815010531705045,
+   "queued": 0,
+   "towers": [
+    0,
+    2,
+    3
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.011533655204804136,
+   "yaw_rel": 9.335404288485243,
+   "queued": 1,
+   "towers": [
+    1,
+    2,
+    2
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.0029301547627869143,
+   "yaw_rel": 4.605795073136118,
+   "queued": 0,
+   "towers": [
+    2,
+    3,
+    0
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.009205511350153593,
+   "yaw_rel": -10.281145420375726,
+   "queued": 0,
+   "towers": [
+    3,
+    0,
+    2
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.011340043398443878,
+   "yaw_rel": 12.557305460242638,
+   "queued": 2,
+   "towers": [
+    2,
+    0,
+    2
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.009418381166053532,
+   "yaw_rel": 14.505740328936266,
+   "queued": 1,
+   "towers": [
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.00442217560729256,
+   "yaw_rel": 11.093312452576711,
+   "queued": 2,
+   "towers": [
+    0,
+    3,
+    1
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.0029437785235841944,
+   "yaw_rel": 4.212261144048327,
+   "queued": 2,
+   "towers": [
+    0,
+    2,
+    2
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.0031423218987138672,
+   "yaw_rel": 10.038661357264903,
+   "queued": 2,
+   "towers": [
+    2,
+    2,
+    3
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.010297345576250148,
+   "yaw_rel": -14.941217747130176,
+   "queued": 0,
+   "towers": [
+    3,
+    3,
+    0
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.0077797443857258,
+   "yaw_rel": 5.128961047537068,
+   "queued": 1,
+   "towers": [
+    3,
+    1,
+    2
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.014032732423563708,
+   "yaw_rel": -2.6624191219131017,
+   "queued": 0,
+   "towers": [
+    1,
+    2,
+    0
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.010689932874122489,
+   "yaw_rel": -5.776263533126059,
+   "queued": 1,
+   "towers": [
+    3,
+    3,
+    0
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.013613812623535948,
+   "yaw_rel": -4.305833226862944,
+   "queued": 1,
+   "towers": [
+    3,
+    2,
+    0
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.0013115913459756292,
+   "yaw_rel": -7.130774925017872,
+   "queued": 2,
+   "towers": [
+    2,
+    0,
+    3
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.012582342939103087,
+   "yaw_rel": -6.779162354045354,
+   "queued": 0,
+   "towers": [
+    2,
+    0,
+    3
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.014838101964572423,
+   "yaw_rel": 3.5502088891742964,
+   "queued": 2,
+   "towers": [
+    0,
+    1,
+    2
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.0006093417010371756,
+   "yaw_rel": -9.092902873773523,
+   "queued": 0,
+   "towers": [
+    2,
+    0,
+    1
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.008369816372787952,
+   "yaw_rel": -3.6338250537739274,
+   "queued": 2,
+   "towers": [
+    1,
+    3,
+    2
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.014155376646973044,
+   "yaw_rel": 8.547195829674557,
+   "queued": 2,
+   "towers": [
+    2,
+    0,
+    2
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.004131522192716966,
+   "yaw_rel": -5.947176838339363,
+   "queued": 1,
+   "towers": [
+    2,
+    2,
+    0
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.0076984240867594205,
+   "yaw_rel": 8.332158890139262,
+   "queued": 1,
+   "towers": [
+    1,
+    2,
+    2
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.0026468597407901216,
+   "yaw_rel": 8.964571625125167,
+   "queued": 0,
+   "towers": [
+    2,
+    3,
+    3
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.0018837485602096367,
+   "yaw_rel": 8.656785418782,
+   "queued": 2,
+   "towers": [
+    3,
+    3,
+    3
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.011014956150996083,
+   "yaw_rel": 8.395630714503302,
+   "queued": 2,
+   "towers": [
+    2,
+    1,
+    2
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.014200157704728017,
+   "yaw_rel": -4.2692817889961,
+   "queued": 2,
+   "towers": [
+    3,
+    3,
+    3
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.00542262011540336,
+   "yaw_rel": -10.456138025875806,
+   "queued": 0,
+   "towers": [
+    1,
+    3,
+    0
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.004166311837760514,
+   "yaw_rel": 6.685838492842294,
+   "queued": 2,
+   "towers": [
+    0,
+    1,
+    2
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.013073232052416757,
+   "yaw_rel": 12.265273702747205,
+   "queued": 0,
+   "towers": [
+    2,
+    1,
+    1
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.011285754447847782,
+   "yaw_rel": 13.619240684751095,
+   "queued": 2,
+   "towers": [
+    1,
+    3,
+    0
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.0137333044185794,
+   "yaw_rel": -5.7293368244878735,
+   "queued": 1,
+   "towers": [
+    3,
+    0,
+    3
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.005253169817555872,
+   "yaw_rel": 8.755688270697519,
+   "queued": 2,
+   "towers": [
+    3,
+    1,
+    0
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.005252317594345829,
+   "yaw_rel": -11.645071820777229,
+   "queued": 1,
+   "towers": [
+    0,
+    3,
+    1
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.00478358474160296,
+   "yaw_rel": -2.390412971425393,
+   "queued": 2,
+   "towers": [
+    3,
+    0,
+    3
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.006275330802222503,
+   "yaw_rel": 7.435342379022604,
+   "queued": 0,
+   "towers": [
+    1,
+    3,
+    1
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.011087399493181067,
+   "yaw_rel": 6.999176768956509,
+   "queued": 2,
+   "towers": [
+    2,
+    0,
+    1
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.006429142362052175,
+   "yaw_rel": -6.8160198494989235,
+   "queued": 0,
+   "towers": [
+    3,
+    0,
+    1
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.0013860892284885823,
+   "yaw_rel": 5.580393286732875,
+   "queued": 2,
+   "towers": [
+    0,
+    0,
+    2
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.0027354660228817995,
+   "yaw_rel": 10.86060226990055,
+   "queued": 0,
+   "towers": [
+    2,
+    0,
+    3
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.013358905285448858,
+   "yaw_rel": 1.2368191280044165,
+   "queued": 0,
+   "towers": [
+    0,
+    3,
+    1
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.014429605809948749,
+   "yaw_rel": 6.449135593462579,
+   "queued": 2,
+   "towers": [
+    2,
+    2,
+    3
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.013932741302240224,
+   "yaw_rel": -7.027207142987884,
+   "queued": 0,
+   "towers": [
+    2,
+    1,
+    2
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.003091555525568449,
+   "yaw_rel": 10.312121432542764,
+   "queued": 0,
+   "towers": [
+    0,
+    2,
+    1
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.0038443304981072048,
+   "yaw_rel": -5.667737615177247,
+   "queued": 0,
+   "towers": [
+    2,
+    2,
+    0
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.012114751690662538,
+   "yaw_rel": -5.069913150048251,
+   "queued": 1,
+   "towers": [
+    1,
+    2,
+    2
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.013059011791771206,
+   "yaw_rel": -12.401267287407487,
+   "queued": 1,
+   "towers": [
+    1,
+    1,
+    2
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.005577314783329807,
+   "yaw_rel": -5.9677499947739605,
+   "queued": 1,
+   "towers": [
+    0,
+    0,
+    2
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.007429507663982113,
+   "yaw_rel": 10.026044680656824,
+   "queued": 2,
+   "towers": [
+    1,
+    2,
+    1
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.0005284181865586029,
+   "yaw_rel": 11.832377897753783,
+   "queued": 1,
+   "towers": [
+    3,
+    1,
+    2
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.012440920689152962,
+   "yaw_rel": 8.20541290734944,
+   "queued": 1,
+   "towers": [
+    1,
+    3,
+    0
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.0002714981985392495,
+   "yaw_rel": 7.576986058714546,
+   "queued": 2,
+   "towers": [
+    1,
+    2,
+    2
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.012515741938538674,
+   "yaw_rel": 11.342522799072157,
+   "queued": 2,
+   "towers": [
+    1,
+    1,
+    0
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.007123816650791183,
+   "yaw_rel": -8.550213063976836,
+   "queued": 0,
+   "towers": [
+    1,
+    0,
+    2
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.003602477672050946,
+   "yaw_rel": 2.352626113141099,
+   "queued": 2,
+   "towers": [
+    3,
+    1,
+    0
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.009703035073633955,
+   "yaw_rel": 5.905196437991428,
+   "queued": 0,
+   "towers": [
+    0,
+    3,
+    3
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.003495048488475958,
+   "yaw_rel": -6.477550209389175,
+   "queued": 2,
+   "towers": [
+    3,
+    2,
+    2
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.012716922193072244,
+   "yaw_rel": -3.3767912410302827,
+   "queued": 2,
+   "towers": [
+    3,
+    3,
+    2
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.00014652486302793415,
+   "yaw_rel": -3.024637911430556,
+   "queued": 0,
+   "towers": [
+    3,
+    2,
+    1
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.014406942019954669,
+   "yaw_rel": -13.006550170724301,
+   "queued": 0,
+   "towers": [
+    0,
+    2,
+    3
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.008040421371481204,
+   "yaw_rel": 6.962181792914748,
+   "queued": 0,
+   "towers": [
+    2,
+    1,
+    2
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.01310407602404667,
+   "yaw_rel": -8.44608542421144,
+   "queued": 1,
+   "towers": [
+    3,
+    3,
+    0
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.005688553455775793,
+   "yaw_rel": -13.55717442407608,
+   "queued": 1,
+   "towers": [
+    1,
+    3,
+    0
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.00531285411082642,
+   "yaw_rel": 9.181272968486489,
+   "queued": 2,
+   "towers": [
+    2,
+    3,
+    2
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.011933090033286894,
+   "yaw_rel": -10.649705497322824,
+   "queued": 2,
+   "towers": [
+    0,
+    0,
+    3
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.006721827310507137,
+   "yaw_rel": -2.46806104106944,
+   "queued": 2,
+   "towers": [
+    1,
+    1,
+    0
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.0010373603118278198,
+   "yaw_rel": 0.49849787075768326,
+   "queued": 0,
+   "towers": [
+    2,
+    1,
+    3
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.0017210654138599592,
+   "yaw_rel": 8.870403217515577,
+   "queued": 1,
+   "towers": [
+    0,
+    0,
+    3
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.0038203350638747607,
+   "yaw_rel": 9.887756862563037,
+   "queued": 2,
+   "towers": [
+    2,
+    1,
+    0
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.009021687158876718,
+   "yaw_rel": 0.2776929026538326,
+   "queued": 1,
+   "towers": [
+    3,
+    2,
+    0
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.0020482240727264112,
+   "yaw_rel": 9.836365560674675,
+   "queued": 0,
+   "towers": [
+    1,
+    1,
+    2
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.007485161274602784,
+   "yaw_rel": 12.327297243347104,
+   "queued": 1,
+   "towers": [
+    0,
+    1,
+    3
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.0006734128377757741,
+   "yaw_rel": -3.3422177964042667,
+   "queued": 0,
+   "towers": [
+    1,
+    1,
+    3
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.007158017723449265,
+   "yaw_rel": 6.63851603214761,
+   "queued": 1,
+   "towers": [
+    3,
+    1,
+    1
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.002423838841179752,
+   "yaw_rel": 8.433954013176486,
+   "queued": 2,
+   "towers": [
+    2,
+    2,
+    1
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.013438742930217278,
+   "yaw_rel": -11.146902107544166,
+   "queued": 1,
+   "towers": [
+    0,
+    2,
+    2
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.013184896772717931,
+   "yaw_rel": -0.6104950834796679,
+   "queued": 1,
+   "towers": [
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.005433480708772764,
+   "yaw_rel": 7.039303427085155,
+   "queued": 2,
+   "towers": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.011523492319928181,
+   "yaw_rel": -12.434373092722579,
+   "queued": 1,
+   "towers": [
+    0,
+    1,
+    2
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.010544203555897486,
+   "yaw_rel": 3.616064028313861,
+   "queued": 0,
+   "towers": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.01489549609647676,
+   "yaw_rel": 4.1870536318614064,
+   "queued": 2,
+   "towers": [
+    2,
+    1,
+    1
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.008888787452324024,
+   "yaw_rel": -2.655007969500833,
+   "queued": 2,
+   "towers": [
+    1,
+    1,
+    0
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.011339303846265887,
+   "yaw_rel": 7.887950793020092,
+   "queued": 0,
+   "towers": [
+    1,
+    0,
+    1
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.0025688305032046943,
+   "yaw_rel": 4.072476321734108,
+   "queued": 2,
+   "towers": [
+    0,
+    2,
+    2
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.004010375351479564,
+   "yaw_rel": -5.362975208618394,
+   "queued": 2,
+   "towers": [
+    3,
+    1,
+    0
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.006917631020339078,
+   "yaw_rel": 7.547220564010807,
+   "queued": 2,
+   "towers": [
+    0,
+    2,
+    3
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.003116192583053958,
+   "yaw_rel": -3.4403440702858674,
+   "queued": 1,
+   "towers": [
+    3,
+    0,
+    3
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.004307275864964457,
+   "yaw_rel": 7.633510962540836,
+   "queued": 0,
+   "towers": [
+    2,
+    3,
+    3
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.013749180726547877,
+   "yaw_rel": -6.032935345670559,
+   "queued": 0,
+   "towers": [
+    1,
+    2,
+    3
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.0041952347834389,
+   "yaw_rel": -12.254921486603525,
+   "queued": 0,
+   "towers": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.014818817409185791,
+   "yaw_rel": -6.8062335134662195,
+   "queued": 2,
+   "towers": [
+    2,
+    1,
+    2
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.012334894064368697,
+   "yaw_rel": -5.1839254602501565,
+   "queued": 0,
+   "towers": [
+    2,
+    2,
+    1
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.006920651104169798,
+   "yaw_rel": -6.3458462641377,
+   "queued": 1,
+   "towers": [
+    2,
+    1,
+    3
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.011217180665455762,
+   "yaw_rel": -7.411094783461713,
+   "queued": 0,
+   "towers": [
+    3,
+    0,
+    3
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.011140683129138282,
+   "yaw_rel": 12.33455874965123,
+   "queued": 0,
+   "towers": [
+    0,
+    2,
+    2
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.0025785615394783197,
+   "yaw_rel": -10.977118699656124,
+   "queued": 2,
+   "towers": [
+    1,
+    3,
+    2
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.01333955316703183,
+   "yaw_rel": -6.012762561735004,
+   "queued": 0,
+   "towers": [
+    2,
+    1,
+    3
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.0007536844116266088,
+   "yaw_rel": 4.792141142587312,
+   "queued": 0,
+   "towers": [
+    0,
+    3,
+    0
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.008374887435509234,
+   "yaw_rel": 5.591289014627854,
+   "queued": 1,
+   "towers": [
+    1,
+    0,
+    1
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.0001638349254041386,
+   "yaw_rel": -11.384923034131997,
+   "queued": 2,
+   "towers": [
+    1,
+    0,
+    2
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.008395458331869152,
+   "yaw_rel": -1.0006048046218776,
+   "queued": 2,
+   "towers": [
+    3,
+    1,
+    3
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.009800941176418363,
+   "yaw_rel": -11.367967446828581,
+   "queued": 2,
+   "towers": [
+    2,
+    3,
+    3
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.00825596311417371,
+   "yaw_rel": -2.0791675342473255,
+   "queued": 1,
+   "towers": [
+    1,
+    3,
+    1
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.0047266514574884795,
+   "yaw_rel": -14.786063715643861,
+   "queued": 2,
+   "towers": [
+    3,
+    0,
+    0
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.002773913683019994,
+   "yaw_rel": -4.202624513193543,
+   "queued": 2,
+   "towers": [
+    2,
+    0,
+    0
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.009495816278893884,
+   "yaw_rel": 14.428467228813435,
+   "queued": 2,
+   "towers": [
+    2,
+    1,
+    2
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.010662556997770184,
+   "yaw_rel": 3.2852329564785734,
+   "queued": 1,
+   "towers": [
+    2,
+    2,
+    1
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.011791011843393075,
+   "yaw_rel": -13.821102032730904,
+   "queued": 2,
+   "towers": [
+    2,
+    0,
+    1
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.010035332538464187,
+   "yaw_rel": -9.481317256292355,
+   "queued": 0,
+   "towers": [
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.006854463072278097,
+   "yaw_rel": 9.807676208112191,
+   "queued": 1,
+   "towers": [
+    0,
+    2,
+    1
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.009911501050839884,
+   "yaw_rel": 2.6669675979827154,
+   "queued": 2,
+   "towers": [
+    3,
+    1,
+    2
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.009836051781809452,
+   "yaw_rel": 5.32776805920545,
+   "queued": 1,
+   "towers": [
+    2,
+    1,
+    1
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.009714831869379967,
+   "yaw_rel": 11.707353240194617,
+   "queued": 0,
+   "towers": [
+    0,
+    2,
+    3
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.006543755785094739,
+   "yaw_rel": -12.482524166442396,
+   "queued": 2,
+   "towers": [
+    3,
+    1,
+    0
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.006218741476653342,
+   "yaw_rel": -4.032934159189258,
+   "queued": 1,
+   "towers": [
+    3,
+    3,
+    2
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.00048542906953423157,
+   "yaw_rel": -7.633380759335666,
+   "queued": 1,
+   "towers": [
+    3,
+    0,
+    1
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.007133543259464997,
+   "yaw_rel": -4.242729928149066,
+   "queued": 1,
+   "towers": [
+    0,
+    3,
+    3
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.0026726568576214207,
+   "yaw_rel": 0.8958000886391027,
+   "queued": 1,
+   "towers": [
+    3,
+    1,
+    3
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.011903620100329693,
+   "yaw_rel": -8.09834796808346,
+   "queued": 0,
+   "towers": [
+    3,
+    3,
+    0
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.013946538456064653,
+   "yaw_rel": 13.948572916123386,
+   "queued": 1,
+   "towers": [
+    1,
+    0,
+    1
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.008919820066465259,
+   "yaw_rel": -2.046810947549867,
+   "queued": 1,
+   "towers": [
+    1,
+    0,
+    0
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.011161900948185022,
+   "yaw_rel": 8.056603449055107,
+   "queued": 1,
+   "towers": [
+    3,
+    3,
+    1
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.0028329448502025546,
+   "yaw_rel": -7.339269763497791,
+   "queued": 1,
+   "towers": [
+    0,
+    0,
+    3
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.0011541759053633645,
+   "yaw_rel": 2.4196977065488205,
+   "queued": 2,
+   "towers": [
+    1,
+    0,
+    1
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.008307122027087862,
+   "yaw_rel": 7.072030196763073,
+   "queued": 1,
+   "towers": [
+    3,
+    1,
+    3
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.003732442693475592,
+   "yaw_rel": -14.219577029663125,
+   "queued": 1,
+   "towers": [
+    1,
+    2,
+    2
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.0028224618159195976,
+   "yaw_rel": -4.955453634392308,
+   "queued": 1,
+   "towers": [
+    3,
+    1,
+    2
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.0016064029880434802,
+   "yaw_rel": -12.32608591202414,
+   "queued": 1,
+   "towers": [
+    2,
+    0,
+    2
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.009704306298052929,
+   "yaw_rel": 4.035884908125425,
+   "queued": 2,
+   "towers": [
+    2,
+    1,
+    2
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.00556833436388238,
+   "yaw_rel": 6.3197334240390575,
+   "queued": 1,
+   "towers": [
+    2,
+    3,
+    1
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.0042477258902163875,
+   "yaw_rel": -9.6930187243188,
+   "queued": 0,
+   "towers": [
+    3,
+    3,
+    1
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.0030688540099402146,
+   "yaw_rel": 8.2529381796951,
+   "queued": 1,
+   "towers": [
+    2,
+    1,
+    2
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.00800538039433006,
+   "yaw_rel": 12.107781230144177,
+   "queued": 1,
+   "towers": [
+    3,
+    3,
+    3
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.005056018679231854,
+   "yaw_rel": -1.5687180338961682,
+   "queued": 2,
+   "towers": [
+    2,
+    3,
+    3
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.013247889262863417,
+   "yaw_rel": 11.24546767088906,
+   "queued": 0,
+   "towers": [
+    1,
+    3,
+    1
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.009575997793598436,
+   "yaw_rel": 3.804073537493725,
+   "queued": 0,
+   "towers": [
+    3,
+    3,
+    2
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.005680549135473396,
+   "yaw_rel": 0.45386469251442385,
+   "queued": 1,
+   "towers": [
+    1,
+    2,
+    3
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.010794895227112536,
+   "yaw_rel": -7.922233674837163,
+   "queued": 2,
+   "towers": [
+    3,
+    3,
+    3
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.00380073057961758,
+   "yaw_rel": 14.352098270872375,
+   "queued": 2,
+   "towers": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.00923909041341789,
+   "yaw_rel": 12.493052592013083,
+   "queued": 1,
+   "towers": [
+    2,
+    2,
+    3
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.0064869794723369754,
+   "yaw_rel": -8.478829746123955,
+   "queued": 1,
+   "towers": [
+    2,
+    1,
+    3
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.006360030860280461,
+   "yaw_rel": 8.495340113789045,
+   "queued": 2,
+   "towers": [
+    2,
+    2,
+    0
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.010707245838256208,
+   "yaw_rel": 8.456296622522373,
+   "queued": 0,
+   "towers": [
+    2,
+    3,
+    1
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.01149833518232646,
+   "yaw_rel": 4.633876479731438,
+   "queued": 0,
+   "towers": [
+    3,
+    1,
+    1
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.013989908741929083,
+   "yaw_rel": -4.554195991735309,
+   "queued": 2,
+   "towers": [
+    0,
+    2,
+    1
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.004875424685158752,
+   "yaw_rel": -14.696030017275884,
+   "queued": 1,
+   "towers": [
+    0,
+    2,
+    1
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.00350957150207646,
+   "yaw_rel": -12.158510079520031,
+   "queued": 0,
+   "towers": [
+    1,
+    1,
+    3
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.007969470426991958,
+   "yaw_rel": 0.019801696909603095,
+   "queued": 2,
+   "towers": [
+    1,
+    0,
+    3
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.003293882421202741,
+   "yaw_rel": 6.62227623810378,
+   "queued": 2,
+   "towers": [
+    2,
+    1,
+    0
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": -0.008129924892967237,
+   "yaw_rel": -0.10982643175086437,
+   "queued": 0,
+   "towers": [
+    0,
+    2,
+    0
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.012632202597918488,
+   "yaw_rel": 9.5221611552168,
+   "queued": 0,
+   "towers": [
+    3,
+    1,
+    0
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.010282853751533542,
+   "yaw_rel": -8.171272777692021,
+   "queued": 1,
+   "towers": [
+    2,
+    1,
+    0
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.013943853176552265,
+   "yaw_rel": -8.938698919275652,
+   "queued": 2,
+   "towers": [
+    3,
+    3,
+    2
+   ]
+  },
+  {
+   "kind": "belt",
+   "angle": 90.0,
+   "radius": 0.5,
+   "lateral": 0.0008145371907853569,
+   "yaw_rel": -13.111795754144383,
+   "queued": 2,
+   "towers": [
+    1,
+    3,
+    3
+   ]
+  }
+ ]
+}
