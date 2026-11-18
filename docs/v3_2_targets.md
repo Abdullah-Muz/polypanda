@@ -93,3 +93,22 @@ On the development sets, from `c3141a3` with a clean tree (`results/grasp/cellpi
   - Seeds 1 and 2 are clean. No revision of the sets is needed.
 - **Against the bars:** v3.1 misses the belt and floor bars on seed 0 only, and meets the size bar (pooled gap −3.5 points). Paired with v3.0, pooled: belt 0 / 4 (p = 0.13), floor 26 / 11 (p = 0.02), floor with size 29 / 27 (p = 0.89).
 - **Not seen through the cell's pick: the small-cube closing trap (G1).** In the grasp's own scene, seed 2 grasped only about 6 in 10 upright cubes under ×0.95. Through the cell's pick, it grasps 46 of 47 under ×0.925. Not yet explained. Until it is, F1 (the wider closing window) is not needed for the cell's failures, which are F2–F4's: rotation near 45°, and seed 0's large cubes (32 of 45 over ×1.075).
+
+## Grasp round 1, as it came (2026-11-17/18, development sets)
+
+`grasp_anypose7` (F2–F4 from `0ca34e6`, warm-started from `grasp_anypose6`, 1M steps per seed, clean tree for all three). Reports: `scripts/cell_picks_report.py` and `results/grasp/round_grasp_anypose7.json`.
+
+| Development check, per seed 0 / 1 / 2 | v3.2 round 1 (`grasp_anypose7`) | v3.1 (`grasp_anypose6`) | Paired, pooled (new only / old only) |
+|---|---|---|---|
+| Belt, `grasp_belt_v1` | **100 / 100 / 100 %, no knock-overs** (bar met) | 98.0 / 100 / 100 %, seed 0 knocks over 4 | 4 / 0, p = 0.13 |
+| Floor, `grasp_floor_v1` | 96.0 / 100 / 100 %; seed 0 knocks over 8, weakest bins +25..+35° (19/23) and +35..+45° (21/25): **bar missed** on the 85 % bin rule | 94.0 / 100 / 100 %, seed 0 weakest bin −45..−35° (14/18) | 12 / 8, p = 0.50 |
+| Floor, size ×0.85–1.15 | 89.0 / 99.5 / 98.5 %, pooled gap −3.0 points (bar met) | 84.5 / 100 / 99.0 %, gap −3.5 | 27 / 20, p = 0.38 |
+| Lying, `grasp_lying_final_v1` | 96.0 / 94.5 / 92.0 % = 94.2 % | 95.5 / 99.0 / 99.0 % = 97.8 % | 11 / 33, **p = 0.001** |
+| Lying, `grasp_lying_v1` | 96.3 % | 97.0 % | 14 / 18, p = 0.60 |
+| Lying, size ×0.85–1.15 | 94.5 % | 97.0 % | 16 / 31, **p = 0.04** |
+| Upright, `grasp_upright_v1` | 93.5 / 98.0 / 87.5 % = 93.0 % | 91.5 / 95.5 / 98.0 % = 95.0 % | 22 / 34, p = 0.14 |
+| Upright, size ×0.85–1.15 | 88.3 % (gap −4.7) | 87.8 % (gap −7.2) | 44 / 41, p = 0.83 |
+
+- **The belt is fixed.** Seed 0's four belt knock-overs are gone, with none on any seed.
+- **Seed 0's floor weakness moved instead of going away.** Its negative side is now clean (−45..−25°: 40/40, from 33/40), but the positive side got worse (+25..+45°: 40/48, from 45/48, all failures knock-overs). This is the same mirror image seen between v3.0 and v3.1. With the size condition, the same side drops to 32/48.
+- **Lying cubes regressed on seeds 1 and 2.** On the earlier one-shot lying set (grasp_lying_final_v1) the drop is significant (p = 0.001), and seed 2 also fell on upright cubes (87.5 % from 98.0 %). The lock-time regression check on `grasp_lying_final_v2` would likely fail. Round 1 is therefore not a lock candidate.
