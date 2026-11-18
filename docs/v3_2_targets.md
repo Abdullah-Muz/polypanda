@@ -75,3 +75,21 @@ The v3.2 cell (the new grasp, the v3.1 stand-up and place, and v3.1's recovery: 
 - **orders with no knock (D0): at least 99 %**, read from the v3.2 cell and from the no-spares configuration. **D0 means the suite's planned no-knock orders** (50 per seed in `disturbance_suite_v3`), as in v3.0 and v3.1. The cell's own D0 label, which also counts planned-knock orders that failed before their knock was due, is reported beside it.
 
 **Also reported, with no target:** pick knock-overs per seed in the cell (belt and floor), against v3.1 on the same orders, and seeds 1–2 next to seed 0.
+
+## Baselines, as they came (2026-11-17, before any v3.2 training)
+
+On the development sets, from `c3141a3` with a clean tree (`results/grasp/cellpicks_baseline_v32.json`, `scripts/cell_picks_report.py`). The scripted pick is one run. One run (v3.1 seed 0, floor, size condition) was killed by the out-of-memory killer while another project's jobs shared the machine; it was re-run unchanged from the same commit.
+
+| Grasp, per seed 0 / 1 / 2 | Belt (`grasp_belt_v1`) | Floor (`grasp_floor_v1`) | Floor, size ×0.85–1.15 |
+|---|---|---|---|
+| v3.1 (`grasp_anypose6`) | 98.0 / 100 / 100 %; seed 0 knocks over **4**, all turned −15..−5° | 94.0 / 100 / 100 %; seed 0 knocks over **11**, weakest bin −45..−35° (14/18) | 84.5 / 100 / 99.0 %; seed 0 knocks over 19, 13 of them on cubes over ×1.075 |
+| v3.0 (`grasp_anypose5`) | 100 / 100 / 100 % | 86.5 / 100 / 100 %; seed 0 knocks over **24**, weakest bin +35..+45° (4/25) | 85.5 / 98.0 / 99.0 % |
+| Scripted pick | 100 % | 100 % | 100 % |
+
+- **The sets catch what the cell showed, in minutes:**
+  - seed 0's belt knock-overs, at the predicted rate (the cell's 2 % would be about 4 in 200) and in the same rotation band;
+  - its floor knock-overs near 45°;
+  - v3.0 seed 0's mirror-image weakness on the other side of 45°.
+  - Seeds 1 and 2 are clean. No revision of the sets is needed.
+- **Against the bars:** v3.1 misses the belt and floor bars on seed 0 only, and meets the size bar (pooled gap −3.5 points). Paired with v3.0, pooled: belt 0 / 4 (p = 0.13), floor 26 / 11 (p = 0.02), floor with size 29 / 27 (p = 0.89).
+- **Not seen through the cell's pick: the small-cube closing trap (G1).** In the grasp's own scene, seed 2 grasped only about 6 in 10 upright cubes under ×0.95. Through the cell's pick, it grasps 46 of 47 under ×0.925. Not yet explained. Until it is, F1 (the wider closing window) is not needed for the cell's failures, which are F2–F4's: rotation near 45°, and seed 0's large cubes (32 of 45 over ×1.075).
