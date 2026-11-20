@@ -195,3 +195,24 @@ Round 2's two checkpoint rules failed in opposite ways, so round 3 makes two cha
 - **Learning rate halved:** 1.5e-4 → 1.5e-5 (was 3e-4 → 3e-5), to damp the drift away from the warm start that seed 1 showed.
 
 **Round 3 checkpoint rule, fixed before training:** the round's policy is each seed's **best checkpoint by this mixed validation** (`best_model.zip`, mean validation reward), for all three seeds. The development sets then decide whether round 3 is a lock candidate, with the same bars as rounds 1–2. If it is, the lock is judged once on the untouched one-shot sets. If it is not, the v3.2 grasp target is recorded as not met and the cell keeps v3.1's `grasp_anypose6`.
+
+### Grasp round 3, as it came (2026-11-20, development sets)
+
+**Checkpoints** (best by the mixed validation, the rule fixed before training): seed 0 at 900k, seed 1 at 1M, seed 2 at 900k. Their validation success was 98.0 / 98.3 / 99.0 %. Over the run, validation stayed within 0.89–0.99 for every seed; round 2's seed 1 ranged 0.80–0.955.
+
+| Development check, per seed 0 / 1 / 2 | Round 3 (`grasp_anypose9`, best) | v3.1 (`grasp_anypose6`) | Paired, pooled (new only / old only) |
+|---|---|---|---|
+| Belt, `grasp_belt_v1` | 100 / 100 / 100 %, none knocked over (bar met) | 98.0 / 100 / 100 %, 4 knocked over | 4 / 0, p = 0.13 |
+| Floor, `grasp_floor_v1` | **94.5** / 100 / 100 %; seed 0 weakest bin −45..−35° **9/18** (bar missed) | 94.0 / 100 / 100 %; seed 0 14/18 | 7 / 6, p = 1 |
+| Floor, size ×0.85–1.15 | 94.0 / 99.5 / 100 %, gap −0.3 points (bar met) | 84.5 / 100 / 99.0 % | 26 / 6, p = 0.0005 |
+| Near-base probe (neg / pos) | 90/103, 93/97 · 101/103, 95/97 · 103/103, 97/97 | | |
+| Lying, `grasp_lying_final_v1` | 98.0 / 96.0 / 99.0 % = 97.7 % | 97.8 % | 11 / 12, p = 1 |
+| Lying, `grasp_lying_v1` | 98.0 % | 97.0 % | 14 / 8, p = 0.29 |
+| Lying, size ×0.85–1.15 | 97.8 % | 97.0 % | 15 / 10, p = 0.42 |
+| Upright, `grasp_upright_v1` | 95.0 / 92.5 / 97.0 % = 94.8 % | 95.0 % | 24 / 25, p = 1 |
+| Upright, x < 0.40 m | 97.4 % | 94.0 % | 4 / 0, p = 0.13 |
+| Upright, size ×0.85–1.15 | 88.5 %, gap −6.3 points | 87.8 %, gap −7.2 | 47 / 43, p = 0.75 |
+
+- **The lying regression is gone** (97.7 vs 97.8 %). Upright matches v3.1. The belt and the size-varied floor are better, the size-varied floor significantly.
+- **One bar is missed: seed 0 on the floor.** All its failures are standing cubes near the base (r 0.31–0.37 m) turned −38 to −45°, near the 45° point where either finger pair could close. Most are picks that never complete; 3 are knock-overs. v3.1's seed 0 misses the same bar (94.0 %, 14/18), so this is seed 0's long-standing weakness, not a new one.
+- **Outcome under the rules fixed before training:** round 3 is not a lock candidate. Round 3 was the last allowed round, so **the v3.2 grasp target is not met**. The cell keeps `grasp_anypose6`, and the one-shot sets (`grasp_belt_final_v1`, `grasp_floor_final_v1`, `grasp_lying_final_v2`) remain untouched.
