@@ -225,3 +225,26 @@ Round 2's two checkpoint rules failed in opposite ways, so round 3 makes two cha
 - **What it is not:** a locked v3.2 grasp. It misses the floor bar on seed 0, so **the v3.2 grasp target stays not met**. The decision was made after seeing the development results, so it is post hoc.
 - **One-shot sets:** `grasp_belt_final_v1`, `grasp_floor_final_v1` and `grasp_lying_final_v2` have not been run on any policy.
 - **Later work affected:** v3.1's stand-up policy (`standup_round12`) was trained on hand-offs from `grasp_anypose6`. Cell results with the new grasp therefore pair a stand-up policy with a grasp it was not trained after.
+
+### One-shot sets, run once (2026-11-20, user request, after the adoption decision)
+
+Run once from `b5e9368` on `grasp_anypose9` (best). The baselines were evaluated on the same cases. These sets had never been run on any policy. The run is an unbiased measurement of the adopted grasp; it does not change the outcome (target not met).
+
+| One-shot check, per seed 0 / 1 / 2 | `grasp_anypose9` | v3.1 `grasp_anypose6` | v3.0 `grasp_anypose5` | Scripted |
+|---|---|---|---|---|
+| Belt, `grasp_belt_final_v1` (bar ≥ 99 %, ≤ 1 knocked over) | 100 / 100 / 100 %, 0 knocked over (bar met) | 97.5 / 100 / 100 %, 5 (missed) | 100 %, 0 (met) | 100 % |
+| Floor, `grasp_floor_final_v1` (≥ 95 %, no 10° bin < 85 %) | **94.5** / 100 / 100 %; seed 0 bin −45..−35° **14/23** (missed) | 89.5 / 100 / 100 %; 12/23 (missed) | 88.0 / 100 / 100 %; +35..+45° 2/20 (missed) | 100 % |
+| Floor, size ×0.85–1.15 (gap within 5 points) | 94.0 / 100 / 100 %, gap −0.2 (met) | 81.5 / 99.5 / 99.0 %, gap −3.2 (met) | gap −2.8 (met) | 100 %, gap 0 |
+| Lying, `grasp_lying_final_v2` (no significant drop vs v3.1) | 98.0 / 98.5 / 98.5 % = 98.3 % (met) | 95.5 / 99.5 / 98.5 % = 97.8 % | | |
+
+**Paired against v3.1, pooled (only new / only old):**
+- belt: 5 / 0, p = 0.063
+- floor: 13 / 3, p = 0.021
+- floor, size-varied: 33 / 5, p = 4e-6
+- lying_final_v2: 11 / 8, p = 0.65
+
+**Against the scripted pick:** floor 0 / 11 (p = 0.001), floor size-varied 0 / 12.
+
+- **The one-shot sets confirm the development result.** Every bar is met except the floor bar, which seed 0 misses on the same cases: standing near-base cubes turned −35 to −45°.
+- **The adopted grasp is significantly better than v3.1 on the floor** (p = 0.021) **and on the size-varied floor** (p = 4e-6), with no lying regression.
+- **It is still behind the scripted pick on seed 0's floor cases.**

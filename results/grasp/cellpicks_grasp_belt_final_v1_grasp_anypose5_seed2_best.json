@@ -1,0 +1,77 @@
+{
+  "name": "cellpicks_grasp_belt_final_v1_grasp_anypose5_seed2_best",
+  "set": {
+    "path": "eval_sets/grasp_belt_final_v1.json",
+    "name": "grasp_belt_final_v1",
+    "kind": "belt",
+    "seed": 20261212,
+    "digest": "60b305744abd",
+    "n": 200
+  },
+  "pick": "PPO grasp_v4 policy grasp_anypose5_seed2",
+  "pick_provenance": {
+    "run_dir": "runs/grasp_anypose5_seed2",
+    "checkpoint": "best",
+    "policy_id": "grasp_anypose5_seed2",
+    "trained_at": "78cf02187a0be0d53d08c6ed8d9bda1b773093da"
+  },
+  "condition": "nominal",
+  "partial": false,
+  "summary": {
+    "n": 200,
+    "success": 200,
+    "rate": 1.0,
+    "ci95": [
+      0.9811539940816791,
+      1.0
+    ],
+    "knocked_over": 0,
+    "failures": {},
+    "by_rotation": {
+      "-15..-5": {
+        "n": 76,
+        "success": 76,
+        "rate": 1.0,
+        "ci95": [
+          0.9518847317689024,
+          0.9999999999999999
+        ],
+        "knocked_over": 0,
+        "failures": {}
+      },
+      "-5..+5": {
+        "n": 61,
+        "success": 61,
+        "rate": 1.0,
+        "ci95": [
+          0.9407540837980555,
+          1.0
+        ],
+        "knocked_over": 0,
+        "failures": {}
+      },
+      "+5..+15": {
+        "n": 63,
+        "success": 63,
+        "rate": 1.0,
+        "ci95": [
+          0.9425268096514744,
+          0.9999999999999999
+        ],
+        "knocked_over": 0,
+        "failures": {}
+      }
+    }
+  },
+  "created_utc": "2026-11-20T22:57:30+00:00",
+  "git": {
+    "commit": "b5e9368607dc4ce1f9c1560341a1a8521335ab5b",
+    "dirty": false
+  },
+  "versions": {
+    "python": "3.12.3",
+    "mujoco": "3.16.0",
+    "torch": "2.14.1+cpu"
+  },
+  "wall_s": 351.8
+}
