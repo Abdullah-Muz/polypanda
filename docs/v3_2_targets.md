@@ -163,3 +163,24 @@ Probes on the round 1 and v3.1 policies (replays that only observe; outcomes rep
 - **This is a post-hoc change:** it was made after seeing seed 0's checkpoints on the development sets above.
 - **Safeguards:** it is recorded here before any final-checkpoint result exists. The development sets choose nothing further. As before, the lock is judged only on the untouched one-shot sets.
 - **Reports:** `grasp_round_report.py` and `cell_picks_report.py` take `<run>@final`.
+
+### Round 2 final checkpoints, as they came (2026-11-20, development sets)
+
+Each seed's `final_model.zip` (1,003,520 steps), evaluated from `1133a67`.
+
+| Development check, per seed 0 / 1 / 2 | Round 2 (`grasp_anypose8@final`) | v3.1 (`grasp_anypose6`) | Paired, pooled (new only / old only) |
+|---|---|---|---|
+| Belt, `grasp_belt_v1` | 100 / 100 / 100 %, none knocked over (bar met) | 98.0 / 100 / 100 % | 4 / 0, p = 0.13 |
+| Floor, `grasp_floor_v1` | 100 / 100 / 100 % (bar met) | 94.0 / 100 / 100 % | 12 / 0, p = 0.0005 |
+| Floor, size ×0.85–1.15 | 96.0 / 100 / 100 %, gap −1.3 points (bar met) | 84.5 / 100 / 99.0 % | 32 / 7, p = 7e-5 |
+| Near-base probe (neg / pos) | 103/103, 96/97 · 103/103, 96/97 · 103/103, 97/97 | | |
+| Lying, `grasp_lying_final_v1` | 93.0 / **88.0** / 99.5 % = **93.5 %** | 95.5 / 99.0 / 99.0 % = 97.8 % | 11 / 37, **p = 0.0002** |
+| Lying, `grasp_lying_v1` | 93.5 / **85.0** / 100 % = 92.8 % | 97.0 % | 13 / 38, p = 0.0006 |
+| Lying, size ×0.85–1.15 | 94.0 / 83.5 / 100 % = 92.5 % | 97.0 % | 11 / 38, p = 0.0001 |
+| Upright, `grasp_upright_v1` | 90.5 / 97.0 / 93.0 % = 93.5 % | 95.0 % | 27 / 36, p = 0.31 |
+| Upright, size ×0.85–1.15 | 84.0 / 78.0 / 82.0 % = 81.3 %, gap −12.2 points | 87.8 %, gap −7.2 | 42 / 81, p = 0.0006 |
+
+- **Every cell-like bar is met on every seed**, better than v3.1 and round 1.
+- **The lying regression is back, on seeds 1 and 0.** Round 2 is therefore not a lock candidate, as with round 1. The one-shot sets stay untouched.
+- **Where the failures are:** 35 of the 39 lying_final_v1 failures are far cubes (r ≥ 0.6 m) that are never closed on (seed 1: 23 of 24). A probe of the far cases shows the open hand comes down to the table 7–17 mm off the cube's centre and 5–20° misaligned, then stays low beside the cube for the rest of the episode without re-centring. v3.1's few far failures look the same; the final checkpoints just have many more. The corridor term fires throughout these failures (seed 1: median 37 steps), so it did not prevent this mode. Whether it contributes is not established.
+- **Training is unstable on whole-table cases.** Seed 1's validation success swings 0.80–0.955 over the run (300k 0.955, 800k 0.80, final 0.91). v3.1 seed 1 stayed at 0.90–0.97 with the same learning rate. Seed 2 ends at its best. The two checkpoint rules fail in opposite ways: "best" missed seed 0's late cell-like gains, while "final" catches seed 1 in a whole-table trough.
