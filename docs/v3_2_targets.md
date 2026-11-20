@@ -216,3 +216,12 @@ Round 2's two checkpoint rules failed in opposite ways, so round 3 makes two cha
 - **The lying regression is gone** (97.7 vs 97.8 %). Upright matches v3.1. The belt and the size-varied floor are better, the size-varied floor significantly.
 - **One bar is missed: seed 0 on the floor.** All its failures are standing cubes near the base (r 0.31–0.37 m) turned −38 to −45°, near the 45° point where either finger pair could close. Most are picks that never complete; 3 are knock-overs. v3.1's seed 0 misses the same bar (94.0 %, 14/18), so this is seed 0's long-standing weakness, not a new one.
 - **Outcome under the rules fixed before training:** round 3 is not a lock candidate. Round 3 was the last allowed round, so **the v3.2 grasp target is not met**. The cell keeps `grasp_anypose6`, and the one-shot sets (`grasp_belt_final_v1`, `grasp_floor_final_v1`, `grasp_lying_final_v2`) remain untouched.
+
+### Decision, 2026-11-20 (user): the cell uses round 3's grasp
+
+**From v3.2 on, the cell's grasp is `grasp_anypose9` (best checkpoints, 3 seeds), not `grasp_anypose6`.**
+
+- **Why:** round 3 matches or beats v3.1 on every development check. It is clearly better on the belt (100 %, no knock-overs, against 98 % with 4) and on the size-varied floor (p = 0.0005).
+- **What it is not:** a locked v3.2 grasp. It misses the floor bar on seed 0, so **the v3.2 grasp target stays not met**. The decision was made after seeing the development results, so it is post hoc.
+- **One-shot sets:** `grasp_belt_final_v1`, `grasp_floor_final_v1` and `grasp_lying_final_v2` have not been run on any policy.
+- **Later work affected:** v3.1's stand-up policy (`standup_round12`) was trained on hand-offs from `grasp_anypose6`. Cell results with the new grasp therefore pair a stand-up policy with a grasp it was not trained after.
