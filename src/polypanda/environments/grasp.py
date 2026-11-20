@@ -119,6 +119,14 @@ class GraspRewardConfig:
     # v3.2 (F3): per step a finger touches the cube's upper part (above 0.6 of its half height
     # over the centre) while the gripper is open: how v3.1 seed 0 tipped cubes over in the cell
     finger_top: float = 0.0
+    # v3.2 round 2: per step the open hand is below the cube's top + corridor_margin (TCP height)
+    # while more than corridor_xy off the cube's centre horizontally: coming down beside the cube.
+    # Round 1's seed 0 still knocked cubes over by descending ~2 cm outside and 1-3 cm to the side
+    # of the centre; finger_top only fires once a finger is already on the top edge. v3.1's
+    # successful grasps cross this corridor for about 1.3 steps per episode (pre-check)
+    corridor: float = 0.0
+    corridor_margin: float = 0.01
+    corridor_xy: float = 0.02
 
 
 @dataclass(frozen=True)
@@ -400,6 +408,16 @@ class GraspEnv(gym.Env):
                 return True
         return False
 
+    def _outside_corridor(self, m: dict) -> bool:
+        """The hand is below the cube's top + corridor_margin (TCP height) while more than
+        corridor_xy off its centre horizontally (v3.2 round 2)."""
+        r = self.config.reward
+        R = self.data.xmat[self.cube.body].reshape(3, 3)
+        top = self.data.xpos[self.cube.body][2] + float(np.abs(R[2]) @ self.cube.half_size)
+        tcp_z = tcp_position(self.data, self.arm)[2]
+        return bool(tcp_z < top + r.corridor_margin
+                    and np.hypot(*m["rel"][:2]) > r.corridor_xy)
+
     def _place_cube(self, x: float, y: float, yaw: float, options: dict) -> None:
         """Set the cube down at the start of an episode (upright; GraspV4Env may lay it down)."""
         set_cube_pose(self.model, self.data, self.cube, (x, y), yaw)
@@ -500,6 +518,9 @@ class GraspEnv(gym.Env):
         if r.finger_top > 0:   # v3.2 (F3); not computed when off
             terms["finger_top"] = (-r.finger_top if not self.closed and self._finger_on_top()
                                    else 0.0)
+        if r.corridor > 0:     # v3.2 round 2; not computed when off
+            terms["corridor"] = (-r.corridor if not self.closed and self._outside_corridor(m)
+                                 else 0.0)
         self._prev = {"distance": m["distance"], "align": abs(m["align"]), "lift": lifted}
         terminated = knocked
         truncated = not terminated and self._steps >= cfg.episode.horizon

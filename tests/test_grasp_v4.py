@@ -266,3 +266,30 @@ def test_v32_finger_on_top_is_charged_only_when_asked():
     off.reset(seed=0, options={"cube": (0.5, 0.0, 0.3)})
     _, _, _, _, info = off.step(np.zeros(off.action_space.shape))
     assert "finger_top" not in info["reward_terms"]
+
+
+def test_v32_round2_corridor_charges_a_low_hand_beside_the_cube_only_when_asked():
+    from polypanda.simulation.panda import tcp_position
+
+    on = replace(CFG.for_evaluation(), reward=replace(CFG.reward, corridor=0.2))
+    assert (on.reward.corridor_margin, on.reward.corridor_xy) == (0.01, 0.02)
+    env = GraspV4Env(on)
+    env.reset(seed=0, options={"cube": (0.5, 0.0, 0.3)})
+    _, _, _, _, info = env.step(np.zeros(env.action_space.shape))
+    assert info["reward_terms"]["corridor"] == 0.0     # the hand starts far above the cube
+
+    def place(dx, dz):   # the cube's centre dx beside and dz below the TCP, then measure
+        tcp = tcp_position(env.data, env.arm).copy()
+        env.data.qpos[env.cube.qpos:env.cube.qpos + 3] = [tcp[0] + dx, tcp[1], tcp[2] - dz]
+        mujoco.mj_forward(env.model, env.data)
+        return env._outside_corridor(env._measure())
+
+    half = float(env.cube.half_size[2])
+    assert place(0.03, 0.0)                   # level with the centre, 3 cm beside it
+    assert place(0.03, half)                  # TCP on the top face's height, still beside
+    assert not place(0.03, half + 0.015)      # 1.5 cm above the top: inside the corridor
+    assert not place(0.005, 0.0)              # centred: the grasp pose itself
+    off = GraspV4Env(CFG.for_evaluation())
+    off.reset(seed=0, options={"cube": (0.5, 0.0, 0.3)})
+    _, _, _, _, info = off.step(np.zeros(off.action_space.shape))
+    assert "corridor" not in info["reward_terms"]
