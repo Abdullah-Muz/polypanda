@@ -3,10 +3,12 @@
 Usage:
   uv run python scripts/cell_picks_report.py --grasps grasp_anypose6 grasp_anypose5 scripted \
       [--belt grasp_belt_v1] [--floor grasp_floor_v1] [--out results/grasp/cellpicks_report.json]
-Reads results/grasp/cellpicks_<set>_<grasp>_seed<k>_best[_size]_episodes.csv (scripted: one
-run, cellpicks_<set>_scripted[_size]_episodes.csv). Per grasp and seed: success, knock-overs and
-the weakest 10-deg rotation bin; each bar checked per seed; the first grasp paired against each
-other one, pooled over seeds (exact McNemar on the same cases).
+Reads results/grasp/cellpicks_<set>_<grasp>_seed<k>_<which>[_size]_episodes.csv, a grasp
+given as <run prefix>[@best|final] (default best; v3.2 rounds from round 2 on use final, see
+docs/v3_2_targets.md) (scripted: one run, cellpicks_<set>_scripted[_size]_episodes.csv).
+Per grasp and seed: success, knock-overs and the weakest 10-deg rotation bin; each bar checked
+per seed; the first grasp paired against each other one, pooled over seeds (exact McNemar on the
+same cases).
 """
 
 import argparse
@@ -23,7 +25,8 @@ SIZE_GAP = 0.05                             # pooled, size condition against nom
 
 
 def load(results: Path, set_name: str, grasp: str, seed: int | None, size: bool) -> list[dict]:
-    run = grasp if seed is None else f"{grasp}_seed{seed}_best"
+    prefix, _, which = grasp.partition("@")
+    run = prefix if seed is None else f"{prefix}_seed{seed}_{which or 'best'}"
     path = results / f"cellpicks_{set_name}_{run}{'_size' if size else ''}_episodes.csv"
     if not path.exists():
         return []

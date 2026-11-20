@@ -2,8 +2,10 @@
 
 Usage: uv run python scripts/grasp_round_report.py --new grasp_anypose6 [--old grasp_anypose5]
            [--out results/grasp/round_<new>.json]
+       --new/--old take <run prefix>[@best|final] (default best; v3.2 rounds from round 2 on
+       use final, docs/v3_2_targets.md)
 
-Reads evaluate_grasp.py's and evaluate_grasp_robustness.py's episode files (best checkpoints,
+Reads evaluate_grasp.py's and evaluate_grasp_robustness.py's episode files (that checkpoint,
 3 seeds) and reports, per development set (grasp_lying_v1, grasp_lying_final_v1 since its one
 run, grasp_upright_v1): the new and old success rates pooled over seeds and per seed, with an
 exact McNemar test on the episodes paired by seed and index; the upright cubes near the base
@@ -28,14 +30,16 @@ def episodes(path: Path) -> list[dict] | None:
     return list(csv.DictReader(open(path))) if path.exists() else None
 
 
-def runs(prefix: str, set_name: str, size: bool = False) -> dict[int, list[dict]] | None:
+def runs(spec: str, set_name: str, size: bool = False) -> dict[int, list[dict]] | None:
+    prefix, _, which = spec.partition("@")
+    which = which or "best"
     out = {}
     for s in range(3):
         if size:
-            path = Path(f"results/grasp_robustness/{prefix}_seed{s}_best_{set_name}_size"
+            path = Path(f"results/grasp_robustness/{prefix}_seed{s}_{which}_{set_name}_size"
                         "_episodes.csv")
         else:
-            path = Path(f"results/grasp/{prefix}_seed{s}_best_{set_name}_episodes.csv")
+            path = Path(f"results/grasp/{prefix}_seed{s}_{which}_{set_name}_episodes.csv")
         rows = episodes(path)
         if rows is None:
             return None
@@ -95,7 +99,7 @@ def main() -> None:
         if nominal:
             print(f"  {'':32s} gap to nominal: new {c['gap_to_nominal']['new']:+.1f}, "
                   f"old {c['gap_to_nominal']['old']:+.1f} points")
-    out = args.out or Path(f"results/grasp/round_{args.new}.json")
+    out = args.out or Path(f"results/grasp/round_{args.new.replace('@', '_')}.json")
     out.write_text(json.dumps(report, indent=2) + "\n")
     print(f"wrote {out}")
 

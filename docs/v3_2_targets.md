@@ -112,3 +112,54 @@ On the development sets, from `c3141a3` with a clean tree (`results/grasp/cellpi
 - **The belt is fixed.** Seed 0's four belt knock-overs are gone, with none on any seed.
 - **Seed 0's floor weakness moved instead of going away.** Its negative side is now clean (−45..−25°: 40/40, from 33/40), but the positive side got worse (+25..+45°: 40/48, from 45/48, all failures knock-overs). This is the same mirror image seen between v3.0 and v3.1. With the size condition, the same side drops to 32/48.
 - **Lying cubes regressed on seeds 1 and 2.** On the earlier one-shot lying set (grasp_lying_final_v1) the drop is significant (p = 0.001), and seed 2 also fell on upright cubes (87.5 % from 98.0 %). The lock-time regression check on `grasp_lying_final_v2` would likely fail. Round 1 is therefore not a lock candidate.
+
+## Grasp round 1 diagnosis (2026-11-18/19)
+
+Probes on the round 1 and v3.1 policies (replays that only observe; outcomes reproduce the committed results exactly):
+
+- **Lying regression:** the cell-like 20 % (F2+F3) came out of the whole pool. Sampled training starts: lying 0.69 → 0.57, far (x ≥ 0.45 m) lying 0.29 → 0.24. Nearly every new lying failure is a far cube that is never closed on.
+- **Not the finger-on-top penalty:** v3.1's successful far grasps rarely trigger it (4/84, 11/86, 4/87 per seed on lying cubes).
+- **Seed 2's far upright regression is not explained by exposure.** Far upright training rose from 0.135 to 0.171.
+- **Seed 0's one-sided knock-overs are not a data imbalance.** Training rotations are symmetric by construction, and no policy turned the long way round (0 of 1,800 traced episodes).
+- **What does happen:** at the first finger–cube contact, the open hand is about 2 cm radially outside the cube's centre and 1–3 cm to the side, so a finger lands on the top edge. Rotation is nearly done by then (3–9° left). finger_top acts only once that contact has happened.
+- **A cheap dev check:** the plain grasp environment reproduces the one-sided failures (an upright cube at x 0.30–0.40 m, y ±0.02 m, turned 20–45° either way), with no cell needed.
+
+## Grasp round 2, as it came (2026-11-19, development sets)
+
+**Setup:** `grasp_anypose8` (`f2d774e`), warm-started from `grasp_anypose6`, 1M steps per seed, clean tree.
+- **R1:** `lying_prob` 0.875 (near_prob stays 0.4). Sampled lying, far lying, near lying and far upright shares match v3.1.
+- **R2:** `reward.corridor` 0.2 per step while the open hand's TCP is below the cube's top + 1 cm and more than 2 cm off its centre. A pre-check on v3.1 found that its successful grasps cross this corridor about 1.3 steps per episode, its failures 33–70.
+
+**Results with the round's checkpoint rule as it stood ("best" by validation reward):** seed 0 at 400k, seed 1 at 300k, seed 2 at 1M.
+
+| Development check, per seed 0 / 1 / 2 | Round 2 (`grasp_anypose8`, best) | v3.1 (`grasp_anypose6`) | Paired, pooled (new only / old only) |
+|---|---|---|---|
+| Belt, `grasp_belt_v1` | **77.0** / 100 / 100 %; seed 0 knocks over 46 (bar missed) | 98.0 / 100 / 100 % | 2 / 44, p = 3e-11 |
+| Floor, `grasp_floor_v1` | 93.0 / 100 / 100 %; seed 0 weakest bin +35..+45° 20/25 (bar missed) | 94.0 / 100 / 100 % | 12 / 14, p = 0.85 |
+| Floor, size ×0.85–1.15 | 86.0 / 100 / 100 %, gap −2.3 points (bar met) | 84.5 / 100 / 99.0 % | 24 / 19, p = 0.54 |
+| Lying, `grasp_lying_final_v1` | 97.5 / 97.0 / 98.5 % = 97.7 % | 97.8 % | 9 / 10, p = 1 (round 1 vs this: 94.2 %, p = 0.0015) |
+| Lying, `grasp_lying_v1` | 97.0 % | 97.0 % | 17 / 17, p = 1 |
+| Lying, size ×0.85–1.15 | 96.8 % | 97.0 % | 17 / 18, p = 1 |
+| Upright, `grasp_upright_v1` | 91.5 / 93.0 / 93.5 % = 92.7 % | 95.0 % | 22 / 36, p = 0.087 |
+| Upright, size ×0.85–1.15 | 85.5 % | 87.8 % | 31 / 45, p = 0.14 |
+
+- **The lying regression is gone.** Seeds 1 and 2 are clean on every cell check.
+- **Seed 0's "best" checkpoint broke on the belt.** To check whether that is the checkpoint or the lineage, seed 0's other checkpoints were run on the same development sets (output kept outside `results/`):
+
+| Round 2 seed 0 | Validation | Belt | Floor | Near-base probe (neg / pos) |
+|---|---|---|---|---|
+| 250k | 92.0 % | 57.0 %, 86 knocked over | 68.5 %, 61 | 76/103, 53/97 |
+| 400k (best) | 97.5 % | 77.0 %, 46 | 93.0 %, 8 | 88/103, 90/97 |
+| 500k | 95.5 % | 96.0 %, 8 | 96.0 %, 8 | 98/103, 87/97 |
+| 750k | 87.5 % | 99.0 %, 2 | 99.0 %, 2 | 100/103, 96/97 |
+| 1M checkpoint | 93.0 % | 99.0 %, 1 | 100 %, 0 | 103/103, 96/97 |
+
+- **The warm-started policy is disrupted early on and then keeps improving on the cell's cases.** Validation does not see this: its starts are whole-table placements with no belt or standing near-base cubes, and 200 episodes is noisy.
+
+### Checkpoint rule, changed 2026-11-19 (user decision), before any final-checkpoint result
+
+**From round 2 on, a round's policy is each seed's final checkpoint** (`final_model.zip`, the learning rate fully decayed), not the best-validation one. The rule applies to all three seeds alike.
+
+- **This is a post-hoc change:** it was made after seeing seed 0's checkpoints on the development sets above.
+- **Safeguards:** it is recorded here before any final-checkpoint result exists. The development sets choose nothing further. As before, the lock is judged only on the untouched one-shot sets.
+- **Reports:** `grasp_round_report.py` and `cell_picks_report.py` take `<run>@final`.

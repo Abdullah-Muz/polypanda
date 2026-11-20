@@ -1,0 +1,160 @@
+{
+  "new": "grasp_anypose8",
+  "old": "grasp_anypose6",
+  "sets": {
+    "grasp_lying_v1": {
+      "cases": 600,
+      "new": 97.0,
+      "old": 97.0,
+      "per_seed": {
+        "0": {
+          "new": 97.5,
+          "old": 93.0
+        },
+        "1": {
+          "new": 95.5,
+          "old": 98.0
+        },
+        "2": {
+          "new": 98.0,
+          "old": 100.0
+        }
+      },
+      "paired": {
+        "only_first": 17,
+        "only_second": 17,
+        "p_value": 1.0
+      }
+    },
+    "grasp_lying_final_v1": {
+      "cases": 600,
+      "new": 97.66666666666667,
+      "old": 97.83333333333333,
+      "per_seed": {
+        "0": {
+          "new": 97.5,
+          "old": 95.5
+        },
+        "1": {
+          "new": 97.0,
+          "old": 99.0
+        },
+        "2": {
+          "new": 98.5,
+          "old": 99.0
+        }
+      },
+      "paired": {
+        "only_first": 9,
+        "only_second": 10,
+        "p_value": 1.0
+      }
+    },
+    "grasp_upright_v1": {
+      "cases": 600,
+      "new": 92.66666666666667,
+      "old": 95.0,
+      "per_seed": {
+        "0": {
+          "new": 91.5,
+          "old": 91.5
+        },
+        "1": {
+          "new": 93.0,
+          "old": 95.5
+        },
+        "2": {
+          "new": 93.5,
+          "old": 98.0
+        }
+      },
+      "paired": {
+        "only_first": 22,
+        "only_second": 36,
+        "p_value": 0.08694889972991099
+      }
+    },
+    "grasp_upright_v1, x < 0.40 m": {
+      "cases": 117,
+      "new": 91.45299145299145,
+      "old": 94.01709401709402,
+      "per_seed": {
+        "0": {
+          "new": 89.74358974358974,
+          "old": 87.17948717948718
+        },
+        "1": {
+          "new": 94.87179487179488,
+          "old": 100.0
+        },
+        "2": {
+          "new": 89.74358974358974,
+          "old": 94.87179487179488
+        }
+      },
+      "paired": {
+        "only_first": 3,
+        "only_second": 6,
+        "p_value": 0.5078125
+      }
+    }
+  },
+  "size": {
+    "grasp_lying_v1": {
+      "cases": 600,
+      "new": 96.83333333333333,
+      "old": 97.0,
+      "per_seed": {
+        "0": {
+          "new": 97.0,
+          "old": 94.0
+        },
+        "1": {
+          "new": 94.5,
+          "old": 97.5
+        },
+        "2": {
+          "new": 99.0,
+          "old": 99.5
+        }
+      },
+      "paired": {
+        "only_first": 17,
+        "only_second": 18,
+        "p_value": 1.0
+      },
+      "gap_to_nominal": {
+        "new": -0.1666666666666714,
+        "old": 0.0
+      }
+    },
+    "grasp_upright_v1": {
+      "cases": 600,
+      "new": 85.5,
+      "old": 87.83333333333333,
+      "per_seed": {
+        "0": {
+          "new": 81.0,
+          "old": 85.5
+        },
+        "1": {
+          "new": 92.5,
+          "old": 95.0
+        },
+        "2": {
+          "new": 83.0,
+          "old": 83.0
+        }
+      },
+      "paired": {
+        "only_first": 31,
+        "only_second": 45,
+        "p_value": 0.1353851052994308
+      },
+      "gap_to_nominal": {
+        "new": -7.166666666666671,
+        "old": -7.166666666666671
+      }
+    }
+  }
+}
