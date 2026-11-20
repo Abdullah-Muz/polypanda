@@ -60,6 +60,9 @@ class TrainConfig:
     eval_episodes: int = 50
     eval_seed: int = 100_000         # validation target stream; never the held-out test set
     checkpoint_freq: int = 100_000   # env transitions between checkpoints
+    # v3.2 round 3: validation keeps the training's cell-like starts (grasp: near-base upright
+    # and belt cubes), so the best checkpoint is chosen on whole-table and cell-like cases.
+    eval_cell_like: bool = False
     torch_threads: int | None = None  # trainer's PyTorch threads; None = PyTorch default
     # Warm start (v3): begin from another run's network weights and observation/return
     # normalization ("{seed}" is replaced by this run's seed), e.g. runs/grasp_cart_seed{seed}.

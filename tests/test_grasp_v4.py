@@ -293,3 +293,23 @@ def test_v32_round2_corridor_charges_a_low_hand_beside_the_cube_only_when_asked(
     off.reset(seed=0, options={"cube": (0.5, 0.0, 0.3)})
     _, _, _, _, info = off.step(np.zeros(off.action_space.shape))
     assert "corridor" not in info["reward_terms"]
+
+
+def test_v32_round3_validation_keeps_cell_like_starts_only_when_asked():
+    from polypanda.training.config import TrainConfig
+
+    cfg = GraspConfig.from_yaml(ROOT / "configs" / "grasp_anypose8_cartesian.yaml")
+    plain, mixed = cfg.for_evaluation(), cfg.for_evaluation(keep_cell_like=True)
+    assert (plain.placement.near_upright_prob, plain.placement.belt_prob) == (0.0, 0.0)
+    assert (mixed.placement.near_upright_prob, mixed.placement.belt_prob) == (0.12, 0.08)
+    assert plain.placement.near_prob == mixed.placement.near_prob == 0.0
+    assert mixed.curriculum == plain.curriculum and mixed.randomization == plain.randomization
+    env = GraspV4Env(mixed)
+    kinds = []
+    for s in range(100):
+        env.reset(seed=s)
+        kinds.append(env.cell_like)
+    assert 0.1 < np.mean([k is not None for k in kinds]) < 0.32
+    assert {"belt", "near_upright"} <= set(kinds)
+    ppo = TrainConfig.from_yaml(ROOT / "configs" / "grasp_anypose9_cartesian_ppo.yaml")
+    assert ppo.eval_cell_like and not TrainConfig().eval_cell_like

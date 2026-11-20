@@ -222,12 +222,13 @@ class GraspConfig:
     def from_yaml(cls, path: str | Path) -> "GraspConfig":
         return load_yaml(cls, path)
 
-    def for_evaluation(self) -> "GraspConfig":
+    def for_evaluation(self, keep_cell_like: bool = False) -> "GraspConfig":
         """The task as evaluated: every episode starts from home with the nominal cube on the
-        table, placed over the whole region (no extra near-base draws)."""
+        table, placed over the whole region (no extra near-base draws). keep_cell_like (v3.2
+        round 3 validation): keep the cell-like draws (near_upright_prob, belt_prob)."""
+        cell = {} if keep_cell_like else {"near_upright_prob": 0.0, "belt_prob": 0.0}
         return replace(self, curriculum=CurriculumConfig(), randomization=RandomizationConfig(),
-                       placement=replace(self.placement, near_prob=0.0, near_upright_prob=0.0,
-                                         belt_prob=0.0))
+                       placement=replace(self.placement, near_prob=0.0, **cell))
 
 
 def alignment_error(R_tcp: np.ndarray, cube_yaw_value: float) -> float:

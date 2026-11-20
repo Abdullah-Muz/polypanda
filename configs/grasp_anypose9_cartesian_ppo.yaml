@@ -1,0 +1,43 @@
+# v3.2 grasp round 3 (the last allowed round; docs/v3_2_targets.md): round 2's task unchanged
+# (configs/grasp_anypose8_cartesian.yaml: lying exposure as v3.1, cell-like 20 %, corridor term),
+# warm-started from v3.1's grasp (grasp_anypose6, best) as rounds 1-2 were, 1M steps.
+# Round 2 passed every cell-like bar at its final checkpoints but its lying cubes regressed
+# (seed 1's whole-table validation swung 0.80-0.955), while its best checkpoints (validation on
+# whole-table cases only) missed seed 0's late cell-like gains. Two changes, user approved
+# 2026-11-20:
+#   - validation keeps the cell-like starts (eval_cell_like: 20 % near-base upright and belt
+#     cubes, 80 % whole table), 400 episodes, every 100k, a checkpoint every 100k. The round's
+#     policy is each seed's best by this validation (best_model.zip), fixed before training.
+#   - learning rate halved, 1.5e-4 -> 1.5e-5, to damp the drift away from the warm start.
+
+algorithm: ppo
+task: grasp_v4
+env_config: configs/grasp_anypose8_cartesian.yaml
+seed: 0
+n_envs: 8
+vec_env: subproc
+total_timesteps: 1000000
+normalize_obs: true
+normalize_reward: true
+eval_freq: 100000
+eval_episodes: 400
+eval_seed: 100000
+eval_cell_like: true
+checkpoint_freq: 100000
+torch_threads: 1
+init_from: runs/grasp_anypose6_seed{seed}
+init_checkpoint: best
+
+ppo:
+  learning_rate: 0.00015
+  learning_rate_final: 0.000015
+  n_steps: 512
+  batch_size: 256
+  n_epochs: 10
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_range: 0.2
+  ent_coef: 0.01
+  vf_coef: 0.5
+  max_grad_norm: 0.5
+  net_arch: [128, 128]

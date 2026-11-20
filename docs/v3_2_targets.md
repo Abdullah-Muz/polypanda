@@ -184,3 +184,14 @@ Each seed's `final_model.zip` (1,003,520 steps), evaluated from `1133a67`.
 - **The lying regression is back, on seeds 1 and 0.** Round 2 is therefore not a lock candidate, as with round 1. The one-shot sets stay untouched.
 - **Where the failures are:** 35 of the 39 lying_final_v1 failures are far cubes (r ≥ 0.6 m) that are never closed on (seed 1: 23 of 24). A probe of the far cases shows the open hand comes down to the table 7–17 mm off the cube's centre and 5–20° misaligned, then stays low beside the cube for the rest of the episode without re-centring. v3.1's few far failures look the same; the final checkpoints just have many more. The corridor term fires throughout these failures (seed 1: median 37 steps), so it did not prevent this mode. Whether it contributes is not established.
 - **Training is unstable on whole-table cases.** Seed 1's validation success swings 0.80–0.955 over the run (300k 0.955, 800k 0.80, final 0.91). v3.1 seed 1 stayed at 0.90–0.97 with the same learning rate. Seed 2 ends at its best. The two checkpoint rules fail in opposite ways: "best" missed seed 0's late cell-like gains, while "final" catches seed 1 in a whole-table trough.
+
+## Grasp round 3 setup (2026-11-20, user approved; the last allowed round)
+
+**Run:** `grasp_anypose9` (`configs/grasp_anypose9_cartesian_ppo.yaml`). It uses round 2's task unchanged (`configs/grasp_anypose8_cartesian.yaml`) and is warm-started from `grasp_anypose6` (best), 1M steps, 3 seeds.
+
+Round 2's two checkpoint rules failed in opposite ways, so round 3 makes two changes:
+
+- **Mixed validation.** Validation keeps training's cell-like starts (new `eval_cell_like` option; 12 % near-base upright, 8 % belt, 80 % whole table with no extra near-base draws). It runs 400 episodes every 100k steps, and a checkpoint is saved every 100k.
+- **Learning rate halved:** 1.5e-4 → 1.5e-5 (was 3e-4 → 3e-5), to damp the drift away from the warm start that seed 1 showed.
+
+**Round 3 checkpoint rule, fixed before training:** the round's policy is each seed's **best checkpoint by this mixed validation** (`best_model.zip`, mean validation reward), for all three seeds. The development sets then decide whether round 3 is a lock candidate, with the same bars as rounds 1–2. If it is, the lock is judged once on the untouched one-shot sets. If it is not, the v3.2 grasp target is recorded as not met and the cell keeps v3.1's `grasp_anypose6`.
