@@ -214,7 +214,7 @@ Round 2's two checkpoint rules failed in opposite ways, so round 3 makes two cha
 | Upright, size ×0.85–1.15 | 88.5 %, gap −6.3 points | 87.8 %, gap −7.2 | 47 / 43, p = 0.75 |
 
 - **The lying regression is gone** (97.7 vs 97.8 %). Upright matches v3.1. The belt and the size-varied floor are better, the size-varied floor significantly.
-- **One bar is missed: seed 0 on the floor.** All its failures are standing cubes near the base (r 0.31–0.37 m) turned −38 to −45°, near the 45° point where either finger pair could close. Most are picks that never complete; 3 are knock-overs. v3.1's seed 0 misses the same bar (94.0 %, 14/18), so this is seed 0's long-standing weakness, not a new one.
+- **One bar is missed: seed 0 on the floor.** 9 of its 11 failures are standing cubes near the base (r 0.31–0.37 m) turned −38 to −45°, near the 45° point where either finger pair could close; the other two are turned +25° and +42° (the +42° one knocked over). Most are picks that never complete; 3 are knock-overs. *(Corrected 2026-11-20: first written as "all its failures ... −38 to −45°".)* v3.1's seed 0 misses the same bar (94.0 %, 14/18), so this is seed 0's long-standing weakness, not a new one.
 - **Outcome under the rules fixed before training:** round 3 is not a lock candidate. Round 3 was the last allowed round, so **the v3.2 grasp target is not met**. The cell keeps `grasp_anypose6`, and the one-shot sets (`grasp_belt_final_v1`, `grasp_floor_final_v1`, `grasp_lying_final_v2`) remain untouched.
 
 ### Decision, 2026-11-20 (user): the cell uses round 3's grasp
