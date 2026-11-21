@@ -22,7 +22,7 @@ Trained policies are published as GitHub Release assets: `scripts/fetch_models.s
 | Transport | `transport_slow_seed{0,1,2}` | pick-and-place (the cell's moves are scripted) |
 | Place on a table | `place_cart_seed{0,1,2}` | pick-and-place |
 | Place on a tower | `place_stack_v3_seed{0,1,2}`, **aimed at the fixture** | the work-order cell |
-| Grasp, upright or lying (v3) | `grasp_anypose6_seed{0,1,2}` (v3.1); seed 0 knocks over rotated upright cubes in the cell, see its card | the cell with recovery |
+| Grasp, upright or lying (v3) | `grasp_anypose9_seed{0,1,2}` (v3.2, adopted after the development results; the v3.2 grasp target is not met: seed 0 still misses standing cubes near the base turned close to −45°, see its card). `grasp_anypose6_seed{0,1,2}` (v3.1) is the grasp of every v3.1 cell result | the cell with recovery |
 | Stand a cube upright (v3) | `standup_round12_seed{0,1,2}` (v3.1) with its own turn chooser, shield and re-planning | the cell with recovery |
 | Rescue, replace or clear (v3) | a hand-written rule: the clear rule (v3.1, `symbolic.CLEAR_NEAR_RULE`) or the best rule (`symbolic.BEST_RULE`), level in physics (p = 0.84); `recovery_planner_seed{0,1,2}` is published for comparison | the cell with spares and a deadline |
 
@@ -148,7 +148,7 @@ v1 plus a charge for every millimetre a tower cube moves, failing at 5 mm. Not c
 | In the work-order cell | runs on the cell's scene through the spot's station frame: 81.8 / 95.7 / 91.5 % of stand-ups per seed on the calibration orders |
 | Limitations | most failures are freezes in front of a tower; not trained with randomized cube size; seed 0's stand-ups time out more in the cell, where the cube comes from the learned grasp rather than the trained start |
 
-## Grasp a cube upright or lying on its side: v3.1 round 1 (`grasp_anypose6_seed{0,1,2}`) (Milestone 11), recommended
+## Grasp a cube upright or lying on its side: v3.1 round 1 (`grasp_anypose6_seed{0,1,2}`) (Milestone 11), replaced in the cell by `grasp_anypose9` from v3.2
 
 | | |
 |---|---|
@@ -170,6 +170,24 @@ v1 plus a charge for every millimetre a tower cube moves, failing at 5 mm. Not c
 | Held-out result | **90.0 %** (87.3–92.2) on the one-shot set `standup_final_v2` (94.5 / 90.5 / 85.0; target 90 %); size varied 88.3 % (bar met, −1.7; round 11: 76.8 %). Paired: round 11 88.2 % (p = 0.2), scripted 90.5 % (p = 0.81). Development: `standup_final_v1` 92.8 % (round 11 87.7 %, p = 0.0001) |
 | In the work-order cell | `disturbance_suite_v2`, rescue every cube, no spares: 89.0 / 94.9 / 90.6 % of 209 / 177 / 191 stand-ups per seed (round 11 on the same orders: 83.5 / 95.2 / 91.4 %) |
 | Limitations | most failures are still freezes where the cube is never released (48 of 60 one-shot failures); seed 2 is the weakest on the one-shot set (85.0 %); the chooser beats a random reachable command only for seed 2 |
+
+## Grasp a cube upright or lying on its side: v3.2 round 3 (`grasp_anypose9_seed{0,1,2}`), the cell's grasp from v3.2 (adopted post hoc; v3.2 grasp target not met)
+
+| | |
+|---|---|
+| Task | as v3.1 (`GraspV4Env`, `grasp_v4`, observation `grasp-v4-41d`, hand motion `cartesian-v1-4d`, the cell's gripper, cube size ×0.85–1.15 at constant density, not observed), now with the cell's own pick situations in training: 12 % of episodes stand an upright cube near the base (x 0.30–0.40 m) at any rotation, half of them turned 35–45° either way; 8 % stand it at belt height where the infeed delivers it, turned up to ±15°; 15 % of cubes are large (×1.05–1.15); a penalty for each step a finger touches the cube's top while the gripper is open, and for each step the open hand is low beside the cube (`configs/grasp_anypose8_cartesian.yaml`, v3.2 round 2's task, unchanged) |
+| Training | 1M steps warm-started from `grasp_anypose6` (best), learning rate 1.5e-4 → 1.5e-5 (half of v3.1's); validation keeps the cell-like starts (12 % near-base upright, 8 % belt, 80 % whole table), 400 episodes every 100k steps (`configs/grasp_anypose9_cartesian_ppo.yaml`) |
+| Checkpoint | each seed's best by that mixed validation (`best_model.zip`), the rule fixed before training: seed 0 at 900k, seed 1 at 1M, seed 2 at 900k steps (validation 98.0 / 98.3 / 99.0 %) |
+| Files (sha256 prefix) | seed 0 `best_model.zip` `36fac25ed6fd`, `best_vecnormalize.pkl` `4aae3f914938`; seed 1 `dc8a1e251e15`, `1b7d615d586c`; seed 2 `729c236585b6`, `762c4d0d5b9b` (trained at 4d960a6; adopted at b5e9368, not locked) |
+| Held-out result | one-shot cell-like pick sets, run once (per seed 0 / 1 / 2, v3.1's `anypose6` on the same cases): belt `grasp_belt_final_v1` **100 / 100 / 100 %**, none knocked over (v3.1 97.5 / 100 / 100 %, 5 knocked over; p = 0.063; bar met); floor `grasp_floor_final_v1` **94.5** / 100 / 100 %, seed 0's −45..−35° bin 14/23 (v3.1 89.5 / 100 / 100 %, 12/23; p = 0.021; **bar missed** on seed 0); floor with size varied 94.0 / 100 / 100 %, gap −0.2 (v3.1 81.5 / 99.5 / 99.0 %; p = 4e-6; bar met). Lying `grasp_lying_final_v2`: **98.3 %** (97.0–99.1; 98.0 / 98.5 / 98.5), v3.1 97.8 % (p = 0.65; no regression, bar met). The scripted pick: 100 % on belt and floor |
+| Development | belt `grasp_belt_v1` 100 / 100 / 100 %, none knocked over (v3.1 98.0 / 100 / 100 %, 4); floor `grasp_floor_v1` 94.5 / 100 / 100 %, seed 0's −45..−35° bin 9/18 (v3.1 94.0 %, 14/18; p = 1); floor with size varied 94.0 / 99.5 / 100 % (v3.1 84.5 / 100 / 99.0 %; p = 0.0005); lying `grasp_lying_final_v1` 97.7 % (v3.1 97.8 %, p = 1); upright `grasp_upright_v1` 94.8 % (v3.1 95.0 %, p = 1) |
+| Status | **the cell's grasp from v3.2 on, by a user decision made after seeing the development results (post hoc). It is an adoption, not a locked v3.2 grasp: the v3.2 grasp target is not met** (seed 0 misses the floor bar on the development and one-shot sets; round 3 was the last allowed round). See [v3_2_targets.md](v3_2_targets.md#decision-2026-11-20-user-the-cell-uses-round-3s-grasp) |
+| In the work-order cell | TODO: no v3.2 cell results yet. A development cell run is in progress; the final run on `disturbance_suite_v3` has not been made |
+| Limitations | **seed 0, standing cubes near the base turned close to −45°**, where either finger pair could close: on the one-shot floor set all 11 of its failures are cubes 0.31–0.38 m from the base axis turned −35 to −43° (1 knocked over); on the development set 9 of its 11 are turned −38 to −45° (the other two +25° and +42°; 3 knocked over). Most are picks that never complete. v3.1's seed 0 had the same weakness, and the scripted pick does better on these cases (0 / 11 on the one-shot floor set, p = 0.001). The v3.1 stand-up (`standup_round12`) was trained on hand-offs from `grasp_anypose6`, so in the cell it now follows a grasp it was not trained after. The closing window for upright cubes is unchanged (candidate F1 was not applied) |
+
+## Grasp: v3.2 rounds 1 and 2 (`grasp_anypose7_seed{0,1,2}`, `grasp_anypose8_seed{0,1,2}`), not adopted
+
+Both warm-started from `grasp_anypose6`, 1M steps, on the development sets only ([v3_2_targets.md](v3_2_targets.md#grasp-round-1-as-it-came-2026-11-1718-development-sets)). Round 1 (`configs/grasp_anypose7_cartesian.yaml`) fixed the belt but moved seed 0's floor weakness to the other side of 45°, and lying cubes regressed (94.2 against 97.8 %, p = 0.001). Round 2 (`configs/grasp_anypose8_cartesian.yaml`, the task round 3 kept) broke seed 0 on the belt at its best checkpoint (77.0 %); its final checkpoints met every pick bar, but lying cubes regressed again (93.5 %, p = 0.0002). Published because their results are reported; do not use.
 
 ## Rescue or replace: recovery planner (`recovery_planner_seed{0,1,2}`) (Milestone 10)
 

@@ -1,6 +1,6 @@
 """Package trained runs for a GitHub Release: policies, normalization statistics and provenance.
 
-Usage: uv run python scripts/package_models.py --tag v3.1
+Usage: uv run python scripts/package_models.py --tag v3.2
 Writes dist/polypanda-models-<tag>.tar.gz containing runs/<name>/ for every run listed in RUNS
 (only what loading and auditing need: metadata, configs, best and final checkpoints with their
 observation normalization, validation history and learning curves; no TensorBoard logs or
@@ -39,6 +39,9 @@ RUNS = [
     *(f"standup_round{r}_seed{s}" for r in (2, 4, 5, 6, 7, 8, 9, 10, 11) for s in range(3)),
     # v3.1: Milestone 11 (docs/recovery.md): the grasp's round 1 and the stand-up's round 12
     *(f"{name}_seed{s}" for name in ("grasp_anypose6", "standup_round12") for s in range(3)),
+    # v3.2 (docs/v3_2_targets.md): the grasp's three rounds, every one reported; round 3
+    # (grasp_anypose9) is the cell's grasp from v3.2 on, round 2 ships both checkpoint rules
+    *(f"grasp_anypose{r}_seed{s}" for r in (7, 8, 9) for s in range(3)),
 ]
 # Stopped early (docs/workcell.md: the three stacking v3 attempts that did not learn; v3: the
 # lying-cube grasp's round 2, the first stand-up and its round 3)
@@ -64,7 +67,7 @@ def sha256(data: bytes) -> str:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--tag", default="v3.1")
+    parser.add_argument("--tag", default="v3.2")
     parser.add_argument("--runs-dir", type=Path, default=Path("runs"))
     parser.add_argument("--out-dir", type=Path, default=Path("dist"))
     args = parser.parse_args()

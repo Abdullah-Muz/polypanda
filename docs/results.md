@@ -277,3 +277,36 @@ v3.0's own one-shot results were 84.8 % (grasp) and 87.7 % (stand-up), both just
 - **Both new skills meet their targets,** and the stand-up is now level with the scripted planner.
 - **The clear rule removed the clutter but not the losses.** Tower places with a loose cube within 6 cm fell from 243 to 19, and failed places from 119 to 71. But failed places are mostly retried, and clearing costs time: 37 knocked orders finished late against 26.
 - **Seed 0's grasp is the weak point.** It knocks over 2.0 % of upright belt cubes and 16 % of upright floor cubes in the cell; seeds 1–2 almost never do. Both trace to the cube's rotation relative to the hand. On seeds 1 and 2, the v3.1 cell completes 93.5 % of all orders and every order with no knock. Proposed fixes: [v3_2_candidates.md](v3_2_candidates.md).
+
+## v3.2: a grasp round for the cell's picks
+
+Targets were committed before any v3.2 training ([v3_2_targets.md](v3_2_targets.md)). New cell-like pick checks run the grasp through the cell's own pick, one upright cube per case: on the belt (turned up to ±15°) or on the floor near the base (turned −45..+45°), with the same cases at cube size ×0.85–1.15. Every grasp is reported per seed (0 / 1 / 2, 200 cases each) and by 10° rotation bin, so one weak seed cannot hide behind two good ones. Exact McNemar tests pool the 3 seeds, paired on the same cases; v3.1's and v3.0's grasps and the scripted pick run on the same cases.
+
+| Grasp round, development sets (at most 3 rounds) | Belt bar | Floor bar | Lying `grasp_lying_final_v1`, against v3.1's 97.8 % | Outcome |
+|---|---|---|---|---|
+| 1, `grasp_anypose7` (rotation coverage near the base, belt-height cubes, no finger on the top, large cubes) | met | missed (seed 0, +25..+45°) | 94.2 % (p = 0.001) | not a lock candidate |
+| 2, `grasp_anypose8` (lying share restored, a cost for the open hand low beside the cube), best checkpoints | missed (seed 0: 77.0 %) | missed (seed 0) | 97.7 % | checkpoint rule changed to final (post hoc, recorded before any final result) |
+| 2, final checkpoints | met | met | 93.5 % (p = 0.0002) | not a lock candidate |
+| 3, `grasp_anypose9` (round 2's task, mixed validation, learning rate halved), best checkpoints | met | missed (seed 0: 94.5 %, −45..−35° bin 9/18) | 97.7 % (p = 1) | not a lock candidate: **v3.2 grasp target not met** |
+
+**Decision after the development results (user, post hoc):** the cell uses `grasp_anypose9` from v3.2 on. It is an adoption, not a lock; the v3.2 grasp target stays not met. The one-shot sets were then run once on it, with the baselines on the same cases:
+
+| One-shot set, run once (per seed 0 / 1 / 2) | **v3.2 `grasp_anypose9`** | v3.1 `grasp_anypose6`, same cases | v3.0 `grasp_anypose5` | Scripted | Bar (per seed unless stated) |
+|---|---|---|---|---|---|
+| Belt, `grasp_belt_final_v1` | **100 / 100 / 100 %**, none knocked over | 97.5 / 100 / 100 %, 5 knocked over (p = 0.063) | 100 %, none | 100 % | ≥ 99 % and ≤ 1 knocked over: **met** |
+| Floor, `grasp_floor_final_v1` | **94.5** / 100 / 100 %; seed 0's −45..−35° bin 14/23 | 89.5 / 100 / 100 %; 12/23 (p = 0.021) | 88.0 / 100 / 100 %; +35..+45° 2/20 | 100 % (p = 0.001) | ≥ 95 %, no 10° bin under 85 %: **missed** (seed 0) |
+| Floor, size ×0.85–1.15 | 94.0 / 100 / 100 %, gap −0.2 points | 81.5 / 99.5 / 99.0 %, gap −3.2 (p = 4e-6) | gap −2.8 | 100 %, gap 0 | within 5 points, pooled: met |
+| Lying, `grasp_lying_final_v2` (v3.1's one-shot set) | **98.3 %** (97.0–99.1; 98.0 / 98.5 / 98.5) | 97.8 % (p = 0.65) | 95.5 % | 84.5 % | no significant drop against v3.1: met |
+
+| Held-out disturbance suite v3 (200 orders, 3 seeds) | v3.2 cell (`grasp_anypose9`, v3.1's stand-up, place and recovery) | v3.1 cell, same orders | Scripted cell | Target |
+|---|---|---|---|---|
+| All orders | TODO: pending | TODO: pending | TODO: pending | v3.2 significantly more than v3.1 (p < 0.05) |
+| Recoverable D1 / D2 / D3, no spares | TODO: pending | TODO: pending | TODO: pending | 90 / 85 / 80 % |
+| No knock (D0, the suite's planned controls) | TODO: pending | TODO: pending | TODO: pending | 99 % |
+
+*TODO: the final cell run on `disturbance_suite_v3` has not been made. A development cell run with the new grasp is in progress; no v3.2 cell results exist yet.*
+
+- **The belt is fixed on every seed.** No cube is knocked over on either belt set, where v3.1's seed 0 knocked over 4 and 5.
+- **The adopted grasp is significantly better than v3.1 on the floor** (p = 0.021) **and on the size-varied floor** (p = 4e-6), with no lying regression (98.3 against 97.8 %, p = 0.65).
+- **Seed 0's floor weakness remains,** on the same kind of case in both sets: standing cubes near the base turned close to −45°. It is still behind the scripted pick there (0 / 11, p = 0.001).
+- **The stand-up was not retrained.** v3.1's stand-up learned from `grasp_anypose6`'s hand-offs, so the v3.2 cell pairs it with a grasp it was not trained after.
