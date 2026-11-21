@@ -6,11 +6,25 @@ Reinforcement learned manipulation skills for a simulated Franka Panda in MuJoCo
 
 *v3 (`scripts/record_recovery.py`): tower B is knocked flat the moment it is complete. The cell notices, moves the fallen cubes clear of the other towers, stands the lying ones upright and rebuilds the tower. Grasping, standing up and stacking are PPO policies; the recovery decisions shown in the robot's log, the swings between stations and the drop into the reject bin are scripted. The knock was chosen for the demo; everything after it is the cell's own. One cube landed leaning, which the grasp is not trusted with, so it is left alone and a blue cube from the belt takes its place. [Full video](https://github.com/Abdullah-Muz/polypanda/releases) · the v2 cell: [workcell.gif](docs/figures/workcell.gif).*
 
-> **Status:** v3.1. Milestones 1–11 complete: v3 adds recovery from knocked-over towers, two new learned skills and a learned recovery planner; v3.1 retrains both skills to their targets and tests a clutter-clearing recovery rule, which did not beat the best rule. Simulation only: nothing here has been run on a real robot.
+> **Status:** v3.1. Milestones 1–11 complete: v3 adds recovery from knocked-over towers, two new learned skills and a learned recovery planner; v3.1 retrains both skills to their targets and tests a clutter-clearing recovery rule, which did not beat the best rule. v3.2 is in progress: its grasp round is done (target not met; the cell adopts the new grasp anyway), and the final cell run is pending. Simulation only: nothing here has been run on a real robot.
 
 ## Results
 
 Held-out sets that training never touched, 95 % Wilson intervals, learned policies pooled over 3 seeds and compared with the scripted baseline case by case (exact McNemar tests). Full tables: [docs/recovery.md](docs/recovery.md), [docs/results.md](docs/results.md), [docs/workcell.md](docs/workcell.md), [docs/cartesian_actions.md](docs/cartesian_actions.md).
+
+**v3.2, in progress** (new held-out sets that run the grasp through the cell's own pick, one upright cube per case, every seed judged separately). One grasp round aimed at seed 0's knock-overs. Its last allowed round, `grasp_anypose9`, missed seed 0's floor bar on the development sets, so **the v3.2 grasp target is not met**. The cell uses it from v3.2 on all the same: a post-hoc decision, made after the development results. The one-shot sets were then run once on it:
+
+| v3.2, `grasp_anypose9`, per seed 0 / 1 / 2 | Result | Bar |
+|---|---|---|
+| Upright cube on the belt, turned up to ±15° | **100 / 100 / 100 %**, none knocked over (v3.1 97.5 / 100 / 100 %, 5 knocked over; p = 0.063) | ≥ 99 %, ≤ 1 knocked over: met |
+| Upright cube on the floor near the base, turned −45..+45° | **94.5** / 100 / 100 %; seed 0's −45..−35° bin 14/23 (v3.1 89.5 / 100 / 100 %, p = 0.021; scripted 100 %) | ≥ 95 %, no 10° bin under 85 %: **missed** (seed 0) |
+| The same floor cases, size ×0.85–1.15 | 94.0 / 100 / 100 %, gap −0.2 points (v3.1 81.5 / 99.5 / 99.0 %, p = 4e-6) | within 5 points: met |
+| Lying cubes, v3.1's one-shot set | **98.3 %** (v3.1 97.8 %, p = 0.65) | no significant drop: met |
+| The final cell run, all orders: the v3.2 cell against the v3.1 cell | TODO: pending | significantly more (p < 0.05) |
+| Recoverable knocks without spares, D1 / D2 / D3 | TODO: pending | 90 / 85 / 80 % |
+| Orders with no knock | TODO: pending | 99 % |
+
+The belt is fixed on every seed. Seed 0 still fails on standing cubes near the base turned close to −45°, where the scripted pick does not. The stand-up was not retrained, so the v3.2 cell pairs v3.1's stand-up with a grasp it was not trained after. [results.md](docs/results.md#v32-a-grasp-round-for-the-cells-picks), [v3_2_targets.md](docs/v3_2_targets.md).
 
 **v3.1** (Milestone 11; fresh one-shot sets and a new held-out suite of 200 orders, 3 seeds). Both recovery skills were retrained with a randomized cube size, and a hand-written rule that clears clutter was tested against the best rule:
 
@@ -196,15 +210,15 @@ Every result file in [`results/`](results/) records the git commit (and whether 
 | Docs | |
 |---|---|
 | [recovery.md](docs/recovery.md) | v3: knocks and the physical ceiling, the lying-cube grasp and the stand-up, learned recovery, the symbolic cell, headroom gates, the learned recovery planner and its sim-to-physics gap; v3.1: the retrained skills, the clear rule and seed 0's grasp in the cell |
-| [v3_targets.md](docs/v3_targets.md), [v3_1_targets.md](docs/v3_1_targets.md) | v3 and v3.1 targets as committed before the work, with dated amendments and every result as it came |
-| [v3_2_candidates.md](docs/v3_2_candidates.md) | a proposal for v3.2, from the v3.1 diagnoses: grasp fixes and a cell-like pick check |
+| [v3_targets.md](docs/v3_targets.md), [v3_1_targets.md](docs/v3_1_targets.md), [v3_2_targets.md](docs/v3_2_targets.md) | v3, v3.1 and v3.2 targets as committed before the work, with dated amendments and every result as it came |
+| [v3_2_candidates.md](docs/v3_2_candidates.md) | the proposal behind v3.2, from the v3.1 diagnoses: grasp fixes and a cell-like pick check |
 | [workcell.md](docs/workcell.md) | the work-order cell: grasp assist, station frames, buffer and planner, stacking place v1–v3, a root-cause analysis |
 | [cartesian_actions.md](docs/cartesian_actions.md) | hand-motion actions and the fully learned pick-and-place chain |
 | [generalization.md](docs/generalization.md) | wide-region and cluttered grasping, checkpoint selection |
 | [reach_task.md](docs/reach_task.md), [grasp_task.md](docs/grasp_task.md), [transport_task.md](docs/transport_task.md), [place_task.md](docs/place_task.md) | each skill: task design, baselines, training, failure analysis |
 | [pick_and_place.md](docs/pick_and_place.md), [robustness.md](docs/robustness.md) | supervisor, end-to-end evaluation, ablations, perturbation suite |
 | [evaluation_protocol.md](docs/evaluation_protocol.md), [results.md](docs/results.md) | protocol and result tables |
-| [model_cards.md](docs/model_cards.md) | every published policy, its scope and limitations |
+| [model_cards.md](docs/model_cards.md) | every published policy, its scope and limitations; from v3.2 the cell's grasp is `grasp_anypose9` (v3.1: `grasp_anypose6`) |
 | [environment.md](docs/environment.md), [control_design.md](docs/control_design.md) | simulator setup, action interfaces |
 
 ## Limitations
@@ -212,7 +226,7 @@ Every result file in [`results/`](results/) records the git commit (and whether 
 - **Simulation only.** No sim-to-real claim is made; the policies have never controlled hardware, and none uses vision. Observations include the cube's position relative to the hand.
 - **Cubes only.** 4 × 4 × 6 cm cubes, the Panda's standard parallel gripper, an open table or the cell's fixed stations.
 - **The cell is partly scripted.** Grasping, placing and standing cubes up are learned there. The rescue, replace or clear decision is a hand-written rule in v3.1, because the learned planner of v3.0 did not beat it in physics. Routing, the recovery order, moves between stations and rejection are scripted. The grasp assist means cell results do not measure grip retention.
-- **v3's own misses.** In v3.0, both new skills fell just short of their targets; v3.1 retrained them to 97.8 % and 90.0 %. Recovery decisions are still not learned: the v3.0 planner beat the hand-written rules only in the symbolic cell, and v3.1's clear rule did not beat the best rule in physics. Orders with no knock complete 95–96 %, short of the 99 % bar. One of three seeds (seed 0) is clearly weaker in the cell: its grasp knocks over rotated upright cubes, in v3.0 and in v3.1.
+- **v3's own misses.** In v3.0, both new skills fell just short of their targets; v3.1 retrained them to 97.8 % and 90.0 %. Recovery decisions are still not learned: the v3.0 planner beat the hand-written rules only in the symbolic cell, and v3.1's clear rule did not beat the best rule in physics. Orders with no knock complete 95–96 %, short of the 99 % bar. One of three seeds (seed 0) is clearly weaker in the cell: its grasp knocks over rotated upright cubes, in v3.0 and in v3.1. v3.2's grasp round fixed its belt picks, not its floor picks near −45°.
 - **Simulator effects set the ceiling.** The gripper holds weakly in the simulator, and slightly offset stacks creep over minutes of simulated time. Every learned failure in the cell traced so far ends in that creep.
 - **The scripted baselines are still ahead.** They reach 100 % in pick-and-place and in the cell; the learned skills come close but do not match them everywhere.
 
@@ -227,7 +241,8 @@ Every result file in [`results/`](results/) records the git commit (and whether 
 | 9 | Work-order cell: conveyor, recipe towers, buffer and planner, learned grasp and place at every station | Layers 1–2 done (v2.0); Layer 3, towers of 5–6, later ([workcell](docs/workcell.md)) |
 | 10 | Recovery from knocks: closed loop, lying-cube grasp, stand-up, learned recovery, symbolic cell, learned recovery planner | Done (v3.0); recovery targets met, two skill targets and the planner target missed ([recovery](docs/recovery.md)) |
 | 11 | v3.1: another round for the two new skills (fresh one-shot sets, randomized cube size, real hand-off starts); a clutter-aware symbolic cell and a clearing rule | Done (v3.1); both skill targets met, the recovery target and the D0 bar missed ([recovery](docs/recovery.md#v31-milestone-11-new-skills-and-clearing-clutter)) |
-| v3.2 | Grasp fixes from the v3.1 diagnoses and a cell-like pick check per seed; a symbolic cell where a failed skill costs time; cube positions from a camera | Proposed ([v3.2 candidates](docs/v3_2_candidates.md)) |
+| v3.2 | A grasp round aimed at the cell's knock-overs, with cell-like pick checks per seed; a final cell run on a new suite of 200 orders | Grasp round done; final cell run pending. Grasp target not met; `grasp_anypose9` adopted for the cell post hoc ([v3.2 targets](docs/v3_2_targets.md)) |
+| Later | A symbolic cell where a failed skill costs time; cube positions from a camera | Proposed ([v3.2 candidates](docs/v3_2_candidates.md)) |
 
 ## Acknowledgements and references
 
