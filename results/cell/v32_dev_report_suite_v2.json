@@ -1,0 +1,1248 @@
+{
+  "suite": {
+    "name": "disturbance_suite_v2",
+    "path": "eval_sets/disturbance_suite_v2.json",
+    "order_seed": 20261203
+  },
+  "planned_d0": 36,
+  "configurations": {
+    "c1": {
+      "name": "v3.2 cell",
+      "pattern": "cell_P-grasp_anypose9_seed*_best_*_disturbance_suite_v2_recover_spares2-clear-rule_slack1.5_n200",
+      "files": {
+        "0": "results/cell/cell_P-grasp_anypose9_seed0_best_L-place_stack_v3_seed0_best_S-standup_round12_seed0_best_aim-fixture_h1-4_mixed-s3_disturbance_suite_v2_recover_spares2-clear-rule_slack1.5_n200_episodes.csv",
+        "1": "results/cell/cell_P-grasp_anypose9_seed1_best_L-place_stack_v3_seed1_best_S-standup_round12_seed1_best_aim-fixture_h1-4_mixed-s3_disturbance_suite_v2_recover_spares2-clear-rule_slack1.5_n200_episodes.csv",
+        "2": "results/cell/cell_P-grasp_anypose9_seed2_best_L-place_stack_v3_seed2_best_S-standup_round12_seed2_best_aim-fixture_h1-4_mixed-s3_disturbance_suite_v2_recover_spares2-clear-rule_slack1.5_n200_episodes.csv"
+      }
+    },
+    "c2": {
+      "name": "v3.1 cell",
+      "pattern": "cell_P-grasp_anypose6_seed*_best_*_disturbance_suite_v2_recover_spares2-clear-rule_slack1.5_n200",
+      "files": {
+        "0": "results/cell/cell_P-grasp_anypose6_seed0_best_L-place_stack_v3_seed0_best_S-standup_round12_seed0_best_aim-fixture_h1-4_mixed-s3_disturbance_suite_v2_recover_spares2-clear-rule_slack1.5_n200_episodes.csv",
+        "1": "results/cell/cell_P-grasp_anypose6_seed1_best_L-place_stack_v3_seed1_best_S-standup_round12_seed1_best_aim-fixture_h1-4_mixed-s3_disturbance_suite_v2_recover_spares2-clear-rule_slack1.5_n200_episodes.csv",
+        "2": "results/cell/cell_P-grasp_anypose6_seed2_best_L-place_stack_v3_seed2_best_S-standup_round12_seed2_best_aim-fixture_h1-4_mixed-s3_disturbance_suite_v2_recover_spares2-clear-rule_slack1.5_n200_episodes.csv"
+      }
+    },
+    "c3": {
+      "name": "v3.1 no spares",
+      "pattern": "cell_P-grasp_anypose6_seed*_best_*_disturbance_suite_v2_recover_n200",
+      "files": {
+        "0": "results/cell/cell_P-grasp_anypose6_seed0_best_L-place_stack_v3_seed0_best_S-standup_round12_seed0_best_aim-fixture_h1-4_mixed-s3_disturbance_suite_v2_recover_n200_episodes.csv",
+        "1": "results/cell/cell_P-grasp_anypose6_seed1_best_L-place_stack_v3_seed1_best_S-standup_round12_seed1_best_aim-fixture_h1-4_mixed-s3_disturbance_suite_v2_recover_n200_episodes.csv",
+        "2": "results/cell/cell_P-grasp_anypose6_seed2_best_L-place_stack_v3_seed2_best_S-standup_round12_seed2_best_aim-fixture_h1-4_mixed-s3_disturbance_suite_v2_recover_n200_episodes.csv"
+      }
+    },
+    "c4": {
+      "name": "scripted, recover",
+      "pattern": "cell_P-scripted_L-scripted_*_disturbance_suite_v2_recover_n200",
+      "files": {
+        "run": "results/cell/cell_P-scripted_L-scripted_h1-4_mixed-s3_disturbance_suite_v2_recover_n200_episodes.csv"
+      }
+    },
+    "c5": {
+      "name": "scripted, none",
+      "pattern": "cell_P-scripted_L-scripted_*_disturbance_suite_v2_n200",
+      "files": {
+        "run": "results/cell/cell_P-scripted_L-scripted_h1-4_mixed-s3_disturbance_suite_v2_n200_episodes.csv"
+      }
+    }
+  },
+  "target": {
+    "orders": "all (D0, none, D1, D2, D3)",
+    "pooled": {
+      "pairs": 600,
+      "a_rate": 0.9316666666666666,
+      "b_rate": 0.87,
+      "only_a": 47,
+      "only_b": 10,
+      "p_value": 7.513043097095995e-07,
+      "a_ci95": [
+        0.908608681308734,
+        0.9492321829179109
+      ],
+      "b_ci95": [
+        0.8407188572433667,
+        0.8945733120937575
+      ]
+    },
+    "by_seed": {
+      "0": {
+        "pairs": 200,
+        "a_rate": 0.93,
+        "b_rate": 0.74,
+        "only_a": 40,
+        "only_b": 2,
+        "p_value": 4.1109160520136356e-10,
+        "a_ci95": [
+          0.8859442178331628,
+          0.9578482170770813
+        ],
+        "b_ci95": [
+          0.6750912860870691,
+          0.795862631072137
+        ]
+      },
+      "1": {
+        "pairs": 200,
+        "a_rate": 0.925,
+        "b_rate": 0.945,
+        "only_a": 1,
+        "only_b": 5,
+        "p_value": 0.21875,
+        "a_ci95": [
+          0.8799554020266798,
+          0.9540254929427476
+        ],
+        "b_ci95": [
+          0.9042120755340645,
+          0.9690149791986299
+        ]
+      },
+      "2": {
+        "pairs": 200,
+        "a_rate": 0.94,
+        "b_rate": 0.925,
+        "only_a": 6,
+        "only_b": 3,
+        "p_value": 0.5078125,
+        "a_ci95": [
+          0.8980673646931491,
+          0.9653481500987285
+        ],
+        "b_ci95": [
+          0.8799554020266798,
+          0.9540254929427476
+        ]
+      }
+    },
+    "seeds_complete": true,
+    "met": true,
+    "knocked_only": {
+      "definition": "both runs labelled the order D1-D3, as v3.1's recovery target",
+      "pairs": 464,
+      "a_rate": 0.915948275862069,
+      "b_rate": 0.8620689655172413,
+      "only_a": 35,
+      "only_b": 10,
+      "p_value": 0.00024708778460080794,
+      "a_ci95": [
+        0.8871589601390905,
+        0.9379066176120116
+      ],
+      "b_ci95": [
+        0.8277077547495498,
+        0.8904840435001141
+      ],
+      "by_kind": {
+        "D1": {
+          "pairs": 329,
+          "a_rate": 0.9878419452887538,
+          "b_rate": 0.9361702127659575,
+          "only_a": 20,
+          "only_b": 3,
+          "p_value": 0.00048828125,
+          "a_ci95": [
+            0.9691605507113722,
+            0.995262165679848
+          ],
+          "b_ci95": [
+            0.9043959423311723,
+            0.9578760813581741
+          ]
+        },
+        "D2": {
+          "pairs": 56,
+          "a_rate": 0.9107142857142857,
+          "b_rate": 0.7678571428571429,
+          "only_a": 9,
+          "only_b": 1,
+          "p_value": 0.021484375,
+          "a_ci95": [
+            0.807437601433565,
+            0.9612584227369118
+          ],
+          "b_ci95": [
+            0.6423159664807568,
+            0.8590075275434671
+          ]
+        },
+        "D3": {
+          "pairs": 79,
+          "a_rate": 0.620253164556962,
+          "b_rate": 0.620253164556962,
+          "only_a": 6,
+          "only_b": 6,
+          "p_value": 1.0,
+          "a_ci95": [
+            0.5100166778257305,
+            0.7193366905302645
+          ],
+          "b_ci95": [
+            0.5100166778257305,
+            0.7193366905302645
+          ]
+        }
+      }
+    },
+    "label_disagreements": {
+      "orders": 51,
+      "examples": [
+        [
+          0,
+          3,
+          "D1",
+          "D2"
+        ],
+        [
+          0,
+          8,
+          "D2",
+          "D1"
+        ],
+        [
+          0,
+          24,
+          "D1",
+          "D3"
+        ],
+        [
+          0,
+          29,
+          "D1",
+          "D0"
+        ],
+        [
+          0,
+          33,
+          "D1",
+          "D3"
+        ],
+        [
+          0,
+          44,
+          "D2",
+          "D3"
+        ],
+        [
+          0,
+          64,
+          "D1",
+          "D0"
+        ],
+        [
+          0,
+          69,
+          "none",
+          "D3"
+        ],
+        [
+          0,
+          76,
+          "D2",
+          "D3"
+        ],
+        [
+          0,
+          88,
+          "D2",
+          "D0"
+        ]
+      ]
+    },
+    "notes": [
+      "seed 0: pick skill differs: A 'PPO grasp_v4 policy grasp_anypose9_seed0', B 'PPO grasp_v4 policy grasp_anypose6_seed0'",
+      "seed 1: pick skill differs: A 'PPO grasp_v4 policy grasp_anypose9_seed1', B 'PPO grasp_v4 policy grasp_anypose6_seed1'",
+      "seed 2: pick skill differs: A 'PPO grasp_v4 policy grasp_anypose9_seed2', B 'PPO grasp_v4 policy grasp_anypose6_seed2'"
+    ]
+  },
+  "regression": {
+    "D1": {
+      "pooled": {
+        "k": 242,
+        "n": 267,
+        "rate": 0.9063670411985019,
+        "ci95": [
+          0.8654328021746496,
+          0.9357735117741677
+        ]
+      },
+      "per_seed": {
+        "0": {
+          "k": 61,
+          "n": 83,
+          "rate": 0.7349397590361446,
+          "ci95": [
+            0.6311363664308388,
+            0.8179571555678348
+          ]
+        },
+        "1": {
+          "k": 89,
+          "n": 92,
+          "rate": 0.967391304347826,
+          "ci95": [
+            0.9084648766130528,
+            0.9888490246573767
+          ]
+        },
+        "2": {
+          "k": 92,
+          "n": 92,
+          "rate": 1.0,
+          "ci95": [
+            0.9599171967079014,
+            1.0
+          ]
+        }
+      },
+      "bar": 0.9,
+      "met": true
+    },
+    "D2": {
+      "pooled": {
+        "k": 33,
+        "n": 37,
+        "rate": 0.8918918918918919,
+        "ci95": [
+          0.7529115358483284,
+          0.9571487947949374
+        ]
+      },
+      "per_seed": {
+        "0": {
+          "k": 8,
+          "n": 11,
+          "rate": 0.7272727272727273,
+          "ci95": [
+            0.4343497069897537,
+            0.9025411942607853
+          ]
+        },
+        "1": {
+          "k": 12,
+          "n": 12,
+          "rate": 1.0,
+          "ci95": [
+            0.7574992425007574,
+            1.0
+          ]
+        },
+        "2": {
+          "k": 13,
+          "n": 14,
+          "rate": 0.9285714285714286,
+          "ci95": [
+            0.6853073044604219,
+            0.9872781138877085
+          ]
+        }
+      },
+      "bar": 0.85,
+      "met": true
+    },
+    "D3": {
+      "pooled": {
+        "k": 53,
+        "n": 59,
+        "rate": 0.8983050847457628,
+        "ci95": [
+          0.7953595375326347,
+          0.9525526734868176
+        ]
+      },
+      "per_seed": {
+        "0": {
+          "k": 13,
+          "n": 19,
+          "rate": 0.6842105263157895,
+          "ci95": [
+            0.4601001017506463,
+            0.846358289955714
+          ]
+        },
+        "1": {
+          "k": 21,
+          "n": 21,
+          "rate": 1.0,
+          "ci95": [
+            0.8453561767357979,
+            0.9999999999999999
+          ]
+        },
+        "2": {
+          "k": 19,
+          "n": 19,
+          "rate": 1.0,
+          "ci95": [
+            0.8318156346315496,
+            1.0
+          ]
+        }
+      },
+      "bar": 0.8,
+      "met": true
+    },
+    "met": true
+  },
+  "d0": {
+    "c1": {
+      "planned": {
+        "pooled": {
+          "k": 108,
+          "n": 108,
+          "rate": 1.0,
+          "ci95": [
+            0.9656514212958325,
+            0.9999999999999998
+          ]
+        },
+        "per_seed": {
+          "0": {
+            "k": 36,
+            "n": 36,
+            "rate": 1.0,
+            "ci95": [
+              0.9035781695514236,
+              1.0
+            ]
+          },
+          "1": {
+            "k": 36,
+            "n": 36,
+            "rate": 1.0,
+            "ci95": [
+              0.9035781695514236,
+              1.0
+            ]
+          },
+          "2": {
+            "k": 36,
+            "n": 36,
+            "rate": 1.0,
+            "ci95": [
+              0.9035781695514236,
+              1.0
+            ]
+          }
+        }
+      },
+      "cell_label": {
+        "pooled": {
+          "k": 108,
+          "n": 108,
+          "rate": 1.0,
+          "ci95": [
+            0.9656514212958325,
+            0.9999999999999998
+          ]
+        },
+        "per_seed": {
+          "0": {
+            "k": 36,
+            "n": 36,
+            "rate": 1.0,
+            "ci95": [
+              0.9035781695514236,
+              1.0
+            ]
+          },
+          "1": {
+            "k": 36,
+            "n": 36,
+            "rate": 1.0,
+            "ci95": [
+              0.9035781695514236,
+              1.0
+            ]
+          },
+          "2": {
+            "k": 36,
+            "n": 36,
+            "rate": 1.0,
+            "ci95": [
+              0.9035781695514236,
+              1.0
+            ]
+          }
+        }
+      },
+      "bar": 0.99,
+      "met": true
+    },
+    "c3": {
+      "planned": {
+        "pooled": {
+          "k": 103,
+          "n": 108,
+          "rate": 0.9537037037037037,
+          "ci95": [
+            0.896173774092564,
+            0.9800654785647654
+          ]
+        },
+        "per_seed": {
+          "0": {
+            "k": 31,
+            "n": 36,
+            "rate": 0.8611111111111112,
+            "ci95": [
+              0.7134014871960681,
+              0.9391827463688489
+            ]
+          },
+          "1": {
+            "k": 36,
+            "n": 36,
+            "rate": 1.0,
+            "ci95": [
+              0.9035781695514236,
+              1.0
+            ]
+          },
+          "2": {
+            "k": 36,
+            "n": 36,
+            "rate": 1.0,
+            "ci95": [
+              0.9035781695514236,
+              1.0
+            ]
+          }
+        }
+      },
+      "cell_label": {
+        "pooled": {
+          "k": 103,
+          "n": 123,
+          "rate": 0.8373983739837398,
+          "ci95": [
+            0.7621542381593724,
+            0.8922052148907309
+          ]
+        },
+        "per_seed": {
+          "0": {
+            "k": 31,
+            "n": 51,
+            "rate": 0.6078431372549019,
+            "ci95": [
+              0.4708491122516505,
+              0.7297285514197229
+            ]
+          },
+          "1": {
+            "k": 36,
+            "n": 36,
+            "rate": 1.0,
+            "ci95": [
+              0.9035781695514236,
+              1.0
+            ]
+          },
+          "2": {
+            "k": 36,
+            "n": 36,
+            "rate": 1.0,
+            "ci95": [
+              0.9035781695514236,
+              1.0
+            ]
+          }
+        }
+      },
+      "bar": 0.99,
+      "met": false
+    }
+  },
+  "knockovers": {
+    "c1": {
+      "0": {
+        "belt": {
+          "knocked_over": 0,
+          "attempts": 1895
+        },
+        "floor": {
+          "knocked_over": 0,
+          "attempts": 43
+        },
+        "other": {
+          "knocked_over": 1,
+          "attempts": 387
+        },
+        "total": {
+          "knocked_over": 1,
+          "attempts": 2325
+        }
+      },
+      "1": {
+        "belt": {
+          "knocked_over": 0,
+          "attempts": 1887
+        },
+        "floor": {
+          "knocked_over": 0,
+          "attempts": 46
+        },
+        "other": {
+          "knocked_over": 2,
+          "attempts": 386
+        },
+        "total": {
+          "knocked_over": 2,
+          "attempts": 2319
+        }
+      },
+      "2": {
+        "belt": {
+          "knocked_over": 0,
+          "attempts": 1886
+        },
+        "floor": {
+          "knocked_over": 0,
+          "attempts": 34
+        },
+        "other": {
+          "knocked_over": 2,
+          "attempts": 374
+        },
+        "total": {
+          "knocked_over": 2,
+          "attempts": 2294
+        }
+      }
+    },
+    "c2": {
+      "0": {
+        "belt": {
+          "knocked_over": 26,
+          "attempts": 1808
+        },
+        "floor": {
+          "knocked_over": 5,
+          "attempts": 56
+        },
+        "other": {
+          "knocked_over": 10,
+          "attempts": 401
+        },
+        "total": {
+          "knocked_over": 41,
+          "attempts": 2265
+        }
+      },
+      "1": {
+        "belt": {
+          "knocked_over": 0,
+          "attempts": 1889
+        },
+        "floor": {
+          "knocked_over": 0,
+          "attempts": 38
+        },
+        "other": {
+          "knocked_over": 2,
+          "attempts": 375
+        },
+        "total": {
+          "knocked_over": 2,
+          "attempts": 2302
+        }
+      },
+      "2": {
+        "belt": {
+          "knocked_over": 0,
+          "attempts": 1891
+        },
+        "floor": {
+          "knocked_over": 0,
+          "attempts": 35
+        },
+        "other": {
+          "knocked_over": 2,
+          "attempts": 370
+        },
+        "total": {
+          "knocked_over": 2,
+          "attempts": 2296
+        }
+      }
+    },
+    "c3": {
+      "0": {
+        "belt": {
+          "knocked_over": 32,
+          "attempts": 1590
+        },
+        "floor": {
+          "knocked_over": 35,
+          "attempts": 224
+        },
+        "other": {
+          "knocked_over": 5,
+          "attempts": 570
+        },
+        "total": {
+          "knocked_over": 72,
+          "attempts": 2384
+        }
+      },
+      "1": {
+        "belt": {
+          "knocked_over": 0,
+          "attempts": 1696
+        },
+        "floor": {
+          "knocked_over": 0,
+          "attempts": 205
+        },
+        "other": {
+          "knocked_over": 2,
+          "attempts": 477
+        },
+        "total": {
+          "knocked_over": 2,
+          "attempts": 2378
+        }
+      },
+      "2": {
+        "belt": {
+          "knocked_over": 0,
+          "attempts": 1696
+        },
+        "floor": {
+          "knocked_over": 0,
+          "attempts": 212
+        },
+        "other": {
+          "knocked_over": 2,
+          "attempts": 495
+        },
+        "total": {
+          "knocked_over": 2,
+          "attempts": 2403
+        }
+      }
+    }
+  },
+  "side_by_side": {
+    "c1": {
+      "all": {
+        "pooled": {
+          "k": 559,
+          "n": 600,
+          "rate": 0.9316666666666666,
+          "ci95": [
+            0.908608681308734,
+            0.9492321829179109
+          ]
+        },
+        "per_seed": {
+          "0": {
+            "k": 186,
+            "n": 200,
+            "rate": 0.93,
+            "ci95": [
+              0.8859442178331628,
+              0.9578482170770813
+            ]
+          },
+          "1": {
+            "k": 185,
+            "n": 200,
+            "rate": 0.925,
+            "ci95": [
+              0.8799554020266798,
+              0.9540254929427476
+            ]
+          },
+          "2": {
+            "k": 188,
+            "n": 200,
+            "rate": 0.94,
+            "ci95": [
+              0.8980673646931491,
+              0.9653481500987285
+            ]
+          }
+        }
+      },
+      "planned_d0": {
+        "k": 108,
+        "n": 108,
+        "rate": 1.0,
+        "ci95": [
+          0.9656514212958325,
+          0.9999999999999998
+        ]
+      },
+      "planned_knock": {
+        "k": 451,
+        "n": 492,
+        "rate": 0.9166666666666666,
+        "ci95": [
+          0.888897612640423,
+          0.9379793577468941
+        ]
+      },
+      "knocked_label": {
+        "k": 434,
+        "n": 475,
+        "rate": 0.9136842105263158,
+        "ci95": [
+          0.8849935595289457,
+          0.9357371372192066
+        ]
+      },
+      "recoverable": {
+        "D1": {
+          "k": 268,
+          "n": 271,
+          "rate": 0.988929889298893,
+          "ci95": [
+            0.9679635139333364,
+            0.9962282241441601
+          ]
+        },
+        "D2": {
+          "k": 39,
+          "n": 44,
+          "rate": 0.8863636363636364,
+          "ci95": [
+            0.7602056485186641,
+            0.950472924104325
+          ]
+        },
+        "D3": {
+          "k": 48,
+          "n": 64,
+          "rate": 0.75,
+          "ci95": [
+            0.6318349082561628,
+            0.8398520802582591
+          ]
+        }
+      },
+      "late": 32,
+      "spares_used": 580,
+      "seed0": {
+        "k": 186,
+        "n": 200,
+        "rate": 0.93,
+        "ci95": [
+          0.8859442178331628,
+          0.9578482170770813
+        ]
+      },
+      "other_seeds": {
+        "k": 373,
+        "n": 400,
+        "rate": 0.9325,
+        "ci95": [
+          0.9035727207806045,
+          0.9531988451006718
+        ]
+      }
+    },
+    "c2": {
+      "all": {
+        "pooled": {
+          "k": 522,
+          "n": 600,
+          "rate": 0.87,
+          "ci95": [
+            0.8407188572433667,
+            0.8945733120937575
+          ]
+        },
+        "per_seed": {
+          "0": {
+            "k": 148,
+            "n": 200,
+            "rate": 0.74,
+            "ci95": [
+              0.6750912860870691,
+              0.795862631072137
+            ]
+          },
+          "1": {
+            "k": 189,
+            "n": 200,
+            "rate": 0.945,
+            "ci95": [
+              0.9042120755340645,
+              0.9690149791986299
+            ]
+          },
+          "2": {
+            "k": 185,
+            "n": 200,
+            "rate": 0.925,
+            "ci95": [
+              0.8799554020266798,
+              0.9540254929427476
+            ]
+          }
+        }
+      },
+      "planned_d0": {
+        "k": 104,
+        "n": 108,
+        "rate": 0.9629629629629629,
+        "ci95": [
+          0.9086169931912852,
+          0.9855046931937449
+        ]
+      },
+      "planned_knock": {
+        "k": 418,
+        "n": 492,
+        "rate": 0.8495934959349594,
+        "ci95": [
+          0.8153039191446277,
+          0.8784660267413164
+        ]
+      },
+      "knocked_label": {
+        "k": 400,
+        "n": 465,
+        "rate": 0.8602150537634409,
+        "ci95": [
+          0.8257361115063093,
+          0.8887909270499963
+        ]
+      },
+      "recoverable": {
+        "D1": {
+          "k": 250,
+          "n": 266,
+          "rate": 0.9398496240601504,
+          "ci95": [
+            0.9045354440867899,
+            0.9626399654868267
+          ]
+        },
+        "D2": {
+          "k": 39,
+          "n": 42,
+          "rate": 0.9285714285714286,
+          "ci95": [
+            0.8099028671147483,
+            0.9754100364488272
+          ]
+        },
+        "D3": {
+          "k": 39,
+          "n": 62,
+          "rate": 0.6290322580645161,
+          "ci95": [
+            0.504577349121774,
+            0.7384301112072582
+          ]
+        }
+      },
+      "late": 37,
+      "spares_used": 599,
+      "seed0": {
+        "k": 148,
+        "n": 200,
+        "rate": 0.74,
+        "ci95": [
+          0.6750912860870691,
+          0.795862631072137
+        ]
+      },
+      "other_seeds": {
+        "k": 374,
+        "n": 400,
+        "rate": 0.935,
+        "ci95": [
+          0.9064641783755448,
+          0.9552598243027332
+        ]
+      }
+    },
+    "c3": {
+      "all": {
+        "pooled": {
+          "k": 468,
+          "n": 600,
+          "rate": 0.78,
+          "ci95": [
+            0.7451296735512731,
+            0.8113076437849291
+          ]
+        },
+        "per_seed": {
+          "0": {
+            "k": 124,
+            "n": 200,
+            "rate": 0.62,
+            "ci95": [
+              0.5510658951919951,
+              0.6844110633876079
+            ]
+          },
+          "1": {
+            "k": 172,
+            "n": 200,
+            "rate": 0.86,
+            "ci95": [
+              0.8051000619915237,
+              0.9013308137472852
+            ]
+          },
+          "2": {
+            "k": 172,
+            "n": 200,
+            "rate": 0.86,
+            "ci95": [
+              0.8051000619915237,
+              0.9013308137472852
+            ]
+          }
+        }
+      },
+      "planned_d0": {
+        "k": 103,
+        "n": 108,
+        "rate": 0.9537037037037037,
+        "ci95": [
+          0.896173774092564,
+          0.9800654785647654
+        ]
+      },
+      "planned_knock": {
+        "k": 365,
+        "n": 492,
+        "rate": 0.741869918699187,
+        "ci95": [
+          0.701432083109312,
+          0.7785599143350329
+        ]
+      },
+      "knocked_label": {
+        "k": 344,
+        "n": 456,
+        "rate": 0.7543859649122807,
+        "ci95": [
+          0.7128597113423611,
+          0.7916618456459583
+        ]
+      },
+      "recoverable": {
+        "D1": {
+          "k": 242,
+          "n": 267,
+          "rate": 0.9063670411985019,
+          "ci95": [
+            0.8654328021746496,
+            0.9357735117741677
+          ]
+        },
+        "D2": {
+          "k": 33,
+          "n": 37,
+          "rate": 0.8918918918918919,
+          "ci95": [
+            0.7529115358483284,
+            0.9571487947949374
+          ]
+        },
+        "D3": {
+          "k": 53,
+          "n": 59,
+          "rate": 0.8983050847457628,
+          "ci95": [
+            0.7953595375326347,
+            0.9525526734868176
+          ]
+        }
+      },
+      "late": 0,
+      "spares_used": 0,
+      "seed0": {
+        "k": 124,
+        "n": 200,
+        "rate": 0.62,
+        "ci95": [
+          0.5510658951919951,
+          0.6844110633876079
+        ]
+      },
+      "other_seeds": {
+        "k": 344,
+        "n": 400,
+        "rate": 0.86,
+        "ci95": [
+          0.8225600194276628,
+          0.8905908793405672
+        ]
+      }
+    },
+    "c4": {
+      "all": {
+        "pooled": {
+          "k": 164,
+          "n": 200,
+          "rate": 0.82,
+          "ci95": [
+            0.7608840628376157,
+            0.8670544933746589
+          ]
+        },
+        "per_seed": {
+          "run": {
+            "k": 164,
+            "n": 200,
+            "rate": 0.82,
+            "ci95": [
+              0.7608840628376157,
+              0.8670544933746589
+            ]
+          }
+        }
+      },
+      "planned_d0": {
+        "k": 36,
+        "n": 36,
+        "rate": 1.0,
+        "ci95": [
+          0.9035781695514236,
+          1.0
+        ]
+      },
+      "planned_knock": {
+        "k": 128,
+        "n": 164,
+        "rate": 0.7804878048780488,
+        "ci95": [
+          0.7111189027142898,
+          0.8370169587169646
+        ]
+      },
+      "knocked_label": {
+        "k": 122,
+        "n": 158,
+        "rate": 0.7721518987341772,
+        "ci95": [
+          0.7007471058303899,
+          0.8306366669449657
+        ]
+      },
+      "recoverable": {
+        "D1": {
+          "k": 78,
+          "n": 83,
+          "rate": 0.9397590361445783,
+          "ci95": [
+            0.8666139690358543,
+            0.9739969823975603
+          ]
+        },
+        "D2": {
+          "k": 13,
+          "n": 17,
+          "rate": 0.7647058823529411,
+          "ci95": [
+            0.5273775411082839,
+            0.9044511092832406
+          ]
+        },
+        "D3": {
+          "k": 24,
+          "n": 26,
+          "rate": 0.9230769230769231,
+          "ci95": [
+            0.7585805251948495,
+            0.9786453608166245
+          ]
+        }
+      },
+      "late": 0,
+      "spares_used": 0
+    },
+    "c5": {
+      "all": {
+        "pooled": {
+          "k": 43,
+          "n": 200,
+          "rate": 0.215,
+          "ci95": [
+            0.16371792563672208,
+            0.2770242977367209
+          ]
+        },
+        "per_seed": {
+          "run": {
+            "k": 43,
+            "n": 200,
+            "rate": 0.215,
+            "ci95": [
+              0.16371792563672208,
+              0.2770242977367209
+            ]
+          }
+        }
+      },
+      "planned_d0": {
+        "k": 36,
+        "n": 36,
+        "rate": 1.0,
+        "ci95": [
+          0.9035781695514236,
+          1.0
+        ]
+      },
+      "planned_knock": {
+        "k": 7,
+        "n": 164,
+        "rate": 0.042682926829268296,
+        "ci95": [
+          0.02082673424599192,
+          0.08547349168131096
+        ]
+      },
+      "knocked_label": {
+        "k": 1,
+        "n": 158,
+        "rate": 0.006329113924050633,
+        "ci95": [
+          0.0011180903011854051,
+          0.034976461408634564
+        ]
+      },
+      "recoverable": {
+        "D1": {
+          "k": 0,
+          "n": 83,
+          "rate": 0.0,
+          "ci95": [
+            3.469446951953614e-18,
+            0.04423686343872062
+          ]
+        },
+        "D2": {
+          "k": 0,
+          "n": 17,
+          "rate": 0.0,
+          "ci95": [
+            0.0,
+            0.18432366037156456
+          ]
+        },
+        "D3": {
+          "k": 0,
+          "n": 26,
+          "rate": 0.0,
+          "ci95": [
+            0.0,
+            0.12873304380462175
+          ]
+        }
+      },
+      "late": 0,
+      "spares_used": 0
+    }
+  }
+}

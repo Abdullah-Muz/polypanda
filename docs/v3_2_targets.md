@@ -248,3 +248,56 @@ Run once from `b5e9368` on `grasp_anypose9` (best). The baselines were evaluated
 - **The one-shot sets confirm the development result.** Every bar is met except the floor bar, which seed 0 misses on the same cases: standing near-base cubes turned −35 to −45°.
 - **The adopted grasp is significantly better than v3.1 on the floor** (p = 0.021) **and on the size-varied floor** (p = 4e-6), with no lying regression.
 - **It is still behind the scripted pick on seed 0's floor cases.**
+
+### Development cell check, as it came (2026-11-21, `disturbance_suite_v2`)
+
+Configuration 1 of the lock below (v3.2 skills with clear-rule recovery) ran once on v3.1's final suite, from `644b069`. That suite is `disturbance_suite_v2`: 200 orders, 36 of them planned no-knock, seed 20261203. The runs are paired with v3.1's committed configuration-1 runs, which use the same place and stand-up policies with `grasp_anypose6`. `scripts/final_cell_report.py` reads them (`results/cell/v32_dev_report_suite_v2.json`).
+
+This suite has now been used for v3.1's decisions and for this check, so these numbers are a development measurement. The held-out result comes from `disturbance_suite_v3`.
+
+| | v3.2 cell (`grasp_anypose9`) | v3.1 cell (`grasp_anypose6`) |
+|---|---|---|
+| **All orders, pooled** | **93.2 %** (559/600; 90.9–94.9) | 87.0 % (522/600; 84.1–89.5) |
+| Seed 0 / 1 / 2 | 93.0 / 92.5 / 94.0 % | 74.0 / 94.5 / 92.5 % |
+| Planned no-knock orders | 100 % (108/108) | 96.3 % (104/108) |
+| Orders labelled D1–D3 | 91.4 % (434/475) | 86.0 % (400/465) |
+| Recoverable D1 / D2 / D3 | 98.9 / 88.6 / 75.0 % | 94.0 / 92.9 / 62.9 % |
+| Pick knock-overs, seed 0 / 1 / 2 | 1 / 2 / 2 | 41 / 2 / 2 (26 of seed 0's on the belt) |
+
+**Paired by seed and order (only new / only old, exact McNemar):**
+- pooled: 47 / 10, p = 7.5e-7 (the target's rule would be met on this suite);
+- seed 0: 40 / 2, p = 4e-10;
+- seed 1: 1 / 5, p = 0.22;
+- seed 2: 6 / 3, p = 0.51.
+
+The two runs give 51 orders different knock labels. On the 464 orders that both runs labelled D1–D3, the result is 91.6 vs 86.2 %, 35 / 10, p = 0.0002.
+
+- **The gain comes from seed 0.** There, v3.1's grasp knocked over 41 cubes and the new grasp knocks over 1. On seeds 1 and 2 the two cells are level: the differences are small and not significant.
+- **Configuration 3** (v3.2 skills, no spares) was not run on this suite. The regression check is read on `disturbance_suite_v3` only.
+- **Recoverable D3 of 75 %** is configuration 1's figure, with a deadline and 2 spares. The regression bar is read on configuration 3, which has no deadline.
+
+## The final cell run, locked (2026-11-20, before any run on `disturbance_suite_v3`)
+
+Every configuration runs the suite's 200 orders once (`--disturbances eval_sets/disturbance_suite_v3.json --seed 20261214 --n 200`) with the v3.1 cell settings (`--mixed --slots 3 --aim fixture`). Every run must record this commit with a clean tree.
+
+**Skills:**
+- **v3.2:** seed k uses `grasp_anypose9_seed{k}` (best; the user's adoption decision above), `place_stack_v3_seed{k}` and `standup_round12_seed{k}` (with its turn chooser).
+- **v3.1:** seed k uses `grasp_anypose6_seed{k}`, with the same place and stand-up policies. Only the grasp differs between the two cells.
+
+| # | Configuration | Grasp | Recovery | Runs | Used for |
+|---|---|---|---|---|---|
+| 1 | **the v3.2 cell** | `grasp_anypose9` | `--recover --spares 2 --slack 1.5 --recovery-planner clear-rule` | 3 seeds | the target (against 2) and D0 |
+| 2 | the v3.1 cell | `grasp_anypose6` | as 1 | 3 seeds | the target |
+| 3 | v3.2 skills, no spares | `grasp_anypose9` | `--recover` only (rescue every cube, no deadline) | 3 seeds | the regression check (recoverable D1/D2/D3) and D0 |
+| 4 | the scripted cell | scripted | `--recover` | 1 run | baseline |
+| 5 | the scripted cell, no recovery | scripted | none | 1 run | baseline |
+
+**How each target is read:** by `scripts/final_cell_report.py` (committed before any run; its defaults name these five configurations). On v3.1's committed `disturbance_suite_v2` runs, it reproduces every number documented for them.
+- **The target:** compares 1 with 2 on **all orders**, using the exact McNemar test pooled over the 3 seeds and paired by seed and order. Every (seed, order) pair counts, whatever knock label each run gave it: an order that fails before its knock is due is labelled D0, so two grasps can label the same order differently. The report prints how many labels differ. The target is met if 1 completes more orders than 2 with p < 0.05.
+- **The regression check:** reads the recoverable knocks of 3 (the cell's knock label plus its `recoverable` flag), pooled over the seeds, as v3.0 and v3.1 measured them: D1 ≥ 90 %, D2 ≥ 85 %, D3 ≥ 80 %.
+- **D0** (≥ 99 %, pooled): read on the suite's 50 planned no-knock orders per seed, from 1 and from 3. Per-seed rates and the cell's own D0 label are reported beside it.
+- **Also reported, with no target:** pick knock-overs per seed (belt and floor), 1 against 2.
+
+**Before the suite:**
+- **Smoke test:** each learned configuration runs 2 calibration orders (`disturbance_calib_v1`, seed 20261103), not suite orders, with output kept outside `results/`.
+- **Development check, already run:** configuration 1 on `disturbance_suite_v2` (v3.1's final suite, a development suite now), paired with v3.1's committed configuration-1 runs (results above).
