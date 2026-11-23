@@ -23,6 +23,7 @@ from pathlib import Path
 import numpy as np
 
 SCRIPTS = ("nominal", "camera", "feel", "expert")
+NOISE_SEED = 7_000_000
 
 
 def wilson(k: int, n: int, z: float = 1.96) -> tuple[float, float]:
@@ -57,7 +58,9 @@ def _run_chunk(args) -> list[dict]:
     rows = []
     for i in indices:
         ep = episodes[i]
-        obs, info = env.reset(options={"episode": ep})
+        # the sensors' noise is seeded per episode, so a result does not depend on how the
+        # episodes are split between workers
+        obs, info = env.reset(seed=NOISE_SEED + i, options={"episode": ep})
         reset()
         done, steps, total = False, 0, 0.0
         while not done:
