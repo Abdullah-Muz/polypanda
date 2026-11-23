@@ -63,6 +63,7 @@ class BaselineDoor(DoorExpert):
         self.flipped = False      # tried the other way
         self.confirmed = False    # the lid moved: the way is right, never flip again
         self.restart = False      # after backing off: push again from where the hand is
+        self.fresh_touch = False  # reversed: wait for the other finger to meet the bar
         self.sign = 1.0
 
     # --- beliefs ----------------------------------------------------------------------------
@@ -162,7 +163,9 @@ class BaselineDoor(DoorExpert):
                 self.confirmed = True
             limit_lag, limit_force = ((self.blocked_lag, self.stop_force) if self.confirmed
                                       else (self.probe_lag, self.probe_force))
-            blocked = feel and env._touch_at is not None and (
+            if self.fresh_touch and env._touch_at is None:
+                self.fresh_touch = False                     # off the bar: the old touch is gone
+            blocked = feel and env._touch_at is not None and not self.fresh_touch and (
                 self._lag() > limit_lag or force > limit_force) and (
                 self.confirmed or moved < (self.probe_still if env.command == "open" else wrong))
             if blocked:
@@ -171,9 +174,11 @@ class BaselineDoor(DoorExpert):
                 self.held = 0
             if self.held >= 1:
                 if lid_travel < wrong and not (self.flipped or self.confirmed):
-                    self.flipped = True                      # the other way: back to the start
-                    self.back_to, self.restart = 0.0, False
-                    self._next("back")
+                    # the other way, at once and without stopping: what the hand does next can
+                    # then be read from its motion alone (a policy without memory can copy it)
+                    self.flipped, self.fresh_touch = True, True
+                    self.start = self.start + axis * self.sign * self.s
+                    self._begin_push()
                 elif env.command == "close" and not env.machine.latched \
                         and self.tries < self.retries:
                     self.tries += 1                           # shut, not latched: again, faster
