@@ -301,3 +301,41 @@ Every configuration runs the suite's 200 orders once (`--disturbances eval_sets/
 **Before the suite:**
 - **Smoke test:** each learned configuration runs 2 calibration orders (`disturbance_calib_v1`, seed 20261103), not suite orders, with output kept outside `results/`.
 - **Development check, already run:** configuration 1 on `disturbance_suite_v2` (v3.1's final suite, a development suite now), paired with v3.1's committed configuration-1 runs (results above).
+
+## The final cell run, as it came (2026-11-22)
+
+All 11 runs come from `50afb4c` with a clean tree, as locked, and each ran `disturbance_suite_v3` once. The PC slept several times during the run; the runs paused and resumed, and none was restarted. `scripts/final_cell_report.py` reads them with its locked defaults (`results/cell/v32_final_report.json`).
+
+| `disturbance_suite_v3`, 200 orders | 1: v3.2 cell | 2: v3.1 cell | 3: v3.2, no spares | 4: scripted, recover | 5: scripted, none |
+|---|---|---|---|---|---|
+| **All orders** (pooled over 3 seeds) | **91.5 %** (549/600; 89.0–93.5) | 85.7 % (514/600; 82.6–88.2) | 84.5 % (507/600) | 82.0 % (164/200) | 27.0 % |
+| Seed 0 / 1 / 2 | 89.5 / 93.5 / 91.5 % | 71.0 / 94.0 / 92.0 % | 80.0 / 86.0 / 87.5 % | | |
+| Planned no-knock orders (D0) | **99.3 %** (149/150) | 92.0 % (138/150) | 98.7 % (148/150) | 100 % | 100 % |
+| Recoverable D1 / D2 / D3 | 98.7 / 80.0 / 70.7 % | 92.9 / 82.5 / 65.8 % | **96.2 / 95.8 / 92.3 %** | 97.3 / 80.0 / 75.9 % | 0 / 0 / 0 % |
+| Pick knock-overs, seed 0 / 1 / 2 | 3 / 2 / 3 | **50** / 2 / 3 (seed 0: 41 on the belt, 6 on the floor) | 1 / 2 / 4 | | |
+
+**The target: MET.** The v3.2 cell completes 91.5 % of all orders against the v3.1 cell's 85.7 %. Paired by seed and order, 47 orders are completed only by the v3.2 cell and 12 only by the v3.1 cell (exact McNemar p = 5e-6).
+- **The gain is on seed 0:** 89.5 against 71.0 %, 40 / 3, p = 3e-9. There, v3.1's grasp knocked over 50 cubes and the new grasp 3.
+- **Seeds 1 and 2 are level:** 2 / 3 and 5 / 6, p = 1 on both.
+- **Labels:** the two runs label 53 orders differently. On the 426 orders that both label D1–D3 (v3.1's recovery measure), the v3.2 cell completes 89.0 against 85.9 %, 24 / 11, p = 0.041.
+- **Consistent with the development check:** 93.2 against 87.0 % on `disturbance_suite_v2`.
+
+**The regression check:**
+- **Recoverable knocks without spares: MET.** D1 96.2 % (230/239), D2 95.8 % (46/48), D3 92.3 % (60/65), against bars of 90 / 85 / 80 %. Seed 0's D3 is 80.0 % (16/20).
+- **D0, at least 99 %: met by the v3.2 cell, MISSED by the no-spares configuration.** The v3.2 cell completes 99.3 % (149/150). The no-spares configuration completes 98.7 % (148/150), one order short of the bar. All three misses are on seed 0, and none is a knock-over:
+  - the v3.2 cell's order 119 finished one tower wrong at its deadline;
+  - the no-spares configuration's order 39 finished one tower wrong;
+  - its order 98 timed out on a pick after 2 failed picks and a failed place.
+
+  v3.1's cell missed 12 planned no-knock orders here, all on seed 0 and all with its grasp knocking a cube over. In v3.1's own final run, D0 was 95–96 %.
+
+**Also reported:**
+- **The scripted cell:** 82.0 % of all orders with recovery, 27.0 % without.
+- **Late orders:** the v3.2 cell finished 36 orders late, the v3.1 cell 35.
+
+**Reading:**
+- **What changed:** v3.2's new grasp fixes the cell's main fault, seed 0 knocking cubes over. The cell completes significantly more orders, and the recovery skills keep their v3 targets.
+- **What stays open:**
+  - The no-spares configuration misses the D0 bar by one order, so **the regression check is not fully met**.
+  - The v3.2 grasp target was not met (seed 0's floor cases turned near −45°).
+  - The stand-up was not retrained after the new grasp.

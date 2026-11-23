@@ -300,11 +300,13 @@ Targets were committed before any v3.2 training ([v3_2_targets.md](v3_2_targets.
 
 | Held-out disturbance suite v3 (200 orders, 3 seeds) | v3.2 cell (`grasp_anypose9`, v3.1's stand-up, place and recovery) | v3.1 cell, same orders | Scripted cell | Target |
 |---|---|---|---|---|
-| All orders | TODO: pending | TODO: pending | TODO: pending | v3.2 significantly more than v3.1 (p < 0.05) |
-| Recoverable D1 / D2 / D3, no spares | TODO: pending | TODO: pending | TODO: pending | 90 / 85 / 80 % |
-| No knock (D0, the suite's planned controls) | TODO: pending | TODO: pending | TODO: pending | 99 % |
+| All orders | **91.5 %** (549/600; 89.0–93.5) | 85.7 % (514/600; p = 5e-6: 47 / 12) | 82.0 % (164/200) | v3.2 significantly more than v3.1 (p < 0.05): **met** |
+| Recoverable D1 / D2 / D3, no spares | **96.2 / 95.8 / 92.3 %** | not run | 97.3 / 80.0 / 75.9 % | 90 / 85 / 80 %: met |
+| No knock (D0, the suite's planned controls) | **99.3 %** (149/150); no spares 98.7 % (148/150) | 92.0 % (138/150) | 100 % | 99 %: met by the v3.2 cell, **missed** by the no-spares configuration (one order short) |
 
-*TODO: the final cell run on `disturbance_suite_v3` has not been made. A development cell run with the new grasp is in progress; no v3.2 cell results exist yet.*
+*Run once from `50afb4c`, locked before any run on the suite ([v3_2_targets.md](v3_2_targets.md#the-final-cell-run-as-it-came-2026-11-22)). The gain is all on seed 0, 89.5 against 71.0 % (v3.1's grasp knocked over 50 cubes there, the new one 3); seeds 1 and 2 are level (p = 1). The three missed no-knock orders are all on seed 0 and none is a knock-over: two towers finished wrong and one pick timed out. On v3.1's suite (development) the same two cells scored 93.2 and 87.0 %.*
+
+- **The v3.2 cell target is met:** the new grasp removes seed 0's knock-overs from the cell, and the recovery skills keep their v3 targets.
 
 - **The belt is fixed on every seed.** No cube is knocked over on either belt set, where v3.1's seed 0 knocked over 4 and 5.
 - **The adopted grasp is significantly better than v3.1 on the floor** (p = 0.021) **and on the size-varied floor** (p = 4e-6), with no lying regression (98.3 against 97.8 %, p = 0.65).

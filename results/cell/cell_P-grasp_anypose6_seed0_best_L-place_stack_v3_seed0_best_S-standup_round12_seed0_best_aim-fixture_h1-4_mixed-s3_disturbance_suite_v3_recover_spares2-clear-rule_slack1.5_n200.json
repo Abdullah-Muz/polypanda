@@ -1,0 +1,214 @@
+{
+  "name": "cell_P-grasp_anypose6_seed0_best_L-place_stack_v3_seed0_best_S-standup_round12_seed0_best_aim-fixture_h1-4_mixed-s3_disturbance_suite_v3_recover_spares2-clear-rule_slack1.5_n200",
+  "skills": {
+    "pick": "PPO grasp_v4 policy grasp_anypose6_seed0",
+    "pick_provenance": {
+      "run_dir": "runs/grasp_anypose6_seed0",
+      "checkpoint": "best",
+      "policy_id": "grasp_anypose6_seed0",
+      "trained_at": "e0df5b361780bf7774980a2aa9a10fac750a6823"
+    },
+    "place": "PPO place policy place_stack_v3_seed0",
+    "place_provenance": {
+      "run_dir": "runs/place_stack_v3_seed0",
+      "checkpoint": "best",
+      "policy_id": "place_stack_v3_seed0",
+      "trained_at": "202035514f1d4914a22d23ab7642808c02670747"
+    },
+    "standup": "PPO standup_v3 policy standup_round12_seed0",
+    "standup_provenance": {
+      "run_dir": "runs/standup_round12_seed0",
+      "checkpoint": "best",
+      "policy_id": "standup_round12_seed0",
+      "trained_at": "d13834189e958176d5039ecdd3a50226f3a9498f"
+    },
+    "moves": "scripted (base-only swings in the carry posture)",
+    "recovery_planner": "replace lying, lying near a tower, upright near a tower; after a failed attempt retry; but clear to the bin a cube it would leave within 6 cm of a tower that still needs cubes"
+  },
+  "eval": {
+    "n": 200,
+    "seed": 20261214,
+    "heights": [
+      1,
+      4
+    ],
+    "lateral": 0.015,
+    "yaw": 0.2617993877991494,
+    "mixed": true,
+    "surplus": [
+      0,
+      2
+    ],
+    "solvable_with": 3,
+    "slots": 3,
+    "aim": "fixture",
+    "batch_choice": false,
+    "disturbances": "eval_sets/disturbance_suite_v3.json",
+    "recover": true,
+    "spares": 2,
+    "slack": 1.5
+  },
+  "cell": {
+    "radius": 0.5,
+    "infeed_angle": 90.0,
+    "tower_angles": [
+      -40.0,
+      -90.0,
+      -140.0
+    ],
+    "reject_angle": 150.0,
+    "buffer_angles": [
+      -10.0,
+      10.0,
+      30.0
+    ],
+    "n_cubes": 12,
+    "max_height": 6,
+    "batch": 3,
+    "cube_spacing": 0.12,
+    "first_cube": 0.5,
+    "belt_width": 0.12,
+    "belt_lift": 0.002,
+    "belt_speed": 0.15,
+    "rewind_speed": 0.4,
+    "belt_accel_gain": 3.0,
+    "belt_kv": 400.0,
+    "sign_radius": 0.82,
+    "bin_size": 0.18,
+    "bin_height": 0.08,
+    "dressing": true,
+    "finger_stiffness": 1000.0,
+    "torsional_friction": true,
+    "grasp_assist": true
+  },
+  "created_utc": "2026-11-22T09:11:14+00:00",
+  "git": {
+    "commit": "50afb4cc35d07f68b49958054de7a2759c923630",
+    "dirty": false
+  },
+  "versions": {
+    "python": "3.12.3",
+    "mujoco": "3.16.0",
+    "numpy": "2.5.4",
+    "torch": "2.14.1+cpu"
+  },
+  "summary": {
+    "orders": 200,
+    "success_rate": 0.71,
+    "success_ci95": [
+      0.6436239464268834,
+      0.7684607310874219
+    ],
+    "towers": 600,
+    "tower_success_rate": 0.82,
+    "tower_success_by_height": {
+      "1": {
+        "towers": 145,
+        "success_rate": 0.8827586206896552
+      },
+      "2": {
+        "towers": 146,
+        "success_rate": 0.8561643835616438
+      },
+      "3": {
+        "towers": 157,
+        "success_rate": 0.8089171974522293
+      },
+      "4": {
+        "towers": 152,
+        "success_rate": 0.7368421052631579
+      }
+    },
+    "cubes": 1709,
+    "failures": {
+      "pick:knocked_over": 40,
+      "late": 11,
+      "knock:D3": 1,
+      "pick:timeout": 6
+    },
+    "learned_pick": {
+      "attempts": 2211,
+      "success_rate": 0.9461781999095432,
+      "median_steps": 68.0,
+      "failures": {
+        "knocked_over": 50,
+        "timeout": 69
+      }
+    },
+    "learned_place": {
+      "attempts": 1926,
+      "success_rate": 0.9569055036344756,
+      "median_steps": 29.0,
+      "failures": {
+        "dropped": 81,
+        "toppled": 2
+      },
+      "by_level": {
+        "1": 0.9624463519313304,
+        "2": 0.9441340782122905,
+        "3": 0.9587301587301588,
+        "4": 0.9647887323943662
+      }
+    },
+    "learned_standup": {
+      "attempts": 54,
+      "success_rate": 0.7222222222222222,
+      "median_steps": 52.0,
+      "failures": {
+        "timeout": 15
+      }
+    },
+    "ik_failures": 46,
+    "sim_s_per_cube": 23.764014043300175,
+    "sim_s_per_order": {
+      "median": 199.425,
+      "p90": 279.92
+    },
+    "buffer": {
+      "cubes_buffered": 315,
+      "orders_using_buffer": 153,
+      "rejected": 176,
+      "needed_rejected": 0
+    },
+    "disturbances": {
+      "D0": {
+        "orders": 62,
+        "success_rate": 0.6129032258064516,
+        "recoverable": 0,
+        "success_rate_recoverable": null
+      },
+      "none": {
+        "orders": 2,
+        "success_rate": 0.5,
+        "recoverable": 0,
+        "success_rate_recoverable": null
+      },
+      "D1": {
+        "orders": 94,
+        "success_rate": 0.8404255319148937,
+        "recoverable": 80,
+        "success_rate_recoverable": 0.8125
+      },
+      "D2": {
+        "orders": 14,
+        "success_rate": 0.6428571428571429,
+        "recoverable": 9,
+        "success_rate_recoverable": 0.6666666666666666
+      },
+      "D3": {
+        "orders": 28,
+        "success_rate": 0.5357142857142857,
+        "recoverable": 25,
+        "success_rate_recoverable": 0.56
+      }
+    },
+    "spares": {
+      "used": 207,
+      "replaced": 181,
+      "cleared": 33,
+      "cleared_ok": 31,
+      "orders_late": 11
+    },
+    "wall_clock_s": 43216.5
+  }
+}
