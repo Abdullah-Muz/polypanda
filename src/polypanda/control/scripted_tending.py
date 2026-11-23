@@ -22,10 +22,10 @@ import numpy as np
 
 from polypanda.control.ik import top_down_quat
 from polypanda.control.scripted_cell import CUBE_HEIGHT, CellControllerConfig, ScriptedCell
-from polypanda.environments.grasp import GRIPPER_OPEN
+from polypanda.environments.grasp import GRIPPER_CLOSED, GRIPPER_OPEN
 from polypanda.simulation.line import Line
-from polypanda.simulation.machine import MachineConfig
-from polypanda.simulation.scenes import CubeIndices
+from polypanda.simulation.machine import MachineConfig, rib_geom
+from polypanda.simulation.scenes import CubeIndices, cube_yaw
 
 
 @dataclass
@@ -65,6 +65,9 @@ class ScriptedTending(ScriptedCell):
                                       # cannot give way to a finger closing off-centre
     latch_push: float = 0.004         # m pushed past closed, so the lid arrives firmly
     finger_span: float = 0.08         # m between the open fingers' pads
+    wrist_margin: float = 0.05        # rad kept clear of joint 7's limits when turning a part
+    regrasp_angle: float = -30.0      # deg: where a keyed part is set down to be regrasped (the
+                                      # raw part's spot at a machine's stop, free once picked)
 
     def __init__(self, line: Line, config: CellControllerConfig | None = None,
                  beliefs: dict[str, Belief] | None = None) -> None:
@@ -73,6 +76,7 @@ class ScriptedTending(ScriptedCell):
         self.beliefs = beliefs or {n: true_belief(line, n) for n in line.machines}
         self._finger_qpos = np.array([self.m.joint(f"finger_joint{k}").qposadr[0]
                                       for k in (1, 2)])
+        self.regrasps = 0
 
     def go_to(self, name: str) -> None:
         """Drive to the machine's rail stop and face it (from the carry posture). The stop and
@@ -112,14 +116,17 @@ class ScriptedTending(ScriptedCell):
     def load(self, cube: CubeIndices, name: str) -> None:
         """Set a held cube into the pocket where the script believes it is, the cube turned to
         the pocket's believed yaw (the cell's place, which lands the cube's centre within 1 mm of
-        its target in closed loop, then lets go)."""
+        its target in closed loop, then lets go). A keyed part going into a pocket believed
+        keyed is turned so that its rib faces the slot (`keyed_turn`; pick it with `pick_for`,
+        or it may need a regrasp first)."""
         b = self.beliefs[name]
         xy = b.origin[:2]
         carry = self.carry_yaw(self.angle_of(xy))
-        # the cube is square in plan: turn by the smallest angle that squares it to the pocket
-        R = self.d.xmat[cube.body].reshape(3, 3)
-        cube_yaw = float(np.arctan2(R[1, 0], R[0, 0]))
-        turn = (b.yaw - cube_yaw + np.pi / 4) % (np.pi / 2) - np.pi / 4
+        if b.config.keyed and rib_geom(self.m, cube) >= 0:
+            turn = self.keyed_turn(cube, b, xy, carry, name)
+        else:
+            # the cube is square in plan: turn by the smallest angle that squares it to the pocket
+            turn = (b.yaw - cube_yaw(self.d, cube) + np.pi / 4) % (np.pi / 2) - np.pi / 4
         yaw = carry + turn
         rest = CUBE_HEIGHT * 0.5
         tcp = self.d.site_xpos[self.arm.tcp_site]
@@ -130,6 +137,121 @@ class ScriptedTending(ScriptedCell):
         self.step(self.config.grip_steps)
         self.vertical(self.d.site_xpos[self.arm.tcp_site][:2].copy(), self.config.carry_height,
                       yaw)
+
+    # --- keyed parts (docs/keyed_part.md) ----------------------------------------------------
+    def rib_yaw(self, cube: CubeIndices) -> float:
+        """Which way the part's rib faces (rad, world). Read from the simulator here; a real
+        cell would read it with the camera (the rib stands out of the part's side and is seen
+        from above), and a belief could carry it with that camera's error."""
+        return cube_yaw(self.d, cube)          # the rib is on the part's local +x face
+
+    def _wrist_turns(self, turn: float, q7: float, hand_yaw: float | None = None,
+                     machine_yaw: float = 0.0) -> list[float]:
+        """The ways the wrist (at joint 7 angle `q7`) can turn by `turn` (mod 2 pi) within
+        joint 7's range, with `wrist_margin` to spare, smallest first. The hand points straight
+        down, so turning it by +t about the vertical moves joint 7 by about -t (measured). With
+        `hand_yaw` given (the hand's closing direction before the turn), only turns that leave
+        the fingers closing along the machine's +-x count: the hand (about 200 x 65 mm) passes
+        the lid's opening (240 x 100 mm) only lengthwise."""
+        lo, hi = self.ik.q_low[6] + self.wrist_margin, self.ik.q_high[6] - self.wrist_margin
+        base = (turn + np.pi) % (2 * np.pi) - np.pi
+        options = [base + k * 2 * np.pi for k in (-1, 0, 1)]
+        if hand_yaw is not None:
+            options = [t for t in options
+                       if abs((hand_yaw + t - machine_yaw + np.pi / 2) % np.pi - np.pi / 2)
+                       <= np.pi / 4]
+        return sorted((t for t in options if lo <= q7 - t <= hi), key=abs)
+
+    def keyed_grasp(self, cube: CubeIndices, name: str) -> tuple[float, float] | None:
+        """For a keyed part standing on the bench, to be loaded into machine `name`: the
+        closing yaw to grasp it with, so that its rib can then be turned to the slot with the
+        hand passing the opening lengthwise, and the wrist turn this needs at the pick. The
+        fingers close across one of its four face pairs (on the rib's face too: the rib is
+        under them); of the grasps both wrist turns allow (at the pick and at the machine),
+        the one with the least turning in all. None if no grasp works."""
+        b = self.beliefs[name]
+        slot = b.yaw + b.config.key_yaw
+        rib = self.rib_yaw(cube)
+        carry_pick = self.carry_yaw(self.angle_of(self.d.xpos[cube.body]))
+        carry_load = self.carry_yaw(self.angle_of(b.origin))
+        best = None
+        for k in range(4):
+            g = rib + k * np.pi / 2
+            for pick_turn in self._wrist_turns(g - carry_pick, self.carry[6]):
+                # back in the carry posture the rib sits at (rib - g) from the closing direction
+                load_turns = self._wrist_turns(slot - (carry_load + rib - g), self.carry[6],
+                                               carry_load, b.yaw)
+                if load_turns:
+                    cost = abs(pick_turn) + abs(load_turns[0])
+                    if best is None or cost < best[0]:
+                        best = (cost, carry_pick + pick_turn, pick_turn)
+        return None if best is None else best[1:]
+
+    def pick_for(self, cube: CubeIndices, name: str) -> None:
+        """Pick a part that is to be loaded into machine `name`: the cell's pick, except that a
+        keyed part going into a keyed pocket is grasped by `keyed_grasp` (the wrist may turn up
+        to 180 deg at the pick)."""
+        b = self.beliefs[name]
+        grasp = (self.keyed_grasp(cube, name)
+                 if b.config.keyed and rib_geom(self.m, cube) >= 0 else None)
+        if grasp is None:
+            self.pick(cube)
+            return
+        yaw, pick_turn = grasp
+        c = self.d.xpos[cube.body].copy()
+        angle = self.angle_of(c)
+        z_carry = self.config.carry_height
+        seed = self.q_cmd.copy()
+        seed[6] -= pick_turn
+        self.move_joints(self._solve([c[0], c[1], z_carry], top_down_quat(yaw), seed))
+        self.vertical(c[:2], c[2], yaw)
+        self.grip = GRIPPER_CLOSED
+        self.step(self.config.grip_steps)
+        self.cell.attach(cube)
+        self.vertical(c[:2], z_carry, yaw)
+        q = self.carry.copy()
+        q[0] += angle
+        self.move_joints(q, rate=1.0)  # wrist back to the carry yaw (the part turns with it)
+
+    def keyed_turn(self, cube: CubeIndices, b: Belief, xy, carry: float, name: str) -> float:
+        """Turn the held part (modulo 360 deg) so that its rib faces the believed slot, at the
+        carry height before going down: the shortest turn within joint 7's range that keeps the
+        hand lengthwise to the opening. A part held so that no such turn exists (gripped across
+        the wrong faces, e.g. by the cell's plain pick) is set down beside the machine and
+        picked again with `pick_for` (a regrasp)."""
+        slot = b.yaw + b.config.key_yaw
+        turns = self._wrist_turns(slot - self.rib_yaw(cube), self.q_cmd[6], carry, b.yaw)
+        if not turns:
+            self.regrasp(cube, name)
+            self.swing_to(self.angle_of(xy))
+            turns = self._wrist_turns(slot - self.rib_yaw(cube), self.q_cmd[6], carry, b.yaw)
+            if not turns:
+                raise RuntimeError("no wrist turn brings the rib to the slot")
+        turn = turns[0]
+        seed = self.q_cmd.copy()
+        seed[6] -= turn
+        z = self.d.site_xpos[self.arm.tcp_site][2]
+        self.move_joints(self._solve([xy[0], xy[1], z], top_down_quat(carry + turn), seed))
+        return turn
+
+    def regrasp(self, cube: CubeIndices, name: str) -> None:
+        """Set the held part down on the bench at `regrasp_angle` (at this rail stop) as it is
+        held, and pick it up again with `pick_for` machine `name`."""
+        self.regrasps += 1
+        self.swing_to(np.radians(self.regrasp_angle))
+        a = np.radians(self.regrasp_angle)
+        spot = self.base_xy() + self.cell.config.radius * np.array([np.cos(a), np.sin(a)])
+        yaw = self.carry_yaw(self.angle_of(spot))
+        offset = self.d.site_xpos[self.arm.tcp_site][2] - self.d.xpos[cube.body][2]
+        self.vertical(spot, CUBE_HEIGHT * 0.5 + self.config.release_clearance + offset, yaw,
+                      track=cube.body)
+        self.cell.detach(cube)
+        self.grip = GRIPPER_OPEN
+        self.step(self.config.grip_steps)
+        self.vertical(self.d.site_xpos[self.arm.tcp_site][:2].copy(), self.config.carry_height,
+                      yaw)
+        self.to_carry()
+        self.pick_for(cube, name)
 
     def unload(self, cube: CubeIndices) -> None:
         """Take the part out of the pocket (the cell's pick: the fingers close above the rim)."""

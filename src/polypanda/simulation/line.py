@@ -17,7 +17,7 @@ import mujoco
 import numpy as np
 
 from polypanda.simulation.line_dressing import dress_line
-from polypanda.simulation.machine import Machine, MachineConfig, add_machine
+from polypanda.simulation.machine import RIB_GEOM, Machine, MachineConfig, Rib, add_machine
 from polypanda.simulation.rail import RailConfig, RailIndices, add_rail
 from polypanda.simulation.scenes import CubeIndices
 from polypanda.simulation.workcell import (
@@ -54,6 +54,11 @@ class LineConfig:
     # stays on the bench (x from -0.85) and short of the buffer slots (x from 0.44)
     rail: RailConfig = field(default_factory=lambda: RailConfig(low=-0.65, high=0.15))
     machines: tuple[MachineSpot, ...] = (MachineSpot("M1", -0.6),)
+    # keyed parts (off by default; docs/keyed_part.md): every part gets a rib on its local +x
+    # face, a second geom on its body (the part's box stays its main geom), so it fits a keyed
+    # pocket (MachineConfig.keyed) only one way round
+    keyed_parts: bool = False
+    rib: Rib = Rib()
 
     def station_xy(self, stop: float, angle_deg: float) -> np.ndarray:
         """Where a station at `angle_deg` in front of rail stop `stop` sits on the bench."""
@@ -69,7 +74,29 @@ def build_line_spec(cfg: LineConfig | None = None) -> mujoco.MjSpec:
     for spot in cfg.machines:
         xy = cfg.station_xy(spot.stop, spot.angle) + np.asarray(spot.offset)
         add_machine(spec, spot.name, xy, spot.angle + spot.turn, spot.config)
+    if cfg.keyed_parts:
+        for k in range(cfg.cell.n_cubes):
+            add_rib(spec, CUBE_NAME.format(k), cfg.rib)
     return spec
+
+
+RIB_RGBA = (0.3, 0.32, 0.35, 1.0)     # dark, so the part's orientation reads at a glance
+
+
+def add_rib(spec: mujoco.MjSpec, part: str, rib: Rib) -> None:
+    """A keyed part's rib: a box on the part's local +x face, centred across it, standing on
+    its bottom, with the part's own contact properties and density. 10 x 8 x 12 mm of the
+    part's density weighs 1.0 g against the part's 96 g; it moves the centre of mass 0.24 mm
+    out towards the rib and 0.24 mm down (negligible)."""
+    box = spec.geom(part)
+    half = np.asarray(box.size)
+    spec.body(part).add_geom(
+        name=RIB_GEOM.format(part), type=mujoco.mjtGeom.mjGEOM_BOX,
+        size=[rib.proud / 2, rib.width / 2, rib.height / 2],
+        pos=[half[0] + rib.proud / 2, 0.0, -half[2] + rib.height / 2],
+        friction=list(box.friction), solref=list(box.solref), condim=box.condim,
+        contype=box.contype, conaffinity=box.conaffinity, density=box.density,
+        rgba=list(RIB_RGBA))
 
 
 class Line(Workcell):
