@@ -41,7 +41,7 @@ def episode(env, command, slide, seed=0, **changes):
     out = slide == "out"
     ep |= {"slide": slide,
            "travel": float(np.mean(v.travel_out if out else v.travel_side)),
-           "handle_offset": 0.0, "handle_shift": 0.0}
+           "handle_offset": 0.0, "handle_shift": 0.0, "spring": 0.0}
     if command == "close":
         needed = needed_opening(replace(MachineConfig(), slide=slide))
         ep["lid"] = needed + 0.003
@@ -324,6 +324,69 @@ def test_the_expert_opens_and_closes_every_slide_direction(env, command, slide):
     info = run_expert(env, options={"episode": episode(env, command, slide, seed=3)})
     assert info["is_success"], info["failure"]
     assert info["stats"]["collision_steps"] == 0
+
+
+def springy(env, command, slide, spring=30.0, seed=0):
+    """An episode on a springy lid (with its soft-close damper), a close starting in the detent."""
+    ep = episode(env, command, slide, seed=seed, spring=spring)
+    ep["damping"] = max(ep["damping"],
+                        spring * ep["travel"] / env.config.variation.soft_close_speed)
+    if command == "close":
+        ep["lid"] = ep["travel"] - 0.002
+    return ep
+
+
+def test_a_springy_lid_shuts_itself_unless_left_in_its_detent(env):
+    hold = np.zeros(5, dtype=np.float32)
+    hold[4] = -1.0                                     # the hand stays put, fingers open
+    for where in ("needed", "detent"):
+        env.reset(options={"episode": springy(env, "close", "out")})
+        m = env.machine
+        q0 = env.needed + 0.002 if where == "needed" else m.cfg.travel - 0.002
+        env.data.qpos[m.lid_qpos] = q0
+        mujoco.mj_forward(env.model, env.data)
+        m.reset()
+        for _ in range(40):                            # 2 s
+            env.step(hold)
+        if where == "needed":                          # creeping shut (its damper slows it)
+            assert m.lid < q0 / 2 and not m.held_open
+        else:
+            assert m.lid > m.cfg.travel - 0.002 and m.held_open
+
+
+def test_open_on_a_springy_lid_needs_its_detent(env):
+    env.reset(options={"episode": springy(env, "open", "out")})
+    m = env.machine
+    for q, reached in ((env.needed + 0.002, False), (m.cfg.travel - 0.001, True)):
+        env.data.qpos[m.lid_qpos] = q
+        mujoco.mj_forward(env.model, env.data)
+        assert env.goal_reached() is reached
+    plain = episode(env, "open", "out")
+    env.reset(options={"episode": plain})
+    env.data.qpos[env.machine.lid_qpos] = env.needed + 0.002
+    mujoco.mj_forward(env.model, env.data)
+    assert env.goal_reached()                          # no spring: it stays where it is left
+
+
+def test_springy_lids_are_drawn_with_their_damper(env):
+    rng = np.random.default_rng(11)
+    eps = [env.draw_episode(rng) for _ in range(200)]
+    v = env.config.variation
+    k = [e for e in eps if e["spring"] > 0]
+    assert 0.35 < len(k) / len(eps) < 0.65
+    for e in k:
+        assert v.spring[0] <= e["spring"] <= v.spring[1]
+        assert e["spring"] * e["travel"] / e["damping"] <= v.soft_close_speed + 1e-9
+        if e["command"] == "close":
+            assert e["lid"] == pytest.approx(e["travel"] - 0.002)
+
+
+@pytest.mark.parametrize("command", ["open", "close"])
+@pytest.mark.parametrize("slide", ["right", "left", "out"])
+def test_the_expert_handles_springy_lids(env, command, slide):
+    info = run_expert(env, options={"episode": springy(env, command, slide, seed=3)})
+    assert info["is_success"], info["failure"]
+    assert info["stats"]["slams"] == 0
 
 
 def test_the_expert_succeeds_on_drawn_machines(env):

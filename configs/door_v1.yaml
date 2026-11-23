@@ -29,7 +29,9 @@ variation:                    # drawn every episode (training and validation)
   travel_out: [0.265, 0.275]  # m (needed outward: 0.255; the arm reaches about 0.8 m out)
   friction: [0.2, 10.0]       # N, log-uniform (nominal 0.4)
   damping: [1.0, 10.0]        # N s/m, log-uniform (nominal 4)
-  spring: [0.0, 0.0]          # N/m (off)
+  spring_prob: 0.5            # share of machines with a closing spring
+  spring: [10.0, 40.0]        # N/m; a springy lid stays open only in its hold-open detent
+  soft_close_speed: 0.2       # m/s: a springy lid's damper limits how fast it shuts itself
   handle_offset_side: 0.03    # m either way along the bar
   handle_offset_out: 0.01
   handle_shift_side: 0.02     # m either way along the slide

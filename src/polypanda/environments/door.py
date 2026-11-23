@@ -17,7 +17,8 @@ by up to 2 cm and 10 deg, fingers open.
 
 **What is randomized** (DoorVariationConfig, per episode): which way the lid slides (right, left,
 out) and how far (sideways 0.12-0.14 m, outward 0.265-0.275 m), its Coulomb friction and damping
-(log-uniform), an optional closing spring, where the handle sits along its bar and along the slide
+(log-uniform), a closing spring on half the machines (with a soft-close damper and a hold-open
+detent that `open` must reach), where the handle sits along its bar and along the slide
 and how high, the latch's closing speed (log-uniform), where the machine stands (+-1.5 cm) and
 how it is turned (+-10 deg).
 
@@ -143,7 +144,11 @@ class DoorVariationConfig:
     #                                                     arm's limit is about 0.8 m out)
     friction: tuple[float, float] = (0.2, 10.0)         # N, log-uniform (nominal 0.4)
     damping: tuple[float, float] = (1.0, 10.0)          # N s/m, log-uniform (nominal 4)
-    spring: tuple[float, float] = (0.0, 0.0)            # N/m pulling it shut, uniform (off)
+    spring_prob: float = 0.5                            # share of machines with a closing spring
+    spring: tuple[float, float] = (10.0, 40.0)          # N/m pulling it shut, uniform; a springy
+    #                                                     lid stays open only in its detent
+    soft_close_speed: float = 0.2                       # m/s: a springy lid's damper keeps it
+    #                                                     from shutting itself faster than this
     handle_offset_side: float = 0.03   # m either way along the bar, sideways lids (bar along the
     handle_offset_out: float = 0.01    # 27 cm lid); outward lids (bar across the 13 cm lid)
     handle_shift_side: float = 0.02    # m either way along the slide
@@ -347,7 +352,7 @@ class DoorEnv(gym.Env):
         ep = {
             "command": command, "slide": slide, "travel": travel,
             "friction": log_uniform(v.friction), "damping": log_uniform(v.damping),
-            "spring": float(rng.uniform(*v.spring)),
+            "spring": float(rng.uniform(*v.spring)) if rng.uniform() < v.spring_prob else 0.0,
             "handle_offset": sym(v.handle_offset_out if out else v.handle_offset_side),
             "handle_shift": sym(v.handle_shift_out if out else v.handle_shift_side),
             "handle_height": float(rng.uniform(*v.handle_height)),
@@ -357,6 +362,11 @@ class DoorEnv(gym.Env):
         needed = needed_opening(replace(MachineConfig(), slide=slide))
         lid_hi = max(needed, travel - s.close_margin)
         lid = float(rng.uniform(needed, lid_hi))
+        if ep["spring"] > 0:
+            lid = travel - 0.002          # a springy lid is left open in its detent
+            # a soft-close damper, as springy guards have: shutting itself from fully open, the
+            # lid moves no faster than soft_close_speed
+            ep["damping"] = max(ep["damping"], ep["spring"] * travel / v.soft_close_speed)
         ep["lid"] = 0.0 if command == "open" else lid
         ep["jitter"] = (sym(s.jitter_xy), sym(s.jitter_xy), sym(s.jitter_z), sym(s.jitter_yaw))
         ep["handle_bias"] = tuple(float(x) for x in rng.normal(0.0, n.handle_bias, 3))
@@ -547,14 +557,22 @@ class DoorEnv(gym.Env):
                 self._touch_at = None
 
     def goal_reached(self) -> bool:
+        """open: the pocket uncovered, and a springy lid in its detent, so it stays open; close:
+        latched."""
         if self.command == "open":
-            return self.machine.lid >= self.needed
+            m = self.machine
+            return m.lid >= self.needed and (m.cfg.lid_spring <= 0 or m.held_open)
         return self.machine.latched
+
+    def _open_target(self) -> float:
+        """The opening the open command must reach: the needed one, or a springy lid's detent."""
+        c = self.machine.cfg
+        return max(self.needed, c.travel - c.detent_depth) if c.lid_spring > 0 else self.needed
 
     def _progress(self) -> float:
         q = self.machine.lid
         if self.command == "open":
-            return float(np.clip(q / self.needed, 0.0, 1.0))
+            return float(np.clip(q / self._open_target(), 0.0, 1.0))
         return 1.0 if self.machine.latched else float(np.clip(1.0 - q / self.lid_start, 0.0, 1.0))
 
     def _clearance(self) -> float:
@@ -682,7 +700,7 @@ class DoorEnv(gym.Env):
         if not self.stats["touched"]:
             return "never_touched"
         if self.command == "open":
-            return "not_opened"
+            return "not_held_open" if self.machine.lid >= self.needed else "not_opened"
         if self.machine.lid <= self.machine.cfg.latch_catch:
             return "closed_not_latched"
         return "not_closed"

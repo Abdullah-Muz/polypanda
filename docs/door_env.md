@@ -26,7 +26,7 @@ Only what a real robot could know (schema `door-v1-49d`):
 | `door_io`: door-closed switch, latched | 2 | the signals a real machine exposes |
 | `door_command`: open or close (one-hot) | 2 | the task |
 
-**Not observed:** which way the lid slides, how far it travels, its friction, damping and spring, the latch speed, and the lid's displacement. A real robot knows the lid's displacement only through its own hand while it moves the handle (`touch_travel`, and the held handle estimate), and from the camera once the hand is clear. Finding these by feel is the point of the skill.
+**Not observed:** which way the lid slides, how far it travels, its friction, damping and spring (whether it has one, and so whether it must be pushed into its detent), the latch speed, and the lid's displacement. A real robot knows the lid's displacement only through its own hand while it moves the handle (`touch_travel`, and the held handle estimate), and from the camera once the hand is clear. Finding these by feel is the point of the skill.
 
 ## Actions
 
@@ -46,7 +46,7 @@ The fingers move at most 0.1 m/s each. Commanded straight shut, the cell's stiff
 | travel | sideways 0.12–0.14 m, outward 0.265–0.275 m | `jnt_range` |
 | friction | 0.2–10 N, log-uniform (nominal 0.4) | `dof_frictionloss` |
 | damping | 1–10 N s/m, log-uniform (nominal 4) | `dof_damping` |
-| closing spring | off (0 N/m), configurable | `jnt_stiffness` |
+| closing spring | half the machines: 10–40 N/m, uniform; the rest none | `jnt_stiffness`; a springy lid gets a soft-close damper (damping raised so it shuts itself no faster than 0.2 m/s) and a hold-open detent (`Machine._hold_open`) |
 | handle along the bar | ±3 cm sideways lids, ±1 cm outward | `geom_pos`/`geom_quat` of bar and posts, `site_pos` |
 | handle along the slide | ±2 cm sideways, ±1 cm outward | as above |
 | handle height (bar centre above lid) | 2.5–5 cm (nominal 3.5) | as above, plus the posts' size and bounding boxes |
@@ -119,5 +119,5 @@ A 20k-step smoke run of `door_v1_ppo` (2 subprocess envs, under `nice`) ran end 
 - **Pure PPO will likely struggle with exploration** (find the bar, push it the right way, back off). The PPO config is plain, from scratch. The plan's behaviour cloning from `DoorExpert` (state inputs) is not built yet. A demonstration recorder over `run_expert` is a few lines.
 - **The expert is an oracle, not the baseline.** The nominal and camera-aware scripts of `evaluation/tending.py` are the fair baselines. They run in the line, not in this env.
 - **In the line:** `CartesianActionAdapter` solves IK for a base at the origin. On the rail, the base moves, and the adapter does not yet take that into account, so the skill has not been run on the line's M1. It is tested through `StationView` at −90° in its own scene.
-- **Closing spring:** off. With a spring stronger than the lid's friction, an opened lid closes again once let go, and "open" would need a lid that stays open. That needs deciding first.
+- **Closing spring (decided 2026-11-23: included).** Half the machines have one. A one-armed robot cannot hold a lid open while it loads, so a springy lid has a **hold-open detent**, as springy guards do: in the last 8 mm of its travel the spring is cancelled and the lid is held against its stop with 1 N. Pushed out of it, the spring pulls it shut. `open` on a springy lid therefore succeeds only with the lid in its detent (failure `not_held_open` otherwise), and `close` episodes start with it there. Without a damper, a springy lid pushed out of its detent ran ahead into the leading finger (100–390 N spikes, measured) and the detent snapped it into its stop (slams), so springy lids get a soft-close damper. The expert pushes on 1 cm further on springy lids (the hand sags against the spring at full reach): 120/120 on a mixed spring check, no slams, peak force at most 53 N.
 - **Force estimate:** an idealized estimate (contact forces plus Gaussian noise). A real torque-based estimate is biased by model errors and is worse when the arm moves fast.

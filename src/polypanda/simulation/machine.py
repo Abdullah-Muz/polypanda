@@ -84,6 +84,9 @@ class MachineConfig:
     lid_damping: float = 4.0          # N s/m
     lid_friction: float = 0.4         # N, Coulomb friction of the slide
     lid_spring: float = 0.0           # N/m, pulls the lid closed (0: none)
+    detent_depth: float = 0.008       # m: a springy lid is held open in the last this of its
+                                      # travel (a hold-open detent, as springy guards have)
+    detent_force: float = 1.0         # N the detent holds a springy lid against its stop with
     # --- handle: a bar on two posts, across the slide direction ---
     handle_offset: float = 0.0        # m, along the bar's own axis from the lid's centre line
     handle_shift: float = 0.0         # m, along the slide axis from the lid's centre
@@ -379,6 +382,7 @@ class Machine:
         self._armed = self.lid > 0.005
         self._prev_q, self._prev_t = self.lid, float(self.d.time)
         self.d.eq_active[self.latch_eq] = 0
+        self._hold_open()
         self._show()
 
     @property
@@ -389,6 +393,19 @@ class Machine:
     @property
     def latched(self) -> bool:
         return bool(self.d.eq_active[self.latch_eq])
+
+    @property
+    def held_open(self) -> bool:
+        """A springy lid sits in its hold-open detent. (A lid without a spring stays wherever it
+        is left, so it needs none.)"""
+        return self.cfg.lid_spring > 0 and self.lid >= self.cfg.travel - self.cfg.detent_depth
+
+    def _hold_open(self) -> None:
+        """The detent of a springy lid: in the last `detent_depth` of its travel it cancels the
+        spring and holds the lid against its stop with `detent_force`. Pushed out of it, the
+        spring pulls the lid shut again. Applied as a joint force, renewed every control step."""
+        self.d.qfrc_applied[self.lid_dof] = (self.cfg.lid_spring * self.lid + self.cfg.detent_force
+                                             if self.held_open else 0.0)
 
     def unlatch(self) -> None:
         """Release the lid. It stays closed until something pulls it open, and the latch
@@ -446,6 +463,7 @@ class Machine:
         dt = t - self._prev_t
         closing = (self._prev_q - q) / dt if dt > 0 else 0.0
         self._prev_q, self._prev_t = q, t
+        self._hold_open()
         if q > 0.005:
             self._armed = True        # the latch catches only a lid pushed shut after opening
         self._peak_closing = max(self._peak_closing, closing) if q <= 0.01 else 0.0

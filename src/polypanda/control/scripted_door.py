@@ -40,6 +40,7 @@ class DoorExpert:
     rise: float = 0.06            # m above the bar at the end
     retries: int = 2              # close: pull back and push again if the latch did not catch
     reopen: float = 0.025         # m the lid is pulled open for a retry
+    detent_push: float = 0.01     # m further a springy lid may be pushed, into its detent
 
     def __init__(self, env) -> None:
         self.env = env            # a DoorEnv (unwrapped: world-frame truth)
@@ -92,6 +93,9 @@ class DoorExpert:
             self.sign, self.speed = 1.0, self.open_speed
             self.goal_q = min(env.needed + self.open_past, cfg.travel - 0.002)
             self.cap = (cfg.travel - 0.002 - lid) + slack + self.s
+            if cfg.lid_spring > 0:        # into the hold-open detent, or the spring shuts it;
+                self.goal_q = max(self.goal_q, cfg.travel - cfg.detent_depth / 2)
+                self.cap += self.detent_push  # the hand sags against the spring: push on
         else:
             self.sign = -1.0
             if self.tries == 0:
