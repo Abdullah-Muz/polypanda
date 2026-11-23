@@ -89,6 +89,18 @@ def squares_overlap(a, b, margin=0.003) -> bool:
     return True
 
 
+def _on_belt_or_hopper(xy) -> bool:
+    """Inside the belt's band (rails, tunnel; it runs the whole width of the bench at the
+    infeed) or the parts hopper's footprint, with a cube's half diagonal of margin."""
+    pick, travel = station_xy(CFG.infeed_angle, CFG.radius), belt_direction(CFG)
+    lateral = abs(float((np.asarray(xy) - pick) @ np.array([-travel[1], travel[0]])))
+    if lateral < CFG.belt_width / 2 + 0.045 + 0.03:
+        return True
+    spots = np.array(hopper_xy(CFG))
+    lo, hi = spots.min(axis=0) - 0.08, spots.max(axis=0) + 0.08
+    return bool(np.all(xy > lo) and np.all(xy < hi))
+
+
 def _clear_of_stations(xy) -> bool:
     if any(np.linalg.norm(xy - station_xy(a, CFG.radius)) < 0.09 for a in CFG.tower_angles):
         return False
@@ -96,7 +108,7 @@ def _clear_of_stations(xy) -> bool:
         return False
     if np.linalg.norm(xy - station_xy(CFG.reject_angle, CFG.radius)) < 0.17:
         return False
-    return not (xy[1] > 0.36 and xy[0] < 0.22)   # the belt, its tunnel and the hopper
+    return not _on_belt_or_hopper(xy)
 
 
 def draw_scene(rng: np.random.Generator) -> dict:
@@ -146,7 +158,8 @@ def draw_scene(rng: np.random.Generator) -> dict:
             yaw, size = rng.uniform(-np.pi, np.pi), rng.uniform(*SIZE_RANGE)
             radius, angle = np.linalg.norm(xy), np.degrees(np.arctan2(xy[1], xy[0]))
             if (LOOSE_RADIUS[0] <= radius <= 0.78 and abs(angle) <= BASE_RANGE
-                    and not (xy[1] > 0.36 and xy[0] < 0.22) and fits(xy, yaw, size)):
+                    and not _on_belt_or_hopper(xy) and fits(xy, yaw, size)
+                    and np.linalg.norm(xy - station_xy(CFG.reject_angle, CFG.radius)) > 0.13):
                 add("pair", [(xy, yaw, size)])
                 break
     arm = None
