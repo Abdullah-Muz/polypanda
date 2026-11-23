@@ -90,6 +90,18 @@ def test_tower_top_and_close_neighbour_are_separate_clusters():
     assert ident.target == 0 and not ident.merged
 
 
+def test_a_cube_partly_under_the_hand_is_flagged_occluded():
+    half = (0.02, 0.02, 0.03)
+    cube = ((0.2, 0.2, 0.03), half, 0.3)
+    est, _ = run(OVERHEAD, [cube])
+    assert not est[0].occluded
+    # a "hand" (not a cube: the known scene does not hold it here) hovering over one corner
+    hand = ((0.19, 0.19, 0.25), (0.02, 0.02, 0.02), 0.0)   # seen 15 % further out, at 1.5 m
+    est, hit = run(OVERHEAD, [cube, hand])
+    under = [e for e in est if identify(e, hit, {0: 0}).target == 0]
+    assert len(under) == 1 and under[0].occluded
+
+
 def test_noisy_depth_still_locates_the_cube():
     half = (0.022, 0.022, 0.033)
     est, _ = run(OVERHEAD, [((0.3, 0.3, 0.033), half, 0.4)], NOISE["medium"], seed=3)

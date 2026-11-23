@@ -16,7 +16,12 @@ Steps, per image:
    The cube's yaw (mod 90 deg) is the orientation of the face's points by their fourth-order
    moment (`square_yaw`): the minimum-area rectangle, also computed and reported as
    `yaw_rect`, snaps to the pixel grid for cubes turned a few degrees from it. The cube's xy is
-   the centre of the bounding rectangle at that yaw, and its height the top face's height.
+   the centre of the bounding rectangle at that yaw (between the 3 % and 97 % quantiles along
+   each side, so a few stray points do not pull it), and its height the top face's height.
+
+5. Occlusion check: if anything nearer to the camera than the top face (the arm, a taller
+   cube) borders it within `occlusion_ring` pixels, part of the face may be hidden and the
+   estimate is flagged `occluded`; a controller would withhold it and look again.
 
 On a tower the cluster holds the whole stack, and the estimate is the top cube's pose.
 
@@ -33,6 +38,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 
 import numpy as np
+from scipy.ndimage import binary_dilation
 from scipy.sparse import coo_matrix
 from scipy.sparse.csgraph import connected_components
 
@@ -51,6 +57,8 @@ class EstimatorConfig:
     min_pixels: int = 20       # smaller clusters are discarded
     min_top_pixels: int = 8    # clusters with fewer top-face pixels are discarded
     yaw_step: float = 0.5      # deg, coarse rectangle search (refined to a tenth of it)
+    occlusion_ring: int = 2    # px around the top face checked for anything nearer
+    trim: float = 0.03         # quantile trimmed from each side of the rectangle for its centre
 
 
 @dataclass
@@ -63,6 +71,7 @@ class CubeEstimate:
     sides: tuple[float, float]  # m, rectangle side lengths (about a pixel short of the face)
     pixels: np.ndarray = field(repr=False)      # flat pixel indices of the whole cluster
     top_pixels: np.ndarray = field(repr=False)  # flat pixel indices of its top face
+    occluded: bool = False     # something nearer borders the top face: the estimate is withheld
 
 
 def world_rays(K: Intrinsics, R: np.ndarray) -> np.ndarray:
@@ -112,12 +121,16 @@ def square_yaw(xy: np.ndarray) -> float:
     return float(((np.angle(np.sum(z**4)) + np.pi) / 4) % (np.pi / 2))
 
 
-def rect_at(xy: np.ndarray, theta: float) -> tuple[np.ndarray, tuple[float, float]]:
-    """Centre and side lengths of the bounding rectangle of 2-D points at orientation theta."""
+def rect_at(xy: np.ndarray, theta: float, trim: float = 0.0
+            ) -> tuple[np.ndarray, tuple[float, float]]:
+    """Centre and side lengths of the bounding rectangle of 2-D points at orientation theta.
+    With `trim` > 0 the centre is taken between the trim and 1 - trim quantiles along each axis
+    instead of the extremes, so a few stray points on one side do not pull it."""
     axis_u = np.array([np.cos(theta), np.sin(theta)])
     axis_v = np.array([-np.sin(theta), np.cos(theta)])
     u, v = xy @ axis_u, xy @ axis_v
-    centre = (u.max() + u.min()) / 2 * axis_u + (v.max() + v.min()) / 2 * axis_v
+    (u0, u1), (v0, v1) = np.quantile(u, [trim, 1 - trim]), np.quantile(v, [trim, 1 - trim])
+    centre = (u0 + u1) / 2 * axis_u + (v0 + v1) / 2 * axis_v
     return centre, (float(np.ptp(u)), float(np.ptp(v)))
 
 
@@ -205,11 +218,27 @@ def estimate_cubes(depth: np.ndarray, expected: np.ndarray, K: Intrinsics, R: np
         s = (h - t[2]) / r[:, 2]
         xy = t[:2] + s[:, None] * r[:, :2]
         theta = square_yaw(xy)
-        centre, sides = rect_at(xy, theta)
+        centre, sides = rect_at(xy, theta, cfg.trim)
         _, theta_rect, _ = min_area_rect(xy, cfg.yaw_step)
+        occluded = _occluded(top, depth, valid, max(cfg.fg_margin, cfg.k_sigma * float(
+            np.median(sf[top]))), cfg.occlusion_ring)
         out.append(CubeEstimate(centre, xy.mean(axis=0), wrap_quarter(theta),
-                                wrap_quarter(theta_rect), h, sides, pix, top))
+                                wrap_quarter(theta_rect), h, sides, pix, top, occluded))
     return out
+
+
+def _occluded(top: np.ndarray, depth: np.ndarray, valid: np.ndarray, margin: float,
+              ring: int) -> bool:
+    """Something nearer to the camera than the top face (the arm, a taller cube) borders it
+    within `ring` pixels, so part of the face may be hidden."""
+    rows, cols = np.unravel_index(top, depth.shape)
+    r0, r1 = max(rows.min() - ring, 0), min(rows.max() + ring + 1, depth.shape[0])
+    c0, c1 = max(cols.min() - ring, 0), min(cols.max() + ring + 1, depth.shape[1])
+    face = np.zeros((r1 - r0, c1 - c0), dtype=bool)
+    face[rows - r0, cols - c0] = True
+    around = binary_dilation(face, iterations=ring) & ~face
+    d, ok = depth[r0:r1, c0:c1], valid[r0:r1, c0:c1]
+    return bool(np.any(around & ok & (d < depth.flat[top].min() - margin)))
 
 
 @dataclass
