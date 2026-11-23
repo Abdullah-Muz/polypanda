@@ -26,6 +26,10 @@ Held-out sets that training never touched, 95 % Wilson intervals, learned polici
 
 The belt is fixed on every seed. Seed 0 still fails on standing cubes near the base turned close to −45°, where the scripted pick does not. The stand-up was not retrained, so the v3.2 cell pairs v3.1's stand-up with a grasp it was not trained after. [results.md](docs/results.md#v32-a-grasp-round-for-the-cells-picks), [v3_2_targets.md](docs/v3_2_targets.md).
 
+![v3.2: the same belt cube, picked by v3.1's grasp and by v3.2's](docs/figures/pick_compare_v32.gif)
+
+*v3.2 (`scripts/record_pick_compare.py`): the same staged belt cube, picked by the cell's own pick with v3.1's grasp (left) and v3.2's (right), seed 0. Cases 58 and 190 of the one-shot belt set `grasp_belt_final_v1`, chosen to show the difference: they are 2 of the 5 cubes (of 200) v3.1's seed 0 knocked over there; v3.2 knocked over none. Both grasps are PPO policies. [Full video](https://github.com/Abdullah-Muz/polypanda/releases).*
+
 **v3.1** (Milestone 11; fresh one-shot sets and a new held-out suite of 200 orders, 3 seeds). Both recovery skills were retrained with a randomized cube size, and a hand-written rule that clears clutter was tested against the best rule:
 
 | v3.1 | Result | Target |
