@@ -1,0 +1,753 @@
+{
+  "name": "keyed_insertion_probe",
+  "what": "scripted load of a keyed part into the keyed pocket, right way round and each wrong way round",
+  "seed": 20261123,
+  "n_per_condition": 30,
+  "errors_mm": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "pocket": {
+    "clearance_mm": 2.0,
+    "depth_mm": 15.0,
+    "straight_mm": 10.0,
+    "lead_in_deg": 45.0,
+    "key_wall": 0,
+    "slot_width_mm": 14.0,
+    "slot_depth_mm": 10.0
+  },
+  "rib_mm": {
+    "width": 10.0,
+    "proud": 8.0,
+    "height": 12.0
+  },
+  "seated_means": "Machine.in_pocket: gap under 1.5 mm, tilt under 3 deg, centre within clearance + 0.5 mm, and the rib within 10 deg of the slot",
+  "conditions": {
+    "right": {
+      "0": {
+        "n": 30,
+        "seated": 30,
+        "rate": 1.0,
+        "ci95": [
+          0.8864829086095221,
+          1.0
+        ],
+        "outcomes": {
+          "seated": 30
+        },
+        "physically_down": 30,
+        "seated_after_5s": 30,
+        "refused_gap_after_5s_mm": null,
+        "gripper_touched_machine": 0,
+        "regrasps": 0,
+        "ik_failures": 0,
+        "peak_force_n": {
+          "median": 0.0,
+          "min": 0.0,
+          "p95": 0.0,
+          "max": 0.0
+        },
+        "seated_key_error_deg": {
+          "median": 1.367,
+          "min": 1.24,
+          "p95": 1.394,
+          "max": 1.412
+        },
+        "seated_offset_mm": {
+          "median": 0.427,
+          "min": 0.19,
+          "p95": 0.671,
+          "max": 0.785
+        },
+        "seated_drift_mm": {
+          "median": 0.0,
+          "min": 0.0,
+          "p95": 0.0,
+          "max": 0.0
+        },
+        "refused_gap_mm": null,
+        "refused_tilt_deg": null
+      },
+      "1": {
+        "n": 30,
+        "seated": 30,
+        "rate": 1.0,
+        "ci95": [
+          0.8864829086095221,
+          1.0
+        ],
+        "outcomes": {
+          "seated": 30
+        },
+        "physically_down": 30,
+        "seated_after_5s": 30,
+        "refused_gap_after_5s_mm": null,
+        "gripper_touched_machine": 0,
+        "regrasps": 0,
+        "ik_failures": 0,
+        "peak_force_n": {
+          "median": 0.0,
+          "min": 0.0,
+          "p95": 5.237,
+          "max": 17.497
+        },
+        "seated_key_error_deg": {
+          "median": 1.368,
+          "min": 0.333,
+          "p95": 1.527,
+          "max": 1.563
+        },
+        "seated_offset_mm": {
+          "median": 0.812,
+          "min": 0.333,
+          "p95": 1.299,
+          "max": 1.427
+        },
+        "seated_drift_mm": {
+          "median": 0.0,
+          "min": 0.0,
+          "p95": 0.0,
+          "max": 0.0
+        },
+        "refused_gap_mm": null,
+        "refused_tilt_deg": null
+      },
+      "2": {
+        "n": 30,
+        "seated": 30,
+        "rate": 1.0,
+        "ci95": [
+          0.8864829086095221,
+          1.0
+        ],
+        "outcomes": {
+          "seated": 30
+        },
+        "physically_down": 30,
+        "seated_after_5s": 30,
+        "refused_gap_after_5s_mm": null,
+        "gripper_touched_machine": 1,
+        "regrasps": 0,
+        "ik_failures": 0,
+        "peak_force_n": {
+          "median": 2.891,
+          "min": 0.0,
+          "p95": 29.131,
+          "max": 33.135
+        },
+        "seated_key_error_deg": {
+          "median": 0.802,
+          "min": 0.01,
+          "p95": 1.379,
+          "max": 1.625
+        },
+        "seated_offset_mm": {
+          "median": 1.437,
+          "min": 0.629,
+          "p95": 1.72,
+          "max": 1.82
+        },
+        "seated_drift_mm": {
+          "median": 0.0,
+          "min": 0.0,
+          "p95": 0.0,
+          "max": 0.0
+        },
+        "refused_gap_mm": null,
+        "refused_tilt_deg": null
+      },
+      "3": {
+        "n": 30,
+        "seated": 30,
+        "rate": 1.0,
+        "ci95": [
+          0.8864829086095221,
+          1.0
+        ],
+        "outcomes": {
+          "seated": 30
+        },
+        "physically_down": 30,
+        "seated_after_5s": 30,
+        "refused_gap_after_5s_mm": null,
+        "gripper_touched_machine": 9,
+        "regrasps": 0,
+        "ik_failures": 0,
+        "peak_force_n": {
+          "median": 15.225,
+          "min": 1.19,
+          "p95": 45.26,
+          "max": 59.822
+        },
+        "seated_key_error_deg": {
+          "median": 0.425,
+          "min": 0.037,
+          "p95": 2.051,
+          "max": 2.964
+        },
+        "seated_offset_mm": {
+          "median": 1.344,
+          "min": 0.527,
+          "p95": 1.916,
+          "max": 1.961
+        },
+        "seated_drift_mm": {
+          "median": 0.0,
+          "min": 0.0,
+          "p95": 0.0,
+          "max": 0.0
+        },
+        "refused_gap_mm": null,
+        "refused_tilt_deg": null
+      }
+    },
+    "wrong90": {
+      "0": {
+        "n": 30,
+        "seated": 0,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.113517091390478
+        ],
+        "outcomes": {
+          "refused": 30
+        },
+        "physically_down": 0,
+        "seated_after_5s": 0,
+        "refused_gap_after_5s_mm": {
+          "median": 5.156,
+          "min": 5.151,
+          "p95": 5.163,
+          "max": 5.163
+        },
+        "gripper_touched_machine": 0,
+        "regrasps": 0,
+        "ik_failures": 0,
+        "peak_force_n": {
+          "median": 23.31,
+          "min": 16.64,
+          "p95": 24.228,
+          "max": 24.276
+        },
+        "seated_key_error_deg": null,
+        "seated_offset_mm": null,
+        "seated_drift_mm": null,
+        "refused_gap_mm": {
+          "median": 5.21,
+          "min": 5.205,
+          "p95": 5.215,
+          "max": 5.215
+        },
+        "refused_tilt_deg": {
+          "median": 21.748,
+          "min": 21.714,
+          "p95": 21.787,
+          "max": 21.788
+        }
+      },
+      "1": {
+        "n": 30,
+        "seated": 0,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.113517091390478
+        ],
+        "outcomes": {
+          "refused": 30
+        },
+        "physically_down": 0,
+        "seated_after_5s": 0,
+        "refused_gap_after_5s_mm": {
+          "median": 5.159,
+          "min": 4.7,
+          "p95": 11.557,
+          "max": 11.558
+        },
+        "gripper_touched_machine": 0,
+        "regrasps": 0,
+        "ik_failures": 0,
+        "peak_force_n": {
+          "median": 23.888,
+          "min": 20.776,
+          "p95": 44.361,
+          "max": 44.464
+        },
+        "seated_key_error_deg": null,
+        "seated_offset_mm": null,
+        "seated_drift_mm": null,
+        "refused_gap_mm": {
+          "median": 5.212,
+          "min": 4.763,
+          "p95": 11.938,
+          "max": 11.938
+        },
+        "refused_tilt_deg": {
+          "median": 18.939,
+          "min": 0.35,
+          "p95": 21.785,
+          "max": 21.8
+        }
+      },
+      "2": {
+        "n": 30,
+        "seated": 0,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.113517091390478
+        ],
+        "outcomes": {
+          "refused": 30
+        },
+        "physically_down": 0,
+        "seated_after_5s": 0,
+        "refused_gap_after_5s_mm": {
+          "median": 5.069,
+          "min": 4.677,
+          "p95": 11.547,
+          "max": 11.573
+        },
+        "gripper_touched_machine": 0,
+        "regrasps": 0,
+        "ik_failures": 0,
+        "peak_force_n": {
+          "median": 25.688,
+          "min": 18.678,
+          "p95": 42.74,
+          "max": 44.984
+        },
+        "seated_key_error_deg": null,
+        "seated_offset_mm": null,
+        "seated_drift_mm": null,
+        "refused_gap_mm": {
+          "median": 5.128,
+          "min": 4.677,
+          "p95": 11.935,
+          "max": 11.936
+        },
+        "refused_tilt_deg": {
+          "median": 18.808,
+          "min": 0.375,
+          "p95": 21.771,
+          "max": 21.787
+        }
+      },
+      "3": {
+        "n": 30,
+        "seated": 0,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.113517091390478
+        ],
+        "outcomes": {
+          "refused": 30
+        },
+        "physically_down": 0,
+        "seated_after_5s": 0,
+        "refused_gap_after_5s_mm": {
+          "median": 5.144,
+          "min": 2.873,
+          "p95": 11.604,
+          "max": 11.642
+        },
+        "gripper_touched_machine": 0,
+        "regrasps": 0,
+        "ik_failures": 0,
+        "peak_force_n": {
+          "median": 29.157,
+          "min": 22.915,
+          "p95": 38.841,
+          "max": 40.072
+        },
+        "seated_key_error_deg": null,
+        "seated_offset_mm": null,
+        "seated_drift_mm": null,
+        "refused_gap_mm": {
+          "median": 5.199,
+          "min": 4.076,
+          "p95": 11.943,
+          "max": 11.949
+        },
+        "refused_tilt_deg": {
+          "median": 18.566,
+          "min": 0.199,
+          "p95": 21.67,
+          "max": 52.559
+        }
+      }
+    },
+    "wrong180": {
+      "0": {
+        "n": 30,
+        "seated": 0,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.113517091390478
+        ],
+        "outcomes": {
+          "refused": 30
+        },
+        "physically_down": 0,
+        "seated_after_5s": 0,
+        "refused_gap_after_5s_mm": {
+          "median": 4.859,
+          "min": 4.847,
+          "p95": 4.864,
+          "max": 4.866
+        },
+        "gripper_touched_machine": 0,
+        "regrasps": 0,
+        "ik_failures": 0,
+        "peak_force_n": {
+          "median": 38.532,
+          "min": 26.677,
+          "p95": 40.091,
+          "max": 40.305
+        },
+        "seated_key_error_deg": null,
+        "seated_offset_mm": null,
+        "seated_drift_mm": null,
+        "refused_gap_mm": {
+          "median": 4.933,
+          "min": 4.921,
+          "p95": 4.938,
+          "max": 4.94
+        },
+        "refused_tilt_deg": {
+          "median": 19.779,
+          "min": 19.696,
+          "p95": 19.814,
+          "max": 19.827
+        }
+      },
+      "1": {
+        "n": 30,
+        "seated": 0,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.113517091390478
+        ],
+        "outcomes": {
+          "refused": 30
+        },
+        "physically_down": 0,
+        "seated_after_5s": 0,
+        "refused_gap_after_5s_mm": {
+          "median": 4.859,
+          "min": 4.815,
+          "p95": 4.901,
+          "max": 4.907
+        },
+        "gripper_touched_machine": 0,
+        "regrasps": 0,
+        "ik_failures": 0,
+        "peak_force_n": {
+          "median": 37.099,
+          "min": 24.367,
+          "p95": 41.408,
+          "max": 41.837
+        },
+        "seated_key_error_deg": null,
+        "seated_offset_mm": null,
+        "seated_drift_mm": null,
+        "refused_gap_mm": {
+          "median": 4.933,
+          "min": 4.887,
+          "p95": 4.976,
+          "max": 4.983
+        },
+        "refused_tilt_deg": {
+          "median": 19.779,
+          "min": 19.48,
+          "p95": 20.066,
+          "max": 20.112
+        }
+      },
+      "2": {
+        "n": 30,
+        "seated": 0,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.113517091390478
+        ],
+        "outcomes": {
+          "refused": 30
+        },
+        "physically_down": 0,
+        "seated_after_5s": 0,
+        "refused_gap_after_5s_mm": {
+          "median": 4.887,
+          "min": 4.747,
+          "p95": 11.56,
+          "max": 11.681
+        },
+        "gripper_touched_machine": 0,
+        "regrasps": 0,
+        "ik_failures": 0,
+        "peak_force_n": {
+          "median": 37.48,
+          "min": 23.279,
+          "p95": 45.664,
+          "max": 53.64
+        },
+        "seated_key_error_deg": null,
+        "seated_offset_mm": null,
+        "seated_drift_mm": null,
+        "refused_gap_mm": {
+          "median": 4.962,
+          "min": 4.817,
+          "p95": 11.858,
+          "max": 11.92
+        },
+        "refused_tilt_deg": {
+          "median": 19.747,
+          "min": 0.719,
+          "p95": 20.432,
+          "max": 20.454
+        }
+      },
+      "3": {
+        "n": 30,
+        "seated": 0,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.113517091390478
+        ],
+        "outcomes": {
+          "refused": 30
+        },
+        "physically_down": 0,
+        "seated_after_5s": 0,
+        "refused_gap_after_5s_mm": {
+          "median": 4.811,
+          "min": 4.715,
+          "p95": 11.574,
+          "max": 11.683
+        },
+        "gripper_touched_machine": 0,
+        "regrasps": 0,
+        "ik_failures": 0,
+        "peak_force_n": {
+          "median": 39.414,
+          "min": 22.367,
+          "p95": 54.379,
+          "max": 56.79
+        },
+        "seated_key_error_deg": null,
+        "seated_offset_mm": null,
+        "seated_drift_mm": null,
+        "refused_gap_mm": {
+          "median": 4.881,
+          "min": 4.768,
+          "p95": 11.859,
+          "max": 11.921
+        },
+        "refused_tilt_deg": {
+          "median": 19.043,
+          "min": 0.698,
+          "p95": 20.235,
+          "max": 20.689
+        }
+      }
+    },
+    "wrong270": {
+      "0": {
+        "n": 30,
+        "seated": 0,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.113517091390478
+        ],
+        "outcomes": {
+          "refused": 30
+        },
+        "physically_down": 0,
+        "seated_after_5s": 0,
+        "refused_gap_after_5s_mm": {
+          "median": 5.159,
+          "min": 5.155,
+          "p95": 11.504,
+          "max": 11.506
+        },
+        "gripper_touched_machine": 0,
+        "regrasps": 0,
+        "ik_failures": 0,
+        "peak_force_n": {
+          "median": 25.955,
+          "min": 24.79,
+          "p95": 42.879,
+          "max": 43.069
+        },
+        "seated_key_error_deg": null,
+        "seated_offset_mm": null,
+        "seated_drift_mm": null,
+        "refused_gap_mm": {
+          "median": 5.212,
+          "min": 5.208,
+          "p95": 11.922,
+          "max": 11.922
+        },
+        "refused_tilt_deg": {
+          "median": 21.759,
+          "min": 0.556,
+          "p95": 21.815,
+          "max": 21.819
+        }
+      },
+      "1": {
+        "n": 30,
+        "seated": 0,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.113517091390478
+        ],
+        "outcomes": {
+          "refused": 30
+        },
+        "physically_down": 0,
+        "seated_after_5s": 0,
+        "refused_gap_after_5s_mm": {
+          "median": 5.157,
+          "min": 4.736,
+          "p95": 11.516,
+          "max": 11.517
+        },
+        "gripper_touched_machine": 0,
+        "regrasps": 0,
+        "ik_failures": 0,
+        "peak_force_n": {
+          "median": 27.145,
+          "min": 24.837,
+          "p95": 42.539,
+          "max": 45.649
+        },
+        "seated_key_error_deg": null,
+        "seated_offset_mm": null,
+        "seated_drift_mm": null,
+        "refused_gap_mm": {
+          "median": 5.212,
+          "min": 4.795,
+          "p95": 11.925,
+          "max": 11.926
+        },
+        "refused_tilt_deg": {
+          "median": 21.744,
+          "min": 0.512,
+          "p95": 21.783,
+          "max": 21.793
+        }
+      },
+      "2": {
+        "n": 30,
+        "seated": 0,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.113517091390478
+        ],
+        "outcomes": {
+          "refused": 30
+        },
+        "physically_down": 0,
+        "seated_after_5s": 0,
+        "refused_gap_after_5s_mm": {
+          "median": 5.148,
+          "min": 4.677,
+          "p95": 11.502,
+          "max": 11.659
+        },
+        "gripper_touched_machine": 0,
+        "regrasps": 0,
+        "ik_failures": 0,
+        "peak_force_n": {
+          "median": 30.619,
+          "min": 25.195,
+          "p95": 44.789,
+          "max": 44.867
+        },
+        "seated_key_error_deg": null,
+        "seated_offset_mm": null,
+        "seated_drift_mm": null,
+        "refused_gap_mm": {
+          "median": 5.203,
+          "min": 4.677,
+          "p95": 11.921,
+          "max": 11.923
+        },
+        "refused_tilt_deg": {
+          "median": 21.097,
+          "min": 0.543,
+          "p95": 21.756,
+          "max": 21.784
+        }
+      },
+      "3": {
+        "n": 30,
+        "seated": 0,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.113517091390478
+        ],
+        "outcomes": {
+          "refused": 29,
+          "outside": 1
+        },
+        "physically_down": 0,
+        "seated_after_5s": 0,
+        "refused_gap_after_5s_mm": {
+          "median": 4.998,
+          "min": 0.395,
+          "p95": 11.547,
+          "max": 11.694
+        },
+        "gripper_touched_machine": 0,
+        "regrasps": 0,
+        "ik_failures": 0,
+        "peak_force_n": {
+          "median": 28.902,
+          "min": 24.216,
+          "p95": 42.648,
+          "max": 46.33
+        },
+        "seated_key_error_deg": null,
+        "seated_offset_mm": null,
+        "seated_drift_mm": null,
+        "refused_gap_mm": {
+          "median": 5.05,
+          "min": 1.279,
+          "p95": 11.917,
+          "max": 11.927
+        },
+        "refused_tilt_deg": {
+          "median": 20.132,
+          "min": 0.499,
+          "p95": 38.51,
+          "max": 116.601
+        }
+      }
+    }
+  },
+  "created_utc": "2026-11-23T08:25:01+00:00",
+  "git": {
+    "commit": "87a224caaafdb71f3a29c5aecbd6b073f02a7a12",
+    "dirty": false
+  },
+  "versions": {
+    "python": "3.12.3",
+    "mujoco": "3.16.0",
+    "numpy": "2.5.4"
+  },
+  "wall_s": 1652.1
+}
