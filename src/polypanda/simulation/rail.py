@@ -71,22 +71,77 @@ def add_rail(spec: mujoco.MjSpec, cfg: RailConfig | None = None) -> RailConfig:
 
 
 def _draw(spec: mujoco.MjSpec, cfg: RailConfig, axis: np.ndarray) -> None:
+    """An industrial linear axis, drawn (none of it collides; the physics is the slide joint):
+    a low aluminium bed with T-slots, two hardened guide rails, a toothed rack, a ribbed cable
+    carrier and blue end caps with rubber bumpers on the bench; on the carriage (moving with the
+    base), a blue mounting plate, end blocks with bolt heads, and a servo motor with its gearbox
+    driving a pinion in the rack. The robot's base stays at bench height (every trained skill
+    assumes it), so the bulk sits beside the robot, not under it."""
     yaw = float(np.arctan2(axis[1], axis[0]))
     quat = [np.cos(yaw / 2), 0.0, 0.0, np.sin(yaw / 2)]
-    span = (cfg.low - 0.12, cfg.high + 0.12)
+    c, s = np.cos(yaw), np.sin(yaw)
+    rot = np.array([[c, -s, 0.0], [s, c, 0.0], [0.0, 0.0, 1.0]])
+    box, cyl = mujoco.mjtGeom.mjGEOM_BOX, mujoco.mjtGeom.mjGEOM_CYLINDER
+    blue, black, steel = [0.13, 0.33, 0.72, 1.0], [0.08, 0.08, 0.09, 1.0], [0.72, 0.74, 0.78, 1.0]
+    alu, dark = [0.62, 0.64, 0.67, 1.0], [0.25, 0.26, 0.28, 1.0]
+    span = (cfg.low - 0.15, cfg.high + 0.15)
     centre, half = (span[0] + span[1]) / 2, (span[1] - span[0]) / 2
     rail = spec.worldbody.add_body(name="rail", pos=list(axis * centre), quat=quat)
-    for side in (-1, 1):            # two rails set into the bench, under the carriage
-        rail.add_geom(type=mujoco.mjtGeom.mjGEOM_BOX, size=[half, 0.012, 0.0015],
-                      pos=[0.0, side * 0.075, 0.0015], rgba=[0.55, 0.57, 0.6, 1.0],
-                      contype=0, conaffinity=0)
-    for end in span:                # end stops
-        rail.add_geom(type=mujoco.mjtGeom.mjGEOM_BOX, size=[0.02, 0.1, 0.012],
-                      pos=[end - centre, 0.0, 0.012], rgba=[0.95, 0.75, 0.1, 1.0],
-                      contype=0, conaffinity=0)
-    spec.body(BASE_BODY).add_geom(type=mujoco.mjtGeom.mjGEOM_BOX, size=[0.13, 0.11, 0.004],
-                                  pos=[0.0, 0.0, 0.004], quat=quat, rgba=[0.15, 0.35, 0.75, 1.0],
-                                  contype=0, conaffinity=0, mass=0.0)   # carriage plate
+
+    def fixed(size, pos, rgba, gtype=box, q=None):
+        rail.add_geom(type=gtype, size=size, pos=pos, rgba=rgba, contype=0, conaffinity=0,
+                      **({"quat": q} if q else {}))
+
+    fixed([half, 0.13, 0.0015], [0.0, 0.0, 0.0015], alu)                       # bed
+    for y in (-0.105, -0.035, 0.035, 0.105):                                   # T-slots
+        fixed([half, 0.004, 0.0002], [0.0, y, 0.0031], dark)
+    for side in (-1, 1):                                                       # guide rails
+        fixed([half, 0.011, 0.0035], [0.0, side * 0.075, 0.0035], steel)
+        fixed([half, 0.004, 0.0004], [0.0, side * 0.075, 0.0072], [0.85, 0.87, 0.9, 1.0])
+    fixed([half, 0.008, 0.003], [0.0, -0.118, 0.003], dark)                    # rack
+    n_teeth = int(2 * half / 0.012)
+    for k in range(n_teeth):
+        fixed([0.0025, 0.008, 0.0022], [-half + 0.006 + 0.012 * k, -0.118, 0.0082], black)
+    # cable carrier, outside the motor's side
+    fixed([half, 0.026, 0.017], [0.0, -0.245, 0.017], [0.12, 0.12, 0.13, 1.0])
+    for k in range(int(2 * half / 0.03)):
+        fixed([0.004, 0.027, 0.018], [-half + 0.015 + 0.03 * k, -0.245, 0.018], black)
+    fixed([half, 0.0025, 0.0012], [0.0, -0.272, 0.034], [0.95, 0.75, 0.1, 1.0])
+    for end, sign in ((-half, -1), (half, 1)):                                 # end caps
+        fixed([0.02, 0.15, 0.028], [end + sign * 0.02, 0.0, 0.028], blue)
+        fixed([0.006, 0.05, 0.016], [end - sign * 0.004, 0.0, 0.024], black)    # bumper
+        for y in (-0.1, 0.1):
+            fixed([0.006, 0.004], [end + sign * 0.02, y, 0.058], black, cyl)
+
+    # on the carriage: geoms of the base body, given in the rail's frame
+    base = spec.body(BASE_BODY)
+
+    def moving(size, pos, rgba, gtype=box, q=None):
+        base.add_geom(type=gtype, size=size, pos=list(rot @ np.asarray(pos, float)),
+                      quat=q if q is not None else quat, rgba=rgba, contype=0, conaffinity=0,
+                      mass=0.0)
+
+    moving([0.13, 0.12, 0.006], [0.0, 0.0, 0.006], blue)                       # mounting plate
+    for x in (-0.135, 0.135):                                                  # end blocks
+        moving([0.015, 0.12, 0.016], [x, 0.0, 0.016], blue)
+        for y in (-0.09, -0.03, 0.03, 0.09):
+            moving([0.0045, 0.003], [x, y, 0.035], black, cyl)
+    for x in (-0.09, 0.09):                                                    # bearing blocks
+        for y in (-0.075, 0.075):
+            moving([0.03, 0.02, 0.009], [x, y, 0.009], [0.2, 0.22, 0.25, 1.0])
+    # servo motor and gearbox on the rack side, the motor lying along the rail
+    turn_x = np.array([np.cos(np.pi / 4), 0.0, np.sin(np.pi / 4), 0.0])      # z onto x
+    q_motor = np.zeros(4)
+    mujoco.mju_mulQuat(q_motor, np.asarray(quat, float), turn_x)
+    moving([0.04, 0.032, 0.032], [0.06, -0.165, 0.034], black)                 # gearbox
+    moving([0.012, 0.01], [0.06, -0.165, 0.004], steel, cyl)                   # pinion housing
+    moving([0.032, 0.07], [-0.05, -0.165, 0.036], [0.15, 0.36, 0.78, 1.0], cyl, q_motor)  # motor
+    moving([0.0325, 0.012], [-0.128, -0.165, 0.036], black, cyl, q_motor)      # rear cap
+    moving([0.0326, 0.004], [0.015, -0.165, 0.036], [0.85, 0.87, 0.9, 1.0], cyl, q_motor)
+    moving([0.012, 0.01, 0.009], [-0.07, -0.165, 0.073], black)                # connector
+    moving([0.006, 0.03], [-0.07, -0.205, 0.075], black, mujoco.mjtGeom.mjGEOM_CAPSULE,
+           [np.cos(np.pi / 4), np.sin(np.pi / 4), 0.0, 0.0])                   # cable
+    moving([0.02, 0.0005, 0.008], [-0.05, -0.198, 0.036], [0.95, 0.75, 0.1, 1.0])  # label
 
 
 @dataclass(frozen=True)

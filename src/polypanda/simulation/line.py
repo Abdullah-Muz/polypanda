@@ -36,6 +36,10 @@ class MachineSpot:
     stop: float                       # m along the rail
     angle: float = -90.0              # deg about the base axis at that stop
     config: MachineConfig = field(default_factory=MachineConfig)
+    # where the machine actually stands, relative to its programmed place (a variant): an
+    # offset on the bench (m, world x and y) and a turn (deg) about its pocket's centre
+    offset: tuple[float, float] = (0.0, 0.0)
+    turn: float = 0.0
 
 
 def _line_cell() -> WorkcellConfig:
@@ -45,8 +49,9 @@ def _line_cell() -> WorkcellConfig:
 @dataclass(frozen=True)
 class LineConfig:
     cell: WorkcellConfig = field(default_factory=_line_cell)
-    # the rail ends short of the buffer slots (x 0.43-0.49), so it is not drawn under them
-    rail: RailConfig = field(default_factory=lambda: RailConfig(low=-0.75, high=0.25))
+    # travel just past the stops in use (0 and M1's -0.6), so the drawn rail with its end caps
+    # stays on the bench (x from -0.85) and short of the buffer slots (x from 0.44)
+    rail: RailConfig = field(default_factory=lambda: RailConfig(low=-0.65, high=0.15))
     machines: tuple[MachineSpot, ...] = (MachineSpot("M1", -0.6),)
 
     def station_xy(self, stop: float, angle_deg: float) -> np.ndarray:
@@ -59,8 +64,8 @@ def build_line_spec(cfg: LineConfig | None = None) -> mujoco.MjSpec:
     spec = build_workcell_spec(cfg.cell)
     add_rail(spec, cfg.rail)
     for spot in cfg.machines:
-        add_machine(spec, spot.name, cfg.station_xy(spot.stop, spot.angle), spot.angle,
-                    spot.config)
+        xy = cfg.station_xy(spot.stop, spot.angle) + np.asarray(spot.offset)
+        add_machine(spec, spot.name, xy, spot.angle + spot.turn, spot.config)
     return spec
 
 

@@ -67,7 +67,8 @@ class MachineConfig:
     handle_shift: float = 0.0         # m, along the slide axis from the lid's centre
     handle_height: float = 0.035      # m, bar centre above the lid's top
     handle_length: float = 0.12
-    handle_radius: float = 0.008
+    handle_radius: float = 0.008      # half the bar's square section (a flat-faced pull bar:
+                                      # fingers closing slightly off-centre cannot roll over it)
     # --- latch ---
     latch_catch: float = 0.002        # m from closed within which it can latch
     latch_speed: float = 0.02         # m/s closing speed needed to latch (a firm last push)
@@ -197,10 +198,11 @@ def _add_lid(spec: mujoco.MjSpec, body, name: str, cfg: MachineConfig) -> None:
     c = cfg.handle_centre() - np.array([0.0, 0.0, cfg.height + half[2]])  # in the lid's frame
     bar = cfg.bar_axis
     yaw = float(np.arctan2(bar[1], bar[0]))
-    # a capsule's axis is its z: turn z onto the bar's direction (horizontal)
+    # the bar's length runs along its z: turn z onto the bar's direction (horizontal)
     q_bar = _quat_z_to(bar)
-    lid.add_geom(name=f"{name}_handle", type=mujoco.mjtGeom.mjGEOM_CAPSULE,
-                 size=[cfg.handle_radius, cfg.handle_length / 2], pos=c.tolist(), quat=q_bar,
+    lid.add_geom(name=f"{name}_handle", type=mujoco.mjtGeom.mjGEOM_BOX,
+                 size=[cfg.handle_radius, cfg.handle_radius, cfg.handle_length / 2],
+                 pos=c.tolist(), quat=q_bar,
                  rgba=[0.12, 0.12, 0.13, 1.0], mass=0.05, friction=[1.0, 0.03, 0.003])
     post_h = cfg.handle_height
     for s in (-1, 1):
