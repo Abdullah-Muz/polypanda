@@ -21,7 +21,7 @@ What goes wrong in practice, according to vendor and trade sources:
 
 These are vendor and trade sources, not measurements, so they are directional. No study of why tending projects fail was found.
 
-**What v4.0 sets out to show:** a door-and-load skill, learned with RL, that tends machines it was not trained on and was not programmed for, inside a tending cell that checks its own work and recovers from faults without a person.
+**What v4 sets out to show:** a door-and-load skill, learned with RL, that tends machines it was not trained on and was not programmed for (v4.0), inside a production line that recovers from faults without a person (v4.1) and checks its own work (v4.2).
 
 **The limit, stated up front:** this is simulation only. v4.0 can show the approach with honest numbers. It cannot claim to have fixed a factory problem, and nothing here has controlled hardware.
 
