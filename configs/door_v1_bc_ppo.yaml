@@ -1,0 +1,41 @@
+# v4.0 door skill, demonstrations first (docs/v4_targets.md): PPO warm-started from the clone of
+# the feel script (scripts/train_door_bc.py -> runs/door_bc_v1_seed{seed}), 3M steps like the
+# from-scratch reference (configs/door_v1_ppo.yaml), on configs/door_v1.yaml.
+# The clone reaches the goal on 358/400 dev machines but almost never lets go of the bar (266
+# not_released): letting go is decided by the script's own step counters, which its observation
+# does not show. PPO is to learn the release from the success reward, keeping what the clone
+# does well: a lower learning rate, and action noise reset to the clone's (std 0.37), not 1.
+# Validation: 200 episodes every 100k steps (both commands, randomized machines).
+
+algorithm: ppo
+task: door
+env_config: configs/door_v1.yaml
+seed: 0
+n_envs: 8
+vec_env: subproc
+total_timesteps: 3000000
+normalize_obs: true
+normalize_reward: true
+eval_freq: 100000
+eval_episodes: 200
+eval_seed: 100000
+checkpoint_freq: 250000
+torch_threads: 1
+init_from: runs/door_bc_v1_seed{seed}
+init_checkpoint: best
+init_log_std: -1.0
+
+ppo:
+  learning_rate: 0.0001
+  learning_rate_final: 0.00001
+  n_steps: 512
+  batch_size: 256
+  n_epochs: 10
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_range: 0.2
+  ent_coef: 0.005
+  vf_coef: 0.5
+  max_grad_norm: 0.5
+  net_arch: [256, 256]
+  log_std_init: 0.0
