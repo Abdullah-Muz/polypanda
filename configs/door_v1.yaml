@@ -57,6 +57,7 @@ sensing:
   force_noise: 1.0            # N per axis per step
   force_clip: 100.0
   closed_switch: 0.002
+  touch_release: 5            # steps off the bar before touch_travel restarts
 
 gripper:
   close_above: 0.25
@@ -70,7 +71,7 @@ success:
 
 reward:
   approach: 10.0
-  grip: 1.0
+  touch: 0.5
   progress: 10.0
   retreat: 20.0
   retreat_cap: 0.05

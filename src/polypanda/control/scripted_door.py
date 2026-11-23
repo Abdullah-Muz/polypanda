@@ -5,11 +5,16 @@ go, the latch's speed), so it is an oracle, not a baseline: it shows that the do
 solved through the env's interface (5-D actions: hand motion and gripper), and it is the future
 source of demonstrations for "demonstrations first" (docs/v4_plan.md, section 3.3).
 
-The motion is the scripted tending door's (control/scripted_tending.py, move_lid): turn the
-fingers to close along the slide over the handle, come down onto the bar, pinch it, slide the lid
-(open: just past the needed opening and short of the stop; close: a few millimetres past shut, at
-a speed the latch catches), let go, and rise clear. Positions are servoed on the hand's commanded
-target (the adapter's target pose), which the arm follows within a few millimetres.
+It **hooks** the bar, as the scripted tending door does: gripping the bar is fragile in this
+simulator (fingertip pads 1-2 mm off the bar's centre jam on its edge). The fingers stay open,
+turned to straddle the bar along the slide; the hand comes down around the bar and moves along
+the slide, so the trailing finger's inside pushes the bar, over the slack (half the finger span
+less half the bar) and then the lid's way. Open: until the lid is just past the needed opening,
+short of its stop. Close: until the latch catches, at 1.6 x its speed; if the lid shuts without
+latching, the hand moves back so the other finger pulls the lid 2.5 cm open, and pushes again
+faster. Then the hand backs off the bar and rises clear. The pushes are servoed on the hand's
+commanded target (feed-forward); the moves through free space close the loop on the measured
+TCP, which takes out the servos' few millimetres of sag.
 """
 
 from __future__ import annotations
@@ -19,6 +24,8 @@ import numpy as np
 from polypanda.control.ik import closing_yaw
 from polypanda.simulation.panda import tcp_position
 
+FINGER_SPAN = 0.08            # m between the open fingers' pads (Menagerie hand)
+
 
 class DoorExpert:
     hover: float = 0.06           # m above the bar before coming down
@@ -27,15 +34,12 @@ class DoorExpert:
     open_speed: float = 0.08      # m/s along the slide
     close_speed: tuple[float, float] = (0.06, 0.18)  # m/s: 1.6 x the latch speed, within these
     open_past: float = 0.004      # m past the needed opening (and at least 2 mm short of the stop)
-    push_past: float = 0.004      # m pushed past shut
-    grip_steps: int = 12          # steps for the fingers to close or open (0.6 s)
-    settle_steps: int = 15        # steps waiting at the end of the slide for the goal
+    push_past: float = 0.004      # m the hand pushes on once the lid is shut
+    settle_steps: int = 15        # steps at the end of a push waiting for the goal
+    back_off: float = 0.012       # m the hand moves back off the bar before rising
     rise: float = 0.06            # m above the bar at the end
-    # m the hand stands ahead of the bar along the opening direction when the fingers close, so
-    # the finger behind the bar touches it first and pushes the lid the free way (open), never
-    # into its closed stop (a pinned bar squeezed by an off-centre finger slips out)
-    lead: float = 0.002
     retries: int = 2              # close: pull back and push again if the latch did not catch
+    reopen: float = 0.025         # m the lid is pulled open for a retry
 
     def __init__(self, env) -> None:
         self.env = env            # a DoorEnv (unwrapped: world-frame truth)
@@ -44,14 +48,14 @@ class DoorExpert:
     def reset(self) -> None:
         self.phase, self.count, self.tries = "approach", 0, 0
         self.yaw_goal: float | None = None
-        self.grip_point = self.s = self.s_end = self.lid0 = None
-        self.gripper = -1.0
+        self.start = self.s = self.cap = self.s_closed = None
+        self.wait = 0
 
     # --- helpers --------------------------------------------------------------------------
     def _move(self, goal, speed: float, measured: bool = True) -> np.ndarray:
         """Hand action (world frame) toward `goal` at `speed`: closed loop on the measured TCP
-        (the target integrates half the error each step, so the servos' few millimetres of sag
-        are taken out), or with measured=False on the commanded target alone (feed-forward)."""
+        (the target integrates half the error each step), or with measured=False on the
+        commanded target alone (feed-forward)."""
         ad = self.env.adapter
         if measured:
             step = 0.5 * (np.asarray(goal, dtype=float) - tcp_position(self.env.data,
@@ -72,11 +76,29 @@ class DoorExpert:
     def _action(self, move_world: np.ndarray, yaw: float = 0.0) -> np.ndarray:
         c, s = np.cos(self.env.adapter.frame), np.sin(self.env.adapter.frame)
         to_frame = np.array([[c, s, 0.0], [-s, c, 0.0], [0.0, 0.0, 1.0]])  # station frame
-        a = np.concatenate([np.clip(to_frame @ move_world, -1, 1), [yaw, self.gripper]])
+        a = np.concatenate([np.clip(to_frame @ move_world, -1, 1), [yaw, -1.0]])  # fingers open
         return a.astype(np.float32)
 
     def _next(self, phase: str) -> None:
-        self.phase, self.count = phase, 0
+        self.phase, self.count, self.wait = phase, 0, 0
+
+    def _start_push(self) -> None:
+        env, cfg = self.env, self.env.machine.cfg
+        lid = env.machine.lid
+        if self.start is None:
+            self.start = env.adapter.target_pos.copy()
+        slack = FINGER_SPAN / 2 - cfg.handle_radius + 0.004
+        if env.command == "open":
+            self.sign, self.speed = 1.0, self.open_speed
+            self.goal_q = min(env.needed + self.open_past, cfg.travel - 0.002)
+            self.cap = (cfg.travel - 0.002 - lid) + slack + self.s
+        else:
+            self.sign = -1.0
+            if self.tries == 0:
+                self.speed = float(np.clip(1.6 * cfg.latch_speed, *self.close_speed))
+            self.cap = lid + slack + self.push_past + self.s
+        self.s_closed = None
+        self._next("push")
 
     # --- policy ---------------------------------------------------------------------------
     def act(self) -> np.ndarray:
@@ -85,67 +107,59 @@ class DoorExpert:
         handle = env.handle_xyz()
         axis = env.slide_axis()
         tcp = tcp_position(env.data, env.arm)
-        if self.yaw_goal is None:     # fingers close along the slide: the nearer of two ways
+        if self.yaw_goal is None:     # fingers across the bar, along the slide: the nearer way
             psi = float(np.arctan2(axis[1], axis[0]))
             cur = closing_yaw(env.adapter.target_R)
             self.yaw_goal = psi + np.pi * np.round((cur - psi) / np.pi)
         self.count += 1
         move, yaw = np.zeros(3), 0.0
+        dt = env.adapter.control_dt
         if self.phase == "approach":
             goal = handle + [0.0, 0.0, self.hover]
             move, yaw = self._move(goal, self.approach_speed), self._yaw_action()
-            if (np.linalg.norm(goal - tcp) < 0.006 and abs(yaw) * env.adapter.max_rot < 0.03):
+            if np.linalg.norm(goal - tcp) < 0.006 and abs(yaw) * env.adapter.max_rot < 0.03:
                 self._next("descend")
         elif self.phase == "descend":
-            goal = handle + axis * self.lead
-            move, yaw = self._move(goal, self.descend_speed), self._yaw_action()
-            if np.linalg.norm(goal - tcp) < 0.002 or self.count > 60:
-                self._next("grip")
-        elif self.phase == "grip":
-            self.gripper = 1.0           # (the hand holds still: the fingers centre the bar)
-            if self.count >= self.grip_steps:
-                self.grip_point = self.env.adapter.target_pos.copy()
-                self.lid0, self.s, self.wait = machine.lid, 0.0, 0
-                cfg = machine.cfg
-                if env.command == "open":
-                    target = min(env.needed + self.open_past, cfg.travel - 0.002)
-                    self.s_end, self.sign = target - self.lid0, 1.0
-                    self.speed = self.open_speed
-                else:
-                    self.s_end, self.sign = self.lid0 + self.push_past, -1.0
-                    self.speed = float(np.clip(1.6 * cfg.latch_speed, *self.close_speed))
-                self._next("slide")
-        elif self.phase == "slide":
-            self.s = min(self.s + self.speed * env.adapter.control_dt, self.s_end)
-            move = self._move(self.grip_point + axis * self.sign * self.s, 1.0, measured=False)
-            if self.s >= self.s_end:
+            move, yaw = self._move(handle, self.descend_speed), self._yaw_action()
+            if np.linalg.norm(handle - tcp) < 0.002 or self.count > 60:
+                self.s = 0.0
+                self._start_push()
+        elif self.phase == "push":
+            q = machine.lid
+            if env.command == "close" and self.s_closed is None and q <= 0.001:
+                self.s_closed = self.s                     # shut: push on only a little
+                self.cap = min(self.cap, self.s + self.push_past)
+            self.s = min(self.s + self.speed * dt, self.cap)
+            move = self._move(self.start + axis * self.sign * self.s, 1.0, measured=False)
+            done = q >= self.goal_q if env.command == "open" else machine.latched
+            if done:
+                self._next("clear")
+            elif self.s >= self.cap:
                 self.wait += 1
-                if env.goal_reached() and (env.command == "close" or self.wait > 3):
-                    self._next("release")
-                elif self.wait > self.settle_steps:
-                    self.wait = 0
-                    furthest = machine.cfg.travel - 0.001 - self.lid0
-                    if env.command == "open" and self.s_end < furthest:
-                        self.s_end = min(self.s_end + 0.005, furthest)   # reach further
-                    elif env.command == "open":
-                        self._next("release")
-                    elif self.tries < self.retries:   # not latched: pull back, push again
-                        self.tries += 1
+                if self.wait > self.settle_steps:
+                    if env.command == "close" and self.tries < self.retries:
+                        self.tries += 1                     # not latched: reopen, push again
                         self.speed = min(self.speed * 1.5, self.close_speed[1])
+                        self.back_to = self.s - (FINGER_SPAN - 2 * machine.cfg.handle_radius
+                                                 + self.reopen)
                         self._next("back")
                     else:
-                        self._next("release")
+                        self._next("clear")
         elif self.phase == "back":
-            self.s = max(self.s - 0.05 * env.adapter.control_dt, self.lid0 - 0.02)
-            move = self._move(self.grip_point + axis * self.sign * self.s, 1.0, measured=False)
-            if self.s <= self.lid0 - 0.02:
-                self.s_end, self.wait = self.lid0 + self.push_past, 0
-                self._next("slide")
-        elif self.phase == "release":
-            self.gripper = -1.0          # (the hand's target stays where it is)
-            if self.count >= self.grip_steps:
-                self.release_point = self.env.adapter.target_pos.copy()
-                self._next("rise")
+            self.s = max(self.s - 0.05 * dt, self.back_to)
+            move = self._move(self.start + axis * self.sign * self.s, 1.0, measured=False)
+            if self.s <= self.back_to:
+                self.wait += 1
+                if self.wait > 3:
+                    self._start_push()
+        elif self.phase == "clear":                       # back off the bar, then rise
+            goal = self.start + axis * self.sign * (self.s - self.back_off)
+            move = self._move(goal, 0.05, measured=False)
+            if np.linalg.norm(goal - env.adapter.target_pos) < 1e-4 or self.count > 40:
+                self.wait += 1
+                if self.wait > 3 or self.count > 40:
+                    self.release_point = env.adapter.target_pos.copy()
+                    self._next("rise")
         elif self.phase == "rise":
             goal = self.release_point.copy()
             goal[2] = handle[2] + self.rise
@@ -166,4 +180,4 @@ def run_expert(env, seed: int | None = None, options: dict | None = None,
         steps += 1
         done = terminated or truncated
     return {**info, "steps": steps, "return": total, "episode": env.episode,
-            "phase": expert.phase}
+            "phase": expert.phase, "retries": expert.tries}

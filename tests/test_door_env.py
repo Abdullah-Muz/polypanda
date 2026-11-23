@@ -78,7 +78,7 @@ def test_station_frame_classification():
                | set(stations.ROT6_FIELDS) | set(stations.PLANAR_FIELDS)
                | set(stations.JOINT_FIELDS))
     names = {name for name, _ in OBS_LAYOUT}
-    assert {"handle_rel", "grip_travel", "force"} <= set(stations.VECTOR_FIELDS)
+    assert {"handle_rel", "touch_travel", "force"} <= set(stations.VECTOR_FIELDS)
     assert "tcp" in stations.POINT_FIELDS and "tcp_rot6" in stations.ROT6_FIELDS
     # scalars: unchanged by a station turn
     for name in ("dq", "finger_gap", "gripper_closed", "contacts", "bar_align", "door_io",
@@ -294,14 +294,16 @@ def test_open_fails_short_of_the_needed_opening(env):
     assert not terminated and not info["is_success"] and not info["goal_reached"]
 
 
-def test_success_needs_the_fingers_released_and_the_hand_up(env):
+def test_success_needs_the_hand_clear_above_the_bar_not_the_fingers_closed(env):
     needed = needed_opening(MachineConfig())
     stage(env, "open", needed + 0.002, above=0.015)        # too low over the bar
     info, terminated = hold(env, 15)
     assert not terminated and info["goal_reached"] and info["failure"] == "not_released"
-    stage(env, "open", needed + 0.002, closed=True)        # fingers shut (on nothing)
-    info, terminated = hold(env, 15, gripper=1.0)
-    assert not terminated and not info["released"]
+    # a hook never closes the fingers, and fingers shut on nothing above the bar hold nothing:
+    # success asks only that the hand is clear of the bar and above it
+    stage(env, "open", needed + 0.002, closed=True)
+    info, terminated = hold(env, env.config.success.hold_steps, gripper=1.0)
+    assert terminated and info["is_success"] and info["clear_of_bar"]
 
 
 def test_close_succeeds_only_latched(env):
@@ -329,17 +331,34 @@ def test_the_expert_succeeds_on_drawn_machines(env):
     assert sum(wins) == 6
 
 
-def test_the_force_estimate_resists_the_opening_pull(env):
-    """While the expert drags a stiff lid open, the felt force points against the slide."""
-    ep = episode(env, "open", "out", friction=8.0, damping=8.0)
-    env.reset(options={"episode": ep})
+def test_the_expert_hooks_the_bar_with_open_fingers(env):
+    env.reset(options={"episode": episode(env, "open", "right", seed=5)})
     expert = DoorExpert(env)
-    along = []
+    for _ in range(env.config.horizon):
+        a = expert.act()
+        assert a[4] < env.config.gripper.open_below        # never commands the fingers shut
+        _, _, terminated, _, info = env.step(a)
+        if terminated:
+            break
+    assert info["is_success"] and info["stats"]["touched"]
+    assert not env.closed
+
+
+def test_the_force_and_touch_travel_follow_the_pushed_lid(env):
+    """While the expert pushes a stiff lid open, the felt force points against the slide and
+    touch_travel follows the lid's motion."""
+    env.reset(options={"episode": episode(env, "open", "out", friction=8.0, damping=8.0)})
+    expert = DoorExpert(env)
+    along, travel, moved = [], 0.0, 0.0
     for _ in range(200):
         obs, *_ = env.step(expert.act())
-        if expert.phase == "slide" and expert.s < expert.s_end:
-            along.append(float(obs[OBS_SLICES["force"]] @ env.slide_axis()))
+        if expert.phase == "push" and env.machine.lid > 0.01:
+            axis = env.slide_axis()
+            along.append(float(obs[OBS_SLICES["force"]] @ axis))
+            travel = float(obs[OBS_SLICES["touch_travel"]] @ axis)
+            moved = env.machine.lid
     assert len(along) > 20 and np.mean(along) < -5.0
+    assert travel == pytest.approx(moved, abs=0.01)
 
 
 # --- station frames ---------------------------------------------------------------------------

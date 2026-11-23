@@ -34,6 +34,7 @@ def main() -> None:
             rows.append({"command": command, "seed": seed, "success": info["is_success"],
                          "failure": info["failure"], "steps": info["steps"],
                          "return": round(info["return"], 2), "phase": info["phase"],
+                         "retries": info["retries"],
                          "lid": round(info["lid"], 4), "needed": info["needed"],
                          "latched": info["latched"],
                          "collision_steps": info["stats"]["collision_steps"],

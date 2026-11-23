@@ -36,9 +36,10 @@ how it is turned (+-10 deg).
   symmetric). A camera sees the bar's direction, and the fingers must close across it; it gives
   the slide's axis but not its sense (left or right), travel, stiffness or latch.
   sensing.observe_bar_yaw = false zeroes these slots, for a stricter variant (open question);
-- `grip_travel`: how far the TCP has moved since the gripper was last commanded closed (zero
-  while open): the robot's own hand motion, which is how it knows the lid's motion while it holds
-  the handle;
+- `touch_travel`: how far the TCP has moved since a finger came into contact with the bar (zero
+  once it has been off the bar for sensing.touch_release steps): the robot's own hand motion,
+  which is how it knows the lid's motion while it pushes or holds the handle, whether it hooks
+  the bar (fingers open, straddling it) or grips it;
 - `force`: the external force on the arm, estimated as a real Panda does from its joint torque
   sensors; here the sum of the contact forces on the robot's bodies plus noise (1 N per axis);
 - `door_io`: the two signals the machine exposes: door-closed switch (lid within 2 mm of shut)
@@ -47,40 +48,43 @@ how it is turned (+-10 deg).
 
 Not observed: the lid's slide direction, travel, friction, damping, spring and latch speed, nor
 the lid's displacement. A robot only knows the lid's displacement through its own hand while it
-grips the handle (grip_travel, and the held handle estimate), and the camera's view of the
+moves the handle (touch_travel, and the held handle estimate), and the camera's view of the
 handle when the hand is clear of it. Finding those properties by feel is the point of the skill.
 
 **Action** (5-D): the cartesian-v1-4d hand motion of CartesianActionAdapter (x, y, z, yaw; the
 hand points down), plus a gripper command with hysteresis: above gripper.close_above it closes,
 below gripper.open_below it opens, in between it keeps its state. The policy commands the gripper
-itself, rather than a grasp-style gate, because letting go is part of the skill: only the policy
-can judge, by feel, when the lid has gone far enough or latched, and a gate would need privileged
-knowledge to decide that. The dead band stops exploration noise from chattering the fingers. The
-fingers move at most gripper.speed (0.1 m/s each, a real hand's order): commanded straight shut,
-the cell's stiff finger servo slams them through the 16 mm bar within one control step. The
-action schema is ACTION_SCHEMA.
+itself, rather than a grasp-style gate, so it may learn either way to move the lid: **hook** the
+bar (fingers open, straddling it, the trailing finger pushing; what the scripted door and the
+expert do, since gripping the bar is fragile in this simulator: fingertip pads 1-2 mm off centre
+jam on its edge) or grip it, and letting go stays its own decision (a gate would need privileged
+knowledge to decide when the lid has gone far enough). The dead band stops exploration noise
+from chattering the fingers. The fingers move at most gripper.speed (0.1 m/s each, a real hand's
+order): commanded straight shut, the cell's stiff finger servo slams them through the bar within
+one control step. The action schema is ACTION_SCHEMA.
 
 **Reward** (DoorRewardConfig; terms in info["reward_terms"]):
 - `approach`: per metre the TCP nears the true handle, until the lid's goal is reached;
-- `grip`: a potential of `grip` while both fingers touch the bar, until the goal is reached;
+- `touch`: a potential of `touch` while a finger touches the bar, until the goal is reached;
 - `progress`: per unit of the lid's progress toward the commanded end (open: opening / needed,
   capped at 1; close: the share of the starting opening closed); falls give it back;
-- `retreat`: once the goal is reached, per metre the released hand rises above the bar (capped);
+- `retreat`: once the goal is reached, per metre the hand, off the bar, rises above it (capped);
 - `success`: a bonus, once, at success (the episode ends);
 - penalties: `force` per newton of the estimated force above force_limit; `collision` per step
   the arm touches the machine's body (walls, roof, pocket) or the bench; `slam` per m/s the lid
   hits a stop faster than allowed (outward 0.15, closing 0.3 m/s: a latch needs at most 0.1);
   `stop_press` per step the arm pushes harder than stop_force while the lid sits at a stop;
   `time` per step; `action` x |hand action|^2.
-Terms that belong to one phase (approach, grip before the goal; retreat after it) are paid only
+Terms that belong to one phase (approach, touch before the goal; retreat after it) are paid only
 between two steps in the same phase, so reaching the goal is never penalized.
 
-**Success.** `open`: the lid opened at least "needed"; `close`: latched. Both: the fingers
-released (commanded open, not touching the bar) and the TCP at least success.clear_height above
-the bar, all held for success.hold_steps (0.5 s). The episode then terminates. Otherwise it is
-truncated at `horizon` steps (15 s at 20 Hz) and info["failure"] says why: not_opened,
-not_closed, closed_not_latched (shut too slowly to latch), not_released, never_gripped, or
-non_finite.
+**Success.** `open`: the lid opened at least "needed"; `close`: latched. Both: the hand clear of
+the handle (no finger touching the bar) with the TCP at least success.clear_height above the
+bar, all held for success.hold_steps (0.5 s). Nothing requires the fingers to have closed (a
+hooking policy never closes them). The episode then terminates. Otherwise it is truncated at
+`horizon` steps (15 s at 20 Hz) and info["failure"] says why: not_opened, not_closed,
+closed_not_latched (shut too slowly to latch), not_released (the goal reached but the hand not
+clear above the bar), never_touched, or non_finite.
 """
 
 from __future__ import annotations
@@ -108,7 +112,7 @@ OBS_SCHEMA = "door-v1-49d"
 OBS_LAYOUT = (
     ("q", 7), ("dq", 7), ("q_cmd", 7),
     ("tcp", 3), ("tcp_rot6", 6), ("finger_gap", 1), ("gripper_closed", 1), ("contacts", 2),
-    ("handle_rel", 3), ("bar_align", 2), ("grip_travel", 3), ("force", 3),
+    ("handle_rel", 3), ("bar_align", 2), ("touch_travel", 3), ("force", 3),
     ("door_io", 2), ("door_command", 2),
 )
 OBS_DIM = sum(n for _, n in OBS_LAYOUT)
@@ -171,6 +175,7 @@ class DoorSensingConfig:
     force_noise: float = 1.0         # N per axis per step
     force_clip: float = 100.0        # N per axis
     closed_switch: float = 0.002     # m: the door-closed switch closes within this of shut
+    touch_release: int = 5           # steps off the bar before touch_travel starts again at 0
 
 
 @dataclass(frozen=True)
@@ -187,16 +192,16 @@ class DoorGripperConfig:
 
 @dataclass(frozen=True)
 class DoorSuccessConfig:
-    clear_height: float = 0.03       # m, TCP above the bar's centre once released
+    clear_height: float = 0.03       # m, TCP above the bar's centre, off the bar
     hold_steps: int = 10             # consecutive steps (0.5 s)
 
 
 @dataclass(frozen=True)
 class DoorRewardConfig:
     approach: float = 10.0           # per m the TCP nears the handle (before the goal)
-    grip: float = 1.0                # potential while both fingers touch the bar (before it)
+    touch: float = 0.5               # potential while a finger touches the bar (before it)
     progress: float = 10.0           # per unit of progress (0 -> 1) toward the commanded end
-    retreat: float = 20.0            # per m the released hand rises above the bar (after it)
+    retreat: float = 20.0            # per m the hand, off the bar, rises above it (after it)
     retreat_cap: float = 0.05        # m
     success: float = 10.0            # once, at success
     force: float = 0.01              # per N of estimated force above force_limit, per step
@@ -437,13 +442,14 @@ class DoorEnv(gym.Env):
         self._finger_target = FINGER_OPEN * ctrl / GRIPPER_OPEN
         self._bias = self._frame_vec(np.asarray(bias, dtype=float))
         self._yaw_bias = yaw_bias
-        self._grip_at = tcp_position(self.data, self.arm) if self.closed else None
         self._steps = self._hold = 0
         self.needed = needed_opening(self.machine.cfg)
         self.lid_start = max(self.machine.lid, 0.01)
-        self.stats = {"collision_steps": 0, "slams": 0, "peak_force": 0.0, "gripped": False,
+        self.stats = {"collision_steps": 0, "slams": 0, "peak_force": 0.0, "touched": False,
                       "goal_reached": False}
         self._contacts = self._finger_contacts()
+        self._touch_at = tcp_position(self.data, self.arm) if any(self._contacts) else None
+        self._off_bar = 0
         self._force = self._external_force()[0]
         self._seen_handle = None
         self._seen_yaw = None
@@ -524,8 +530,21 @@ class DoorEnv(gym.Env):
         """The fingers' closing direction's error to the (seen) bar's normal, mod pi."""
         return _wrap(self._seen_yaw + np.pi / 2 - closing_yaw(self._tcp_R()), np.pi)
 
-    def _released(self) -> bool:
-        return not self.closed and not any(self._contacts)
+    def _clear_of_bar(self) -> bool:
+        """No finger touches the handle bar (open or closed: a hook never closes them)."""
+        return not any(self._contacts)
+
+    def _track_touch(self) -> None:
+        """Where the hand was when a finger came onto the bar (touch_travel's origin); forgotten
+        after sensing.touch_release steps off it."""
+        if any(self._contacts):
+            self._off_bar = 0
+            if self._touch_at is None:
+                self._touch_at = tcp_position(self.data, self.arm)
+        else:
+            self._off_bar += 1
+            if self._off_bar >= self.config.sensing.touch_release:
+                self._touch_at = None
 
     def goal_reached(self) -> bool:
         if self.command == "open":
@@ -548,10 +567,10 @@ class DoorEnv(gym.Env):
         return {
             "goal": goal,
             "distance": float(np.linalg.norm(self.handle_xyz() - tcp)),
-            "grip": float(all(self._contacts)),
+            "touch": float(any(self._contacts)),
             "progress": self._progress(),
             "retreat": (min(max(self._clearance(), 0.0), self.config.reward.retreat_cap)
-                        if self._released() else 0.0),
+                        if self._clear_of_bar() else 0.0),
             "lid": self.machine.lid,
         }
 
@@ -560,9 +579,8 @@ class DoorEnv(gym.Env):
         c = self.config.gripper
         if not self.closed and g > c.close_above:
             self.closed = True
-            self._grip_at = tcp_position(self.data, self.arm)
         elif self.closed and g < c.open_below:
-            self.closed, self._grip_at = False, None
+            self.closed = False
 
     def _physics(self, hand: np.ndarray) -> None:
         """One control step: the hand's joint targets, then the physics in chunks, the finger
@@ -591,6 +609,7 @@ class DoorEnv(gym.Env):
                     {"is_success": False, "failure": "non_finite", "reward_terms": {},
                      "command": self.command})
         self._contacts = self._finger_contacts()
+        self._track_touch()
         force, hit = self._external_force()
         self._force = force
         self._look()
@@ -609,7 +628,7 @@ class DoorEnv(gym.Env):
         terms = {
             "approach": (r.approach * (prev["distance"] - now["distance"])
                          if same_phase and not now["goal"] else 0.0),
-            "grip": (r.grip * (now["grip"] - prev["grip"])
+            "touch": (r.touch * (now["touch"] - prev["touch"])
                      if same_phase and not now["goal"] else 0.0),
             "progress": r.progress * (now["progress"] - prev["progress"]),
             "retreat": (r.retreat * (now["retreat"] - prev["retreat"])
@@ -623,7 +642,7 @@ class DoorEnv(gym.Env):
             **bound_terms,
         }
         s = cfg.success
-        holding = now["goal"] and self._released() and self._clearance() >= s.clear_height
+        holding = now["goal"] and self._clear_of_bar() and self._clearance() >= s.clear_height
         self._hold = self._hold + 1 if holding else 0
         success = self._hold >= s.hold_steps
         if success:
@@ -632,7 +651,7 @@ class DoorEnv(gym.Env):
         st["collision_steps"] += hit
         st["slams"] += slam > 0
         st["peak_force"] = max(st["peak_force"], f)
-        st["gripped"] |= all(self._contacts)
+        st["touched"] |= any(self._contacts)
         st["goal_reached"] |= now["goal"]
         self._prev = now
         terminated = success
@@ -645,8 +664,8 @@ class DoorEnv(gym.Env):
             "needed": self.needed,
             "latched": self.machine.latched,
             "goal_reached": now["goal"],
-            "gripped": all(self._contacts),
-            "released": self._released(),
+            "touching": any(self._contacts),
+            "clear_of_bar": self._clear_of_bar(),
             "clearance": self._clearance(),
             "force": f,
             "machine_contact": hit,
@@ -660,8 +679,8 @@ class DoorEnv(gym.Env):
         """Why the episode has not succeeded (yet): read at its end."""
         if self.goal_reached():
             return "not_released"
-        if not self.stats["gripped"]:
-            return "never_gripped"
+        if not self.stats["touched"]:
+            return "never_touched"
         if self.command == "open":
             return "not_opened"
         if self.machine.lid <= self.machine.cfg.latch_catch:
@@ -674,8 +693,7 @@ class DoorEnv(gym.Env):
         tcp = tcp_position(d, self.arm)
         e = self._bar_align()
         align = [np.sin(2 * e), np.cos(2 * e)] if n.observe_bar_yaw else [0.0, 0.0]
-        travel = tcp - self._grip_at if self.closed and self._grip_at is not None else \
-            np.zeros(3)
+        travel = tcp - self._touch_at if self._touch_at is not None else np.zeros(3)
         force = np.clip(self._force + self._frame_vec(
             self.np_random.normal(0.0, n.force_noise, 3)), -n.force_clip, n.force_clip)
         return np.concatenate([
