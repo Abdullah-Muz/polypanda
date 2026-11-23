@@ -183,6 +183,23 @@ Each phase has a go/no-go gate, and each release ends with something shown publi
   - The realistic error range is being measured next, with a simulated depth camera.
   - *Measured the same day (section 3.1): realistic error stays within about 4 mm. The phase plan was amended accordingly.*
 
+**Phase 1 result: the variation sweep (2026-11-23, `results/v4/machine_variant_sweep.json`, recorded at 4c7ee76).** Both scripts were run on machines drawn further and further from the nominal one, one property at a time, 10 trials per level. Success means the machine is running at the end: the part seated and the lid latched.
+
+| Property (levels) | Nominal script | Camera-aware script |
+|---|---|---|
+| Machine moved (0-8 cm) | 5/10 at 1 cm, 0-1/10 from 2 cm | 10/10 at every level |
+| Machine turned (0-25 deg) | 10/10 to 15 deg, 0/10 at 25 deg | 10/10 |
+| Handle moved along the bar (0-5 cm) | 10/10 | 10/10 |
+| Handle moved along the slide (0-5 cm) | 3-7/10 from 1 cm, 0/10 at 5 cm | 10/10 |
+| Handle height (0-4 cm) | 10/10 | 10/10 |
+| Lid friction (0.4-40 N) | 10/10 | 10/10 |
+| Lid slides left or out (not right) | 0/10 (lid not opened) | 0/10 (lid not opened) |
+| Latch needs a firmer close (0.06-0.25 m/s) | 0/10 (not latched) | 0/10 (not latched) |
+
+- **Gate: passed.** A camera fixes everything that can be seen: where the machine stands, how it is turned, where the handle is. The camera-aware script copes with all of it. It fails, every time, only on what a camera cannot see: which way the lid slides, and how hard the latch must be pushed. That is the room for the learned door skill, which has to find these out by touch.
+- **The scripted door hooks the handle** with open fingers rather than gripping it (4c7ee76). Gripping jammed the Panda's fingertip pads on the bar's edge when the hand was 1-2 mm off centre, which made the first sweep (d9edfcb, superseded and not committed) fail on friction and small handle offsets for reasons unrelated to the machine. Hooking also makes lid friction irrelevant up to 40 N.
+- **Caveat, as section 3.2 warned:** a script given a little more logic ("if the lid does not move, try the other way"; "close faster") would recover some of these failures. Such a script is the fair baseline for the learned door, and is built in Phase 2 before the comparison.
+
 - `v4_targets.md` is committed before any training, so before the training in Phase 2.
 - Phases 0 and 1 need no training.
 - If Phase 1 shows that the camera-aware script copes with all the variation drawn, the learned door is still built and compared, and the result is reported as it is.
