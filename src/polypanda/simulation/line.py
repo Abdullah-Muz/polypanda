@@ -1,0 +1,103 @@
+"""v4.0: the tending line, the cell on a rail with machines at their own stops (docs/v4_plan.md).
+
+The v4.0 line keeps the cell's infeed conveyor, buffer slots, reject bin and tower A (the outfeed
+stack) exactly where they are around rail stop 0, and adds machines at further stops along the
+rail, each at the cell's standard pose in front of its stop (`radius` from the base axis, at
+table height). The robot drives to a machine's stop for machine work; every skill then runs in
+its station frame as at a fixed station (simulation/rail.py).
+
+Default: one machine, M1, at stop -0.6 m, on the side away from the conveyor (station angle -90).
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+
+import mujoco
+import numpy as np
+
+from polypanda.simulation.machine import Machine, MachineConfig, add_machine
+from polypanda.simulation.rail import RailConfig, RailIndices, add_rail
+from polypanda.simulation.scenes import CubeIndices
+from polypanda.simulation.workcell import (
+    CUBE_NAME,
+    Conveyor,
+    Workcell,
+    WorkcellConfig,
+    WorkOrder,
+    build_workcell_spec,
+    station_xy,
+)
+
+
+@dataclass(frozen=True)
+class MachineSpot:
+    name: str
+    stop: float                       # m along the rail
+    angle: float = -90.0              # deg about the base axis at that stop
+    config: MachineConfig = field(default_factory=MachineConfig)
+
+
+def _line_cell() -> WorkcellConfig:
+    return WorkcellConfig(tower_angles=(-40.0,))     # tower A only: the outfeed stack
+
+
+@dataclass(frozen=True)
+class LineConfig:
+    cell: WorkcellConfig = field(default_factory=_line_cell)
+    # the rail ends short of the buffer slots (x 0.43-0.49), so it is not drawn under them
+    rail: RailConfig = field(default_factory=lambda: RailConfig(low=-0.75, high=0.25))
+    machines: tuple[MachineSpot, ...] = (MachineSpot("M1", -0.6),)
+
+    def station_xy(self, stop: float, angle_deg: float) -> np.ndarray:
+        """Where a station at `angle_deg` in front of rail stop `stop` sits on the bench."""
+        return np.asarray(self.rail.axis[:2]) * stop + station_xy(angle_deg, self.cell.radius)
+
+
+def build_line_spec(cfg: LineConfig | None = None) -> mujoco.MjSpec:
+    cfg = cfg or LineConfig()
+    spec = build_workcell_spec(cfg.cell)
+    add_rail(spec, cfg.rail)
+    for spot in cfg.machines:
+        add_machine(spec, spot.name, cfg.station_xy(spot.stop, spot.angle), spot.angle,
+                    spot.config)
+    return spec
+
+
+class Line(Workcell):
+    """The compiled line: the cell, its rail and its machines."""
+
+    line: LineConfig
+    machines: dict[str, Machine]
+    spots: dict[str, MachineSpot]
+
+    @classmethod
+    def build_line(cls, cfg: LineConfig | None = None) -> Line:
+        cfg = cfg or LineConfig()
+        model = build_line_spec(cfg).compile()
+        line = cls(model, mujoco.MjData(model), cfg.cell)
+        line.line = cfg
+        line.cubes = [CubeIndices.from_model(model, CUBE_NAME.format(k))
+                      for k in range(cfg.cell.n_cubes)]
+        line.conveyor = Conveyor(line)
+        line.rail = RailIndices.from_model(model)
+        line.spots = {s.name: s for s in cfg.machines}
+        line.machines = {s.name: Machine(model, line.data, s.name, s.config, line.cubes)
+                         for s in cfg.machines}
+        line.reset_line()
+        return line
+
+    def reset_line(self, order: WorkOrder | None = None) -> None:
+        """Robot home at rail stop 0, belt and cubes as Workcell.reset, machines empty with
+        their lids closed and unlatched."""
+        self.reset(order or WorkOrder(recipes=((),), arrivals=()))
+        self.data.ctrl[self.rail.actuator] = 0.0
+        for m in self.machines.values():
+            self.data.qpos[m.lid_qpos] = 0.0
+            self.data.qvel[m.lid_dof] = 0.0
+            m.reset()
+        mujoco.mj_forward(self.model, self.data)
+
+    def update_machines(self) -> None:
+        for m in self.machines.values():
+            m.update()

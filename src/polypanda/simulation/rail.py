@@ -73,7 +73,7 @@ def add_rail(spec: mujoco.MjSpec, cfg: RailConfig | None = None) -> RailConfig:
 def _draw(spec: mujoco.MjSpec, cfg: RailConfig, axis: np.ndarray) -> None:
     yaw = float(np.arctan2(axis[1], axis[0]))
     quat = [np.cos(yaw / 2), 0.0, 0.0, np.sin(yaw / 2)]
-    span = (cfg.low - 0.2, cfg.high + 0.2)
+    span = (cfg.low - 0.12, cfg.high + 0.12)
     centre, half = (span[0] + span[1]) / 2, (span[1] - span[0]) / 2
     rail = spec.worldbody.add_body(name="rail", pos=list(axis * centre), quat=quat)
     for side in (-1, 1):            # two rails set into the bench, under the carriage
