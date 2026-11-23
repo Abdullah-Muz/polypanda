@@ -216,7 +216,8 @@ Every result file in [`results/`](results/) records the git commit (and whether 
 | [recovery.md](docs/recovery.md) | v3: knocks and the physical ceiling, the lying-cube grasp and the stand-up, learned recovery, the symbolic cell, headroom gates, the learned recovery planner and its sim-to-physics gap; v3.1: the retrained skills, the clear rule and seed 0's grasp in the cell |
 | [v3_targets.md](docs/v3_targets.md), [v3_1_targets.md](docs/v3_1_targets.md), [v3_2_targets.md](docs/v3_2_targets.md) | v3, v3.1 and v3.2 targets as committed before the work, with dated amendments and every result as it came |
 | [v3_2_candidates.md](docs/v3_2_candidates.md) | the proposal behind v3.2, from the v3.1 diagnoses: grasp fixes and a cell-like pick check |
-| [v4_plan.md](docs/v4_plan.md), [machine_tending_candidates.md](docs/machine_tending_candidates.md) | the v4.0 plan (machine tending with imperfect sensing and demonstrations first) and the candidates doc it builds on |
+| [v4_plan.md](docs/v4_plan.md), [machine_tending_candidates.md](docs/machine_tending_candidates.md) | the v4.0 plan (a learned machine-tending skill for machines it has not seen, trained from demonstrations, then RL) and the candidates doc it builds on |
+| [pose_error.md](docs/pose_error.md) | v4 sensing: how far off a simple simulated depth-camera estimate of a cube's pose is (1–3 mm), and why that does not make the scripted place fail |
 | [workcell.md](docs/workcell.md) | the work-order cell: grasp assist, station frames, buffer and planner, stacking place v1–v3, a root-cause analysis |
 | [cartesian_actions.md](docs/cartesian_actions.md) | hand-motion actions and the fully learned pick-and-place chain |
 | [generalization.md](docs/generalization.md) | wide-region and cluttered grasping, checkpoint selection |
@@ -247,7 +248,7 @@ Every result file in [`results/`](results/) records the git commit (and whether 
 | 10 | Recovery from knocks: closed loop, lying-cube grasp, stand-up, learned recovery, symbolic cell, learned recovery planner | Done (v3.0); recovery targets met, two skill targets and the planner target missed ([recovery](docs/recovery.md)) |
 | 11 | v3.1: another round for the two new skills (fresh one-shot sets, randomized cube size, real hand-off starts); a clutter-aware symbolic cell and a clearing rule | Done (v3.1); both skill targets met, the recovery target and the D0 bar missed ([recovery](docs/recovery.md#v31-milestone-11-new-skills-and-clearing-clutter)) |
 | v3.2 | A grasp round aimed at the cell's knock-overs, with cell-like pick checks per seed; a final cell run on a new suite of 200 orders | Done (v3.2). Grasp target not met; `grasp_anypose9` adopted for the cell post hoc. Cell target met (91.5 against 85.7 %); the no-knock bar missed without spares by one order ([v3.2 targets](docs/v3_2_targets.md)) |
-| v4.0 (Milestone 13) | Machine tending: load and unload simulated machines (door, fixture, cycle timer) beside the cell | Planned ([v4 plan](docs/v4_plan.md), [machine tending candidates](docs/machine_tending_candidates.md)) |
+| v4.0 (Milestone 13) | Machine tending: a learned door-and-load skill for simulated machines it has not seen, inside a tending cell that recovers from faults | Planned ([v4 plan](docs/v4_plan.md), [machine tending candidates](docs/machine_tending_candidates.md)) |
 | Later | A symbolic cell where a failed skill costs time; cube positions from a camera | Proposed ([v3.2 candidates](docs/v3_2_candidates.md)) |
 
 ## Acknowledgements and references
