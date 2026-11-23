@@ -22,7 +22,7 @@ import numpy as np
 
 from polypanda.control.ik import top_down_quat
 from polypanda.control.scripted_cell import CUBE_HEIGHT, CellControllerConfig, ScriptedCell
-from polypanda.environments.grasp import GRIPPER_CLOSED, GRIPPER_OPEN
+from polypanda.environments.grasp import GRIPPER_OPEN
 from polypanda.simulation.line import Line
 from polypanda.simulation.machine import MachineConfig
 from polypanda.simulation.scenes import CubeIndices
@@ -64,12 +64,15 @@ class ScriptedTending(ScriptedCell):
     open_margin: float = 0.005        # m short of the open stop: a lid pinned against its stop
                                       # cannot give way to a finger closing off-centre
     latch_push: float = 0.004         # m pushed past closed, so the lid arrives firmly
+    finger_span: float = 0.08         # m between the open fingers' pads
 
     def __init__(self, line: Line, config: CellControllerConfig | None = None,
                  beliefs: dict[str, Belief] | None = None) -> None:
         super().__init__(line, config, on_step=line.update_machines)
         self.cell: Line = line
         self.beliefs = beliefs or {n: true_belief(line, n) for n in line.machines}
+        self._finger_qpos = np.array([self.m.joint(f"finger_joint{k}").qposadr[0]
+                                      for k in (1, 2)])
 
     def go_to(self, name: str) -> None:
         """Drive to the machine's rail stop and face it (from the carry posture). The stop and
@@ -79,26 +82,32 @@ class ScriptedTending(ScriptedCell):
         self.swing_to(np.radians(spot.angle))
 
     def move_lid(self, name: str, opening: bool) -> None:
-        """Pinch the handle from above, fingers closing along the slide, slide the lid open (or
-        closed, with a firm last push), let go and rise to the carry height."""
+        """Hook the handle and slide the lid open (or closed, with a firm last push), then rise
+        to the carry height. The fingers stay **open**, straddling the bar with the slide running
+        between them, and the hand pushes the bar with the inside of the trailing finger. With
+        some 3 cm of slack on each side of the bar, millimetres of error in where the handle is
+        believed to be do not matter. (Gripping the bar did: in this simulator the Panda's
+        fingertip pads jam on a bar's edge when the hand is 1-2 mm off its centre, measured.)"""
         b = self.beliefs[name]
         travel = b.config.travel - self.open_margin
         q_from, q_to = (0.0, travel) if opening else (travel, -self.latch_push)
         handle, axis = b.handle_at(q_from), b.slide_axis()
-        yaw = float(np.arctan2(axis[1], axis[0]))             # fingers close along the slide
+        yaw = float(np.arctan2(axis[1], axis[0]))             # the fingers open along the slide
         quat = top_down_quat(yaw)
         c = self.config
+        slack = self.finger_span / 2 - b.config.handle_radius   # finger to bar, each side
+        direction = np.sign(q_to - q_from)
         self.grip = GRIPPER_OPEN
         self.move_joints(self._solve([handle[0], handle[1], c.carry_height], quat, self.q_cmd))
         self.vertical(handle[:2], handle[2], yaw)
-        self.grip = GRIPPER_CLOSED
-        self.step(c.grip_steps)
-        end = handle + axis * (q_to - q_from)
+        end = handle + axis * ((q_to - q_from) + direction * slack)
         self.line(handle, end, quat, speed=self.door_speed)
-        self.grip = GRIPPER_OPEN
-        self.step(c.grip_steps)
         tcp = self.d.site_xpos[self.arm.tcp_site].copy()
         self.vertical(tcp[:2], c.carry_height, yaw)
+
+    def finger_gap(self) -> float:
+        """The gripper's opening (m), as its width sensor would report it."""
+        return float(self.d.qpos[self._finger_qpos].sum())
 
     def load(self, cube: CubeIndices, name: str) -> None:
         """Set a held cube into the pocket where the script believes it is, the cube turned to
