@@ -6,7 +6,7 @@ Reinforcement learned manipulation skills for a simulated Franka Panda in MuJoCo
 
 *v3 (`scripts/record_recovery.py`): tower B is knocked flat the moment it is complete. The cell notices, moves the fallen cubes clear of the other towers, stands the lying ones upright and rebuilds the tower. Grasping, standing up and stacking are PPO policies; the recovery decisions shown in the robot's log, the swings between stations and the drop into the reject bin are scripted. The knock was chosen for the demo; everything after it is the cell's own. One cube landed leaning, which the grasp is not trusted with, so it is left alone and a blue cube from the belt takes its place. [Full video](https://github.com/Abdullah-Muz/polypanda/releases) · the v2 cell: [workcell.gif](docs/figures/workcell.gif).*
 
-> **Status:** v3.1. Milestones 1–11 complete: v3 adds recovery from knocked-over towers, two new learned skills and a learned recovery planner; v3.1 retrains both skills to their targets and tests a clutter-clearing recovery rule, which did not beat the best rule. v3.2's results are in (release pending): its grasp target was not met, but the cell adopts the new grasp, and in the final cell run it completes significantly more orders than v3.1's (91.5 against 85.7 %). Simulation only: nothing here has been run on a real robot.
+> **Status:** v3.2. Milestones 1–11 complete: v3 adds recovery from knocked-over towers, two new learned skills and a learned recovery planner; v3.1 retrains both skills to their targets and tests a clutter-clearing recovery rule, which did not beat the best rule. v3.2 is released: its grasp target was not met, but the cell adopts the new grasp, and in the final cell run it completes significantly more orders than v3.1's (91.5 against 85.7 %). Simulation only: nothing here has been run on a real robot.
 
 ## Results
 
@@ -216,6 +216,7 @@ Every result file in [`results/`](results/) records the git commit (and whether 
 | [recovery.md](docs/recovery.md) | v3: knocks and the physical ceiling, the lying-cube grasp and the stand-up, learned recovery, the symbolic cell, headroom gates, the learned recovery planner and its sim-to-physics gap; v3.1: the retrained skills, the clear rule and seed 0's grasp in the cell |
 | [v3_targets.md](docs/v3_targets.md), [v3_1_targets.md](docs/v3_1_targets.md), [v3_2_targets.md](docs/v3_2_targets.md) | v3, v3.1 and v3.2 targets as committed before the work, with dated amendments and every result as it came |
 | [v3_2_candidates.md](docs/v3_2_candidates.md) | the proposal behind v3.2, from the v3.1 diagnoses: grasp fixes and a cell-like pick check |
+| [v4_plan.md](docs/v4_plan.md), [machine_tending_candidates.md](docs/machine_tending_candidates.md) | the v4.0 plan (machine tending with imperfect sensing, demonstrations first, a browser demo) and the candidates doc it builds on |
 | [workcell.md](docs/workcell.md) | the work-order cell: grasp assist, station frames, buffer and planner, stacking place v1–v3, a root-cause analysis |
 | [cartesian_actions.md](docs/cartesian_actions.md) | hand-motion actions and the fully learned pick-and-place chain |
 | [generalization.md](docs/generalization.md) | wide-region and cluttered grasping, checkpoint selection |
@@ -245,8 +246,8 @@ Every result file in [`results/`](results/) records the git commit (and whether 
 | 9 | Work-order cell: conveyor, recipe towers, buffer and planner, learned grasp and place at every station | Layers 1–2 done (v2.0); Layer 3, towers of 5–6, later ([workcell](docs/workcell.md)) |
 | 10 | Recovery from knocks: closed loop, lying-cube grasp, stand-up, learned recovery, symbolic cell, learned recovery planner | Done (v3.0); recovery targets met, two skill targets and the planner target missed ([recovery](docs/recovery.md)) |
 | 11 | v3.1: another round for the two new skills (fresh one-shot sets, randomized cube size, real hand-off starts); a clutter-aware symbolic cell and a clearing rule | Done (v3.1); both skill targets met, the recovery target and the D0 bar missed ([recovery](docs/recovery.md#v31-milestone-11-new-skills-and-clearing-clutter)) |
-| v3.2 | A grasp round aimed at the cell's knock-overs, with cell-like pick checks per seed; a final cell run on a new suite of 200 orders | Done (release pending). Grasp target not met; `grasp_anypose9` adopted for the cell post hoc. Cell target met (91.5 against 85.7 %); the no-knock bar missed without spares by one order ([v3.2 targets](docs/v3_2_targets.md)) |
-| v4.0 (Milestone 13) | Machine tending: load and unload simulated machines (door, fixture, cycle timer) beside the cell | Candidates for scoping ([machine tending candidates](docs/machine_tending_candidates.md)) |
+| v3.2 | A grasp round aimed at the cell's knock-overs, with cell-like pick checks per seed; a final cell run on a new suite of 200 orders | Done (v3.2). Grasp target not met; `grasp_anypose9` adopted for the cell post hoc. Cell target met (91.5 against 85.7 %); the no-knock bar missed without spares by one order ([v3.2 targets](docs/v3_2_targets.md)) |
+| v4.0 (Milestone 13) | Machine tending: load and unload simulated machines (door, fixture, cycle timer) beside the cell | Planned ([v4 plan](docs/v4_plan.md), [machine tending candidates](docs/machine_tending_candidates.md)) |
 | Later | A symbolic cell where a failed skill costs time; cube positions from a camera | Proposed ([v3.2 candidates](docs/v3_2_candidates.md)) |
 
 ## Acknowledgements and references
