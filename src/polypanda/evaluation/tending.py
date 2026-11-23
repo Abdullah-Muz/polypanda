@@ -81,7 +81,9 @@ def make_variant(prop: str, level: int, rng: np.random.Generator,
             h = base.handle_height + value
         return Variant(prop, level, value, config=replace(base, handle_height=h))
     if prop == "slide":
-        travel = 0.25 if value == "out" else base.travel
+        # enough travel to clear the whole opening (and the lid's overlap) with the script's
+        # 5 mm margin: 0.24 + 0.015 + 0.005 = 0.26 outward; 0.10 + 0.015 + 0.005 = 0.12 sideways
+        travel = 0.27 if value == "out" else base.travel
         return Variant(prop, level, value, config=replace(base, slide=value, travel=travel))
     if prop == "friction":
         return Variant(prop, level, value, config=replace(base, lid_friction=value))

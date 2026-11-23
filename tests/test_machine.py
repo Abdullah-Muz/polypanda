@@ -164,7 +164,7 @@ def test_the_scripted_controller_tends_the_machine_through_a_whole_cycle(slide, 
     mujoco.mj_forward(m, d)
     ctl.go_to("M1")
     ctl.move_lid("M1", opening=True)
-    assert m1.lid == pytest.approx(travel, abs=0.005)
+    assert m1.lid == pytest.approx(travel - ctl.open_margin, abs=0.004)   # stops short of the stop
     ctl.swing_to(np.radians(-30.0))
     ctl.pick(cube)
     assert line.attached(cube)
