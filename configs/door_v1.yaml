@@ -1,0 +1,90 @@
+# v4.0 door skill, v1 (docs/door_env.md; environments/door.py): open or close the sliding lid of
+# a benchtop machine drawn at random every episode (docs/v4_plan.md, 3.2 and 3.5). The commanded
+# skill acts with cartesian-v1-4d hand motions plus a gripper command (5-D actions), observes
+# door-v1-49d (no slide direction, travel, stiffness or latch speed). Not trained yet: targets are
+# committed first.
+
+action:
+  space: cartesian
+  n_substeps: 25
+  cartesian:
+    dof: 4
+    max_step: 0.01
+    max_rot: 0.05
+    max_tilt: 0.6
+    max_lead: 0.03
+    box_low: [0.15, -0.5, 0.01]
+    box_high: [0.85, 0.5, 0.6]
+    ik_iters: 2
+    posture_gain: 0.02
+
+scene:
+  station_angle: 0.0          # deg: the machine straight in front of the robot
+  radius: 0.5                 # m: the cell's standard station pose
+  finger_stiffness: 1000.0    # N/m: the cell's gripper
+
+variation:                    # drawn every episode (training and validation)
+  slides: [right, left, out]
+  travel_side: [0.12, 0.14]   # m (needed sideways: 0.115)
+  travel_out: [0.265, 0.275]  # m (needed outward: 0.255; the arm reaches about 0.8 m out)
+  friction: [0.2, 10.0]       # N, log-uniform (nominal 0.4)
+  damping: [1.0, 10.0]        # N s/m, log-uniform (nominal 4)
+  spring: [0.0, 0.0]          # N/m (off)
+  handle_offset_side: 0.03    # m either way along the bar
+  handle_offset_out: 0.01
+  handle_shift_side: 0.02     # m either way along the slide
+  handle_shift_out: 0.01
+  handle_height: [0.025, 0.05]  # m, bar centre above the lid's top (nominal 0.035)
+  latch_speed: [0.01, 0.1]    # m/s, log-uniform (nominal 0.02)
+  position: 0.015             # m either way, each axis
+  turn: 10.0                  # deg either way
+
+start:
+  open_prob: 0.5
+  carry_height: 0.32
+  jitter_xy: 0.02
+  jitter_z: 0.02
+  jitter_yaw: 0.17
+  close_margin: 0.005
+
+sensing:
+  handle_bias: 0.001          # m per axis, once per episode (docs/pose_error.md)
+  handle_noise: 0.0003        # m per axis per step
+  occlusion_radius: 0.06
+  bar_yaw_bias: 0.0087        # rad (0.5 deg)
+  bar_yaw_noise: 0.0017
+  observe_bar_yaw: true
+  force_noise: 1.0            # N per axis per step
+  force_clip: 100.0
+  closed_switch: 0.002
+
+gripper:
+  close_above: 0.25
+  open_below: -0.25
+  speed: 0.1                  # m/s per finger
+  chunk: 5
+
+success:
+  clear_height: 0.03
+  hold_steps: 10
+
+reward:
+  approach: 10.0
+  grip: 1.0
+  progress: 10.0
+  retreat: 20.0
+  retreat_cap: 0.05
+  success: 10.0
+  force: 0.01
+  force_limit: 40.0
+  collision: 0.1
+  slam: 20.0
+  slam_open_speed: 0.15
+  slam_close_speed: 0.3
+  stop_press: 0.05
+  stop_force: 25.0
+  time: 0.005
+  action: 0.001
+  non_finite: 10.0
+
+horizon: 300
