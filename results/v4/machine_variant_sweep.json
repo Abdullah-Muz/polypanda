@@ -1,0 +1,1324 @@
+{
+  "name": "machine_variant_sweep",
+  "seed": 20261123,
+  "n_per_level": 10,
+  "levels": {
+    "position": [
+      0.0,
+      0.01,
+      0.02,
+      0.03,
+      0.05,
+      0.08
+    ],
+    "turn": [
+      0.0,
+      2.0,
+      5.0,
+      10.0,
+      15.0,
+      25.0
+    ],
+    "handle_along_bar": [
+      0.0,
+      0.01,
+      0.02,
+      0.03,
+      0.04,
+      0.05
+    ],
+    "handle_along_slide": [
+      0.0,
+      0.01,
+      0.02,
+      0.03,
+      0.04,
+      0.05
+    ],
+    "handle_height": [
+      0.0,
+      0.005,
+      0.01,
+      0.015,
+      0.025,
+      0.04
+    ],
+    "slide": [
+      "right",
+      "left",
+      "out"
+    ],
+    "friction": [
+      0.4,
+      2.0,
+      5.0,
+      10.0,
+      20.0,
+      40.0
+    ],
+    "latch": [
+      0.02,
+      0.04,
+      0.06,
+      0.1,
+      0.15,
+      0.25
+    ]
+  },
+  "summary": {
+    "position": [
+      {
+        "level": 0,
+        "value": 0.0,
+        "nominal": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 0
+        },
+        "camera": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 1
+        }
+      },
+      {
+        "level": 1,
+        "value": 0.01,
+        "nominal": {
+          "n": 10,
+          "success": 5,
+          "rate": 0.5,
+          "ci95": [
+            0.23658959361548731,
+            0.7634104063845126
+          ],
+          "failures": {
+            "not_seated": 4,
+            "not_latched": 1
+          },
+          "machine_contacts": 10
+        },
+        "camera": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 0
+        }
+      },
+      {
+        "level": 2,
+        "value": 0.02,
+        "nominal": {
+          "n": 10,
+          "success": 0,
+          "rate": 0.0,
+          "ci95": [
+            0.0,
+            0.2775401687666166
+          ],
+          "failures": {
+            "not_seated": 5,
+            "lid_not_opened": 5
+          },
+          "machine_contacts": 10
+        },
+        "camera": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 0
+        }
+      },
+      {
+        "level": 3,
+        "value": 0.03,
+        "nominal": {
+          "n": 10,
+          "success": 0,
+          "rate": 0.0,
+          "ci95": [
+            0.0,
+            0.2775401687666166
+          ],
+          "failures": {
+            "not_seated": 5,
+            "lid_not_opened": 5
+          },
+          "machine_contacts": 10
+        },
+        "camera": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 0
+        }
+      },
+      {
+        "level": 4,
+        "value": 0.05,
+        "nominal": {
+          "n": 10,
+          "success": 1,
+          "rate": 0.1,
+          "ci95": [
+            0.01787574951572113,
+            0.4041563854975721
+          ],
+          "failures": {
+            "not_seated": 5,
+            "lid_not_opened": 4
+          },
+          "machine_contacts": 10
+        },
+        "camera": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 0
+        }
+      },
+      {
+        "level": 5,
+        "value": 0.08,
+        "nominal": {
+          "n": 10,
+          "success": 0,
+          "rate": 0.0,
+          "ci95": [
+            0.0,
+            0.2775401687666166
+          ],
+          "failures": {
+            "not_seated": 5,
+            "lid_not_opened": 5
+          },
+          "machine_contacts": 9
+        },
+        "camera": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 0
+        }
+      }
+    ],
+    "turn": [
+      {
+        "level": 0,
+        "value": 0.0,
+        "nominal": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 0
+        },
+        "camera": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 0
+        }
+      },
+      {
+        "level": 1,
+        "value": 2.0,
+        "nominal": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 0
+        },
+        "camera": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 0
+        }
+      },
+      {
+        "level": 2,
+        "value": 5.0,
+        "nominal": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 0
+        },
+        "camera": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 1
+        }
+      },
+      {
+        "level": 3,
+        "value": 10.0,
+        "nominal": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 0
+        },
+        "camera": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 0
+        }
+      },
+      {
+        "level": 4,
+        "value": 15.0,
+        "nominal": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 10
+        },
+        "camera": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 0
+        }
+      },
+      {
+        "level": 5,
+        "value": 25.0,
+        "nominal": {
+          "n": 10,
+          "success": 0,
+          "rate": 0.0,
+          "ci95": [
+            0.0,
+            0.2775401687666166
+          ],
+          "failures": {
+            "not_seated": 10
+          },
+          "machine_contacts": 10
+        },
+        "camera": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 1
+        }
+      }
+    ],
+    "handle_along_bar": [
+      {
+        "level": 0,
+        "value": 0.0,
+        "nominal": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 0
+        },
+        "camera": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 0
+        }
+      },
+      {
+        "level": 1,
+        "value": 0.01,
+        "nominal": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 0
+        },
+        "camera": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 0
+        }
+      },
+      {
+        "level": 2,
+        "value": 0.02,
+        "nominal": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 0
+        },
+        "camera": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 0
+        }
+      },
+      {
+        "level": 3,
+        "value": 0.03,
+        "nominal": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 0
+        },
+        "camera": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 0
+        }
+      },
+      {
+        "level": 4,
+        "value": 0.04,
+        "nominal": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 0
+        },
+        "camera": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 0
+        }
+      },
+      {
+        "level": 5,
+        "value": 0.05,
+        "nominal": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 0
+        },
+        "camera": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 0
+        }
+      }
+    ],
+    "handle_along_slide": [
+      {
+        "level": 0,
+        "value": 0.0,
+        "nominal": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 0
+        },
+        "camera": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 0
+        }
+      },
+      {
+        "level": 1,
+        "value": 0.01,
+        "nominal": {
+          "n": 10,
+          "success": 3,
+          "rate": 0.3,
+          "ci95": [
+            0.10778928748621183,
+            0.6032267800204347
+          ],
+          "failures": {
+            "not_latched": 7
+          },
+          "machine_contacts": 0
+        },
+        "camera": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 0
+        }
+      },
+      {
+        "level": 2,
+        "value": 0.02,
+        "nominal": {
+          "n": 10,
+          "success": 7,
+          "rate": 0.7,
+          "ci95": [
+            0.39677321997956516,
+            0.892210712513788
+          ],
+          "failures": {
+            "not_latched": 3
+          },
+          "machine_contacts": 0
+        },
+        "camera": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 0
+        }
+      },
+      {
+        "level": 3,
+        "value": 0.03,
+        "nominal": {
+          "n": 10,
+          "success": 5,
+          "rate": 0.5,
+          "ci95": [
+            0.23658959361548731,
+            0.7634104063845126
+          ],
+          "failures": {
+            "not_latched": 5
+          },
+          "machine_contacts": 0
+        },
+        "camera": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 0
+        }
+      },
+      {
+        "level": 4,
+        "value": 0.04,
+        "nominal": {
+          "n": 10,
+          "success": 5,
+          "rate": 0.5,
+          "ci95": [
+            0.23658959361548731,
+            0.7634104063845126
+          ],
+          "failures": {
+            "not_latched": 5
+          },
+          "machine_contacts": 5
+        },
+        "camera": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 0
+        }
+      },
+      {
+        "level": 5,
+        "value": 0.05,
+        "nominal": {
+          "n": 10,
+          "success": 0,
+          "rate": 0.0,
+          "ci95": [
+            0.0,
+            0.2775401687666166
+          ],
+          "failures": {
+            "not_latched": 6,
+            "lid_not_opened": 4
+          },
+          "machine_contacts": 0
+        },
+        "camera": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 0
+        }
+      }
+    ],
+    "handle_height": [
+      {
+        "level": 0,
+        "value": 0.0,
+        "nominal": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 0
+        },
+        "camera": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 1
+        }
+      },
+      {
+        "level": 1,
+        "value": 0.005,
+        "nominal": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 0
+        },
+        "camera": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 1
+        }
+      },
+      {
+        "level": 2,
+        "value": 0.01,
+        "nominal": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 0
+        },
+        "camera": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 0
+        }
+      },
+      {
+        "level": 3,
+        "value": 0.015,
+        "nominal": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 0
+        },
+        "camera": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 1
+        }
+      },
+      {
+        "level": 4,
+        "value": 0.025,
+        "nominal": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 0
+        },
+        "camera": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 0
+        }
+      },
+      {
+        "level": 5,
+        "value": 0.04,
+        "nominal": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 0
+        },
+        "camera": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 0
+        }
+      }
+    ],
+    "slide": [
+      {
+        "level": 0,
+        "value": "right",
+        "nominal": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 0
+        },
+        "camera": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 0
+        }
+      },
+      {
+        "level": 1,
+        "value": "left",
+        "nominal": {
+          "n": 10,
+          "success": 0,
+          "rate": 0.0,
+          "ci95": [
+            0.0,
+            0.2775401687666166
+          ],
+          "failures": {
+            "lid_not_opened": 10
+          },
+          "machine_contacts": 10
+        },
+        "camera": {
+          "n": 10,
+          "success": 0,
+          "rate": 0.0,
+          "ci95": [
+            0.0,
+            0.2775401687666166
+          ],
+          "failures": {
+            "lid_not_opened": 10
+          },
+          "machine_contacts": 10
+        }
+      },
+      {
+        "level": 2,
+        "value": "out",
+        "nominal": {
+          "n": 10,
+          "success": 0,
+          "rate": 0.0,
+          "ci95": [
+            0.0,
+            0.2775401687666166
+          ],
+          "failures": {
+            "lid_not_opened": 10
+          },
+          "machine_contacts": 10
+        },
+        "camera": {
+          "n": 10,
+          "success": 0,
+          "rate": 0.0,
+          "ci95": [
+            0.0,
+            0.2775401687666166
+          ],
+          "failures": {
+            "lid_not_opened": 10
+          },
+          "machine_contacts": 10
+        }
+      }
+    ],
+    "friction": [
+      {
+        "level": 0,
+        "value": 0.4,
+        "nominal": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 0
+        },
+        "camera": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 0
+        }
+      },
+      {
+        "level": 1,
+        "value": 2.0,
+        "nominal": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 0
+        },
+        "camera": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 0
+        }
+      },
+      {
+        "level": 2,
+        "value": 5.0,
+        "nominal": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 0
+        },
+        "camera": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 0
+        }
+      },
+      {
+        "level": 3,
+        "value": 10.0,
+        "nominal": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 0
+        },
+        "camera": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 0
+        }
+      },
+      {
+        "level": 4,
+        "value": 20.0,
+        "nominal": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 0
+        },
+        "camera": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 0
+        }
+      },
+      {
+        "level": 5,
+        "value": 40.0,
+        "nominal": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 0
+        },
+        "camera": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 0
+        }
+      }
+    ],
+    "latch": [
+      {
+        "level": 0,
+        "value": 0.02,
+        "nominal": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 0
+        },
+        "camera": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 1
+        }
+      },
+      {
+        "level": 1,
+        "value": 0.04,
+        "nominal": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 0
+        },
+        "camera": {
+          "n": 10,
+          "success": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ],
+          "failures": {},
+          "machine_contacts": 0
+        }
+      },
+      {
+        "level": 2,
+        "value": 0.06,
+        "nominal": {
+          "n": 10,
+          "success": 0,
+          "rate": 0.0,
+          "ci95": [
+            0.0,
+            0.2775401687666166
+          ],
+          "failures": {
+            "not_latched": 10
+          },
+          "machine_contacts": 0
+        },
+        "camera": {
+          "n": 10,
+          "success": 0,
+          "rate": 0.0,
+          "ci95": [
+            0.0,
+            0.2775401687666166
+          ],
+          "failures": {
+            "not_latched": 10
+          },
+          "machine_contacts": 0
+        }
+      },
+      {
+        "level": 3,
+        "value": 0.1,
+        "nominal": {
+          "n": 10,
+          "success": 0,
+          "rate": 0.0,
+          "ci95": [
+            0.0,
+            0.2775401687666166
+          ],
+          "failures": {
+            "not_latched": 10
+          },
+          "machine_contacts": 0
+        },
+        "camera": {
+          "n": 10,
+          "success": 0,
+          "rate": 0.0,
+          "ci95": [
+            0.0,
+            0.2775401687666166
+          ],
+          "failures": {
+            "not_latched": 10
+          },
+          "machine_contacts": 0
+        }
+      },
+      {
+        "level": 4,
+        "value": 0.15,
+        "nominal": {
+          "n": 10,
+          "success": 0,
+          "rate": 0.0,
+          "ci95": [
+            0.0,
+            0.2775401687666166
+          ],
+          "failures": {
+            "not_latched": 10
+          },
+          "machine_contacts": 0
+        },
+        "camera": {
+          "n": 10,
+          "success": 0,
+          "rate": 0.0,
+          "ci95": [
+            0.0,
+            0.2775401687666166
+          ],
+          "failures": {
+            "not_latched": 10
+          },
+          "machine_contacts": 0
+        }
+      },
+      {
+        "level": 5,
+        "value": 0.25,
+        "nominal": {
+          "n": 10,
+          "success": 0,
+          "rate": 0.0,
+          "ci95": [
+            0.0,
+            0.2775401687666166
+          ],
+          "failures": {
+            "not_latched": 10
+          },
+          "machine_contacts": 0
+        },
+        "camera": {
+          "n": 10,
+          "success": 0,
+          "rate": 0.0,
+          "ci95": [
+            0.0,
+            0.2775401687666166
+          ],
+          "failures": {
+            "not_latched": 10
+          },
+          "machine_contacts": 0
+        }
+      }
+    ]
+  },
+  "success": "machine running at the end: part seated, lid latched",
+  "camera_error": {
+    "xy_m": 0.001,
+    "z_m": 0.001,
+    "yaw_deg": 0.5
+  },
+  "created_utc": "2026-11-23T08:39:43+00:00",
+  "git": {
+    "commit": "4c7ee76f58f3ebd2ce0a416ac0adfc0c251fb9e4",
+    "dirty": false
+  },
+  "versions": {
+    "python": "3.12.3",
+    "mujoco": "3.16.0"
+  },
+  "wall_s": 1935.3
+}
