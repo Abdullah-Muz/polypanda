@@ -41,6 +41,28 @@ _LAMP_ON = {"blue": (0.18, 0.49, 0.88, 1.0), "green": (0.12, 0.75, 0.23, 1.0),
 _LAMP_OFF = {k: (0.22 * v[0], 0.22 * v[1], 0.22 * v[2], 1.0) for k, v in _LAMP_ON.items()}
 SLIDES = ("right", "left", "out")   # lid opens to the robot's right, its left, or away from it
 _CUBE_HALF = 0.02                   # the part's half width (the cell's 4 x 4 x 6 cm blocks)
+RIB_GEOM = "{}_rib"                 # a keyed part's rib: a second geom on the part's body
+_KEY_BOSS = 0.003                   # m of wall kept behind a key slot
+
+
+@dataclass(frozen=True)
+class Rib:
+    """The key of a keyed part (docs/keyed_part.md): a small tab on the part's local +x face,
+    centred across it and standing on the part's bottom, so the part fits a keyed pocket only
+    one way round. It is low, under the pocket's 15 mm rim, where the fingers (which close on
+    the part's upper half, 19 mm and more above its bottom) never reach. It stands 8 mm proud:
+    across the rib the part is then 48 mm, 4 mm more than the 44 mm pocket, so a part the wrong
+    way round cannot be pushed in by squeezing the soft contacts (at 5 mm proud, 1 mm of
+    interference, a wrong part pressed in by the arm crept down to the floor in seconds)."""
+    width: float = 0.010              # m, across the face
+    proud: float = 0.008              # m, out of the face
+    height: float = 0.012             # m, up from the part's bottom
+
+
+def rib_geom(model: mujoco.MjModel, part: CubeIndices) -> int:
+    """The id of the part's rib geom, or -1 for a plain part."""
+    return mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM,
+                             RIB_GEOM.format(model.body(part.body).name))
 
 
 @dataclass(frozen=True)
@@ -79,12 +101,27 @@ class MachineConfig:
     pocket_straight: float = 0.010
     lead_in_deg: float = 45.0
     pocket_wall: float = 0.010
+    # --- the key (off by default): a slot in one pocket wall that takes a keyed part's rib, so
+    # the part is seated only one way round (docs/keyed_part.md) ---
+    keyed: bool = False
+    key_wall: int = 0                 # which wall has the slot: k x 90 deg about +z from the
+                                      # machine's +x (0: the back wall, away from the robot)
+    rib: Rib = Rib()                  # the rib the slot is cut for
+    key_clearance: float = 0.002      # m: slot width = rib + 2 x this; slot depth = rib + this
+    key_tolerance: float = 10.0       # deg: a seated keyed part's rib points at the slot within
     # --- the cycle ---
     cycle_s: float = 40.0             # s of simulated time
 
     def __post_init__(self):
         if self.slide not in SLIDES:
             raise ValueError(f"slide must be one of {SLIDES}, not {self.slide!r}")
+        if self.keyed and self.rib.width / 2 + self.key_clearance >= _CUBE_HALF:
+            raise ValueError("the key slot is wider than the part")
+
+    @property
+    def key_yaw(self) -> float:
+        """The direction the slot opens to from the pocket's centre (rad, machine frame)."""
+        return self.key_wall % 4 * np.pi / 2
 
     # derived geometry, in the machine's frame
     @property
@@ -174,6 +211,10 @@ def _add_pocket(body, name: str, cfg: MachineConfig) -> None:
     for k in range(4):
         q = [np.cos(k * np.pi / 4), 0.0, 0.0, np.sin(k * np.pi / 4)]
         side = body.add_body(name=f"{name}_pocket{k}", quat=q)
+        if cfg.keyed and k == cfg.key_wall % 4:
+            _add_keyed_wall(side, f"{name}_pocket", k, cfg, a, lead_pos, lead_quat, length,
+                            half_thick, run, rise, extra)
+            continue
         side.add_geom(name=f"{name}_pocket_wall{k}", type=box,
                       size=[w / 2, a + w, cfg.pocket_straight / 2],
                       pos=[a + w / 2, 0.0, cfg.pocket_straight / 2], **extra)
@@ -182,6 +223,37 @@ def _add_pocket(body, name: str, cfg: MachineConfig) -> None:
         side.add_geom(name=f"{name}_pocket_back{k}", type=box,
                       size=[(w - run) / 2, a + w, rise / 2],
                       pos=[a + run + (w - run) / 2, 0.0, cfg.pocket_straight + rise / 2], **extra)
+
+
+def _add_keyed_wall(side, prefix: str, k: int, cfg: MachineConfig, a: float, lead_pos,
+                    lead_quat, length: float, half_thick: float, run: float, rise: float,
+                    extra: dict) -> None:
+    """A pocket wall with the key slot: the wall's three pieces (straight part, lead-in, block
+    behind the lead-in) split either side of a slot through the wall's full height, and a block
+    closing the slot behind (at least `_KEY_BOSS` thick, standing out behind the wall where the
+    slot reaches further than the wall is thick). The slot is the rib's width plus
+    `key_clearance` each side, and reaches `rib.proud + key_clearance` from the pocket's inner
+    face, so a rib on a part pushed against this wall (by the pocket's own clearance) still has
+    `key_clearance` to spare."""
+    box = mujoco.mjtGeom.mjGEOM_BOX
+    w, s = cfg.pocket_wall, cfg.rib.width / 2 + cfg.key_clearance     # s: half the slot's width
+    half_y = (a + w - s) / 2                                           # each side piece
+    back = a + cfg.rib.proud + cfg.key_clearance                       # the slot's floor
+    outer = max(a + w, back + _KEY_BOSS)
+    for tag, sign in (("a", 1.0), ("b", -1.0)):
+        y = sign * (s + half_y)
+        side.add_geom(name=f"{prefix}_wall{k}{tag}", type=box,
+                      size=[w / 2, half_y, cfg.pocket_straight / 2],
+                      pos=[a + w / 2, y, cfg.pocket_straight / 2], **extra)
+        side.add_geom(name=f"{prefix}_lead{k}{tag}", type=box,
+                      size=[length / 2, half_y, half_thick],
+                      pos=[lead_pos[0], y, lead_pos[2]], quat=lead_quat, **extra)
+        side.add_geom(name=f"{prefix}_back{k}{tag}", type=box,
+                      size=[(w - run) / 2, half_y, rise / 2],
+                      pos=[a + run + (w - run) / 2, y, cfg.pocket_straight + rise / 2], **extra)
+    side.add_geom(name=f"{prefix}_slot{k}", type=box,
+                  size=[(outer - back) / 2, s, cfg.pocket_depth / 2],
+                  pos=[(outer + back) / 2, 0.0, cfg.pocket_depth / 2], **extra)
 
 
 def _add_lid(spec: mujoco.MjSpec, body, name: str, cfg: MachineConfig) -> None:
@@ -327,7 +399,9 @@ class Machine:
 
     def in_pocket(self, part: CubeIndices) -> tuple[bool, bool]:
         """(the part is over the pocket and low, it is seated): seated means on the pocket's
-        floor (gap under 1.5 mm), upright (tilt under 3 deg) and inside the opening."""
+        floor (gap under 1.5 mm), upright (tilt under 3 deg) and inside the opening; in a keyed
+        pocket, a keyed part must also be the right way round (its rib in the slot: see
+        `key_error`)."""
         d = self.d
         R_m = d.xmat[self.body].reshape(3, 3)
         rel = R_m.T @ (d.xpos[part.body] - d.xpos[self.body])
@@ -336,7 +410,22 @@ class Machine:
         gap = float(rel[2] - part.half_size[2])
         inside = bool(np.abs(rel[:2]).max() <= self.cfg.clearance + 0.0005)
         near = bool(np.abs(rel[:2]).max() < 0.04 and rel[2] < 0.06)
-        return near, bool(inside and gap < 0.0015 and tilt < 3.0)
+        seated = inside and gap < 0.0015 and tilt < 3.0
+        if seated and self.cfg.keyed:
+            err = self.key_error(part)
+            seated = err is None or abs(err) <= self.cfg.key_tolerance
+        return near, bool(seated)
+
+    def key_error(self, part: CubeIndices) -> float | None:
+        """How far a keyed part's rib points away from the slot (deg, about the vertical,
+        wrapped to -180..180; 0 = the right way round, +-90 or 180 = a wrong one). None for an
+        unkeyed pocket or a plain part (without a rib, every way round is right)."""
+        if not self.cfg.keyed or rib_geom(self.m, part) < 0:
+            return None
+        R_m = self.d.xmat[self.body].reshape(3, 3)
+        rib = R_m.T @ self.d.xmat[part.body].reshape(3, 3)[:, 0]   # the rib's face normal
+        err = np.degrees(np.arctan2(rib[1], rib[0]) - self.cfg.key_yaw)
+        return float((err + 180.0) % 360.0 - 180.0)
 
     def seated_part(self) -> CubeIndices | None:
         for p in self.parts:
