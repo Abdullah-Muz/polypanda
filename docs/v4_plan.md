@@ -1,6 +1,6 @@
 # v4.0 plan: a machine-tending cell that keeps running when things go wrong
 
-*Adopted on 2026-11-22, after the v3.2 release. This plan builds on [machine_tending_candidates.md](machine_tending_candidates.md) and takes its medium scope. It adds three things that doc did not have: sensing with realistic error, training that starts from demonstrations, and a browser demo.*
+*Adopted on 2026-11-22, after the v3.2 release. This plan builds on [machine_tending_candidates.md](machine_tending_candidates.md) and takes its medium scope. It adds two things that doc did not have: sensing with realistic error, and training that starts from demonstrations.*
 
 *Nothing here is a target yet. Targets, evaluation sets and their digests go into `v4_targets.md` before any v4 training, under the project's usual rules: 3 seeds, held-out sets drawn before training, Wilson 95 % intervals, exact McNemar tests on paired cases, a scripted baseline beside every learned result, and every result reported as it comes, misses included.*
 
@@ -35,9 +35,9 @@ The user said to proceed with the candidates doc's recommended picks. They stay 
 
 The candidates doc's other proposals stand as written: machining recolours the part, an unrecoverable machine fault fails the order, and the grasp assist stays for carried parts and is not used on the door handle.
 
-Added to that scope: the three items of section 3.
+Added to that scope: the two items of section 3.
 
-## 3. Three additions to the candidates doc
+## 3. Two additions to the candidates doc
 
 ### 3.1 Imperfect sensing
 
@@ -51,7 +51,7 @@ Added to that scope: the three items of section 3.
   | Offscreen colour rendering, 84 × 84 to 224 × 224, one process | about 7 frames per second |
   | Physics, single thread | about 4,500 steps per second (9 × real time) |
 
-  So training a pose estimator on rendered images is feasible, and training a policy directly from pixels is not. Distilling a state-based policy into a visual one is the common alternative ([state-to-visual DAgger](https://arxiv.org/html/2412.13662v1)); at these frame rates it is out of reach here.
+  So training a pose estimator on rendered images is feasible, and training a policy directly from pixels is not. Distilling a state-based policy into a visual one is the common alternative ([state-to-visual DAgger](https://arxiv.org/html/2412.13662v1)); at these frame rates it would be slow here, so it is not planned for v4.0.
 - **Evaluation:** every case is run with exact poses and with estimated poses, paired. Beside it, an error-tolerance curve: success against pose error, for the scripted skill and the learned one.
 - **Status change:** this replaces candidate C7's "optional, large scope only" status. Sensing is part of v4.0.
 
@@ -65,32 +65,24 @@ Added to that scope: the three items of section 3.
 - **Caveat:** no paper was found in which the refined policy beats a scripted expert that has perfect information. That is why this addition pairs with imperfect sensing.
 - **A proving ground before it is relied on:** one existing skill, with a check committed before the run.
 
-### 3.3 A browser demo
-
-- **What:** a web page that runs the trained policies in the visitor's browser, on MuJoCo's official WebAssembly bindings with onnxruntime-web. Public demos already run trained policies this way ([mujoco_wasm](https://github.com/zalo/mujoco_wasm/), [a walking policy in the browser](https://github.com/ETHRoboticsClub/v1-walk-demo)).
-- **Scope:** start with the v3.2 cell or a single skill. The IK, the gates and the observation building must be ported or simplified.
-- **Fidelity check:** replay a committed episode in the browser and compare its trajectory with the Python one.
-- **Training:** none.
-
 ## 4. Phases
 
-Each phase has a go/no-go gate and ends with something shown publicly. Durations are rough, and this project's estimates have been optimistic before. Together they come to roughly 6–9 weeks.
+Each phase has a go/no-go gate and ends with something shown publicly. Durations are rough, and this project's estimates have been optimistic before. Together they come to roughly 5–7 weeks.
 
 | Phase | Work | Gate | Shown publicly | Rough length |
 |---|---|---|---|---|
 | 0 | Tight-fit feasibility probe: the scripted place puts a cube into a pocket at 2 mm and 1 mm clearance | the contacts are stable and the part seats; otherwise the fixture is loosened or the scope drops to small | the probe's result | days |
-| 1 | Browser demo | the browser replay matches the Python trajectory | the demo link | 1–2 weeks |
-| 2 | The machine model and its fixture; the camera estimate and its error model; the error-tolerance experiment; the proving ground of 3.2; then the fixture place | **the make-or-break experiment:** is there a range of realistic pose error where the scripted place fails and a learned one does not? | the error-tolerance curve, whichever way it comes out | 1–2 weeks on top of the tending work |
-| 3 | The learned door | the door meets its development bar within the stopping rule | the door skill | within the 4–5 weeks below |
-| 4 | Unload, scheduling, recovery; the tending cell with injected faults, run once on a held-out suite; the release | the final run is locked in a commit before it is made | the tending cell and its results | tending in the medium scope: 4–5 weeks (candidates doc) |
+| 1 | The machine model and its fixture; the camera estimate and its error model; the error-tolerance experiment; the proving ground of 3.2; then the fixture place | **the make-or-break experiment:** is there a range of realistic pose error where the scripted place fails and a learned one does not? | the error-tolerance curve, whichever way it comes out | 1–2 weeks on top of the tending work |
+| 2 | The learned door | the door meets its development bar within the stopping rule | the door skill | within the 4–5 weeks below |
+| 3 | Unload, scheduling, recovery; the tending cell with injected faults, run once on a held-out suite; the release | the final run is locked in a commit before it is made | the tending cell and its results | tending in the medium scope: 4–5 weeks (candidates doc) |
 
 **Phase 0 result:**
 
 <!-- PROBE-RESULT -->
 
-- `v4_targets.md` is committed before any training, so before the training in Phase 2.
-- Phases 0 and 1 need no training.
-- If Phase 2 shows that realistic error does not hurt the scripted place, the place is still built, and the result is reported as it is: no advantage for the learned skill.
+- `v4_targets.md` is committed before any training, so before the training in Phase 1.
+- Phase 0 needs no training.
+- If Phase 1 shows that realistic error does not hurt the scripted place, the place is still built, and the result is reported as it is: no advantage for the learned skill.
 
 ## 5. What will be measured
 
@@ -112,6 +104,7 @@ Drafts until `v4_targets.md`.
 | **Bin picking from a heap** | the fastest-growing segment, about 36 % a year ([Interact Analysis, via Robotics 24/7](https://www.robotics247.com/article/report-robotic-bin-picking-robotic-trailer-unloading-drive-strong-market-growth)) | this project's own clutter attempt scored 21.5–67 % across seeds ([generalization.md](generalization.md)); the methods that work rely on camera images and GPUs |
 | **A real arm** (a candidate for the milestone after) | SO-101 kits cost roughly $120–300 ([cost guide](https://physicalailab.io/en/so-101-robot-arm-kit-cost-buy-setup/)); [MuJoCo Playground](https://github.com/google-deepmind/mujoco_playground) publishes a recipe that trains in simulation and runs on the real arm ([SO-101 pick-cube](https://github.com/google-deepmind/mujoco_playground/tree/main/mujoco_playground/tasks/manipulation/pick_cube/so101/deploy)) | it needs a rented GPU, a different robot and a different training stack; no published success rates were found for it |
 | **Removing the grasp assist** | cell results would measure grip retention ([workcell.md](workcell.md#grasp-assist-a-disclosed-simplification)) | the fixes tried in Milestone 9 did not stop the slip; worth a two-day, time-boxed attempt with fixes not yet tried, such as a smaller time step |
+| **A browser demo** (dropped 2026-11-22, user decision) | anyone could try the policies from a link; MuJoCo has official WebAssembly bindings ([mujoco_wasm](https://github.com/zalo/mujoco_wasm/)) | it does not advance the problem v4.0 is about; the IK, gates and observations would have to be re-implemented in JavaScript and kept identical |
 | **Work orders in plain English** | quick to build | not a learned skill; adds an outside dependency |
 | **Cycle time** | throughput is what a shop buys | partly covered by the idle-time measure |
 
@@ -120,7 +113,6 @@ Drafts until `v4_targets.md`.
 - **Tight-fit contact in the simulator.** Box-in-box contact at 1–2 mm can jam or jitter. Phase 0 measures it before anything is designed around it.
 - **The learned skills may still not beat the script under realistic error.** The result is reported either way.
 - **Estimates.** Day counts have been optimistic before: skills have taken more rounds than planned.
-- **The browser port's fidelity.** The IK, gates and observations are re-implemented, so the demo could drift from the Python cell. The replay check is there to catch that.
 - **Simulated images are clean.** A camera estimate in simulation says little about real vision; the error model, not the images, is what carries over.
 
 ## 8. Sources
@@ -140,6 +132,6 @@ Drafts until `v4_targets.md`.
 - [State-to-visual DAgger against visual RL](https://arxiv.org/html/2412.13662v1)
 - [Insertion with a variable socket position](https://arxiv.org/pdf/1810.01531)
 - [Model-based control and RL for tight insertion](https://arxiv.org/pdf/2505.11858)
-- [mujoco_wasm](https://github.com/zalo/mujoco_wasm/), [a walking policy in the browser](https://github.com/ETHRoboticsClub/v1-walk-demo)
+- [mujoco_wasm](https://github.com/zalo/mujoco_wasm/)
 - [MuJoCo Playground](https://github.com/google-deepmind/mujoco_playground), [its SO-101 pick-cube recipe](https://github.com/google-deepmind/mujoco_playground/tree/main/mujoco_playground/tasks/manipulation/pick_cube/so101/deploy)
 - [SO-101 kit cost](https://physicalailab.io/en/so-101-robot-arm-kit-cost-buy-setup/)

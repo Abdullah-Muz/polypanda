@@ -216,7 +216,7 @@ Every result file in [`results/`](results/) records the git commit (and whether 
 | [recovery.md](docs/recovery.md) | v3: knocks and the physical ceiling, the lying-cube grasp and the stand-up, learned recovery, the symbolic cell, headroom gates, the learned recovery planner and its sim-to-physics gap; v3.1: the retrained skills, the clear rule and seed 0's grasp in the cell |
 | [v3_targets.md](docs/v3_targets.md), [v3_1_targets.md](docs/v3_1_targets.md), [v3_2_targets.md](docs/v3_2_targets.md) | v3, v3.1 and v3.2 targets as committed before the work, with dated amendments and every result as it came |
 | [v3_2_candidates.md](docs/v3_2_candidates.md) | the proposal behind v3.2, from the v3.1 diagnoses: grasp fixes and a cell-like pick check |
-| [v4_plan.md](docs/v4_plan.md), [machine_tending_candidates.md](docs/machine_tending_candidates.md) | the v4.0 plan (machine tending with imperfect sensing, demonstrations first, a browser demo) and the candidates doc it builds on |
+| [v4_plan.md](docs/v4_plan.md), [machine_tending_candidates.md](docs/machine_tending_candidates.md) | the v4.0 plan (machine tending with imperfect sensing and demonstrations first) and the candidates doc it builds on |
 | [workcell.md](docs/workcell.md) | the work-order cell: grasp assist, station frames, buffer and planner, stacking place v1–v3, a root-cause analysis |
 | [cartesian_actions.md](docs/cartesian_actions.md) | hand-motion actions and the fully learned pick-and-place chain |
 | [generalization.md](docs/generalization.md) | wide-region and cluttered grasping, checkpoint selection |
