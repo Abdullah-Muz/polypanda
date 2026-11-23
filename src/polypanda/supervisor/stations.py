@@ -18,16 +18,19 @@ current state (reset option "continue").
 
 import numpy as np
 
-from polypanda.environments import grasp, place, standup, transport
+from polypanda.environments import door, grasp, place, standup, transport
 
 LAYOUTS = {grasp.GraspEnv: grasp.OBS_LAYOUT, transport.TransportEnv: transport.OBS_LAYOUT,
-           place.PlaceEnv: place.OBS_LAYOUT, standup.StandUpV3Env: standup.OBS_LAYOUT_V3}
+           place.PlaceEnv: place.OBS_LAYOUT, standup.StandUpV3Env: standup.OBS_LAYOUT_V3,
+           door.DoorEnv: door.OBS_LAYOUT}
 JOINT_FIELDS = ("q", "q_cmd")
 # Points in the world (positions): taken relative to the robot's base axis, then rotated.
 POINT_FIELDS = ("tcp", "goal", "target")
-# Offsets and directions: rotated only (they do not depend on where the base is).
+# Offsets and directions: rotated only (they do not depend on where the base is). The door's
+# handle_rel, grip_travel and force are an offset, a displacement and a force; its bar_align,
+# door_io and door_command are scalars (relative to the hand, machine signals, a one-hot).
 VECTOR_FIELDS = ("cube_rel", "goal_error", "target_error", "cube_up", "tower_rel",
-                 "tower_away")
+                 "tower_away", "handle_rel", "grip_travel", "force")
 ROT6_FIELDS = ("tcp_rot6",)   # two world 3-vectors (the TCP rotation's first two columns)
 PLANAR_FIELDS = ("command",)  # a world direction in the table plane (cos, sin)
 

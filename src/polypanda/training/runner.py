@@ -208,7 +208,9 @@ def train(cfg: TrainConfig, env_config, run_dir: Path) -> Path:
         "algorithm": cfg.algorithm.upper(),
         "seed": cfg.seed,
         "observation_schema": task.obs_schema,
-        "action_schema": action_schema(env_config.action),
+        # (an env whose actions go beyond its ActionConfig, e.g. the door's gripper, names them)
+        "action_schema": getattr(task.env_cls, "ACTION_SCHEMA", None)
+        or action_schema(env_config.action),
         "robot_model_revision": MENAGERIE_COMMIT,
         "training_config": "config.yaml",
         "env_config": "env_config.yaml",
