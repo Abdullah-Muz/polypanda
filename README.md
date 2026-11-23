@@ -248,7 +248,7 @@ Every result file in [`results/`](results/) records the git commit (and whether 
 | 10 | Recovery from knocks: closed loop, lying-cube grasp, stand-up, learned recovery, symbolic cell, learned recovery planner | Done (v3.0); recovery targets met, two skill targets and the planner target missed ([recovery](docs/recovery.md)) |
 | 11 | v3.1: another round for the two new skills (fresh one-shot sets, randomized cube size, real hand-off starts); a clutter-aware symbolic cell and a clearing rule | Done (v3.1); both skill targets met, the recovery target and the D0 bar missed ([recovery](docs/recovery.md#v31-milestone-11-new-skills-and-clearing-clutter)) |
 | v3.2 | A grasp round aimed at the cell's knock-overs, with cell-like pick checks per seed; a final cell run on a new suite of 200 orders | Done (v3.2). Grasp target not met; `grasp_anypose9` adopted for the cell post hoc. Cell target met (91.5 against 85.7 %); the no-knock bar missed without spares by one order ([v3.2 targets](docs/v3_2_targets.md)) |
-| v4.0 (Milestone 13) | Machine tending: a learned door-and-load skill for simulated machines it has not seen, inside a tending cell that recovers from faults | Planned ([v4 plan](docs/v4_plan.md), [machine tending candidates](docs/machine_tending_candidates.md)) |
+| v4.0 (Milestone 13) | Machine tending on a rail line: a learned door-and-load skill for machines it has not seen (v4.0), two operations with a flip (v4.1), a quality station (v4.2) | Planned ([v4 plan](docs/v4_plan.md), [machine tending candidates](docs/machine_tending_candidates.md)) |
 | Later | A symbolic cell where a failed skill costs time; cube positions from a camera | Proposed ([v3.2 candidates](docs/v3_2_candidates.md)) |
 
 ## Acknowledgements and references
