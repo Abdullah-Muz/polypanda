@@ -31,6 +31,7 @@ from polypanda.environments.tasks import task_spec
 from polypanda.simulation.assets import MENAGERIE_COMMIT
 from polypanda.training.callbacks import RewardTermsCallback, SaveVecNormalizeCallback
 from polypanda.training.config import TrainConfig
+from polypanda.training.fixed_eval import FixedEpisodes, FixedEpisodesEvalCallback
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
@@ -174,8 +175,17 @@ def train(cfg: TrainConfig, env_config, run_dir: Path) -> Path:
         eval_config = env_config.for_evaluation()
     else:
         eval_config = env_config
-    eval_env = VecNormalize(_vec_env(task.env_cls, eval_config, 1, cfg.eval_seed, "dummy"),
-                            norm_obs=cfg.normalize_obs, norm_reward=False, training=False)
+    if cfg.eval_fixed_episodes:
+        eval_vec = make_vec_env(task.env_cls, n_envs=1, seed=cfg.eval_seed,
+                                vec_env_cls=DummyVecEnv, env_kwargs={"config": eval_config},
+                                wrapper_class=FixedEpisodes,
+                                wrapper_kwargs={"n": cfg.eval_episodes, "seed": cfg.eval_seed})
+        eval_cls = FixedEpisodesEvalCallback
+    else:
+        eval_vec = _vec_env(task.env_cls, eval_config, 1, cfg.eval_seed, "dummy")
+        eval_cls = EvalCallback
+    eval_env = VecNormalize(eval_vec, norm_obs=cfg.normalize_obs, norm_reward=False,
+                            training=False)
     model = build_model(cfg, env, str(run_dir / "tb"))
     init = _warm_start(cfg, model, env, task.env_cls, env_config) if cfg.init_from else None
     git = _git_state()  # recorded before training, so later edits cannot mislabel the run
@@ -183,7 +193,7 @@ def train(cfg: TrainConfig, env_config, run_dir: Path) -> Path:
     per_env = lambda steps: max(1, steps // cfg.n_envs)  # noqa: E731  callbacks count env.step calls
     callbacks = CallbackList([
         RewardTermsCallback(),
-        EvalCallback(eval_env, n_eval_episodes=cfg.eval_episodes,
+        eval_cls(eval_env, n_eval_episodes=cfg.eval_episodes,
                      eval_freq=per_env(cfg.eval_freq), deterministic=True,
                      best_model_save_path=str(run_dir), log_path=str(run_dir / "eval"),
                      callback_on_new_best=SaveVecNormalizeCallback(

@@ -73,7 +73,8 @@ one control step. The action schema is ACTION_SCHEMA.
 - `success`: a bonus, once, at success (the episode ends);
 - penalties: `force` per newton of the estimated force above force_limit; `collision` per step
   the arm touches the machine's body (walls, roof, pocket) or the bench; `slam` per m/s the lid
-  hits a stop faster than allowed (outward 0.15, closing 0.3 m/s: a latch needs at most 0.1);
+  hits a stop faster than allowed (outward 0.15, closing 0.3 m/s: a latch needs at most 0.1),
+  plus `slam_hit` once per such hit;
   `stop_press` per step the arm pushes harder than stop_force while the lid sits at a stop;
   `time` per step; `action` x |hand action|^2.
 Terms that belong to one phase (approach, touch before the goal; retreat after it) are paid only
@@ -202,6 +203,24 @@ class DoorSuccessConfig:
 
 
 @dataclass(frozen=True)
+class DoorFocusConfig:
+    """Training only (DoorConfig.for_evaluation drops it): a share of episodes drawn from chosen
+    cells, "command/slide/spring" or "command/slide/plain" (e.g. "open/out/spring"), the rest
+    as usual. With prob 0 the episode stream is the plain one, draw for draw."""
+    prob: float = 0.0
+    cells: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        for c in self.cells:
+            parts = c.split("/")
+            if (len(parts) != 3 or parts[0] not in COMMANDS or parts[1] not in SLIDES
+                    or parts[2] not in ("spring", "plain")):
+                raise ValueError(f"focus cell {c!r}: command/slide/spring|plain")
+        if self.prob > 0 and not self.cells:
+            raise ValueError("focus prob > 0 needs cells")
+
+
+@dataclass(frozen=True)
 class DoorRewardConfig:
     approach: float = 10.0           # per m the TCP nears the handle (before the goal)
     touch: float = 0.5               # potential while a finger touches the bar (before it)
@@ -215,6 +234,8 @@ class DoorRewardConfig:
     slam: float = 20.0               # per m/s over the allowed speed, when the lid hits a stop
     slam_open_speed: float = 0.15    # m/s allowed at the open stop
     slam_close_speed: float = 0.3    # m/s allowed at the closed stop
+    slam_hit: float = 0.0            # once per slam, however slight (dev round 1's opens hit the
+    #                                  open stop at 0.152-0.224 m/s: 20 per m/s cost them < 1.5)
     stop_press: float = 0.05         # per step pushing harder than stop_force at a stop
     stop_force: float = 25.0         # N
     time: float = 0.005              # per step
@@ -236,6 +257,7 @@ class DoorConfig:
     gripper: DoorGripperConfig = field(default_factory=DoorGripperConfig)
     success: DoorSuccessConfig = field(default_factory=DoorSuccessConfig)
     reward: DoorRewardConfig = field(default_factory=DoorRewardConfig)
+    focus: DoorFocusConfig = field(default_factory=DoorFocusConfig)   # training only
     horizon: int = 300               # policy steps (15 s at 20 Hz)
 
     @classmethod
@@ -243,8 +265,8 @@ class DoorConfig:
         return load_yaml(cls, path)
 
     def for_evaluation(self) -> DoorConfig:
-        """The task as evaluated (no training-only devices yet: the same task)."""
-        return self
+        """The task as evaluated: without the training-only focus on chosen cells."""
+        return replace(self, focus=DoorFocusConfig())
 
 
 def build_door_scene(cfg: DoorSceneConfig) -> tuple[mujoco.MjModel, mujoco.MjData, MachineConfig]:
@@ -344,15 +366,22 @@ class DoorEnv(gym.Env):
         def sym(x):
             return float(rng.uniform(-x, x))
 
+        f = self.config.focus
+        focus = (f.cells[int(rng.integers(len(f.cells)))].split("/")
+                 if f.prob > 0 and rng.uniform() < f.prob else None)   # (no draw at prob 0)
         draw_command = COMMANDS[0] if rng.uniform() < s.open_prob else COMMANDS[1]
-        command = command or draw_command
+        command = command or (focus[0] if focus else draw_command)
         slide = str(v.slides[int(rng.integers(len(v.slides)))])
+        slide = focus[1] if focus else slide
         out = slide == "out"
         travel = float(rng.uniform(*(v.travel_out if out else v.travel_side)))
+        friction, damping = log_uniform(v.friction), log_uniform(v.damping)
+        spring = float(rng.uniform(*v.spring)) if rng.uniform() < v.spring_prob else 0.0
+        if focus:
+            spring = (spring or float(rng.uniform(*v.spring))) if focus[2] == "spring" else 0.0
         ep = {
             "command": command, "slide": slide, "travel": travel,
-            "friction": log_uniform(v.friction), "damping": log_uniform(v.damping),
-            "spring": float(rng.uniform(*v.spring)) if rng.uniform() < v.spring_prob else 0.0,
+            "friction": friction, "damping": damping, "spring": spring,
             "handle_offset": sym(v.handle_offset_out if out else v.handle_offset_side),
             "handle_shift": sym(v.handle_shift_out if out else v.handle_shift_side),
             "handle_height": float(rng.uniform(*v.handle_height)),
@@ -653,7 +682,7 @@ class DoorEnv(gym.Env):
                         if same_phase and now["goal"] else 0.0),
             "force": -r.force * max(0.0, f - r.force_limit),
             "collision": -r.collision if hit else 0.0,
-            "slam": -r.slam * slam,
+            "slam": -r.slam * slam - (r.slam_hit if slam > 0 else 0.0),
             "stop_press": -r.stop_press if at_stop and f > r.stop_force else 0.0,
             "time": -r.time,
             "action": -r.action * float(a[:4] @ a[:4]),

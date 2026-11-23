@@ -121,3 +121,13 @@ A 20k-step smoke run of `door_v1_ppo` (2 subprocess envs, under `nice`) ran end 
 - **In the line:** `CartesianActionAdapter` solves IK for a base at the origin. On the rail, the base moves, and the adapter does not yet take that into account, so the skill has not been run on the line's M1. It is tested through `StationView` at −90° in its own scene.
 - **Closing spring (decided 2026-11-23: included).** Half the machines have one. A one-armed robot cannot hold a lid open while it loads, so a springy lid has a **hold-open detent**, as springy guards do: in the last 8 mm of its travel the spring is cancelled and the lid is held against its stop with 1 N. Pushed out of it, the spring pulls it shut. `open` on a springy lid therefore succeeds only with the lid in its detent (failure `not_held_open` otherwise), and `close` episodes start with it there. Without a damper, a springy lid pushed out of its detent ran ahead into the leading finger (100–390 N spikes, measured) and the detent snapped it into its stop (slams), so springy lids get a soft-close damper. The expert pushes on 1 cm further on springy lids (the hand sags against the spring at full reach): 120/120 on a mixed spring check, no slams, peak force at most 53 N.
 - **Force estimate:** an idealized estimate (contact forces plus Gaussian noise). A real torque-based estimate is biased by model errors and is worse when the arm moves fast.
+
+## Training-only devices (dev round 2)
+
+- `focus` (DoorFocusConfig): a share `prob` of training episodes drawn from chosen cells
+  ("command/slide/spring|plain"); `DoorConfig.for_evaluation()` drops it, and at prob 0 the
+  episode stream is the plain one draw for draw (the eval sets regenerate with their digests).
+- `reward.slam_hit`: a penalty once per slam on top of `slam` per m/s (0 in door_v1.yaml).
+- Validation on fixed episodes (`eval_fixed_episodes` in a training config,
+  training/fixed_eval.py): the same `eval_episodes` episodes, drawn once from `eval_seed`, every
+  validation, logged per cell to `eval/cells.jsonl`.

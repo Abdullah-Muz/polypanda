@@ -63,6 +63,10 @@ class TrainConfig:
     # v3.2 round 3: validation keeps the training's cell-like starts (grasp: near-base upright
     # and belt cubes), so the best checkpoint is chosen on whole-table and cell-like cases.
     eval_cell_like: bool = False
+    # Validation replays the same eval_episodes episodes every time (drawn once from eval_seed
+    # with the env's draw_episode; training/fixed_eval.py) and logs them per cell. Envs with
+    # draw_episode only (the door).
+    eval_fixed_episodes: bool = False
     torch_threads: int | None = None  # trainer's PyTorch threads; None = PyTorch default
     # Warm start (v3): begin from another run's network weights and observation/return
     # normalization ("{seed}" is replaced by this run's seed), e.g. runs/grasp_cart_seed{seed}.

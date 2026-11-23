@@ -1,0 +1,40 @@
+# v4.0 door skill, dev round 2 (docs/v4_targets.md): PPO warm-started from round 1
+# (runs/door_v1_bc_ppo_seed{seed}, best = its final validation at 3M, 200/200) on
+# configs/door_v1_r2.yaml (a once-per-slam penalty; a fifth of training episodes outward springy
+# opens). It keeps round 1's own action noise (std 0.18-0.42) and starts at half round 1's first
+# learning rate: the policy needs adjusting, not relearning. 2M steps.
+# Validation replays the same 200 episodes every 100k steps and logs them per cell
+# (eval_fixed_episodes; eval/cells.jsonl).
+
+algorithm: ppo
+task: door
+env_config: configs/door_v1_r2.yaml
+seed: 0
+n_envs: 8
+vec_env: subproc
+total_timesteps: 2000000
+normalize_obs: true
+normalize_reward: true
+eval_freq: 100000
+eval_episodes: 200
+eval_seed: 100000
+eval_fixed_episodes: true
+checkpoint_freq: 250000
+torch_threads: 1
+init_from: runs/door_v1_bc_ppo_seed{seed}
+init_checkpoint: best
+
+ppo:
+  learning_rate: 0.00005
+  learning_rate_final: 0.00001
+  n_steps: 512
+  batch_size: 256
+  n_epochs: 10
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_range: 0.2
+  ent_coef: 0.005
+  vf_coef: 0.5
+  max_grad_norm: 0.5
+  net_arch: [256, 256]
+  log_std_init: 0.0
