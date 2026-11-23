@@ -72,13 +72,32 @@ Each phase has a go/no-go gate and ends with something shown publicly. Durations
 | Phase | Work | Gate | Shown publicly | Rough length |
 |---|---|---|---|---|
 | 0 | Tight-fit feasibility probe: the scripted place puts a cube into a pocket at 2 mm and 1 mm clearance | the contacts are stable and the part seats; otherwise the fixture is loosened or the scope drops to small | the probe's result | days |
-| 1 | The machine model and its fixture; the camera estimate and its error model; the error-tolerance experiment; the proving ground of 3.2; then the fixture place | **the make-or-break experiment:** is there a range of realistic pose error where the scripted place fails and a learned one does not? | the error-tolerance curve, whichever way it comes out | 1–2 weeks on top of the tending work |
+| 1 | The machine model and its fixture; the camera estimate and its error model; the error-tolerance experiment; the proving ground of 3.2; then the fixture place | **the make-or-break experiment:** under realistic pose error, does a learned place succeed where the scripted place fails, or seat the part with less force and no rim strikes? (Phase 0: up to 4 mm of error the script still succeeds) | the error-tolerance curve, whichever way it comes out | 1–2 weeks on top of the tending work |
 | 2 | The learned door | the door meets its development bar within the stopping rule | the door skill | within the 4–5 weeks below |
 | 3 | Unload, scheduling, recovery; the tending cell with injected faults, run once on a held-out suite; the release | the final run is locked in a commit before it is made | the tending cell and its results | tending in the medium scope: 4–5 weeks (candidates doc) |
 
 **Phase 0 result:**
 
-<!-- PROBE-RESULT -->
+*Measured 2026-11-22 from `a444ae8` with a clean tree (`scripts/probe_fixture_insertion.py`, `results/v4/fixture_insertion_probe.json`).* The scripted cell picked an upright cube from the bench, carried it to a pocket at tower B's station and set it in with the unchanged `ScriptedCell.place`. The pocket was 15 mm deep: 10 mm of straight wall under a 45° lead-in 5 mm wide. The place was aimed at the pocket's centre plus an error of 0–6 mm in a random direction. Each condition ran the same 50 trials, 1,200 in all.
+
+| Pocket (clearance per side, wall friction) | 0 mm | 1 mm | 2 mm | 3 mm | 4 mm | 6 mm aiming error |
+|---|---|---|---|---|---|---|
+| 2 mm, cube-like (1.0) | 50/50 | 50/50 | 50/50 | 50/50 | 50/50 | 50/50 |
+| 2 mm, steel-like (0.3) | 50/50 | 50/50 | 50/50 | 50/50 | 50/50 | 50/50 |
+| 1 mm, cube-like | 50/50 | 50/50 | 50/50 | 50/50 | 50/50 | 42/50 |
+| 1 mm, steel-like | 50/50 | 50/50 | 50/50 | 50/50 | 50/50 | 35/50 |
+
+- **Gate: passed.** The contacts are stable. A seated cube moves 0.0 mm over the next second, every seated cube was unloaded again with the scripted pick (1,177 of 1,177), and there were no pick or IK failures. The 2 mm pocket is workable as designed.
+- **The scripted place is much more tolerant of position error than expected.** The lead-in and the arm's give guide the cube in at every aiming error up to 4 mm, and at 6 mm in the 2 mm pocket. It fails only at 1 mm clearance and 6 mm error: the cube rests tilted on the lead-in, or tips over off it.
+- **What the error does cost:** wall forces grow with the error. The median peak goes from 0 N with exact aim to 30–50 N at 6 mm, with maxima up to 90 N. The fingers strike the pocket's rim in up to 21 of 50 trials at 4–6 mm. The probe counts these as successes; on a real machine they are collisions.
+- **Caveats:**
+  - MuJoCo's soft contacts let the cube press up to 1.9 mm into cube-like walls (under 1 mm into steel-like ones), which is more give than real steel has.
+  - The cube is held rigidly by the grasp assist until it is released 4 mm above the pocket's floor.
+  - The scripted place still reads the cube's true position in the hand; only the target is wrong.
+- **What this means for Phase 1:**
+  - If a camera's realistic error stays within about 4 mm, imperfect sensing does not make the scripted place fail. The learned place would then have no success-rate advantage to win, and that will be reported.
+  - Its realistic chances are elsewhere: lower insertion force and no rim strikes under the same error, both measurable here. Or errors larger than the lead-in can absorb.
+  - The realistic error range is being measured next, with a simulated depth camera.
 
 - `v4_targets.md` is committed before any training, so before the training in Phase 1.
 - Phase 0 needs no training.
@@ -91,6 +110,7 @@ Drafts until `v4_targets.md`.
 | Question | Measure |
 |---|---|
 | How far off can a part be before each approach fails? | success of the fixture place against pose error, scripted and learned, on the same cases |
+| How gently does it seat the part? | peak wall force and rim strikes during the place, against pose error, scripted and learned |
 | Does sensing cost anything? | every case with exact and with estimated poses, paired |
 | How many faults are fixed with no person? | the share of injected, recoverable faults after which the order still completes; the physical ceiling is measured first with the scripted cell, as v3 did |
 | Do the machines stand idle? | idle time per machine, split into starved and blocked, for the chosen rule against first-come-first-served |
