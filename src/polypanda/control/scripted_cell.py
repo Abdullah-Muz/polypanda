@@ -38,6 +38,7 @@ from polypanda.control.ik import PoseIK, closing_yaw, grasp_closing_yaw, top_dow
 from polypanda.environments.grasp import GRIPPER_CLOSED, GRIPPER_OPEN
 from polypanda.simulation.disturbances import Knock, apply_knock, knock_outcome, rest_state
 from polypanda.simulation.panda import PandaIndices
+from polypanda.simulation.rail import BASE_BODY, RailIndices
 from polypanda.simulation.scenes import CubeIndices, cube_yaw
 from polypanda.simulation.workcell import Workcell, WorkOrder, station_xy
 from polypanda.supervisor.observe import observe
@@ -75,6 +76,8 @@ class ScriptedCell:
         self.cell, self.config, self.on_step = cell, config or CellControllerConfig(), on_step
         self.m, self.d = cell.model, cell.data
         self.arm = PandaIndices.from_model(self.m)
+        self.base_body = self.m.body(BASE_BODY).id  # moves with the rail, if there is one
+        self.rail = RailIndices.from_model(self.m)    # None for the fixed cell
         self.ik = PoseIK()
         self.home = self.ik.data.qpos[self.ik.idx.arm_qpos].copy()
         self.dt = 25 * self.m.opt.timestep
@@ -99,7 +102,22 @@ class ScriptedCell:
             if self.on_step:
                 self.on_step()
 
+    def base_xy(self) -> np.ndarray:
+        """Where the robot's base axis is on the table (the origin unless it rides a rail)."""
+        return self.d.xpos[self.base_body][:2].copy()
+
+    def angle_of(self, xy) -> float:
+        """The direction of a point (x, y, ...) about the robot's base axis, as a station
+        angle (rad)."""
+        b = self.d.xpos[self.base_body]
+        return float(np.arctan2(xy[1] - b[1], xy[0] - b[0]))
+
     def _solve(self, pos, quat, seed) -> np.ndarray:
+        """Joint angles putting the TCP at `pos` (world) with orientation `quat`. The IK
+        model's base is at its origin, so the target is taken into the base's frame (the
+        rail only translates the base)."""
+        b = self.d.xpos[self.base_body]
+        pos = np.array([pos[0] - b[0], pos[1] - b[1], pos[2]], dtype=float)
         q, ok = self.ik.solve(seed, pos, quat)
         self.ik_failures += not ok
         return q
@@ -132,6 +150,26 @@ class ScriptedCell:
         n = max(5, int(np.abs(q_goal - q0).max() / rate / self.dt))
         for k in range(1, n + 1):
             self.q_cmd = q0 + (q_goal - q0) * (1 - np.cos(np.pi * k / n)) / 2
+            self.step()
+
+    def drive_to(self, position: float, speed: float = 0.5) -> None:
+        """v4: move the robot along its rail to `position` (m along the rail's axis), the arm
+        holding its posture; a smooth (cosine) profile at `speed` m/s on average, then
+        settle to within 1 mm."""
+        if self.rail is None:
+            raise RuntimeError("this cell has no rail")
+        lo, hi = self.m.actuator_ctrlrange[self.rail.actuator]
+        if not lo <= position <= hi:
+            raise ValueError(f"rail position {position} outside {lo}..{hi}")
+        s0 = float(self.d.ctrl[self.rail.actuator])
+        n = max(5, int(abs(position - s0) / speed / self.dt))
+        for k in range(1, n + 1):
+            self.d.ctrl[self.rail.actuator] = s0 + (position - s0) * (1 - np.cos(np.pi * k / n)) / 2
+            self.step()
+        for _ in range(40):
+            if (abs(self.d.qpos[self.rail.joint_qpos] - position) < 0.001
+                    and abs(self.d.qvel[self.rail.joint_dof]) < 0.005):
+                break
             self.step()
 
     def swing_to(self, angle: float) -> None:
@@ -192,7 +230,7 @@ class ScriptedCell:
         R = self.d.site_xmat[self.arm.tcp_site].reshape(3, 3)
         if tcp[2] < self.config.carry_height - 0.01:
             self.vertical(tcp[:2], self.config.carry_height, closing_yaw(R))
-        angle = np.arctan2(tcp[1], tcp[0])
+        angle = self.angle_of(tcp)
         q = self.carry.copy()
         q[0] += angle
         self.move_joints(q, rate=1.0)
@@ -202,7 +240,7 @@ class ScriptedCell:
         """From the carry posture over the pick point: match the cube's yaw, descend, grip,
         lift back, and turn the wrist back to the carry yaw (the cube turns with it)."""
         c = self.d.xpos[cube.body].copy()
-        angle = np.arctan2(c[1], c[0])
+        angle = self.angle_of(c)
         carry_yaw = self.carry_yaw(angle)
         yaw = grasp_closing_yaw(cube_yaw(self.d, cube), carry_yaw)
         z_carry = self.config.carry_height
@@ -228,7 +266,7 @@ class ScriptedCell:
 
     def staging_xy(self, s: int) -> np.ndarray:
         r, a = self.config.staging[s]
-        return station_xy(a, r)
+        return station_xy(a, r) + self.base_xy()
 
     def free_staging_spot(self) -> np.ndarray | None:
         """A staging spot with no cube within 8 cm of it, if any."""
@@ -246,7 +284,7 @@ class ScriptedCell:
         self.pick(cube)
         if not self.cell.attached(cube):
             return
-        self.swing_to(float(np.arctan2(spot[1], spot[0])))
+        self.swing_to(self.angle_of(spot))
         self.place(cube, spot, 0)
 
     def lift_loose(self, cube: CubeIndices, pose: str) -> bool:
@@ -265,7 +303,7 @@ class ScriptedCell:
         stand-up), so it is not in the way of later places. Returns whether it ended in the bin;
         `self.clear_held` says whether it was grasped at all."""
         xy = self.d.xpos[cube.body][:2].copy()
-        self.swing_to(float(np.arctan2(xy[1], xy[0])))
+        self.swing_to(self.angle_of(xy))
         self.clear_held = self.lift_loose(cube, pose)
         if self.clear_held:
             self.swing_to(np.radians(self.cell.config.reject_angle))
@@ -306,7 +344,7 @@ class ScriptedCell:
         cfg = self.config
         c = self.d.xpos[cube.body].copy()
         axis = self.d.xmat[cube.body].reshape(3, 3)[:, 2]        # long axis, horizontal
-        carry_yaw = self.carry_yaw(float(np.arctan2(c[1], c[0])))
+        carry_yaw = self.carry_yaw(self.angle_of(c))
         yaw = float(np.arctan2(axis[1], axis[0])) + np.pi / 2   # fingers close across it
         yaw = carry_yaw + (yaw - carry_yaw + np.pi / 2) % np.pi - np.pi / 2
         self.move_joints(self._solve([c[0], c[1], cfg.carry_height], top_down_quat(yaw),
@@ -327,12 +365,12 @@ class ScriptedCell:
         R_tcp = self.d.site_xmat[self.arm.tcp_site].reshape(3, 3)
         rel = R_tcp.T @ (self.d.xpos[cube.body] - tcp)              # the cube in the hand
         R_rel = R_tcp.T @ self.d.xmat[cube.body].reshape(3, 3)
-        a = float(np.arctan2(spot[1], spot[0]))
+        a = self.angle_of(spot)
         # carry the lying cube over the spot first, so the hand turns sideways up high there
         # and never sweeps low past a tower (measured: it knocked rebuilt towers over)
         self.swing_to(a)
         self.move_joints(self._solve([spot[0], spot[1], cfg.carry_height], top_down_quat(yaw
-                         + a - float(np.arctan2(c[1], c[0]))), self.q_cmd))
+                         + a - self.angle_of(c)), self.q_cmd))
         return a, rel, R_rel
 
     def stand_held(self, cube: CubeIndices, spot, a: float, rel, R_rel, c) -> None:
@@ -383,7 +421,7 @@ class ScriptedCell:
         rest = CUBE_HEIGHT * (level + 0.5)
         tcp = self.d.site_xpos[self.arm.tcp_site]
         offset = tcp[2] - self.d.xpos[cube.body][2]   # cube centre below the TCP
-        yaw = self.carry_yaw(np.arctan2(xy[1], xy[0]))
+        yaw = self.carry_yaw(self.angle_of(xy))
         self.vertical(xy, rest + self.config.release_clearance + offset, yaw, track=cube.body)
         self.cell.detach(cube)  # the release itself is physical
         self.grip = GRIPPER_OPEN
@@ -395,7 +433,7 @@ class ScriptedCell:
         """From the carry posture over the reject bin: lower the cube into the bin's mouth, let
         go, and rise back."""
         xy = self.cell.reject_xy
-        yaw = self.carry_yaw(np.arctan2(xy[1], xy[0]))
+        yaw = self.carry_yaw(self.angle_of(xy))
         tcp = self.d.site_xpos[self.arm.tcp_site]
         offset = tcp[2] - self.d.xpos[cube.body][2]
         drop = self.cell.config.bin_height + 0.05 + CUBE_HEIGHT / 2  # cube bottom 5 cm over walls
@@ -658,7 +696,7 @@ class ScriptedCell:
                     k = near[0]
                     if log:
                         log(f"clearing the {colour_of(k)} cube away from the towers")
-                    self.swing_to(float(np.arctan2(xy[k][1], xy[k][0])))
+                    self.swing_to(self.angle_of(xy[k]))
                     self.source = "stage"
                     self.stage(cell.cubes[k], view.loose[k]["pose"], spot)
                     moved = self.d.xpos[cell.cubes[k].body][:2]
@@ -673,7 +711,7 @@ class ScriptedCell:
                 k = (ready or usable)[0]
                 if log:
                     log(f"recovering the {colour_of(k)} cube")
-                self.swing_to(float(np.arctan2(xy[k][1], xy[k][0])))
+                self.swing_to(self.angle_of(xy[k]))
                 self.source = "loose"
                 self.pick_loose(cell.cubes[k], view.loose[k]["pose"], spot)
                 if not cell.attached(cell.cubes[k]):
@@ -707,7 +745,7 @@ class ScriptedCell:
                     self.stats["taken_out_of_order"] += 1
                     if log:
                         log(f"took the {cell.cube_colour(cube)} cube, number {j + 1} on the belt")
-                    self.swing_to(float(np.arctan2(*self.d.xpos[cube.body][1::-1])))
+                    self.swing_to(self.angle_of(self.d.xpos[cube.body]))
             if cube is None or k in handled or (not batch_choice and cell.cubes.index(cube) != k):
                 if log:
                     log(f"cube {n} ({colour_of(n)}) did not arrive")

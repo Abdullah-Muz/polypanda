@@ -85,7 +85,7 @@ class LearnedCell(ScriptedCell):
         stack = self.nearest_stack(xy, exclude=cube)
         return {"order": self.order_index, "source": self.source, "pose": state["pose"],
                 "radius": float(np.hypot(xy[0], xy[1])),
-                "angle": float(np.degrees(np.arctan2(xy[1], xy[0]))),
+                "angle": float(np.degrees(self.angle_of(xy))),
                 "near": (None if stack is None
                          else float(np.hypot(stack[0] - xy[0], stack[1] - xy[1]))),
                 "loose_before": self._loose_others(cube), "t0": float(self.d.time)}
@@ -117,14 +117,14 @@ class LearnedCell(ScriptedCell):
         if self.grasp is None:
             return super().pick(cube)
         c = self.d.xpos[cube.body]
-        angle = float(np.arctan2(c[1], c[0]))
+        angle = self.angle_of(c)
         situation = self._situation(cube, c[:2].copy())
         q = self.home.copy()
         q[0] += angle
         self.move_joints(q, rate=1.0)
         self.step(5)  # settle, as the trained episodes start at rest
         env = self.grasp.env(self.cell, cube)
-        view = StationView(env, angle)
+        view = StationView(env, angle, origin=self.base_xy())
         obs, _ = view.reset()
         result = self._run_skill(self.grasp, env, view, obs)
         self.grip = GRIPPER_CLOSED if env.closed else GRIPPER_OPEN
@@ -187,7 +187,7 @@ class LearnedCell(ScriptedCell):
             self.pick(cube)
             if not self.cell.attached(cube):
                 return
-            yaw = self.carry_yaw(float(np.arctan2(c[1], c[0])))  # where pick's to_carry leaves it
+            yaw = self.carry_yaw(self.angle_of(c))  # where pick's to_carry leaves it
         else:
             held, c, yaw = self.grasp_lying(cube)
             if not held:
@@ -197,7 +197,7 @@ class LearnedCell(ScriptedCell):
             return self.stand_held(cube, spot, a, rel, R_rel, c)
         self.step(5)  # settle, as the trained episodes start at rest
         env = self.stander.env(self.cell, cube)
-        view = StationView(env, a)
+        view = StationView(env, a, origin=self.base_xy())
         tower = self.nearest_stack(spot, exclude=cube)
         obs, _ = view.reset(spot=(float(spot[0]), float(spot[1])), tower=tower)
         driver = CommandedPolicyDriver(self.stander.policy, self.stander.chooser or "critic")
@@ -258,10 +258,10 @@ class LearnedCell(ScriptedCell):
         xy = self._aim(xy, level)
         tcp = self.d.site_xpos[self.arm.tcp_site]
         offset = tcp[2] - self.d.xpos[cube.body][2]
-        angle = float(np.arctan2(xy[1], xy[0]))
+        angle = self.angle_of(xy)
         self.vertical(xy, rest + HANDOFF_GAP + offset, self.carry_yaw(angle), track=cube.body)
         env = self.placer.env(self.cell, cube)
-        view = StationView(env, angle)
+        view = StationView(env, angle, origin=self.base_xy())
         obs, _ = view.reset(target=(xy[0], xy[1], rest))
 
         def release():

@@ -23,8 +23,11 @@ from polypanda.environments import grasp, place, standup, transport
 LAYOUTS = {grasp.GraspEnv: grasp.OBS_LAYOUT, transport.TransportEnv: transport.OBS_LAYOUT,
            place.PlaceEnv: place.OBS_LAYOUT, standup.StandUpV3Env: standup.OBS_LAYOUT_V3}
 JOINT_FIELDS = ("q", "q_cmd")
-VECTOR_FIELDS = ("tcp", "cube_rel", "goal", "goal_error", "target", "target_error", "cube_up",
-                 "tower_rel", "tower_away")
+# Points in the world (positions): taken relative to the robot's base axis, then rotated.
+POINT_FIELDS = ("tcp", "goal", "target")
+# Offsets and directions: rotated only (they do not depend on where the base is).
+VECTOR_FIELDS = ("cube_rel", "goal_error", "target_error", "cube_up", "tower_rel",
+                 "tower_away")
 ROT6_FIELDS = ("tcp_rot6",)   # two world 3-vectors (the TCP rotation's first two columns)
 PLANAR_FIELDS = ("command",)  # a world direction in the table plane (cos, sin)
 
@@ -45,10 +48,13 @@ def _slices(layout) -> dict[str, slice]:
 
 
 class StationView:
-    """A skill env seen from a station at `angle` (rad) about the base axis."""
+    """A skill env seen from a station at `angle` (rad) about the base axis. `origin` is
+    where the base axis stands on the table: (0, 0) for the fixed cell; on a rail (v4) it
+    moves, and world points are taken relative to it before rotating."""
 
-    def __init__(self, env, angle: float) -> None:
+    def __init__(self, env, angle: float, origin=(0.0, 0.0)) -> None:
         self.env, self.angle = env, float(angle)
+        self.origin = np.array([float(origin[0]), float(origin[1]), 0.0])
         self.slices = _slices(_layout(env))
         c, s = np.cos(self.angle), np.sin(self.angle)
         self._to_frame = np.array([[c, s, 0.0], [-s, c, 0.0], [0.0, 0.0, 1.0]])  # Rz(-angle)
@@ -66,6 +72,8 @@ class StationView:
         for name, sl in self.slices.items():
             if name in JOINT_FIELDS:
                 o[sl.start] -= self.angle
+            elif name in POINT_FIELDS:
+                o[sl] = self._to_frame @ (o[sl] - self.origin)
             elif name in VECTOR_FIELDS:
                 o[sl] = self._to_frame @ o[sl]
             elif name in ROT6_FIELDS:
