@@ -42,6 +42,25 @@ def test_the_fixed_cell_is_built_without_machines_or_rail():
         assert mujoco.mj_name2id(cell.model, mujoco.mjtObj.mjOBJ_BODY, name) < 0
 
 
+def test_the_line_dressing_adds_no_mass_and_nothing_that_collides():
+    plain = Line.build_line(LineConfig(cell=WorkcellConfig(tower_angles=(-40.0,),
+                                                           dressing=False)))
+    dressed = Line.build_line(LineConfig())
+    # every moving body keeps its mass (the conveyor's frame and the boards are fixed to the
+    # world, where mass has no effect)
+    for name in ("belt_carrier", "link0", "link7", "hand", "M1_lid", "cube0"):
+        assert dressed.model.body(name).mass == pytest.approx(plain.model.body(name).mass)
+    m = dressed.model
+    for body in ("conveyor", "signA"):
+        assert m.body_jntnum[m.body(body).id] == 0 and m.body_parentid[m.body(body).id] == 0
+    for body in ("conveyor", "signA"):
+        b = m.body(body).id
+        extra = [g for g in range(m.ngeom) if m.geom_bodyid[g] == b
+                 and not m.geom(g).name.startswith("sign")]
+        assert all(m.geom_contype[g] == 0 and m.geom_conaffinity[g] == 0 for g in extra
+                   if m.geom(g).name != "belt")
+
+
 def test_the_machine_faces_the_robot_at_its_rail_stop():
     line = make_line()
     m1 = line.machines["M1"]

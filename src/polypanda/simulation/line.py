@@ -16,6 +16,7 @@ from dataclasses import dataclass, field
 import mujoco
 import numpy as np
 
+from polypanda.simulation.line_dressing import dress_line
 from polypanda.simulation.machine import Machine, MachineConfig, add_machine
 from polypanda.simulation.rail import RailConfig, RailIndices, add_rail
 from polypanda.simulation.scenes import CubeIndices
@@ -62,6 +63,8 @@ class LineConfig:
 def build_line_spec(cfg: LineConfig | None = None) -> mujoco.MjSpec:
     cfg = cfg or LineConfig()
     spec = build_workcell_spec(cfg.cell)
+    if cfg.cell.dressing:
+        dress_line(spec, cfg.cell)   # the line's industrial look (visual only)
     add_rail(spec, cfg.rail)
     for spot in cfg.machines:
         xy = cfg.station_xy(spot.stop, spot.angle) + np.asarray(spot.offset)
