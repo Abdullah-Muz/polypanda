@@ -90,4 +90,30 @@ uv run python scripts/make_door_sets.py --name door_stretch_v1 --seed 20261126 -
     - **Where the force comes from:** pushing a lid takes about 6 N. On opens the peak is the fingers meeting the bar (half the episodes, 41 N) or the lid meeting its stop (45 %, 37 N), and the reward's force penalty only started at 40 N. `feel_v2` peaks at 19 N on opens and 39 N on closes; the policy at 38 N on both. The gap is on opens only.
   - **The two changes (`configs/door_v2_r5.yaml`), both asking for a gentler arrival:** `reward.slam_margin` 0.03 → 0.05 (penalties from 0.10 m/s at the open stop; slams still counted at 0.15) and `reward.force_limit` 40 → 20 N (at which round 4's policy would pay 0.37 per open, more than its whole time penalty of 0.27; the rate per newton is unchanged). Observation, variation, focus, horizon and learning rates are round 4's. The policy has time to spend: 51 steps against the roughly 142 that T3 needs.
   - **A pilot first, because no round has changed the force limit before:** seed 0, 400k steps, the same config (`runs/door_v2_r5_pilot_seed0`). It is not a candidate policy. It is read on the training validation episodes and `door_dev_v1` for one question: do peak force and slams fall without success falling? The three seeds are launched only if they do.
+  - **Round 5's outcome (`1d7b399`):** every seed's round 5 final checkpoint passes T1 on `door_dev_v1` (399, 394 and 400 of 400; worst cells 98, 91 and 100 %), so the fallback does not apply. The pilot passed its check first (396/400, 34 N, 2 slams).
 - **The one-shot run** on `door_final_v1` happens once, after the lock commit names the policy, the seeds and the baselines' versions.
+
+## The lock (2026-11-24, approved by the user)
+
+Committed before anything has been run on `door_final_v1`. That set is as created in `bed1e4f` (digest `1bf1bd3f850f`, file sha256 `0589d4c29a4f46db…`), and no result on it exists.
+
+- **The policy:** each seed's round 5 final checkpoint, all three seeds, trained at `d3b085c` (task `door_v2`):
+
+  | Seed | Run | `final_model.zip` sha256 | `final_vecnormalize.pkl` sha256 |
+  |---|---|---|---|
+  | 0 | `runs/door_v2_bc_ppo_r5_seed0@final` | `08ce989d544a5902…` | `36d430d7706734ed…` |
+  | 1 | `runs/door_v2_bc_ppo_r5_seed1@final` | `cbad1f0c4e2852ad…` | `0f5538d1b08ef5e2…` |
+  | 2 | `runs/door_v2_bc_ppo_r5_seed2@final` | `dd06a82662ac3e51…` | `950bfce8a568aade…` |
+
+- **The baselines,** at this commit: `feel_v2` (T3, T4), `camera` (T2) and `nominal` (reported).
+- **What to expect, from `door_dev_v1` (flattering after five rounds of development on it):** T1 met on every seed (seed 1's worst cell 91 %, close to the bar), T2 met, T3 met (99.4 vs 98.2 %, 71 % fewer steps), T4 missed: median peak force 31.0 vs 25.4 N, and seed 2's slams 5/400. `scripts/door_final_report.py` run on the dev results gives exactly this.
+- **The run, once:** six evaluations, then the report. The evaluation is deterministic (each episode's noise is seeded by its index), so a job that crashes for a reason outside the policy (out of memory, a WSL restart) is rerun with the same command; nothing else is ever rerun.
+
+  ```
+  for s in 0 1 2; do uv run python scripts/evaluate_door.py --policy run:runs/door_v2_bc_ppo_r5_seed$s@final --set eval_sets/door_final_v1.json --jobs 6; done
+  for b in feel_v2 camera nominal; do uv run python scripts/evaluate_door.py --policy $b --set eval_sets/door_final_v1.json --jobs 6; done
+  uv run python scripts/door_final_report.py --policy 'runs_door_v2_bc_ppo_r5_seed{}_final' --seeds 0 1 2 --feel feel_v2 --set door_final_v1
+  ```
+
+- **The scoring** is `scripts/door_final_report.py` (tests: `tests/test_door_final_report.py`), committed here: each target as worded above; "pooled" means all three seeds' episodes, each scripted baseline's single run paired with every seed by episode; T2 is an exact two-sided McNemar test, and the policy must also be the better one.
+- **Whatever the result,** it is the v4.0 door result, reported as it comes, misses included. T5 (the learned door in the line, reported with no bar) follows separately.
