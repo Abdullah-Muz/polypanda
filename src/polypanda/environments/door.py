@@ -312,7 +312,8 @@ class DoorEnv(gym.Env):
                 raise ValueError("a shared scene needs its machine's runtime")
             self.model, self.data = scene
             self.machine, self.layout = machine, None
-            self.frame = 0.0    # (noise is isotropic; only the own scene's frame matters)
+            self.frame = 0.0    # until set_station() (StationView does it)
+        self.base = np.zeros(3)  # where the robot's base axis stands (a rail, v4: set_station)
         m = self.model
         self.arm = PandaIndices.from_model(m)
         self.adapter = make_action_adapter(m, self.arm, self.config.action)
@@ -455,13 +456,19 @@ class DoorEnv(gym.Env):
 
     def _continue(self, options: dict):
         """Start from the scene as it is (a skill inside a larger task): option "command"
-        ("open" or "close"). The camera's error is drawn now."""
+        ("open" or "close"). The camera's error is drawn now, unless options "handle_bias" (m,
+        3 values in the station frame) and "bar_yaw_bias" (rad) give it (they are drawn anyway, so
+        the random stream does not depend on them)."""
         command = options.get("command", "open")
         if command not in COMMANDS:
             raise ValueError(f"command must be one of {COMMANDS}, not {command!r}")
         n = self.config.sensing
         bias = tuple(float(x) for x in self.np_random.normal(0.0, n.handle_bias, 3))
         yaw_bias = float(self.np_random.normal(0.0, n.bar_yaw_bias))
+        if options.get("handle_bias") is not None:
+            bias = tuple(float(x) for x in options["handle_bias"])
+        if options.get("bar_yaw_bias") is not None:
+            yaw_bias = float(options["bar_yaw_bias"])
         mujoco.mj_forward(self.model, self.data)
         self._begin(command, bias, yaw_bias)
         self.episode = None
@@ -498,6 +505,17 @@ class DoorEnv(gym.Env):
     def _reset_info(self, start: str) -> dict:
         return {"episode": self.episode, "start": start, "command": self.command,
                 "needed": self.needed, "lid": self.machine.lid}
+
+    def set_station(self, angle: float, base=(0.0, 0.0)) -> None:
+        """The station this env's machine stands at: its angle (rad) about the robot's base axis
+        and where that axis stands on the table (a robot on a rail). StationView sets it, so that
+        in a shared scene (the line) the scripts' beliefs (BaselineDoor._station, the nominal
+        handle) and the camera's errors are drawn in the right frame, and the hand target is
+        reported in the world (CartesianActionAdapter.set_base)."""
+        self.frame = float(angle)
+        self.base = np.array([float(base[0]), float(base[1]), 0.0])
+        self.adapter.set_frame(self.frame)
+        self.adapter.set_base(base)
 
     # --- measurements --------------------------------------------------------------------
     def _frame_vec(self, v: np.ndarray) -> np.ndarray:
