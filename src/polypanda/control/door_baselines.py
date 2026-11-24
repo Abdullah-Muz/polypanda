@@ -81,7 +81,8 @@ class BaselineDoor(DoorExpert):
             q = 0.0 if env.command == "open" else travel - self.open_margin
             centre = np.array([env.config.scene.radius, 0.0, 0.0]) + cfg.handle_centre(q)
             c, s = np.cos(env.frame), np.sin(env.frame)
-            handle = np.array([[c, -s, 0.0], [s, c, 0.0], [0.0, 0.0, 1.0]]) @ centre
+            handle = (np.array([[c, -s, 0.0], [s, c, 0.0], [0.0, 0.0, 1.0]]) @ centre
+                      + env.base)                     # about the base axis (on a rail it moves)
             axis = -tangent                                  # right: the machine's -y
         else:
             handle = env._seen_handle.copy()                 # the camera's estimate

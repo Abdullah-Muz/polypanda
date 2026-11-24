@@ -959,13 +959,14 @@ class StandUpV3Env(StandUpV2Env):
             self._shield_scale = 1.0
             return
         ad = self.adapter
-        saved = (ad.q_cmd.copy(), ad.target_pos.copy(), ad.target_R.copy(),
+        # (the base-relative target: exact on a rail too, where target_pos adds the base)
+        saved = (ad.q_cmd.copy(), ad._target.copy(), ad.target_R.copy(),
                  ad._velocity_step.copy())
         ref = self._arm_gap_at(saved[0])
         a = np.clip(np.asarray(a, dtype=np.float64), -1.0, 1.0)
 
         def attempt(b: np.ndarray) -> float:
-            ad.q_cmd, ad.target_pos, ad.target_R, ad._velocity_step = (
+            ad.q_cmd, ad._target, ad.target_R, ad._velocity_step = (
                 saved[0].copy(), saved[1].copy(), saved[2].copy(), saved[3].copy())
             return self._arm_gap_at(ad.apply(self.data, b))
 

@@ -231,13 +231,23 @@ class CartesianActionAdapter:
         self.ik_iters, self.posture_gain = ik_iters, posture_gain
         self.max_accel = max_accel
         self.frame = 0.0  # station frame angle (rad); see set_frame()
+        self.base = np.zeros(3)  # where the base axis stands in the world; see set_base()
         self._velocity_step = np.zeros(3)  # last step's target displacement (m)
         self.low, self.high = model.actuator_ctrlrange[idx.arm_actuators].T.copy()
         self.ik = PoseIK()
         self.q_home = self.ik.data.qpos[self.ik.idx.arm_qpos].copy()  # PoseIK starts at home
         self.q_cmd = np.zeros(ACTION_DIM)
-        self.target_pos = np.zeros(3)
+        self._target = np.zeros(3)  # the target position relative to the base (PoseIK's frame)
         self.target_R = np.eye(3)
+
+    @property
+    def target_pos(self) -> np.ndarray:
+        """The target TCP position in the world (the base-relative target plus the base)."""
+        return self._target + self.base
+
+    @target_pos.setter
+    def target_pos(self, value) -> None:
+        self._target = np.asarray(value, dtype=float) - self.base
 
     @property
     def control_dt(self) -> float:
@@ -255,6 +265,13 @@ class CartesianActionAdapter:
         frame and turned into the world, and the box and lead bounds hold in it."""
         self.frame = float(angle)
 
+    def set_base(self, xy) -> None:
+        """Where the base axis stands on the table (a robot on a rail, v4): the IK, the box and
+        the lead bound work relative to the base, as before; target_pos is reported in the world
+        (base-relative target + base), so it can be compared with the measured TCP. The default
+        (0, 0) is the fixed robot, and changes nothing."""
+        self.base = np.array([float(xy[0]), float(xy[1]), 0.0])
+
     def _frame_rotations(self) -> tuple[np.ndarray, np.ndarray]:
         c, s = np.cos(self.frame), np.sin(self.frame)
         from_frame = np.array([[c, -s, 0.0], [s, c, 0.0], [0.0, 0.0, 1.0]])
@@ -262,7 +279,7 @@ class CartesianActionAdapter:
 
     def _sync_target(self) -> None:
         """Target pose := the pose the joint targets command (no lead, so nothing jumps)."""
-        self.target_pos, self.target_R = self.ik.forward(self.q_cmd)
+        self._target, self.target_R = self.ik.forward(self.q_cmd)
         self._velocity_step = np.zeros(3)  # start from rest
 
     def reset_to_measured(self, data: mujoco.MjData) -> None:
@@ -293,13 +310,14 @@ class CartesianActionAdapter:
             norm = float(np.linalg.norm(dv))
             if norm > limit:
                 move = self._velocity_step + dv * (limit / norm)
-        # The lead and box bounds hold in the station frame (identity unless set_frame()).
-        pos = to_frame @ (self.target_pos + move)
+        # The lead and box bounds hold in the station frame (identity unless set_frame()),
+        # relative to the base (as the IK; see set_base()).
+        pos = to_frame @ (self._target + move)
         com = to_frame @ commanded
         pos = np.clip(pos, com - self.max_lead, com + self.max_lead)
         pos = from_frame @ np.clip(pos, self.box_low, self.box_high)
-        self._velocity_step = pos - self.target_pos
-        self.target_pos = pos
+        self._velocity_step = pos - self._target
+        self._target = pos
         if self.dof in (3, 4):
             yaw = self.max_rot * a[3] if self.dof == 4 else 0.0
             R = _rotation(np.array([0.0, 0.0, yaw])) @ self.target_R
@@ -318,7 +336,7 @@ class CartesianActionAdapter:
         home[0] += self.frame  # the home posture faces the station
         for k in range(self.ik_iters):
             posture = self.posture_gain * (home - q) if k == 0 else None
-            q = np.clip(q + ik.step(q, self.target_pos, quat, posture), ik.q_low, ik.q_high)
+            q = np.clip(q + ik.step(q, self._target, quat, posture), ik.q_low, ik.q_high)
         return q
 
     def step(self, data: mujoco.MjData, action: np.ndarray) -> np.ndarray:

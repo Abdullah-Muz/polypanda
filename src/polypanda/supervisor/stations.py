@@ -61,8 +61,12 @@ class StationView:
         self.slices = _slices(_layout(env))
         c, s = np.cos(self.angle), np.sin(self.angle)
         self._to_frame = np.array([[c, s, 0.0], [-s, c, 0.0], [0.0, 0.0, 1.0]])  # Rz(-angle)
-        if hasattr(env.adapter, "set_frame"):
+        if hasattr(env, "set_station"):  # the door: its scripts' frame too (DoorEnv.set_station)
+            env.set_station(self.angle, self.origin[:2])
+        elif hasattr(env.adapter, "set_frame"):
             env.adapter.set_frame(self.angle)
+        if hasattr(env.adapter, "set_base"):  # the hand target in the world, IK from the base
+            env.adapter.set_base(self.origin[:2])
         if hasattr(env, "obs_transform"):  # env-side scoring (a turn chooser) sees this view too
             env.obs_transform = self.observe
 
