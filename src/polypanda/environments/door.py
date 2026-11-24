@@ -74,7 +74,8 @@ one control step. The action schema is ACTION_SCHEMA.
 - penalties: `force` per newton of the estimated force above force_limit; `collision` per step
   the arm touches the machine's body (walls, roof, pocket) or the bench; `slam` per m/s the lid
   hits a stop faster than allowed (outward 0.15, closing 0.3 m/s: a latch needs at most 0.1),
-  plus `slam_hit` once per such hit;
+  plus `slam_hit` once per such hit (both paid from `slam_margin` below the allowed speeds, a
+  training margin; the slams counted in stats are those over the allowed speeds);
   `stop_press` per step the arm pushes harder than stop_force while the lid sits at a stop;
   `time` per step; `action` x |hand action|^2.
 Terms that belong to one phase (approach, touch before the goal; retreat after it) are paid only
@@ -236,6 +237,10 @@ class DoorRewardConfig:
     slam_close_speed: float = 0.3    # m/s allowed at the closed stop
     slam_hit: float = 0.0            # once per slam, however slight (dev round 1's opens hit the
     #                                  open stop at 0.152-0.224 m/s: 20 per m/s cost them < 1.5)
+    slam_margin: float = 0.0         # m/s: slam and slam_hit are paid from this much below the
+    #                                  allowed speeds (a training margin, dev round 3: round 2's
+    #                                  slams were 0.151-0.205 m/s); stats["slams"] still counts
+    #                                  hits over the allowed speeds themselves
     stop_press: float = 0.05         # per step pushing harder than stop_force at a stop
     stop_force: float = 25.0         # N
     time: float = 0.005              # per step
@@ -683,11 +688,12 @@ class DoorEnv(gym.Env):
         q, q_prev = now["lid"], prev["lid"]
         dt = self.adapter.control_dt
         travel = self.machine.cfg.travel
-        slam = 0.0
+        over = -np.inf                     # m/s the lid hits a stop over the allowed speed
         if q >= travel - 0.001 > q_prev:
-            slam = max(0.0, (q - q_prev) / dt - r.slam_open_speed)
+            over = (q - q_prev) / dt - r.slam_open_speed
         elif q <= 0.001 < q_prev:
-            slam = max(0.0, (q_prev - q) / dt - r.slam_close_speed)
+            over = (q_prev - q) / dt - r.slam_close_speed
+        slam = max(0.0, over + r.slam_margin)   # penalized from slam_margin below the allowed
         f = float(np.linalg.norm(force))
         at_stop = q >= travel - 0.001 or q <= 0.001
         terms = {
@@ -714,7 +720,7 @@ class DoorEnv(gym.Env):
             terms["success"] = r.success
         st = self.stats
         st["collision_steps"] += hit
-        st["slams"] += slam > 0
+        st["slams"] += over > 0                 # counted at the allowed speed itself
         st["peak_force"] = max(st["peak_force"], f)
         st["touched"] |= any(self._contacts)
         st["goal_reached"] |= now["goal"]

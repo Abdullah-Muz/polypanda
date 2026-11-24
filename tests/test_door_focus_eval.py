@@ -62,6 +62,31 @@ def test_a_slam_costs_slam_hit_once_on_top():
     assert info["reward_terms"]["slam"] == pytest.approx(-r.slam * excess - 2.0)
 
 
+@pytest.mark.parametrize(("gap", "speed", "counted"), [(0.02, 0.8, True), (0.002, 0.05, False)])
+def test_the_slam_margin_is_paid_but_not_counted(gap, speed, counted):
+    """With a margin the penalty starts below the allowed speed; the slams counted in stats (and
+    so in evaluation) are still the hits over the allowed speed itself."""
+    margin = 1.0                                    # (every hit is penalized)
+    env = DoorEnv(DoorConfig(reward=DoorRewardConfig(slam_hit=2.0, slam_margin=margin)))
+    ep = env.draw_episode(np.random.default_rng(0), "open")
+    ep |= {"slide": "out", "travel": 0.27, "spring": 0.0, "friction": 0.2, "damping": 1.0}
+    env.reset(seed=0, options={"episode": ep})
+    m = env.machine
+    env.data.qpos[m.lid_qpos] = 0.27 - gap
+    env.data.qvel[m.lid_dof] = speed
+    mujoco.mj_forward(env.model, env.data)
+    env._prev = env._potentials()
+    q_prev = m.lid
+    a = np.zeros(5, dtype=np.float32)
+    a[4] = -1.0
+    _, _, _, _, info = env.step(a)
+    r, dt = env.config.reward, env.adapter.control_dt
+    assert info["lid"] >= 0.27 - 0.001                # it hit the stop
+    over = (info["lid"] - q_prev) / dt - r.slam_open_speed
+    assert (over > 0) == counted and info["stats"]["slams"] == int(counted)
+    assert info["reward_terms"]["slam"] == pytest.approx(-r.slam * (over + margin) - 2.0)
+
+
 def test_fixed_episodes_replay_the_same_machines_and_log_each():
     env = FixedEpisodes(DoorEnv(replace(DoorConfig(), horizon=3)), n=4, seed=123)
     a = np.zeros(5, dtype=np.float32)
@@ -94,3 +119,8 @@ def test_train_config_reads_eval_fixed_episodes():
     assert cfg.eval_fixed_episodes and cfg.init_from == "runs/door_v1_bc_ppo_seed{seed}"
     env_cfg = DoorConfig.from_yaml(cfg.env_config)
     assert env_cfg.focus.cells == ("open/out/spring",) and env_cfg.reward.slam_hit > 0
+    r3 = TrainConfig.from_yaml("configs/door_v1_bc_ppo_r3.yaml")
+    assert r3.init_from == "runs/door_v1_bc_ppo_r2_seed{seed}" and r3.eval_fixed_episodes
+    env3 = DoorConfig.from_yaml(r3.env_config)
+    assert env3.reward.slam_margin == pytest.approx(0.03)
+    assert env3.reward.slam_open_speed == 0.15 and env3.focus == env_cfg.focus
