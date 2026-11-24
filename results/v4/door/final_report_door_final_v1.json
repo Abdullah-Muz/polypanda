@@ -1,0 +1,373 @@
+{
+ "set": "door_final_v1",
+ "set_digest": "1bf1bd3f850f",
+ "policy": {
+  "0": "run:runs/door_v2_bc_ppo_r5_seed0@final",
+  "1": "run:runs/door_v2_bc_ppo_r5_seed1@final",
+  "2": "run:runs/door_v2_bc_ppo_r5_seed2@final"
+ },
+ "git": {
+  "0": {
+   "commit": "0cf6f2b1adee46bff40c73b1ddc2373a3779d2eb",
+   "dirty": false
+  },
+  "1": {
+   "commit": "0cf6f2b1adee46bff40c73b1ddc2373a3779d2eb",
+   "dirty": false
+  },
+  "2": {
+   "commit": "0cf6f2b1adee46bff40c73b1ddc2373a3779d2eb",
+   "dirty": false
+  }
+ },
+ "baselines": {
+  "feel": {
+   "policy": "feel_v2",
+   "git": {
+    "commit": "0cf6f2b1adee46bff40c73b1ddc2373a3779d2eb",
+    "dirty": false
+   },
+   "summary": {
+    "n": 400,
+    "success": 393,
+    "rate": 0.9825,
+    "wilson95": [
+     0.9643224844820973,
+     0.9914978173392109
+    ],
+    "cells": {
+     "close/left/plain": {
+      "success": 37,
+      "n": 37,
+      "rate": 1.0
+     },
+     "close/left/spring": {
+      "success": 33,
+      "n": 33,
+      "rate": 1.0
+     },
+     "close/out/plain": {
+      "success": 33,
+      "n": 33,
+      "rate": 1.0
+     },
+     "close/out/spring": {
+      "success": 24,
+      "n": 24,
+      "rate": 1.0
+     },
+     "close/right/plain": {
+      "success": 36,
+      "n": 36,
+      "rate": 1.0
+     },
+     "close/right/spring": {
+      "success": 32,
+      "n": 37,
+      "rate": 0.8648648648648649
+     },
+     "open/left/plain": {
+      "success": 36,
+      "n": 37,
+      "rate": 0.972972972972973
+     },
+     "open/left/spring": {
+      "success": 28,
+      "n": 28,
+      "rate": 1.0
+     },
+     "open/out/plain": {
+      "success": 35,
+      "n": 35,
+      "rate": 1.0
+     },
+     "open/out/spring": {
+      "success": 34,
+      "n": 35,
+      "rate": 0.9714285714285714
+     },
+     "open/right/plain": {
+      "success": 33,
+      "n": 33,
+      "rate": 1.0
+     },
+     "open/right/spring": {
+      "success": 32,
+      "n": 32,
+      "rate": 1.0
+     }
+    },
+    "worst_cell_rate": 0.8648648648648649,
+    "steps_to_success_median": 177.0,
+    "peak_force_median": 25.61,
+    "slam_episodes": 0,
+    "failures": {
+     "close/right/not_closed": 5,
+     "open/left/not_opened": 1,
+     "open/out/not_opened": 1
+    }
+   }
+  },
+  "camera": {
+   "policy": "camera",
+   "git": {
+    "commit": "0cf6f2b1adee46bff40c73b1ddc2373a3779d2eb",
+    "dirty": false
+   },
+   "summary": {
+    "n": 400,
+    "success": 183,
+    "rate": 0.4575,
+    "wilson95": [
+     0.40931270985864554,
+     0.5064958645923273
+    ],
+    "cells": {
+     "close/left/plain": {
+      "success": 0,
+      "n": 37,
+      "rate": 0.0
+     },
+     "close/left/spring": {
+      "success": 0,
+      "n": 33,
+      "rate": 0.0
+     },
+     "close/out/plain": {
+      "success": 27,
+      "n": 33,
+      "rate": 0.8181818181818182
+     },
+     "close/out/spring": {
+      "success": 17,
+      "n": 24,
+      "rate": 0.7083333333333334
+     },
+     "close/right/plain": {
+      "success": 20,
+      "n": 36,
+      "rate": 0.5555555555555556
+     },
+     "close/right/spring": {
+      "success": 11,
+      "n": 37,
+      "rate": 0.2972972972972973
+     },
+     "open/left/plain": {
+      "success": 0,
+      "n": 37,
+      "rate": 0.0
+     },
+     "open/left/spring": {
+      "success": 0,
+      "n": 28,
+      "rate": 0.0
+     },
+     "open/out/plain": {
+      "success": 35,
+      "n": 35,
+      "rate": 1.0
+     },
+     "open/out/spring": {
+      "success": 32,
+      "n": 35,
+      "rate": 0.9142857142857143
+     },
+     "open/right/plain": {
+      "success": 33,
+      "n": 33,
+      "rate": 1.0
+     },
+     "open/right/spring": {
+      "success": 8,
+      "n": 32,
+      "rate": 0.25
+     }
+    },
+    "worst_cell_rate": 0.0,
+    "steps_to_success_median": 187.0,
+    "peak_force_median": 19.665,
+    "slam_episodes": 0,
+    "failures": {
+     "close/left/not_closed": 70,
+     "close/out/closed_not_latched": 13,
+     "close/right/closed_not_latched": 15,
+     "close/right/not_closed": 27,
+     "open/left/not_opened": 65,
+     "open/out/not_opened": 3,
+     "open/right/not_opened": 24
+    }
+   }
+  },
+  "nominal": {
+   "policy": "nominal",
+   "git": {
+    "commit": "0cf6f2b1adee46bff40c73b1ddc2373a3779d2eb",
+    "dirty": false
+   },
+   "summary": {
+    "n": 400,
+    "success": 69,
+    "rate": 0.1725,
+    "wilson95": [
+     0.13863464284363428,
+     0.21259613674915653
+    ],
+    "cells": {
+     "close/left/plain": {
+      "success": 0,
+      "n": 37,
+      "rate": 0.0
+     },
+     "close/left/spring": {
+      "success": 0,
+      "n": 33,
+      "rate": 0.0
+     },
+     "close/out/plain": {
+      "success": 0,
+      "n": 33,
+      "rate": 0.0
+     },
+     "close/out/spring": {
+      "success": 0,
+      "n": 24,
+      "rate": 0.0
+     },
+     "close/right/plain": {
+      "success": 15,
+      "n": 36,
+      "rate": 0.4166666666666667
+     },
+     "close/right/spring": {
+      "success": 25,
+      "n": 37,
+      "rate": 0.6756756756756757
+     },
+     "open/left/plain": {
+      "success": 0,
+      "n": 37,
+      "rate": 0.0
+     },
+     "open/left/spring": {
+      "success": 0,
+      "n": 28,
+      "rate": 0.0
+     },
+     "open/out/plain": {
+      "success": 0,
+      "n": 35,
+      "rate": 0.0
+     },
+     "open/out/spring": {
+      "success": 0,
+      "n": 35,
+      "rate": 0.0
+     },
+     "open/right/plain": {
+      "success": 19,
+      "n": 33,
+      "rate": 0.5757575757575758
+     },
+     "open/right/spring": {
+      "success": 10,
+      "n": 32,
+      "rate": 0.3125
+     }
+    },
+    "worst_cell_rate": 0.0,
+    "steps_to_success_median": 152.0,
+    "peak_force_median": 8.775,
+    "slam_episodes": 0,
+    "failures": {
+     "close/left/never_touched": 60,
+     "close/left/not_closed": 10,
+     "close/out/never_touched": 57,
+     "close/right/closed_not_latched": 19,
+     "close/right/not_closed": 14,
+     "open/left/not_opened": 65,
+     "open/out/never_touched": 1,
+     "open/out/not_opened": 69,
+     "open/right/not_opened": 36
+    }
+   }
+  }
+ },
+ "T1": {
+  "0": true,
+  "1": true,
+  "2": true,
+  "pass": true
+ },
+ "per_seed": {
+  "0": {
+   "success": 400,
+   "n": 400,
+   "rate": 1.0,
+   "worst_cell": "open/right/spring",
+   "worst_cell_rate": 1.0,
+   "slam_episodes": 1,
+   "slam_rate": 0.0025,
+   "failures": []
+  },
+  "1": {
+   "success": 398,
+   "n": 400,
+   "rate": 0.995,
+   "worst_cell": "open/left/spring",
+   "worst_cell_rate": 0.9642857142857143,
+   "slam_episodes": 2,
+   "slam_rate": 0.005,
+   "failures": [
+    "close/left/plain:closed_not_latched",
+    "open/left/spring:not_opened"
+   ]
+  },
+  "2": {
+   "success": 397,
+   "n": 400,
+   "rate": 0.9925,
+   "worst_cell": "open/right/spring",
+   "worst_cell_rate": 0.90625,
+   "slam_episodes": 3,
+   "slam_rate": 0.0075,
+   "failures": [
+    "open/right/spring:not_opened",
+    "open/right/spring:not_opened",
+    "open/right/spring:not_opened"
+   ]
+  }
+ },
+ "T2": {
+  "learned": 0.9958333333333333,
+  "camera": 0.4575,
+  "only_first": 647,
+  "only_second": 1,
+  "p_value": 1.1113158339894169e-192,
+  "pass": true
+ },
+ "T3": {
+  "learned": 0.9958333333333333,
+  "feel": 0.9825,
+  "points_below_feel": -1.3333333333333308,
+  "both_complete": 1174,
+  "median_steps_learned": 49.0,
+  "median_steps_feel": 177.0,
+  "shorter_by": 0.7231638418079096,
+  "success_pass": true,
+  "speed_pass": true,
+  "pass": true
+ },
+ "T4": {
+  "peak_force_median_learned": 30.855,
+  "peak_force_median_feel": 25.61,
+  "force_pass": false,
+  "slams_pass_per_seed": {
+   "0": true,
+   "1": true,
+   "2": true
+  },
+  "slams_pass": true,
+  "pass": false
+ }
+}
