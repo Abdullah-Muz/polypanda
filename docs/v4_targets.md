@@ -135,3 +135,13 @@ Run once from `0cf6f2b` (no uncommitted changes) at 14:40, after the lock was pu
 - **T3 met:** 1.3 points above the feel script; median 49 against 177 steps on the 1174 episode pairs both complete, 72 % shorter.
 - **T4 missed:** the median peak force is 30.9 N against the feel script's 25.6 N (opens 29.7 against 20.6 N, closes 31.9 against 38.7 N). Its slam bar is met on every seed (1, 2 and 3 of 400).
 - **Against the forecast written in the lock:** as expected, except that the slam bar, expected to be missed on seed 2, was met.
+
+## T5: the door in the line, how it is run (fixed 2026-11-24, before any T5 run on `door_final_v1`)
+
+Reported with no bar, as the targets say. Code: `src/polypanda/evaluation/line_door.py`, `scripts/evaluate_line_door.py`, tests `tests/test_line_door.py`; a smoke test on 6 `door_dev_v1` machines passed for every actor below (learned seed 0 6/6, `feel_v2` 6/6, `camera` 4/6, `line_camera` 1/6).
+
+- **Machines:** the first 100 episodes of `door_final_v1`. Each is rebuilt as the line's M1 at its rail stop (−0.6 m, station angle −90°): the episode's layout (slide, travel, friction, damping, spring, handle offset, shift and height, latch speed), its offset on the bench (given in the station frame) and its turn. Its camera errors are those of the episode.
+- **The cycle, the same for every actor:** the robot starts at rail stop 0 in its carry posture, a raw part on the bench at M1's stop; it drives to M1, **opens the lid**, picks the part, loads it into the pocket, **closes the lid**. **Success = the machine is running at the end** (part seated, lid latched). Driving, picking and loading are the line's scripted moves with the same camera estimate of the machine for every actor (`evaluation/tending.camera_belief`, seeded by the episode); only the door changes.
+- **Door actors:** the locked learned policy (`runs/door_v2_bc_ppo_r5_seed{0,1,2}@final`, each seed), `feel_v2` and `camera` (the door scripts of the targets), each run through the door env on the line's scene from M1's station with the env's horizon of 300 steps per move; and `line_camera`, the line's own camera-aware door move (Phase 1's script), as a reference.
+- **Reported:** per actor, machines running out of 100 with a 95 % Wilson interval and failures by stage; the learned policy pooled over its 3 seeds against each script with an exact McNemar test on the same machines; door-move steps, peak force and slams; the cycle's simulated time.
+- **Run once,** like the one-shot: `for a in run:runs/door_v2_bc_ppo_r5_seed{0,1,2}@final feel_v2 camera line_camera; do uv run python scripts/evaluate_line_door.py --actor $a --set eval_sets/door_final_v1.json --n 100 --jobs 6; done`.
