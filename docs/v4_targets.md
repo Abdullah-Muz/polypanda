@@ -170,3 +170,16 @@ A second line run, motivated by T5's result and reported next to it, not instead
 - **Actors and report:** as T5: the locked learned policy (seeds 0–2), `feel_v2`, `camera`, `line_camera`; machines running out of 100 with Wilson intervals, the learned policy pooled against each script (exact McNemar), door moves and cycle time.
 - **Run once:** `for a in run:runs/door_v2_bc_ppo_r5_seed{0,1,2}@final feel_v2 camera line_camera; do uv run python scripts/evaluate_line_door.py --actor $a --set eval_sets/door_final_v1.json --start-index 100 --n 100 --handover door_start --jobs 6; done`.
 - **Expected, from 36 hard `door_dev_v1` machines (seed 0):** the learned door's opens 26 → 35 of 36 with the hand-over; so roughly 90 % or more of machines running. Not a bar.
+
+### T5b as it came (2026-11-24, run once at `d023123` from 15:31)
+
+| Machines 100–199 of `door_final_v1`, door handed over at its trained start | Machine running | Opens / closes done | Median door move | Median cycle |
+|---|---|---|---|---|
+| Learned, seeds 0 / 1 / 2 | **96 / 96 / 94** (pooled 95.3 %) | 100/100, 100/100, 98/98 | 48–50 steps | 31.3 s |
+| `feel_v2` | **94** (88–97) | 98 / 100 | 176 steps | 44.6 s |
+| `camera` | 40 (31–50) | 54 / 52 | 152 steps | 49.2 s |
+| `line_camera` (reference; its own move, not handed over) | 19 (13–28) | (its own move) | | 36.8 s |
+
+- **The learned door is level with `feel_v2` in the full cycle** (pooled 95.3 against 94.0 %; 6 machines only it got running, 2 only the script; exact McNemar p = 0.29), and every cycle is about 13 s shorter (31 against 45 s). It is far ahead of `camera` (167 / 1, p = 9e-49) and `line_camera` (230 / 1, p = 1e-67).
+- **Not the door:** machines 130, 144, 172 and 184 end with the part not seated for every learned seed and for `feel_v2`, whose doors opened and closed there. All four lids slide left; it is the line's scripted load, not the door. Beyond them, seed 2 and `feel_v2` each left 2 lids not opened (176, 181; 190, 194); seeds 0 and 1 opened and closed every lid.
+- **Against T5:** with the hand-over at its trained start the learned door went from 67 % (machines 0–99) to 95 % (machines 100–199), and `feel_v2` from 89 to 94 %: the high hand-over had cost the script too, less.
