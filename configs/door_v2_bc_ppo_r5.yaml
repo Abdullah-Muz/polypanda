@@ -1,0 +1,38 @@
+# v4.0 door skill, dev round 5 (docs/v4_targets.md; approved 2026-11-24): PPO on task door_v2 with
+# configs/door_v2_r5.yaml (round 4's env; slam margin 0.05, force limit 20 N), warm-started from
+# round 4's best checkpoint (runs/door_v2_bc_ppo_r4_seed{seed}, as each round starts from the
+# previous round's best). Otherwise as rounds 3-4: lr 5e-5 -> 1e-5, 2M steps, validation on the
+# same 200 episodes every 100k steps, per cell. The seed's policy = this run's FINAL checkpoint,
+# unless the fallback of docs/v4_targets.md applies (then round 4's final).
+algorithm: ppo
+task: door_v2
+env_config: configs/door_v2_r5.yaml
+seed: 0
+n_envs: 8
+vec_env: subproc
+total_timesteps: 2000000
+normalize_obs: true
+normalize_reward: true
+eval_freq: 100000
+eval_episodes: 200
+eval_seed: 100000
+eval_fixed_episodes: true
+checkpoint_freq: 250000
+torch_threads: 1
+init_from: runs/door_v2_bc_ppo_r4_seed{seed}
+init_checkpoint: best
+
+ppo:
+  learning_rate: 0.00005
+  learning_rate_final: 0.00001
+  n_steps: 512
+  batch_size: 256
+  n_epochs: 10
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_range: 0.2
+  ent_coef: 0.005
+  vf_coef: 0.5
+  max_grad_norm: 0.5
+  net_arch: [256, 256]
+  log_std_init: 0.0
