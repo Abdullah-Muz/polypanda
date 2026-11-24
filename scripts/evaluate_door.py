@@ -1,8 +1,9 @@
 """v4.0: evaluate a door policy on a committed door set (docs/v4_targets.md).
 
-Policies: the scripted baselines `nominal`, `camera`, `feel` (control/door_baselines.py), the
-privileged `expert` (control/scripted_door.py, an upper reference), or a trained run
-(`run:<path>` with its best model; `run:<path>@final` for the final one).
+Policies: the scripted baselines `nominal`, `camera`, `feel`, `feel_v2` (feel plus the door-open
+switch; control/door_baselines.py), the privileged `expert` (control/scripted_door.py, an upper
+reference), or a trained run (`run:<path>` with its best model; `run:<path>@final` for the final
+one), run on the environment of its task (door: DoorEnv, door_v2: DoorV2Env).
 
 Usage:
   uv run python scripts/evaluate_door.py --policy feel --set eval_sets/door_dev_v1.json
@@ -22,7 +23,7 @@ from pathlib import Path
 
 import numpy as np
 
-SCRIPTS = ("nominal", "camera", "feel", "expert")
+SCRIPTS = ("nominal", "camera", "feel", "feel_v2", "expert")
 NOISE_SEED = 7_000_000
 
 
@@ -53,7 +54,8 @@ def _make_actor(policy: str, env):
 def _run_chunk(args) -> list[dict]:
     policy, episodes, indices = args
     from polypanda.environments.door import DoorEnv
-    env = DoorEnv()
+    from polypanda.evaluation.policies import run_env_cls
+    env = run_env_cls(policy[4:])() if policy.startswith("run:") else DoorEnv()
     act, reset, script = _make_actor(policy, env)
     rows = []
     for i in indices:

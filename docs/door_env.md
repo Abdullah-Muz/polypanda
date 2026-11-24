@@ -25,6 +25,7 @@ Only what a real robot could know (schema `door-v1-49d`):
 | `force`: external force on the arm | 3 | a real Panda estimates it from its joint torque sensors; here the sum of contact forces on the robot plus 1 N noise per axis |
 | `door_io`: door-closed switch, latched | 2 | the signals a real machine exposes |
 | `door_command`: open or close (one-hot) | 2 | the task |
+| `door_open_switch` (**v2 only**: `DoorV2Env`, task `door_v2`, schema `door-v2-50d`, from dev round 4): the lid within 2 mm of its open stop | 1 | the door-open switch a real machine has next to its door-closed switch. Without it the policy could not tell that a springy lid it had let go of short of its detent was being pulled shut ([v4_targets.md](v4_targets.md), the round 4 change) |
 
 **Not observed:** which way the lid slides, how far it travels, its friction, damping and spring (whether it has one, and so whether it must be pushed into its detent), the latch speed, and the lid's displacement. A real robot knows the lid's displacement only through its own hand while it moves the handle (`touch_travel`, and the held handle estimate), and from the camera once the hand is clear. Finding these by feel is the point of the skill.
 

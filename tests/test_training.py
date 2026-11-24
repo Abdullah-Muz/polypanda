@@ -187,3 +187,41 @@ def test_state_dependent_exploration_trains_and_loads(tmp_path):
     a1, a2 = (policy.predict(obs, deterministic=True)[0] for _ in range(2))
     np.testing.assert_array_equal(a1, a2)                  # evaluation acts without the noise
     assert not PPOParams().use_sde                         # off unless a config asks
+
+
+def test_padded_inputs_keep_what_the_network_computes():
+    import gymnasium as gym
+    import torch
+    from stable_baselines3 import PPO
+    from stable_baselines3.common.running_mean_std import RunningMeanStd
+
+    from polypanda.training.runner import pad_inputs, pad_rms
+
+    class Spaces(gym.Env):
+        def __init__(self, n):
+            self.observation_space = gym.spaces.Box(-np.inf, np.inf, (n,), np.float32)
+            self.action_space = gym.spaces.Box(-1.0, 1.0, (2,), np.float32)
+
+    kw = {"device": "cpu", "policy_kwargs": {"net_arch": {"pi": [16, 16], "vf": [16, 16]}}}
+    src, dst = PPO("MlpPolicy", Spaces(5), **kw), PPO("MlpPolicy", Spaces(6), **kw)
+    dst.policy.load_state_dict(pad_inputs(src.policy.state_dict(), dst.policy, 1))
+    rng = np.random.default_rng(0)
+    x5 = rng.normal(size=(32, 5))
+    x6 = np.concatenate([x5, rng.normal(size=(32, 1)) * 5], axis=1)
+
+    def outputs(model, x):
+        x = torch.as_tensor(x, dtype=torch.float32)
+        with torch.no_grad():
+            return (model.policy.get_distribution(x).distribution.mean.numpy(),
+                    model.policy.predict_values(x).numpy())
+
+    for a, b in zip(outputs(src, x5), outputs(dst, x6), strict=True):
+        np.testing.assert_allclose(a, b, atol=1e-6)
+    with pytest.raises(ValueError):
+        pad_inputs(src.policy.state_dict(), dst.policy, 2)
+    rms = RunningMeanStd(shape=(5,))
+    rms.mean, rms.var, rms.count = rng.normal(size=5), rng.uniform(0.1, 2, 5), 1e6
+    padded = pad_rms(rms, 1)
+    np.testing.assert_array_equal(padded.mean, [*rms.mean, 0.0])
+    np.testing.assert_array_equal(padded.var, [*rms.var, 1.0])
+    assert padded.count == rms.count

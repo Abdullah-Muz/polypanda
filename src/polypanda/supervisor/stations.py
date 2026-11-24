@@ -22,6 +22,7 @@ from polypanda.environments import door, grasp, place, standup, transport
 
 LAYOUTS = {grasp.GraspEnv: grasp.OBS_LAYOUT, transport.TransportEnv: transport.OBS_LAYOUT,
            place.PlaceEnv: place.OBS_LAYOUT, standup.StandUpV3Env: standup.OBS_LAYOUT_V3,
+           door.DoorV2Env: door.OBS_LAYOUT_V2,    # before DoorEnv: matched with isinstance
            door.DoorEnv: door.OBS_LAYOUT}
 JOINT_FIELDS = ("q", "q_cmd")
 # Points in the world (positions): taken relative to the robot's base axis, then rotated.

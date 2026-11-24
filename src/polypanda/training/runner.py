@@ -103,6 +103,33 @@ def renormalize_inputs(policy, old_rms, new_rms, epsilon: float) -> None:
             layer.weight *= scale
 
 
+def pad_inputs(state: dict, policy, pad: int) -> dict:
+    """A source policy's weights for a policy with `pad` more inputs, appended at the end: the
+    first layers of the policy and value networks get zero weights for the new inputs, so the
+    padded policy computes exactly what the source did. Every other tensor must match."""
+    target, out = policy.state_dict(), {}
+    for key, value in state.items():
+        want = target[key].shape
+        if value.shape == want:
+            out[key] = value
+        elif (value.dim() == 2 and key.endswith("0.weight") and value.shape[0] == want[0]
+              and value.shape[1] + pad == want[1]):
+            out[key] = torch.cat([value, value.new_zeros(value.shape[0], pad)], dim=1)
+        else:
+            raise ValueError(f"{key}: {tuple(value.shape)} cannot be padded to {tuple(want)}")
+    return out
+
+
+def pad_rms(rms: RunningMeanStd, pad: int) -> RunningMeanStd:
+    """Observation statistics with `pad` new inputs appended, normalized as they are (mean 0,
+    variance 1) and as settled as the source's statistics."""
+    new = RunningMeanStd(shape=(rms.mean.shape[0] + pad,))
+    new.mean = np.concatenate([rms.mean, np.zeros(pad)])
+    new.var = np.concatenate([rms.var, np.ones(pad)])
+    new.count = rms.count
+    return new
+
+
 def _observe(cfg: TrainConfig, env_cls: type, env_config, model, rms, clip: float,
              epsilon: float, steps: int) -> RunningMeanStd:
     """Observation statistics of the new task as the warm-started policy (with its training
@@ -130,18 +157,25 @@ def _warm_start(cfg: TrainConfig, model, env: VecNormalize, env_cls: type, env_c
     source = Path(cfg.init_from.format(seed=cfg.seed))
     which = cfg.init_checkpoint
     loaded = type(model).load(source / f"{which}_model.zip", device="cpu")
-    if (loaded.observation_space.shape != model.observation_space.shape
+    pad = cfg.init_pad_obs
+    if (loaded.observation_space.shape[0] + pad != model.observation_space.shape[0]
             or loaded.action_space.shape != model.action_space.shape):
-        raise ValueError(f"{source}: observation/action sizes differ from this task's")
-    model.policy.load_state_dict(loaded.policy.state_dict())
+        raise ValueError(f"{source}: observation/action sizes differ from this task's"
+                         + (f" (with {pad} padded inputs)" if pad else ""))
+    state = loaded.policy.state_dict()
+    model.policy.load_state_dict(pad_inputs(state, model.policy, pad) if pad else state)
     if cfg.init_log_std is not None:  # explore again: the source's action noise has shrunk
         model.policy.log_std.data.fill_(cfg.init_log_std)
     with open(source / f"{which}_vecnormalize.pkl", "rb") as f:
         stats = pickle.load(f)
+    if pad:
+        stats.obs_rms = pad_rms(stats.obs_rms, pad)
     env.obs_rms, env.ret_rms = stats.obs_rms, stats.ret_rms
     meta = yaml.safe_load((source / "metadata.yaml").read_text())
     info = {"run": str(source), "checkpoint": which, "policy_id": meta["policy_id"],
             "git": meta.get("git", {}).get("commit"), "log_std": cfg.init_log_std}
+    if pad:
+        info["padded_obs"] = pad
     if cfg.init_renormalize_steps:
         new = _observe(cfg, env_cls, env_config, model, stats.obs_rms, env.clip_obs,
                        env.epsilon, cfg.init_renormalize_steps)

@@ -106,3 +106,14 @@ def test_the_evaluation_summarizes_per_cell():
     assert s["steps_to_success_median"] == 100 and s["slam_episodes"] == 1
     lo, hi = ev.wilson(1, 2)
     assert 0.0 < lo < 0.5 < hi < 1.0
+
+
+def test_feel_v2_ends_an_open_when_the_door_open_switch_comes(env):
+    ep = nominal_episode(env, "open", travel=0.135, spring=30.0)
+    info, script = run(env, "feel", ep)
+    assert info["is_success"] and not script.open_switch
+    felt = env.elapsed_steps
+    info, script = run(env, "feel_v2", ep)
+    assert info["is_success"], info["failure"]
+    assert script.open_switch and script.mode == "feel" and env.machine.held_open
+    assert env.elapsed_steps <= felt

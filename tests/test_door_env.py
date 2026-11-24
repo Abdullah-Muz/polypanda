@@ -456,3 +456,43 @@ def test_the_expert_works_through_a_station_view():
         if terminated or truncated:
             break
     assert info["is_success"], info["failure"]
+
+
+# --- v2: the door-open switch (dev round 4) ----------------------------------------------------
+def test_v2_observes_the_door_open_switch_after_the_v1_inputs(env):
+    from polypanda.environments.door import (
+        OBS_DIM_V2,
+        OBS_LAYOUT_V2,
+        OBS_SCHEMA_V2,
+        OBS_SLICES_V2,
+        DoorV2Env,
+    )
+    v2 = DoorV2Env()
+    assert OBS_SCHEMA_V2 == f"door-v2-{OBS_DIM_V2}d" and OBS_DIM_V2 == OBS_DIM + 1
+    assert task_spec("door_v2").env_cls is DoorV2Env
+    assert stations._layout(v2) == OBS_LAYOUT_V2 and stations._layout(env) == OBS_LAYOUT
+    ep = episode(env, "open", "right")
+    obs1, _ = env.reset(seed=3, options={"episode": ep})
+    obs2, _ = v2.reset(seed=3, options={"episode": ep})
+    assert obs2.shape == (OBS_DIM_V2,) and v2.observation_space.contains(obs2)
+    np.testing.assert_array_equal(obs2[:OBS_DIM], obs1)        # v1's inputs, unchanged
+    assert obs2[OBS_SLICES_V2["door_open_switch"]][0] == 0.0    # shut
+    m = v2.machine
+    for q, on in ((m.cfg.travel - 0.003, False), (m.cfg.travel - 0.001, True)):
+        v2.data.qpos[m.lid_qpos] = q
+        mujoco.mj_forward(v2.model, v2.data)
+        assert v2.door_open_switch() is on
+    m.reset()
+    hold = np.zeros(5, dtype=np.float32)
+    hold[4] = -1.0
+    obs2, *_ = v2.step(hold)                                    # a plain lid stays where it is
+    assert obs2[OBS_SLICES_V2["door_open_switch"]][0] == 1.0
+
+
+def test_the_door_open_switch_means_open_enough_and_in_the_detent(env):
+    """Switch on => the open goal for every variant: 2 mm short of the stop is past "needed"
+    (travel >= needed + 5 mm) and inside a springy lid's detent (the last 8 mm)."""
+    v = env.config.variation
+    assert v.travel_side[0] - env.config.sensing.open_switch >= 0.115
+    assert v.travel_out[0] - env.config.sensing.open_switch >= 0.255
+    assert env.config.sensing.open_switch < MachineConfig().detent_depth

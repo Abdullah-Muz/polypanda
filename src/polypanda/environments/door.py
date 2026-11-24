@@ -46,6 +46,7 @@ how it is turned (+-10 deg).
 - `door_io`: the two signals the machine exposes: door-closed switch (lid within 2 mm of shut)
   and latched;
 - `door_command`: one-hot (open, close).
+DoorV2Env (schema door-v2-50d) appends `door_open_switch`: the lid within 2 mm of its open stop.
 
 Not observed: the lid's slide direction, travel, friction, damping, spring and latch speed, nor
 the lid's displacement. A robot only knows the lid's displacement through its own hand while it
@@ -124,6 +125,12 @@ OBS_SLICES = {
     for (name, n), start in zip(
         OBS_LAYOUT, np.cumsum([0] + [n for _, n in OBS_LAYOUT[:-1]]), strict=True)
 }
+# v2 (DoorV2Env, task door_v2): v1 plus the machine's door-open switch, appended at the end so a
+# v1 network widens to it with a zero weight (training.runner, init_pad_obs)
+OBS_SCHEMA_V2 = "door-v2-50d"
+OBS_LAYOUT_V2 = OBS_LAYOUT + (("door_open_switch", 1),)
+OBS_DIM_V2 = sum(n for _, n in OBS_LAYOUT_V2)
+OBS_SLICES_V2 = {**OBS_SLICES, "door_open_switch": slice(OBS_DIM, OBS_DIM_V2)}
 ACTION_SCHEMA = "cartesian-v1-4d+gripper"   # the hand motion of cartesian-v1-4d, then a gripper
 COMMANDS = ("open", "close")
 MACHINE = "M"
@@ -182,6 +189,8 @@ class DoorSensingConfig:
     force_noise: float = 1.0         # N per axis per step
     force_clip: float = 100.0        # N per axis
     closed_switch: float = 0.002     # m: the door-closed switch closes within this of shut
+    open_switch: float = 0.002       # m: the door-open switch closes within this of the open stop
+    #                                  (observed by DoorV2Env only; the feel script reads it)
     touch_release: int = 5           # steps off the bar before touch_travel starts again at 0
 
 
@@ -541,6 +550,11 @@ class DoorEnv(gym.Env):
         """The lid's opening direction in the world (privileged: experts and tests only)."""
         return self.data.xmat[self.machine.body].reshape(3, 3) @ self.machine.cfg.slide_axis
 
+    def door_open_switch(self) -> bool:
+        """The machine's door-open switch: the lid within sensing.open_switch of its open stop (a
+        signal the machine exposes, as the door-closed switch and latched)."""
+        return self.machine.lid >= self.machine.cfg.travel - self.config.sensing.open_switch
+
     def _finger_gap(self) -> float:
         return float(sum(self.data.qpos[a] for a in self._finger_qpos))
 
@@ -675,7 +689,8 @@ class DoorEnv(gym.Env):
         self.machine.update()
         self._steps += 1
         if not (np.all(np.isfinite(self.data.qpos)) and np.all(np.isfinite(self.data.qvel))):
-            return (np.zeros(OBS_DIM, dtype=np.float32), -r.non_finite, True, False,
+            return (np.zeros(self.observation_space.shape, dtype=np.float32), -r.non_finite,
+                    True, False,
                     {"is_success": False, "failure": "non_finite", "reward_terms": {},
                      "command": self.command})
         self._contacts = self._finger_contacts()
@@ -782,3 +797,26 @@ class DoorEnv(gym.Env):
             [float(self.machine.lid <= n.closed_switch), float(self.machine.latched)],
             [float(self.command == "open"), float(self.command == "close")],
         ]).astype(np.float32)
+
+
+class DoorV2Env(DoorEnv):
+    """Door task v2 (schema door-v2-50d, task door_v2): v1 plus the machine's **door-open
+    switch** (the lid within sensing.open_switch, 2 mm, of its open stop), as the last input.
+
+    Why (dev round 3, 2026-11-24): v1 observes the door-closed switch and latched but nothing at
+    the open end. Round 3's policies let go of the bar while the lid still moved and let it coast
+    ("fling"); when a springy lid stopped short of its hold-open detent, its spring pulled it shut
+    again, and the policy, which cannot see the lid's displacement once its hand is off the bar,
+    never went back (seed 2's final checkpoint: 6 of its 8 failures). Real machines expose a
+    door-open switch next to the door-closed one; the switch on means the lid is open enough for
+    any variant and, on a springy lid, in its detent."""
+
+    def __init__(self, config: DoorConfig | None = None, scene=None,
+                 machine: Machine | None = None) -> None:
+        super().__init__(config, scene, machine)
+        self.observation_space = spaces.Box(-np.inf, np.inf, shape=(OBS_DIM_V2,),
+                                            dtype=np.float32)
+
+    def _observation(self) -> np.ndarray:
+        return np.append(super()._observation(),
+                         np.float32(self.door_open_switch())).astype(np.float32)

@@ -12,6 +12,9 @@ where stated.
   command: something holds it), it tries the other way. It opens until the lid stops against its
   stop (which also seats a springy lid in its detent). It closes, and if the machine's latched
   signal does not come, pulls the lid back open and pushes again faster, up to 2 retries.
+- **feel_v2** (dev round 4, 2026-11-24, when the policy was given the machine's door-open switch,
+  DoorV2Env): feel, and it also reads that switch: an open ends as soon as it comes, without
+  waiting to feel the stop. `feel` stays the script of rounds 1-3 (and of the demonstrations).
 
 All three hook the bar with open fingers, as the expert (control/scripted_door.py) and the line's
 scripted door do, and move along the slide at the line's door speed (0.05 m/s) at first. The
@@ -27,7 +30,7 @@ from polypanda.control.scripted_door import FINGER_SPAN, DoorExpert
 from polypanda.simulation.machine import MachineConfig
 from polypanda.simulation.panda import tcp_position
 
-MODES = ("nominal", "camera", "feel")
+MODES = ("nominal", "camera", "feel", "feel_v2")
 NOMINAL = MachineConfig()
 NOMINAL_OUT_TRAVEL = 0.27        # the line's outward lid (evaluation/tending.make_variant)
 
@@ -54,7 +57,8 @@ class BaselineDoor(DoorExpert):
     def __init__(self, env, mode: str) -> None:
         if mode not in MODES:
             raise ValueError(f"mode must be one of {MODES}, not {mode!r}")
-        self.mode = mode
+        self.open_switch = mode == "feel_v2"     # feel_v2: feel plus the door-open switch
+        self.mode = "feel" if self.open_switch else mode
         super().__init__(env)
 
     def reset(self) -> None:
@@ -192,6 +196,9 @@ class BaselineDoor(DoorExpert):
                     self._next("clear")
             elif env.command == "close" and feel and env.machine.latched:
                 self._next("clear")                          # the latched signal came
+            elif (env.command == "open" and feel and self.open_switch
+                  and env.door_open_switch()):
+                self._next("clear")                          # the door-open signal came
             elif self.s >= self.cap:
                 self.wait += 1
                 if self.wait > self.settle_steps:

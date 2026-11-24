@@ -27,6 +27,7 @@ TASKS = {
     "standup_v2": TaskSpec(standup.StandUpV2Env, standup.StandUpConfig, standup.OBS_SCHEMA_V2),
     "standup_v3": TaskSpec(standup.StandUpV3Env, standup.StandUpConfig, standup.OBS_SCHEMA_V3),
     "door": TaskSpec(door.DoorEnv, door.DoorConfig, door.OBS_SCHEMA),
+    "door_v2": TaskSpec(door.DoorV2Env, door.DoorConfig, door.OBS_SCHEMA_V2),
 }
 
 

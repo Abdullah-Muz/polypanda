@@ -52,14 +52,19 @@ def main() -> None:
     episodes = data["episodes"] if isinstance(data, dict) else data
     indices = list(args.episodes or [])
     if args.slams or args.failures:
-        name = args.policy.replace("run:", "").replace("runs/", "runs_").replace("/", "_")
+        name = (args.policy.replace("run:", "").replace("runs/", "runs_").replace("/", "_")
+                .replace("@", "_"))
         rows = json.loads((Path("results/v4/door") / f"{name}_{args.set.stem}.json")
                           .read_text())["rows"]
         indices += [r["index"] for r in rows
                     if (args.slams and r["slams"]) or (args.failures and not r["success"])]
     if not indices:
         indices = [0, 1, 2]
-    env = DoorEnv()
+    if args.policy.startswith("run:"):
+        from polypanda.evaluation.policies import run_env_cls
+        env = run_env_cls(args.policy[4:])()
+    else:
+        env = DoorEnv()
     act, reset = actor(args.policy, env)
     fast_rendering(env.model)
     dt = env.adapter.control_dt

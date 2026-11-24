@@ -79,6 +79,10 @@ class TrainConfig:
     # transitions and adjust the network to match, preserving its function (0: keep the
     # source's normalization; runner.renormalize_inputs).
     init_renormalize_steps: int = 0
+    # Warm start (v4.0 door round 4): this task observes this many more inputs than the source,
+    # appended at the end; they start with zero weights (runner.pad_inputs), so the warm-started
+    # policy acts as the source did until it learns to use them.
+    init_pad_obs: int = 0
     ppo: PPOParams = field(default_factory=PPOParams)
     sac: SACParams = field(default_factory=SACParams)
 

@@ -27,3 +27,14 @@ def load_run_policy(spec: str):
         return model.predict(x, deterministic=True)[0]
 
     return act
+
+
+def run_env_cls(spec: str) -> type:
+    """The environment class a run was trained on (its config.yaml task), e.g. DoorV2Env for a
+    door_v2 run, so it is evaluated on the observation it knows."""
+    import yaml
+
+    from polypanda.environments.tasks import task_spec
+
+    run = Path(spec.partition("@")[0])
+    return task_spec(yaml.safe_load((run / "config.yaml").read_text())["task"]).env_cls
