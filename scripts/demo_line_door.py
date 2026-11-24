@@ -23,8 +23,6 @@ import numpy as np
 
 from polypanda.evaluation import line_door
 
-START_Z = 0.32          # DoorStartConfig.carry_height: where every training episode starts
-
 
 def main() -> None:
     p = argparse.ArgumentParser()
@@ -79,9 +77,6 @@ def main() -> None:
         return line
 
     def door_move(ctl, door, command, seed, ep):
-        if args.start == "lowered":
-            b = ctl.beliefs["M1"]
-            ctl.vertical(b.origin[:2], START_Z, ctl.carry_yaw(ctl.angle_of(b.origin[:2])))
         out = orig_move(ctl, door, command, seed, ep)
         print(f"    {command}: {'done' if out['success'] else 'FAILED: ' + str(out['failure'])}"
               f" in {out['steps']} steps, peak force {out['peak_force']:.0f} N")
@@ -94,7 +89,8 @@ def main() -> None:
         print(f"[{n + 1}/{len(indices)}] machine {i}: lid slides {ep['slide']}"
               f"{', spring' if ep['spring'] > 0 else ''}, travel {ep['travel']:.3f} m, "
               f"start {args.start}")
-        row = line_door.run_cycle(args.actor, i, ep)
+        row = line_door.run_cycle(args.actor, i, ep,
+                                  "door_start" if args.start == "lowered" else "carry")
         state = "RUNNING" if row["success"] else f"not running: {row['failure']}"
         print(f"    machine {state} (lid opened {row['lid_opened']:.3f} m, "
               f"cycle {row['cycle_s']:.0f} s)")

@@ -32,8 +32,24 @@ def test_a_door_episode_becomes_the_lines_m1_where_the_door_env_puts_it(episodes
 
 
 @pytest.mark.parametrize("actor", ["expert", "feel_v2"])
-def test_a_door_script_runs_the_whole_cycle_and_the_machine_starts(episodes, actor):
+@pytest.mark.parametrize("handover", ["carry", "door_start"])
+def test_a_door_script_runs_the_whole_cycle_and_the_machine_starts(episodes, actor, handover):
     i = next(k for k, e in enumerate(episodes) if e["slide"] == "right" and e["spring"] == 0)
-    row = run_cycle(actor, i, episodes[i])
+    row = run_cycle(actor, i, episodes[i], handover)
     assert row["success"], row
     assert row["open"]["success"] and row["close"]["success"] and row["seated"]
+    assert row["handover"] == handover
+
+
+def test_the_door_start_hand_over_lowers_the_hand_to_the_trained_start_height(episodes):
+    from polypanda.control.scripted_tending import ScriptedTending
+    from polypanda.evaluation.line_door import door_start_z, lower_to_door_start
+    line = Line.build_line(LineConfig(machines=(machine_from_episode(episodes[0]),)))
+    ctl = ScriptedTending(line)
+    ctl.go_to("M1")
+    high = line.data.site_xpos[ctl.arm.tcp_site][2]
+    lower_to_door_start(ctl)
+    tcp = line.data.site_xpos[ctl.arm.tcp_site]
+    assert high > door_start_z() + 0.1                  # the carry posture is well above it
+    assert abs(tcp[2] - door_start_z()) < 0.01
+    np.testing.assert_allclose(tcp[:2], ctl.beliefs["M1"].origin[:2], atol=0.01)

@@ -17,6 +17,12 @@ handle; evaluation/tending.camera_belief), drawn from the same seed for every ac
   Phase 1 sweep (evaluation/tending.py): it opens to the believed travel and closes past shut.
 A door actor gets the door env's horizon (300 steps, 15 s) for each move; after it, the hand
 goes back to the carry posture by the line's scripted move.
+
+**Hand-over** (`handover`): `"carry"` (T5 as first run) starts each door move from the line's
+carry posture at M1, the hand about 31 cm above the handle; `"door_start"` (T5b) first lowers
+the hand straight down to the door skill's trained start height (DoorStartConfig.carry_height,
+TCP 0.32 m) over the believed pocket, where every door training episode began (about 8 cm above
+the handle). It applies to every door actor; `line_camera` keeps its own move.
 """
 
 from __future__ import annotations
@@ -38,6 +44,19 @@ from polypanda.supervisor.stations import StationView
 NOISE_SEED = 7_000_000          # scripts/evaluate_door.py: an episode's sensor noise seed
 SCRIPTS = ("nominal", "camera", "feel", "feel_v2", "expert")
 LINE_SCRIPTS = ("line_camera",)
+HANDOVERS = ("carry", "door_start")
+
+
+def door_start_z() -> float:
+    from polypanda.environments.door import DoorStartConfig
+    return DoorStartConfig().carry_height
+
+
+def lower_to_door_start(ctl: ScriptedTending) -> None:
+    """The T5b hand-over: straight down to the door skill's trained start height over the
+    believed pocket, keeping the carry yaw."""
+    b = ctl.beliefs["M1"]
+    ctl.vertical(b.origin[:2], door_start_z(), ctl.carry_yaw(ctl.angle_of(b.origin[:2])))
 
 
 def machine_from_episode(ep: dict, cycle_s: float = 60.0):
@@ -95,8 +114,11 @@ def _door_move(ctl: ScriptedTending, door, command: str, seed: int, ep: dict) ->
             "slams": int(st.get("slams", 0))}
 
 
-def run_cycle(actor: str, index: int, ep: dict) -> dict:
-    """One tending cycle on door-set episode `ep` (its index `index`) with door actor `actor`."""
+def run_cycle(actor: str, index: int, ep: dict, handover: str = "carry") -> dict:
+    """One tending cycle on door-set episode `ep` (its index `index`) with door actor `actor`,
+    the door handed over as `handover` says."""
+    if handover not in HANDOVERS:
+        raise ValueError(f"handover must be one of {HANDOVERS}, not {handover!r}")
     seed = NOISE_SEED + index
     spot = machine_from_episode(ep)
     line = Line.build_line(LineConfig(machines=(spot,)))
@@ -109,8 +131,8 @@ def run_cycle(actor: str, index: int, ep: dict) -> dict:
     d.qpos[cube.qpos:cube.qpos + 7] = [*xy, cube.half_size[2],
                                        *_yaw_quat(np.radians(PART_ANGLE))]
     mujoco.mj_forward(m, d)
-    row = {"index": index, "actor": actor, "slide": ep["slide"], "spring": ep["spring"] > 0,
-           "open": None, "close": None}
+    row = {"index": index, "actor": actor, "handover": handover, "slide": ep["slide"],
+           "spring": ep["spring"] > 0, "open": None, "close": None}
     door = None if actor in LINE_SCRIPTS else _door_actor(actor, line)
     opened = picked = seated = False
     error = None
@@ -120,6 +142,8 @@ def run_cycle(actor: str, index: int, ep: dict) -> dict:
         if door is None:
             ctl.move_lid("M1", opening=True)
         else:
+            if handover == "door_start":
+                lower_to_door_start(ctl)
             row["open"] = _door_move(ctl, door, "open", seed, ep)
         opened = m1.lid
         ctl.swing_to(np.radians(PART_ANGLE))
@@ -133,6 +157,8 @@ def run_cycle(actor: str, index: int, ep: dict) -> dict:
         if door is None:
             ctl.move_lid("M1", opening=False)
         else:
+            if handover == "door_start":
+                lower_to_door_start(ctl)
             row["close"] = _door_move(ctl, door, "close", seed + 1, ep)
         ctl.step(5)
     except Exception as e:  # noqa: BLE001 (a crashed trial is a failed trial, recorded)

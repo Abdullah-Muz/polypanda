@@ -24,8 +24,8 @@ import numpy as np
 
 def _chunk(args):
     from polypanda.evaluation.line_door import run_cycle
-    actor, episodes, indices = args
-    return [run_cycle(actor, i, episodes[i]) for i in indices]
+    actor, episodes, indices, handover = args
+    return [run_cycle(actor, i, episodes[i], handover) for i in indices]
 
 
 def wilson(k: int, n: int, z: float = 1.96) -> tuple[float, float]:
@@ -40,6 +40,8 @@ def main() -> None:
     p.add_argument("--actor", required=True)
     p.add_argument("--set", type=Path, required=True)
     p.add_argument("--n", type=int, default=100)
+    p.add_argument("--start-index", type=int, default=0, help="first machine of the set used")
+    p.add_argument("--handover", choices=("carry", "door_start"), default="carry")
     p.add_argument("--jobs", type=int, default=6)
     p.add_argument("--out", type=Path)
     args = p.parse_args()
@@ -47,8 +49,9 @@ def main() -> None:
     git = {"commit": run("git", "rev-parse", "HEAD"),
            "dirty": bool(run("git", "status", "--porcelain", "--untracked-files=no"))}
     data = json.loads(args.set.read_text())
-    episodes = data["episodes"][: args.n]
-    jobs = [(args.actor, episodes, list(range(j, len(episodes), args.jobs)))
+    episodes = data["episodes"]
+    chosen = list(range(args.start_index, min(args.start_index + args.n, len(episodes))))
+    jobs = [(args.actor, episodes, chosen[j::args.jobs], args.handover)
             for j in range(args.jobs)]
     start = time.perf_counter()
     with Pool(args.jobs) as pool:
@@ -70,13 +73,19 @@ def main() -> None:
         "cycle_s_median": float(np.median([r["cycle_s"] for r in rows])),
     }
     name = args.actor.replace("run:", "").replace("/", "_").replace("@", "_")
-    out = args.out or Path("results/v4/line") / f"{name}_{data['name']}_n{n}.json"
+    tag = f"_n{n}" if args.start_index == 0 else f"_from{args.start_index}_n{n}"
+    if args.handover != "carry":
+        tag += f"_{args.handover}"
+    out = args.out or Path("results/v4/line") / f"{name}_{data['name']}{tag}.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps({"actor": args.actor, "set": data["name"],
-                               "set_digest": data["digest"], "git": git, "wall_s": round(wall, 1),
-                               "summary": summary, "rows": rows}, indent=1))
+                               "set_digest": data["digest"], "handover": args.handover,
+                               "start_index": args.start_index, "git": git,
+                               "wall_s": round(wall, 1), "summary": summary, "rows": rows},
+                              indent=1))
     lo, hi = summary["wilson95"]
-    print(f"{args.actor} on {data['name']} (first {n}): machine running {k}/{n} "
+    print(f"{args.actor} on {data['name']} (machines {chosen[0]}-{chosen[-1]}, hand-over "
+          f"{args.handover}): machine running {k}/{n} "
           f"({100 * k / n:.0f} %, 95 % CI {100 * lo:.0f}-{100 * hi:.0f}); failures "
           f"{summary['failures']}; door moves {summary['door_moves']}; median cycle "
           f"{summary['cycle_s_median']:.1f} s")
