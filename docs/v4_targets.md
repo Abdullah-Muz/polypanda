@@ -145,3 +145,18 @@ Reported with no bar, as the targets say. Code: `src/polypanda/evaluation/line_d
 - **Door actors:** the locked learned policy (`runs/door_v2_bc_ppo_r5_seed{0,1,2}@final`, each seed), `feel_v2` and `camera` (the door scripts of the targets), each run through the door env on the line's scene from M1's station with the env's horizon of 300 steps per move; and `line_camera`, the line's own camera-aware door move (Phase 1's script), as a reference.
 - **Reported:** per actor, machines running out of 100 with a 95 % Wilson interval and failures by stage; the learned policy pooled over its 3 seeds against each script with an exact McNemar test on the same machines; door-move steps, peak force and slams; the cycle's simulated time.
 - **Run once,** like the one-shot: `for a in run:runs/door_v2_bc_ppo_r5_seed{0,1,2}@final feel_v2 camera line_camera; do uv run python scripts/evaluate_line_door.py --actor $a --set eval_sets/door_final_v1.json --n 100 --jobs 6; done`.
+
+### T5 as it came (2026-11-24, run once at `9813245` from 15:06)
+
+| Machines 0–99 of `door_final_v1` | Machine running | Opens / closes done | Median door move | Median cycle |
+|---|---|---|---|---|
+| Learned, seeds 0 / 1 / 2 | **74 / 64 / 63** (pooled 67 %) | 71/88, 66/75, 64/72 | 66–72 steps | 30.6 s |
+| `feel_v2` | **89** (81–94) | 94 / 96 | 183 steps | 43.0 s |
+| `camera` | 35 (26–45) | 52 / 56 | 214 steps | 45.2 s |
+| `line_camera` (reference) | 9 (5–16) | (its own move) | | 36.9 s |
+
+Pooled over its seeds the learned door is behind `feel_v2` (15 machines only it got running, 81 only the script; exact McNemar p = 4e-12) and ahead of `camera` (115 / 19, p = 6e-18) and `line_camera` (192 / 18, p = 6e-38). Most of its misses are lids not opened (25, 34 and 35).
+
+**Why (diagnosed after the run, on `door_dev_v1` machines only):** the line hands the door over from its carry posture, with the hand about **31 cm** above the handle; every training episode of the door started about **8 cm** above it (`start.carry_height` 0.32 m, jittered by 2 cm). The policy reaches the handle from there, but its pushes go differently: it lets go of lids short of the needed opening, most on left-sliding and springy lids, and does not go back. With the hand first lowered to the door's trained start height (TCP 0.32 m over the believed pocket), the same policy opened 35 of 36 hard dev machines instead of 26, and got 33 machines running instead of 26 (left-sliding 15/17 against 8/17). The T5 smoke test had used 6 dev machines with no left-sliding lid. `scripts/demo_line_door.py` replays any T5 machine in the viewer, from either start.
+
+- **What it says about the skill:** it depends on starting where it was trained. A line has to hand it over there (or it has to be trained from a wider range of starts: a v4.1 candidate).

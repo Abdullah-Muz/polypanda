@@ -1,0 +1,3035 @@
+{
+ "actor": "feel_v2",
+ "set": "door_final_v1",
+ "set_digest": "1bf1bd3f850f",
+ "git": {
+  "commit": "9813245d61b29d91583ebd4c5a181e07f31e36a4",
+  "dirty": false
+ },
+ "wall_s": 149.1,
+ "summary": {
+  "n": 100,
+  "running": 89,
+  "rate": 0.89,
+  "wilson95": [
+   0.8136853697209698,
+   0.9374586804477487
+  ],
+  "failures": {
+   "lid_not_opened": 6,
+   "not_seated": 2,
+   "not_latched": 3
+  },
+  "errors": 0,
+  "door_moves": {
+   "opens_ok": 94,
+   "closes_ok": 96,
+   "median_steps": 182.5,
+   "peak_force_median": 23.675,
+   "slams": 0
+  },
+  "cycle_s_median": 43.025000000000006
+ },
+ "rows": [
+  {
+   "index": 0,
+   "actor": "feel_v2",
+   "slide": "right",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 143,
+    "peak_force": 19.79,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 142,
+    "peak_force": 16.31,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1263,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 39.65
+  },
+  {
+   "index": 1,
+   "actor": "feel_v2",
+   "slide": "right",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 143,
+    "peak_force": 9.03,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 140,
+    "peak_force": 10.38,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1278,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 39.45
+  },
+  {
+   "index": 2,
+   "actor": "feel_v2",
+   "slide": "out",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 204,
+    "peak_force": 14.35,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 205,
+    "peak_force": 23.18,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2691,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 8,
+   "error": null,
+   "cycle_s": 43.95
+  },
+  {
+   "index": 3,
+   "actor": "feel_v2",
+   "slide": "left",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 176,
+    "peak_force": 39.09,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 176,
+    "peak_force": 35.87,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1221,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 41.9
+  },
+  {
+   "index": 4,
+   "actor": "feel_v2",
+   "slide": "left",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 180,
+    "peak_force": 37.45,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 267,
+    "peak_force": 57.93,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1261,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 46.35
+  },
+  {
+   "index": 5,
+   "actor": "feel_v2",
+   "slide": "right",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 146,
+    "peak_force": 20.63,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 146,
+    "peak_force": 22.44,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1346,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 39.65
+  },
+  {
+   "index": 6,
+   "actor": "feel_v2",
+   "slide": "out",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 203,
+    "peak_force": 26.98,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 205,
+    "peak_force": 25.42,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2719,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 3,
+   "error": null,
+   "cycle_s": 43.65
+  },
+  {
+   "index": 7,
+   "actor": "feel_v2",
+   "slide": "out",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 204,
+    "peak_force": 11.78,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 254,
+    "peak_force": 53.04,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2695,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 10,
+   "error": null,
+   "cycle_s": 46.55
+  },
+  {
+   "index": 8,
+   "actor": "feel_v2",
+   "slide": "out",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 203,
+    "peak_force": 26.26,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 202,
+    "peak_force": 27.81,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2703,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 4,
+   "error": null,
+   "cycle_s": 43.75
+  },
+  {
+   "index": 9,
+   "actor": "feel_v2",
+   "slide": "right",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 143,
+    "peak_force": 12.13,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 144,
+    "peak_force": 13.32,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1295,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 39.45
+  },
+  {
+   "index": 10,
+   "actor": "feel_v2",
+   "slide": "out",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 206,
+    "peak_force": 11.43,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 203,
+    "peak_force": 18.76,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2688,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 11,
+   "error": null,
+   "cycle_s": 44.15
+  },
+  {
+   "index": 11,
+   "actor": "feel_v2",
+   "slide": "left",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 184,
+    "peak_force": 42.49,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 181,
+    "peak_force": 37.07,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1382,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 42.15
+  },
+  {
+   "index": 12,
+   "actor": "feel_v2",
+   "slide": "out",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 205,
+    "peak_force": 4.91,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 202,
+    "peak_force": 23.22,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2661,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 9,
+   "error": null,
+   "cycle_s": 43.85
+  },
+  {
+   "index": 13,
+   "actor": "feel_v2",
+   "slide": "right",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 145,
+    "peak_force": 8.06,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 142,
+    "peak_force": 15.89,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.128,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 39.65
+  },
+  {
+   "index": 14,
+   "actor": "feel_v2",
+   "slide": "right",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 148,
+    "peak_force": 13.89,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 193,
+    "peak_force": 40.75,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1334,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 42.5
+  },
+  {
+   "index": 15,
+   "actor": "feel_v2",
+   "slide": "right",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 148,
+    "peak_force": 14.21,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 146,
+    "peak_force": 16.59,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1354,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 40.1
+  },
+  {
+   "index": 16,
+   "actor": "feel_v2",
+   "slide": "out",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 202,
+    "peak_force": 23.16,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 206,
+    "peak_force": 18.76,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2732,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 6,
+   "error": null,
+   "cycle_s": 43.7
+  },
+  {
+   "index": 17,
+   "actor": "feel_v2",
+   "slide": "out",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 206,
+    "peak_force": 9.55,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 200,
+    "peak_force": 23.26,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2638,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 10,
+   "error": null,
+   "cycle_s": 43.95
+  },
+  {
+   "index": 18,
+   "actor": "feel_v2",
+   "slide": "out",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 206,
+    "peak_force": 25.18,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 203,
+    "peak_force": 15.62,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2721,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 10,
+   "error": null,
+   "cycle_s": 44.2
+  },
+  {
+   "index": 19,
+   "actor": "feel_v2",
+   "slide": "out",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 204,
+    "peak_force": 4.28,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 294,
+    "peak_force": 103.18,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2719,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 7,
+   "error": null,
+   "cycle_s": 48.25
+  },
+  {
+   "index": 20,
+   "actor": "feel_v2",
+   "slide": "out",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 207,
+    "peak_force": 3.75,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 204,
+    "peak_force": 28.1,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2743,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 7,
+   "error": null,
+   "cycle_s": 43.9
+  },
+  {
+   "index": 21,
+   "actor": "feel_v2",
+   "slide": "right",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 143,
+    "peak_force": 18.15,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 192,
+    "peak_force": 40.33,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1281,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 41.85
+  },
+  {
+   "index": 22,
+   "actor": "feel_v2",
+   "slide": "right",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 142,
+    "peak_force": 25.68,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 142,
+    "peak_force": 20.29,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1262,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 38.9
+  },
+  {
+   "index": 23,
+   "actor": "feel_v2",
+   "slide": "out",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 202,
+    "peak_force": 21.32,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 203,
+    "peak_force": 21.36,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2695,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 8,
+   "error": null,
+   "cycle_s": 43.65
+  },
+  {
+   "index": 24,
+   "actor": "feel_v2",
+   "slide": "left",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 177,
+    "peak_force": 38.76,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 177,
+    "peak_force": 42.61,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1224,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 42.25
+  },
+  {
+   "index": 25,
+   "actor": "feel_v2",
+   "slide": "right",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 147,
+    "peak_force": 13.91,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 145,
+    "peak_force": 11.11,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1366,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 38.9
+  },
+  {
+   "index": 26,
+   "actor": "feel_v2",
+   "slide": "out",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 203,
+    "peak_force": 13.57,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 204,
+    "peak_force": 31.25,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2698,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 7,
+   "error": null,
+   "cycle_s": 43.6
+  },
+  {
+   "index": 27,
+   "actor": "feel_v2",
+   "slide": "left",
+   "spring": true,
+   "open": {
+    "success": false,
+    "failure": "not_opened",
+    "steps": 300,
+    "peak_force": 96.45,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 10,
+    "peak_force": 0.0,
+    "slams": 0
+   },
+   "success": false,
+   "failure": "lid_not_opened",
+   "lid_opened": 0.0,
+   "picked": true,
+   "seated": false,
+   "latched": true,
+   "state": "empty",
+   "ik_failures": 48,
+   "error": null,
+   "cycle_s": 40.85
+  },
+  {
+   "index": 28,
+   "actor": "feel_v2",
+   "slide": "left",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 181,
+    "peak_force": 37.69,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 185,
+    "peak_force": 37.01,
+    "slams": 0
+   },
+   "success": false,
+   "failure": "not_seated",
+   "lid_opened": 0.1351,
+   "picked": true,
+   "seated": false,
+   "latched": true,
+   "state": "empty",
+   "ik_failures": 6,
+   "error": null,
+   "cycle_s": 42.5
+  },
+  {
+   "index": 29,
+   "actor": "feel_v2",
+   "slide": "out",
+   "spring": true,
+   "open": {
+    "success": false,
+    "failure": "not_opened",
+    "steps": 300,
+    "peak_force": 28.1,
+    "slams": 0
+   },
+   "close": {
+    "success": false,
+    "failure": "never_touched",
+    "steps": 300,
+    "peak_force": 281.4,
+    "slams": 0
+   },
+   "success": false,
+   "failure": "lid_not_opened",
+   "lid_opened": 0.0381,
+   "picked": true,
+   "seated": false,
+   "latched": false,
+   "state": "empty",
+   "ik_failures": 101,
+   "error": null,
+   "cycle_s": 57.65
+  },
+  {
+   "index": 30,
+   "actor": "feel_v2",
+   "slide": "left",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 178,
+    "peak_force": 38.88,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 176,
+    "peak_force": 40.68,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1219,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 41.4
+  },
+  {
+   "index": 31,
+   "actor": "feel_v2",
+   "slide": "left",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 179,
+    "peak_force": 40.44,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 177,
+    "peak_force": 37.83,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1244,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 42.05
+  },
+  {
+   "index": 32,
+   "actor": "feel_v2",
+   "slide": "out",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 203,
+    "peak_force": 17.23,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 204,
+    "peak_force": 10.67,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2722,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 7,
+   "error": null,
+   "cycle_s": 43.75
+  },
+  {
+   "index": 33,
+   "actor": "feel_v2",
+   "slide": "left",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 184,
+    "peak_force": 40.69,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 182,
+    "peak_force": 37.16,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.137,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 42.5
+  },
+  {
+   "index": 34,
+   "actor": "feel_v2",
+   "slide": "right",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 145,
+    "peak_force": 14.26,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 194,
+    "peak_force": 48.11,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.132,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 41.25
+  },
+  {
+   "index": 35,
+   "actor": "feel_v2",
+   "slide": "right",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 145,
+    "peak_force": 16.67,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 231,
+    "peak_force": 58.01,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1266,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 43.45
+  },
+  {
+   "index": 36,
+   "actor": "feel_v2",
+   "slide": "left",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 180,
+    "peak_force": 41.46,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 267,
+    "peak_force": 53.07,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1295,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 46.55
+  },
+  {
+   "index": 37,
+   "actor": "feel_v2",
+   "slide": "left",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 180,
+    "peak_force": 36.48,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 179,
+    "peak_force": 40.47,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1277,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 42.45
+  },
+  {
+   "index": 38,
+   "actor": "feel_v2",
+   "slide": "out",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 205,
+    "peak_force": 26.75,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 202,
+    "peak_force": 28.79,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2695,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 10,
+   "error": null,
+   "cycle_s": 44.05
+  },
+  {
+   "index": 39,
+   "actor": "feel_v2",
+   "slide": "right",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 147,
+    "peak_force": 16.08,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 144,
+    "peak_force": 20.9,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1305,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 40.0
+  },
+  {
+   "index": 40,
+   "actor": "feel_v2",
+   "slide": "left",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 185,
+    "peak_force": 44.3,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 182,
+    "peak_force": 39.5,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1355,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 42.05
+  },
+  {
+   "index": 41,
+   "actor": "feel_v2",
+   "slide": "out",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 202,
+    "peak_force": 20.45,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 205,
+    "peak_force": 21.33,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2726,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 5,
+   "error": null,
+   "cycle_s": 43.65
+  },
+  {
+   "index": 42,
+   "actor": "feel_v2",
+   "slide": "left",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 174,
+    "peak_force": 36.47,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 177,
+    "peak_force": 41.06,
+    "slams": 0
+   },
+   "success": false,
+   "failure": "not_seated",
+   "lid_opened": 0.1216,
+   "picked": true,
+   "seated": false,
+   "latched": true,
+   "state": "empty",
+   "ik_failures": 5,
+   "error": null,
+   "cycle_s": 41.6
+  },
+  {
+   "index": 43,
+   "actor": "feel_v2",
+   "slide": "left",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 178,
+    "peak_force": 37.56,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 177,
+    "peak_force": 39.86,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1266,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 41.35
+  },
+  {
+   "index": 44,
+   "actor": "feel_v2",
+   "slide": "left",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 182,
+    "peak_force": 39.21,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 230,
+    "peak_force": 41.91,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1297,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 45.3
+  },
+  {
+   "index": 45,
+   "actor": "feel_v2",
+   "slide": "right",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 144,
+    "peak_force": 11.07,
+    "slams": 0
+   },
+   "close": {
+    "success": false,
+    "failure": "not_closed",
+    "steps": 300,
+    "peak_force": 56.64,
+    "slams": 0
+   },
+   "success": false,
+   "failure": "not_latched",
+   "lid_opened": 0.1316,
+   "picked": true,
+   "seated": true,
+   "latched": false,
+   "state": "loaded",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 48.25
+  },
+  {
+   "index": 46,
+   "actor": "feel_v2",
+   "slide": "out",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 203,
+    "peak_force": 1.4,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 204,
+    "peak_force": 8.32,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2715,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 8,
+   "error": null,
+   "cycle_s": 43.85
+  },
+  {
+   "index": 47,
+   "actor": "feel_v2",
+   "slide": "left",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 177,
+    "peak_force": 39.8,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 177,
+    "peak_force": 36.38,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1275,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 41.45
+  },
+  {
+   "index": 48,
+   "actor": "feel_v2",
+   "slide": "out",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 203,
+    "peak_force": 10.16,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 203,
+    "peak_force": 19.14,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2683,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 9,
+   "error": null,
+   "cycle_s": 43.75
+  },
+  {
+   "index": 49,
+   "actor": "feel_v2",
+   "slide": "left",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 182,
+    "peak_force": 39.51,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 181,
+    "peak_force": 36.96,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1359,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 42.2
+  },
+  {
+   "index": 50,
+   "actor": "feel_v2",
+   "slide": "right",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 142,
+    "peak_force": 9.61,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 141,
+    "peak_force": 8.13,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1273,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 39.2
+  },
+  {
+   "index": 51,
+   "actor": "feel_v2",
+   "slide": "right",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 145,
+    "peak_force": 14.9,
+    "slams": 0
+   },
+   "close": {
+    "success": false,
+    "failure": "not_closed",
+    "steps": 300,
+    "peak_force": 71.34,
+    "slams": 0
+   },
+   "success": false,
+   "failure": "not_latched",
+   "lid_opened": 0.1299,
+   "picked": true,
+   "seated": true,
+   "latched": false,
+   "state": "loaded",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 47.1
+  },
+  {
+   "index": 52,
+   "actor": "feel_v2",
+   "slide": "right",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 146,
+    "peak_force": 14.49,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 192,
+    "peak_force": 41.33,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1309,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 41.6
+  },
+  {
+   "index": 53,
+   "actor": "feel_v2",
+   "slide": "left",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 184,
+    "peak_force": 41.44,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 231,
+    "peak_force": 42.64,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1343,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 44.9
+  },
+  {
+   "index": 54,
+   "actor": "feel_v2",
+   "slide": "out",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 201,
+    "peak_force": 12.3,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 201,
+    "peak_force": 19.78,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2656,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 9,
+   "error": null,
+   "cycle_s": 43.6
+  },
+  {
+   "index": 55,
+   "actor": "feel_v2",
+   "slide": "left",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 177,
+    "peak_force": 37.47,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 177,
+    "peak_force": 39.24,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1235,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 41.35
+  },
+  {
+   "index": 56,
+   "actor": "feel_v2",
+   "slide": "right",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 150,
+    "peak_force": 13.17,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 147,
+    "peak_force": 19.75,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1381,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 39.6
+  },
+  {
+   "index": 57,
+   "actor": "feel_v2",
+   "slide": "left",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 183,
+    "peak_force": 39.06,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 229,
+    "peak_force": 44.69,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1303,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 44.65
+  },
+  {
+   "index": 58,
+   "actor": "feel_v2",
+   "slide": "out",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 206,
+    "peak_force": 13.67,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 253,
+    "peak_force": 60.74,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2674,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 9,
+   "error": null,
+   "cycle_s": 46.4
+  },
+  {
+   "index": 59,
+   "actor": "feel_v2",
+   "slide": "out",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 204,
+    "peak_force": 14.75,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 205,
+    "peak_force": 20.57,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2709,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 9,
+   "error": null,
+   "cycle_s": 43.95
+  },
+  {
+   "index": 60,
+   "actor": "feel_v2",
+   "slide": "left",
+   "spring": false,
+   "open": {
+    "success": false,
+    "failure": "not_opened",
+    "steps": 300,
+    "peak_force": 95.8,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 10,
+    "peak_force": 0.0,
+    "slams": 0
+   },
+   "success": false,
+   "failure": "lid_not_opened",
+   "lid_opened": 0.0,
+   "picked": true,
+   "seated": false,
+   "latched": true,
+   "state": "empty",
+   "ik_failures": 48,
+   "error": null,
+   "cycle_s": 41.25
+  },
+  {
+   "index": 61,
+   "actor": "feel_v2",
+   "slide": "out",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 202,
+    "peak_force": 16.65,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 205,
+    "peak_force": 32.56,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2704,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 4,
+   "error": null,
+   "cycle_s": 43.7
+  },
+  {
+   "index": 62,
+   "actor": "feel_v2",
+   "slide": "left",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 179,
+    "peak_force": 39.4,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 177,
+    "peak_force": 37.14,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1269,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 41.55
+  },
+  {
+   "index": 63,
+   "actor": "feel_v2",
+   "slide": "right",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 147,
+    "peak_force": 14.81,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 197,
+    "peak_force": 42.16,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1398,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 41.55
+  },
+  {
+   "index": 64,
+   "actor": "feel_v2",
+   "slide": "left",
+   "spring": true,
+   "open": {
+    "success": false,
+    "failure": "not_opened",
+    "steps": 300,
+    "peak_force": 90.82,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 69,
+    "peak_force": 258.87,
+    "slams": 0
+   },
+   "success": false,
+   "failure": "lid_not_opened",
+   "lid_opened": 0.0,
+   "picked": true,
+   "seated": false,
+   "latched": true,
+   "state": "empty",
+   "ik_failures": 42,
+   "error": null,
+   "cycle_s": 42.95
+  },
+  {
+   "index": 65,
+   "actor": "feel_v2",
+   "slide": "right",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 141,
+    "peak_force": 13.88,
+    "slams": 0
+   },
+   "close": {
+    "success": false,
+    "failure": "not_closed",
+    "steps": 300,
+    "peak_force": 70.38,
+    "slams": 0
+   },
+   "success": false,
+   "failure": "not_latched",
+   "lid_opened": 0.1222,
+   "picked": true,
+   "seated": true,
+   "latched": false,
+   "state": "loaded",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 47.1
+  },
+  {
+   "index": 66,
+   "actor": "feel_v2",
+   "slide": "left",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 176,
+    "peak_force": 39.96,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 175,
+    "peak_force": 36.62,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1221,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 42.3
+  },
+  {
+   "index": 67,
+   "actor": "feel_v2",
+   "slide": "out",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 199,
+    "peak_force": 15.07,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 249,
+    "peak_force": 58.1,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2658,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 5,
+   "error": null,
+   "cycle_s": 45.8
+  },
+  {
+   "index": 68,
+   "actor": "feel_v2",
+   "slide": "right",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 149,
+    "peak_force": 10.49,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 146,
+    "peak_force": 14.73,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1393,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 39.15
+  },
+  {
+   "index": 69,
+   "actor": "feel_v2",
+   "slide": "right",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 141,
+    "peak_force": 13.62,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 140,
+    "peak_force": 19.32,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1206,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 38.6
+  },
+  {
+   "index": 70,
+   "actor": "feel_v2",
+   "slide": "out",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 204,
+    "peak_force": 3.29,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 202,
+    "peak_force": 15.19,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2669,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 8,
+   "error": null,
+   "cycle_s": 43.65
+  },
+  {
+   "index": 71,
+   "actor": "feel_v2",
+   "slide": "out",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 206,
+    "peak_force": 32.03,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 204,
+    "peak_force": 39.4,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2742,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 2,
+   "error": null,
+   "cycle_s": 43.9
+  },
+  {
+   "index": 72,
+   "actor": "feel_v2",
+   "slide": "out",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 200,
+    "peak_force": 10.53,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 252,
+    "peak_force": 55.07,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2669,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 6,
+   "error": null,
+   "cycle_s": 45.8
+  },
+  {
+   "index": 73,
+   "actor": "feel_v2",
+   "slide": "right",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 144,
+    "peak_force": 6.12,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 192,
+    "peak_force": 45.36,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1322,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 41.1
+  },
+  {
+   "index": 74,
+   "actor": "feel_v2",
+   "slide": "right",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 144,
+    "peak_force": 16.95,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 141,
+    "peak_force": 20.82,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1278,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 39.5
+  },
+  {
+   "index": 75,
+   "actor": "feel_v2",
+   "slide": "left",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 187,
+    "peak_force": 42.21,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 272,
+    "peak_force": 64.07,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1399,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 46.7
+  },
+  {
+   "index": 76,
+   "actor": "feel_v2",
+   "slide": "out",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 198,
+    "peak_force": 5.86,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 200,
+    "peak_force": 11.66,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2655,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 6,
+   "error": null,
+   "cycle_s": 43.1
+  },
+  {
+   "index": 77,
+   "actor": "feel_v2",
+   "slide": "right",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 144,
+    "peak_force": 20.74,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 143,
+    "peak_force": 12.26,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1303,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 39.45
+  },
+  {
+   "index": 78,
+   "actor": "feel_v2",
+   "slide": "left",
+   "spring": true,
+   "open": {
+    "success": false,
+    "failure": "not_opened",
+    "steps": 300,
+    "peak_force": 86.53,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 10,
+    "peak_force": 0.0,
+    "slams": 0
+   },
+   "success": false,
+   "failure": "lid_not_opened",
+   "lid_opened": 0.0,
+   "picked": true,
+   "seated": false,
+   "latched": true,
+   "state": "empty",
+   "ik_failures": 17,
+   "error": null,
+   "cycle_s": 38.7
+  },
+  {
+   "index": 79,
+   "actor": "feel_v2",
+   "slide": "out",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 200,
+    "peak_force": 17.45,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 204,
+    "peak_force": 35.6,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2673,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 6,
+   "error": null,
+   "cycle_s": 43.45
+  },
+  {
+   "index": 80,
+   "actor": "feel_v2",
+   "slide": "right",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 146,
+    "peak_force": 19.95,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 144,
+    "peak_force": 23.14,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1315,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 39.2
+  },
+  {
+   "index": 81,
+   "actor": "feel_v2",
+   "slide": "right",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 143,
+    "peak_force": 19.24,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 141,
+    "peak_force": 9.23,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1271,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 39.4
+  },
+  {
+   "index": 82,
+   "actor": "feel_v2",
+   "slide": "out",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 205,
+    "peak_force": 24.09,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 293,
+    "peak_force": 112.22,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.273,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 10,
+   "error": null,
+   "cycle_s": 48.55
+  },
+  {
+   "index": 83,
+   "actor": "feel_v2",
+   "slide": "left",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 181,
+    "peak_force": 39.54,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 180,
+    "peak_force": 36.31,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1326,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 42.0
+  },
+  {
+   "index": 84,
+   "actor": "feel_v2",
+   "slide": "right",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 146,
+    "peak_force": 15.7,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 144,
+    "peak_force": 10.3,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1311,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 39.15
+  },
+  {
+   "index": 85,
+   "actor": "feel_v2",
+   "slide": "left",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 178,
+    "peak_force": 36.71,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 226,
+    "peak_force": 42.01,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1249,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 44.55
+  },
+  {
+   "index": 86,
+   "actor": "feel_v2",
+   "slide": "right",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 145,
+    "peak_force": 15.33,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 145,
+    "peak_force": 18.21,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1331,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 39.65
+  },
+  {
+   "index": 87,
+   "actor": "feel_v2",
+   "slide": "out",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 204,
+    "peak_force": 4.67,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 292,
+    "peak_force": 111.27,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2684,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 10,
+   "error": null,
+   "cycle_s": 48.35
+  },
+  {
+   "index": 88,
+   "actor": "feel_v2",
+   "slide": "out",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 203,
+    "peak_force": 16.98,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 290,
+    "peak_force": 110.99,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2682,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 9,
+   "error": null,
+   "cycle_s": 48.25
+  },
+  {
+   "index": 89,
+   "actor": "feel_v2",
+   "slide": "out",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 203,
+    "peak_force": 13.71,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 202,
+    "peak_force": 22.73,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2701,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 4,
+   "error": null,
+   "cycle_s": 43.75
+  },
+  {
+   "index": 90,
+   "actor": "feel_v2",
+   "slide": "right",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 142,
+    "peak_force": 11.39,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 141,
+    "peak_force": 20.55,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1259,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 38.55
+  },
+  {
+   "index": 91,
+   "actor": "feel_v2",
+   "slide": "out",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 198,
+    "peak_force": 10.02,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 200,
+    "peak_force": 29.84,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2665,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 42.75
+  },
+  {
+   "index": 92,
+   "actor": "feel_v2",
+   "slide": "out",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 204,
+    "peak_force": 16.02,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 203,
+    "peak_force": 33.31,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2663,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 10,
+   "error": null,
+   "cycle_s": 44.0
+  },
+  {
+   "index": 93,
+   "actor": "feel_v2",
+   "slide": "out",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 200,
+    "peak_force": 9.72,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 200,
+    "peak_force": 33.59,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2652,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 6,
+   "error": null,
+   "cycle_s": 43.15
+  },
+  {
+   "index": 94,
+   "actor": "feel_v2",
+   "slide": "out",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 205,
+    "peak_force": 18.17,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 293,
+    "peak_force": 109.59,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2703,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 10,
+   "error": null,
+   "cycle_s": 48.5
+  },
+  {
+   "index": 95,
+   "actor": "feel_v2",
+   "slide": "left",
+   "spring": true,
+   "open": {
+    "success": false,
+    "failure": "not_opened",
+    "steps": 300,
+    "peak_force": 94.02,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 54,
+    "peak_force": 121.88,
+    "slams": 0
+   },
+   "success": false,
+   "failure": "lid_not_opened",
+   "lid_opened": 0.0,
+   "picked": true,
+   "seated": false,
+   "latched": true,
+   "state": "empty",
+   "ik_failures": 60,
+   "error": null,
+   "cycle_s": 43.45
+  },
+  {
+   "index": 96,
+   "actor": "feel_v2",
+   "slide": "right",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 149,
+    "peak_force": 21.21,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 147,
+    "peak_force": 20.13,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1376,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 40.05
+  },
+  {
+   "index": 97,
+   "actor": "feel_v2",
+   "slide": "left",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 179,
+    "peak_force": 37.23,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 229,
+    "peak_force": 42.73,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1301,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 44.65
+  },
+  {
+   "index": 98,
+   "actor": "feel_v2",
+   "slide": "left",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 180,
+    "peak_force": 36.62,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 228,
+    "peak_force": 41.21,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.131,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 44.35
+  },
+  {
+   "index": 99,
+   "actor": "feel_v2",
+   "slide": "left",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 182,
+    "peak_force": 38.3,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 180,
+    "peak_force": 41.68,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1365,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 42.0
+  }
+ ]
+}

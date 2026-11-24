@@ -1,0 +1,3034 @@
+{
+ "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+ "set": "door_final_v1",
+ "set_digest": "1bf1bd3f850f",
+ "git": {
+  "commit": "9813245d61b29d91583ebd4c5a181e07f31e36a4",
+  "dirty": false
+ },
+ "wall_s": 226.5,
+ "summary": {
+  "n": 100,
+  "running": 63,
+  "rate": 0.63,
+  "wilson95": [
+   0.5322034757513312,
+   0.7181778743049083
+  ],
+  "failures": {
+   "lid_not_opened": 35,
+   "not_seated": 2
+  },
+  "errors": 0,
+  "door_moves": {
+   "opens_ok": 64,
+   "closes_ok": 72,
+   "median_steps": 72.0,
+   "peak_force_median": 37.46,
+   "slams": 4
+  },
+  "cycle_s_median": 30.875
+ },
+ "rows": [
+  {
+   "index": 0,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "right",
+   "spring": true,
+   "open": {
+    "success": false,
+    "failure": "never_touched",
+    "steps": 300,
+    "peak_force": 0.0,
+    "slams": 0
+   },
+   "close": {
+    "success": false,
+    "failure": "not_released",
+    "steps": 300,
+    "peak_force": 420.54,
+    "slams": 0
+   },
+   "success": false,
+   "failure": "lid_not_opened",
+   "lid_opened": 0.0,
+   "picked": true,
+   "seated": false,
+   "latched": true,
+   "state": "empty",
+   "ik_failures": 126,
+   "error": null,
+   "cycle_s": 58.5
+  },
+  {
+   "index": 1,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "right",
+   "spring": false,
+   "open": {
+    "success": false,
+    "failure": "not_opened",
+    "steps": 300,
+    "peak_force": 205.78,
+    "slams": 0
+   },
+   "close": {
+    "success": false,
+    "failure": "not_released",
+    "steps": 300,
+    "peak_force": 851.25,
+    "slams": 0
+   },
+   "success": false,
+   "failure": "lid_not_opened",
+   "lid_opened": 0.0,
+   "picked": true,
+   "seated": false,
+   "latched": true,
+   "state": "empty",
+   "ik_failures": 108,
+   "error": null,
+   "cycle_s": 57.65
+  },
+  {
+   "index": 2,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "out",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 76,
+    "peak_force": 16.56,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 71,
+    "peak_force": 16.56,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2691,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 9,
+   "error": null,
+   "cycle_s": 30.75
+  },
+  {
+   "index": 3,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "left",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 91,
+    "peak_force": 57.57,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 46,
+    "peak_force": 41.72,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1221,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 30.65
+  },
+  {
+   "index": 4,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "left",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 98,
+    "peak_force": 204.99,
+    "slams": 1
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 46,
+    "peak_force": 34.37,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1261,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 30.85
+  },
+  {
+   "index": 5,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "right",
+   "spring": false,
+   "open": {
+    "success": false,
+    "failure": "not_opened",
+    "steps": 300,
+    "peak_force": 199.26,
+    "slams": 0
+   },
+   "close": {
+    "success": false,
+    "failure": "never_touched",
+    "steps": 300,
+    "peak_force": 0.0,
+    "slams": 0
+   },
+   "success": false,
+   "failure": "lid_not_opened",
+   "lid_opened": 0.0,
+   "picked": true,
+   "seated": false,
+   "latched": false,
+   "state": "empty",
+   "ik_failures": 49,
+   "error": null,
+   "cycle_s": 56.0
+  },
+  {
+   "index": 6,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "out",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 74,
+    "peak_force": 39.09,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 74,
+    "peak_force": 19.1,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2719,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 7,
+   "error": null,
+   "cycle_s": 30.4
+  },
+  {
+   "index": 7,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "out",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 77,
+    "peak_force": 19.15,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 71,
+    "peak_force": 61.3,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2695,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 11,
+   "error": null,
+   "cycle_s": 30.9
+  },
+  {
+   "index": 8,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "out",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 74,
+    "peak_force": 21.01,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 71,
+    "peak_force": 12.19,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2703,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 5,
+   "error": null,
+   "cycle_s": 30.2
+  },
+  {
+   "index": 9,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "right",
+   "spring": true,
+   "open": {
+    "success": false,
+    "failure": "not_opened",
+    "steps": 300,
+    "peak_force": 124.46,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 10,
+    "peak_force": 0.0,
+    "slams": 0
+   },
+   "success": false,
+   "failure": "lid_not_opened",
+   "lid_opened": 0.0,
+   "picked": true,
+   "seated": false,
+   "latched": true,
+   "state": "empty",
+   "ik_failures": 43,
+   "error": null,
+   "cycle_s": 39.5
+  },
+  {
+   "index": 10,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "out",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 77,
+    "peak_force": 18.9,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 70,
+    "peak_force": 40.4,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2688,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 13,
+   "error": null,
+   "cycle_s": 30.95
+  },
+  {
+   "index": 11,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "left",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 64,
+    "peak_force": 28.23,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 50,
+    "peak_force": 30.86,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1382,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 28.95
+  },
+  {
+   "index": 12,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "out",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 76,
+    "peak_force": 18.66,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 70,
+    "peak_force": 60.78,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2661,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 10,
+   "error": null,
+   "cycle_s": 30.5
+  },
+  {
+   "index": 13,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "right",
+   "spring": false,
+   "open": {
+    "success": false,
+    "failure": "not_opened",
+    "steps": 300,
+    "peak_force": 160.17,
+    "slams": 0
+   },
+   "close": {
+    "success": false,
+    "failure": "not_released",
+    "steps": 300,
+    "peak_force": 200.15,
+    "slams": 0
+   },
+   "success": false,
+   "failure": "lid_not_opened",
+   "lid_opened": -0.0,
+   "picked": true,
+   "seated": false,
+   "latched": true,
+   "state": "empty",
+   "ik_failures": 140,
+   "error": null,
+   "cycle_s": 60.0
+  },
+  {
+   "index": 14,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "right",
+   "spring": false,
+   "open": {
+    "success": false,
+    "failure": "not_opened",
+    "steps": 300,
+    "peak_force": 227.75,
+    "slams": 0
+   },
+   "close": {
+    "success": false,
+    "failure": "never_touched",
+    "steps": 300,
+    "peak_force": 219.31,
+    "slams": 0
+   },
+   "success": false,
+   "failure": "lid_not_opened",
+   "lid_opened": 0.0,
+   "picked": true,
+   "seated": false,
+   "latched": false,
+   "state": "empty",
+   "ik_failures": 170,
+   "error": null,
+   "cycle_s": 61.55
+  },
+  {
+   "index": 15,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "right",
+   "spring": true,
+   "open": {
+    "success": false,
+    "failure": "not_opened",
+    "steps": 300,
+    "peak_force": 251.71,
+    "slams": 0
+   },
+   "close": {
+    "success": false,
+    "failure": "not_released",
+    "steps": 300,
+    "peak_force": 237.35,
+    "slams": 0
+   },
+   "success": false,
+   "failure": "lid_not_opened",
+   "lid_opened": 0.0,
+   "picked": true,
+   "seated": false,
+   "latched": true,
+   "state": "empty",
+   "ik_failures": 75,
+   "error": null,
+   "cycle_s": 56.75
+  },
+  {
+   "index": 16,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "out",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 74,
+    "peak_force": 20.62,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 72,
+    "peak_force": 29.61,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2732,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 6,
+   "error": null,
+   "cycle_s": 30.3
+  },
+  {
+   "index": 17,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "out",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 76,
+    "peak_force": 14.83,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 133,
+    "peak_force": 90.16,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2692,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 13,
+   "error": null,
+   "cycle_s": 34.2
+  },
+  {
+   "index": 18,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "out",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 76,
+    "peak_force": 21.91,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 71,
+    "peak_force": 10.37,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2721,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 9,
+   "error": null,
+   "cycle_s": 30.7
+  },
+  {
+   "index": 19,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "out",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 76,
+    "peak_force": 20.79,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 72,
+    "peak_force": 73.41,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2719,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 9,
+   "error": null,
+   "cycle_s": 30.65
+  },
+  {
+   "index": 20,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "out",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 76,
+    "peak_force": 21.3,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 69,
+    "peak_force": 6.09,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2743,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 8,
+   "error": null,
+   "cycle_s": 30.4
+  },
+  {
+   "index": 21,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "right",
+   "spring": false,
+   "open": {
+    "success": false,
+    "failure": "not_opened",
+    "steps": 300,
+    "peak_force": 196.49,
+    "slams": 0
+   },
+   "close": {
+    "success": false,
+    "failure": "not_released",
+    "steps": 300,
+    "peak_force": 416.3,
+    "slams": 0
+   },
+   "success": false,
+   "failure": "lid_not_opened",
+   "lid_opened": 0.0,
+   "picked": true,
+   "seated": false,
+   "latched": true,
+   "state": "empty",
+   "ik_failures": 103,
+   "error": null,
+   "cycle_s": 57.9
+  },
+  {
+   "index": 22,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "right",
+   "spring": true,
+   "open": {
+    "success": false,
+    "failure": "not_opened",
+    "steps": 300,
+    "peak_force": 29.34,
+    "slams": 0
+   },
+   "close": {
+    "success": false,
+    "failure": "never_touched",
+    "steps": 300,
+    "peak_force": 271.52,
+    "slams": 0
+   },
+   "success": false,
+   "failure": "lid_not_opened",
+   "lid_opened": 0.0,
+   "picked": true,
+   "seated": false,
+   "latched": false,
+   "state": "empty",
+   "ik_failures": 104,
+   "error": null,
+   "cycle_s": 58.5
+  },
+  {
+   "index": 23,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "out",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 76,
+    "peak_force": 17.12,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 71,
+    "peak_force": 1.5,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2695,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 7,
+   "error": null,
+   "cycle_s": 30.35
+  },
+  {
+   "index": 24,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "left",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 64,
+    "peak_force": 211.39,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 46,
+    "peak_force": 45.03,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1224,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 29.25
+  },
+  {
+   "index": 25,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "right",
+   "spring": true,
+   "open": {
+    "success": false,
+    "failure": "not_opened",
+    "steps": 300,
+    "peak_force": 228.74,
+    "slams": 0
+   },
+   "close": {
+    "success": false,
+    "failure": "never_touched",
+    "steps": 300,
+    "peak_force": 117.29,
+    "slams": 0
+   },
+   "success": false,
+   "failure": "lid_not_opened",
+   "lid_opened": 0.0,
+   "picked": true,
+   "seated": false,
+   "latched": false,
+   "state": "empty",
+   "ik_failures": 47,
+   "error": null,
+   "cycle_s": 55.25
+  },
+  {
+   "index": 26,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "out",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 75,
+    "peak_force": 16.15,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 71,
+    "peak_force": 21.78,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2698,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 9,
+   "error": null,
+   "cycle_s": 30.5
+  },
+  {
+   "index": 27,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "left",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 102,
+    "peak_force": 251.72,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 49,
+    "peak_force": 18.07,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1374,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 31.0
+  },
+  {
+   "index": 28,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "left",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 65,
+    "peak_force": 165.52,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 46,
+    "peak_force": 37.71,
+    "slams": 0
+   },
+   "success": false,
+   "failure": "not_seated",
+   "lid_opened": 0.1351,
+   "picked": true,
+   "seated": false,
+   "latched": true,
+   "state": "empty",
+   "ik_failures": 6,
+   "error": null,
+   "cycle_s": 29.35
+  },
+  {
+   "index": 29,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "out",
+   "spring": true,
+   "open": {
+    "success": false,
+    "failure": "not_opened",
+    "steps": 300,
+    "peak_force": 20.23,
+    "slams": 0
+   },
+   "close": {
+    "success": false,
+    "failure": "never_touched",
+    "steps": 300,
+    "peak_force": 119.28,
+    "slams": 0
+   },
+   "success": false,
+   "failure": "lid_not_opened",
+   "lid_opened": 0.0202,
+   "picked": true,
+   "seated": false,
+   "latched": false,
+   "state": "empty",
+   "ik_failures": 57,
+   "error": null,
+   "cycle_s": 55.4
+  },
+  {
+   "index": 30,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "left",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 101,
+    "peak_force": 169.24,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 46,
+    "peak_force": 15.36,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1219,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 30.75
+  },
+  {
+   "index": 31,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "left",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 98,
+    "peak_force": 190.85,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 46,
+    "peak_force": 19.15,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1244,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 30.5
+  },
+  {
+   "index": 32,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "out",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 76,
+    "peak_force": 33.41,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 70,
+    "peak_force": 76.51,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2722,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 8,
+   "error": null,
+   "cycle_s": 30.4
+  },
+  {
+   "index": 33,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "left",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 101,
+    "peak_force": 160.55,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 48,
+    "peak_force": 52.58,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.137,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 30.7
+  },
+  {
+   "index": 34,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "right",
+   "spring": false,
+   "open": {
+    "success": false,
+    "failure": "not_opened",
+    "steps": 300,
+    "peak_force": 162.69,
+    "slams": 0
+   },
+   "close": {
+    "success": false,
+    "failure": "never_touched",
+    "steps": 300,
+    "peak_force": 617.0,
+    "slams": 0
+   },
+   "success": false,
+   "failure": "lid_not_opened",
+   "lid_opened": -0.0,
+   "picked": true,
+   "seated": false,
+   "latched": false,
+   "state": "empty",
+   "ik_failures": 109,
+   "error": null,
+   "cycle_s": 58.35
+  },
+  {
+   "index": 35,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "right",
+   "spring": false,
+   "open": {
+    "success": false,
+    "failure": "not_opened",
+    "steps": 300,
+    "peak_force": 203.44,
+    "slams": 0
+   },
+   "close": {
+    "success": false,
+    "failure": "never_touched",
+    "steps": 300,
+    "peak_force": 0.0,
+    "slams": 0
+   },
+   "success": false,
+   "failure": "lid_not_opened",
+   "lid_opened": 0.0,
+   "picked": true,
+   "seated": false,
+   "latched": false,
+   "state": "empty",
+   "ik_failures": 49,
+   "error": null,
+   "cycle_s": 54.8
+  },
+  {
+   "index": 36,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "left",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 99,
+    "peak_force": 267.68,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 45,
+    "peak_force": 21.84,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1295,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 30.35
+  },
+  {
+   "index": 37,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "left",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 105,
+    "peak_force": 247.1,
+    "slams": 1
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 47,
+    "peak_force": 33.18,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1277,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 31.25
+  },
+  {
+   "index": 38,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "out",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 77,
+    "peak_force": 29.23,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 69,
+    "peak_force": 38.06,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2695,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 9,
+   "error": null,
+   "cycle_s": 30.7
+  },
+  {
+   "index": 39,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "right",
+   "spring": false,
+   "open": {
+    "success": false,
+    "failure": "not_opened",
+    "steps": 300,
+    "peak_force": 234.68,
+    "slams": 0
+   },
+   "close": {
+    "success": false,
+    "failure": "never_touched",
+    "steps": 300,
+    "peak_force": 0.0,
+    "slams": 0
+   },
+   "success": false,
+   "failure": "lid_not_opened",
+   "lid_opened": 0.0,
+   "picked": true,
+   "seated": false,
+   "latched": false,
+   "state": "empty",
+   "ik_failures": 40,
+   "error": null,
+   "cycle_s": 55.15
+  },
+  {
+   "index": 40,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "left",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 101,
+    "peak_force": 239.31,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 47,
+    "peak_force": 8.01,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1355,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 31.15
+  },
+  {
+   "index": 41,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "out",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 74,
+    "peak_force": 24.78,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 73,
+    "peak_force": 19.33,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2726,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 6,
+   "error": null,
+   "cycle_s": 30.3
+  },
+  {
+   "index": 42,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "left",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 66,
+    "peak_force": 193.9,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 45,
+    "peak_force": 15.33,
+    "slams": 0
+   },
+   "success": false,
+   "failure": "not_seated",
+   "lid_opened": 0.1216,
+   "picked": true,
+   "seated": false,
+   "latched": true,
+   "state": "empty",
+   "ik_failures": 5,
+   "error": null,
+   "cycle_s": 29.2
+  },
+  {
+   "index": 43,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "left",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 63,
+    "peak_force": 209.19,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 47,
+    "peak_force": 39.84,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1266,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 29.0
+  },
+  {
+   "index": 44,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "left",
+   "spring": false,
+   "open": {
+    "success": false,
+    "failure": "not_opened",
+    "steps": 300,
+    "peak_force": 16.27,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 45,
+    "peak_force": 68.48,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.0959,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 41.85
+  },
+  {
+   "index": 45,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "right",
+   "spring": true,
+   "open": {
+    "success": false,
+    "failure": "not_opened",
+    "steps": 300,
+    "peak_force": 130.02,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 10,
+    "peak_force": 0.0,
+    "slams": 0
+   },
+   "success": false,
+   "failure": "lid_not_opened",
+   "lid_opened": 0.0,
+   "picked": true,
+   "seated": false,
+   "latched": true,
+   "state": "empty",
+   "ik_failures": 47,
+   "error": null,
+   "cycle_s": 40.7
+  },
+  {
+   "index": 46,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "out",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 77,
+    "peak_force": 17.8,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 70,
+    "peak_force": 41.97,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2715,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 9,
+   "error": null,
+   "cycle_s": 30.55
+  },
+  {
+   "index": 47,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "left",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 99,
+    "peak_force": 156.17,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 46,
+    "peak_force": 34.2,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1275,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 30.65
+  },
+  {
+   "index": 48,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "out",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 76,
+    "peak_force": 21.34,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 72,
+    "peak_force": 60.39,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2683,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 9,
+   "error": null,
+   "cycle_s": 30.7
+  },
+  {
+   "index": 49,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "left",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 66,
+    "peak_force": 243.56,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 48,
+    "peak_force": 23.24,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1223,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 29.0
+  },
+  {
+   "index": 50,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "right",
+   "spring": false,
+   "open": {
+    "success": false,
+    "failure": "not_opened",
+    "steps": 300,
+    "peak_force": 198.07,
+    "slams": 0
+   },
+   "close": {
+    "success": false,
+    "failure": "never_touched",
+    "steps": 300,
+    "peak_force": 0.0,
+    "slams": 0
+   },
+   "success": false,
+   "failure": "lid_not_opened",
+   "lid_opened": 0.0,
+   "picked": true,
+   "seated": false,
+   "latched": false,
+   "state": "empty",
+   "ik_failures": 36,
+   "error": null,
+   "cycle_s": 54.6
+  },
+  {
+   "index": 51,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "right",
+   "spring": true,
+   "open": {
+    "success": false,
+    "failure": "not_opened",
+    "steps": 300,
+    "peak_force": 254.01,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 160,
+    "peak_force": 105.79,
+    "slams": 0
+   },
+   "success": false,
+   "failure": "lid_not_opened",
+   "lid_opened": 0.0,
+   "picked": true,
+   "seated": false,
+   "latched": true,
+   "state": "empty",
+   "ik_failures": 78,
+   "error": null,
+   "cycle_s": 49.8
+  },
+  {
+   "index": 52,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "right",
+   "spring": false,
+   "open": {
+    "success": false,
+    "failure": "not_opened",
+    "steps": 300,
+    "peak_force": 164.73,
+    "slams": 0
+   },
+   "close": {
+    "success": false,
+    "failure": "never_touched",
+    "steps": 300,
+    "peak_force": 96.7,
+    "slams": 0
+   },
+   "success": false,
+   "failure": "lid_not_opened",
+   "lid_opened": 0.0,
+   "picked": true,
+   "seated": false,
+   "latched": false,
+   "state": "empty",
+   "ik_failures": 70,
+   "error": null,
+   "cycle_s": 56.4
+  },
+  {
+   "index": 53,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "left",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 103,
+    "peak_force": 98.43,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 47,
+    "peak_force": 37.21,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1343,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 31.0
+  },
+  {
+   "index": 54,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "out",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 76,
+    "peak_force": 34.57,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 70,
+    "peak_force": 19.48,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2656,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 9,
+   "error": null,
+   "cycle_s": 30.65
+  },
+  {
+   "index": 55,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "left",
+   "spring": false,
+   "open": {
+    "success": false,
+    "failure": "never_touched",
+    "steps": 300,
+    "peak_force": 0.0,
+    "slams": 0
+   },
+   "close": {
+    "success": false,
+    "failure": "never_touched",
+    "steps": 300,
+    "peak_force": 0.0,
+    "slams": 0
+   },
+   "success": false,
+   "failure": "lid_not_opened",
+   "lid_opened": 0.0,
+   "picked": true,
+   "seated": false,
+   "latched": false,
+   "state": "empty",
+   "ik_failures": 69,
+   "error": null,
+   "cycle_s": 56.85
+  },
+  {
+   "index": 56,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "right",
+   "spring": false,
+   "open": {
+    "success": false,
+    "failure": "not_opened",
+    "steps": 300,
+    "peak_force": 286.62,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 10,
+    "peak_force": 0.0,
+    "slams": 0
+   },
+   "success": false,
+   "failure": "lid_not_opened",
+   "lid_opened": -0.0,
+   "picked": true,
+   "seated": false,
+   "latched": true,
+   "state": "empty",
+   "ik_failures": 42,
+   "error": null,
+   "cycle_s": 41.15
+  },
+  {
+   "index": 57,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "left",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 101,
+    "peak_force": 208.94,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 46,
+    "peak_force": 22.29,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1303,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 31.05
+  },
+  {
+   "index": 58,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "out",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 76,
+    "peak_force": 18.22,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 70,
+    "peak_force": 51.96,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2674,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 13,
+   "error": null,
+   "cycle_s": 30.8
+  },
+  {
+   "index": 59,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "out",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 76,
+    "peak_force": 16.13,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 72,
+    "peak_force": 34.23,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2709,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 9,
+   "error": null,
+   "cycle_s": 30.75
+  },
+  {
+   "index": 60,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "left",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 101,
+    "peak_force": 271.07,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 46,
+    "peak_force": 10.81,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.128,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 31.0
+  },
+  {
+   "index": 61,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "out",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 73,
+    "peak_force": 21.64,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 72,
+    "peak_force": 6.88,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2704,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 5,
+   "error": null,
+   "cycle_s": 30.15
+  },
+  {
+   "index": 62,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "left",
+   "spring": true,
+   "open": {
+    "success": false,
+    "failure": "not_opened",
+    "steps": 300,
+    "peak_force": 172.0,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 13,
+    "peak_force": 0.0,
+    "slams": 0
+   },
+   "success": false,
+   "failure": "lid_not_opened",
+   "lid_opened": 0.0099,
+   "picked": true,
+   "seated": false,
+   "latched": true,
+   "state": "empty",
+   "ik_failures": 72,
+   "error": null,
+   "cycle_s": 42.5
+  },
+  {
+   "index": 63,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "right",
+   "spring": false,
+   "open": {
+    "success": false,
+    "failure": "not_opened",
+    "steps": 300,
+    "peak_force": 151.05,
+    "slams": 0
+   },
+   "close": {
+    "success": false,
+    "failure": "never_touched",
+    "steps": 300,
+    "peak_force": 0.0,
+    "slams": 0
+   },
+   "success": false,
+   "failure": "lid_not_opened",
+   "lid_opened": 0.0,
+   "picked": true,
+   "seated": false,
+   "latched": false,
+   "state": "empty",
+   "ik_failures": 16,
+   "error": null,
+   "cycle_s": 54.15
+  },
+  {
+   "index": 64,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "left",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 115,
+    "peak_force": 192.3,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 48,
+    "peak_force": 34.48,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1336,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 31.75
+  },
+  {
+   "index": 65,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "right",
+   "spring": true,
+   "open": {
+    "success": false,
+    "failure": "not_opened",
+    "steps": 300,
+    "peak_force": 72.75,
+    "slams": 0
+   },
+   "close": {
+    "success": false,
+    "failure": "never_touched",
+    "steps": 300,
+    "peak_force": 202.2,
+    "slams": 0
+   },
+   "success": false,
+   "failure": "lid_not_opened",
+   "lid_opened": 0.0,
+   "picked": true,
+   "seated": false,
+   "latched": false,
+   "state": "empty",
+   "ik_failures": 129,
+   "error": null,
+   "cycle_s": 59.3
+  },
+  {
+   "index": 66,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "left",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 95,
+    "peak_force": 130.1,
+    "slams": 1
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 46,
+    "peak_force": 15.63,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1221,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 31.1
+  },
+  {
+   "index": 67,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "out",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 75,
+    "peak_force": 35.96,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 70,
+    "peak_force": 35.2,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2658,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 7,
+   "error": null,
+   "cycle_s": 30.3
+  },
+  {
+   "index": 68,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "right",
+   "spring": true,
+   "open": {
+    "success": false,
+    "failure": "not_opened",
+    "steps": 300,
+    "peak_force": 145.35,
+    "slams": 0
+   },
+   "close": {
+    "success": false,
+    "failure": "never_touched",
+    "steps": 300,
+    "peak_force": 408.85,
+    "slams": 0
+   },
+   "success": false,
+   "failure": "lid_not_opened",
+   "lid_opened": 0.0,
+   "picked": true,
+   "seated": false,
+   "latched": false,
+   "state": "empty",
+   "ik_failures": 105,
+   "error": null,
+   "cycle_s": 58.25
+  },
+  {
+   "index": 69,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "right",
+   "spring": true,
+   "open": {
+    "success": false,
+    "failure": "not_opened",
+    "steps": 300,
+    "peak_force": 163.03,
+    "slams": 0
+   },
+   "close": {
+    "success": false,
+    "failure": "never_touched",
+    "steps": 300,
+    "peak_force": 0.0,
+    "slams": 0
+   },
+   "success": false,
+   "failure": "lid_not_opened",
+   "lid_opened": 0.0,
+   "picked": true,
+   "seated": false,
+   "latched": false,
+   "state": "empty",
+   "ik_failures": 69,
+   "error": null,
+   "cycle_s": 58.4
+  },
+  {
+   "index": 70,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "out",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 75,
+    "peak_force": 16.48,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 71,
+    "peak_force": 54.77,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2669,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 10,
+   "error": null,
+   "cycle_s": 30.5
+  },
+  {
+   "index": 71,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "out",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 75,
+    "peak_force": 20.83,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 74,
+    "peak_force": 20.51,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2742,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 8,
+   "error": null,
+   "cycle_s": 30.5
+  },
+  {
+   "index": 72,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "out",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 74,
+    "peak_force": 19.82,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 72,
+    "peak_force": 63.4,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2669,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 7,
+   "error": null,
+   "cycle_s": 30.35
+  },
+  {
+   "index": 73,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "right",
+   "spring": false,
+   "open": {
+    "success": false,
+    "failure": "not_opened",
+    "steps": 300,
+    "peak_force": 214.82,
+    "slams": 0
+   },
+   "close": {
+    "success": false,
+    "failure": "never_touched",
+    "steps": 300,
+    "peak_force": 990.24,
+    "slams": 0
+   },
+   "success": false,
+   "failure": "lid_not_opened",
+   "lid_opened": 0.0,
+   "picked": true,
+   "seated": false,
+   "latched": false,
+   "state": "empty",
+   "ik_failures": 23,
+   "error": null,
+   "cycle_s": 57.05
+  },
+  {
+   "index": 74,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "right",
+   "spring": true,
+   "open": {
+    "success": false,
+    "failure": "not_opened",
+    "steps": 300,
+    "peak_force": 244.76,
+    "slams": 0
+   },
+   "close": {
+    "success": false,
+    "failure": "never_touched",
+    "steps": 300,
+    "peak_force": 0.0,
+    "slams": 0
+   },
+   "success": false,
+   "failure": "lid_not_opened",
+   "lid_opened": 0.0,
+   "picked": true,
+   "seated": false,
+   "latched": false,
+   "state": "empty",
+   "ik_failures": 53,
+   "error": null,
+   "cycle_s": 55.65
+  },
+  {
+   "index": 75,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "left",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 101,
+    "peak_force": 269.45,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 48,
+    "peak_force": 24.07,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1399,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 30.8
+  },
+  {
+   "index": 76,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "out",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 74,
+    "peak_force": 21.04,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 69,
+    "peak_force": 42.05,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2655,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 7,
+   "error": null,
+   "cycle_s": 30.25
+  },
+  {
+   "index": 77,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "right",
+   "spring": false,
+   "open": {
+    "success": false,
+    "failure": "not_opened",
+    "steps": 300,
+    "peak_force": 26.85,
+    "slams": 0
+   },
+   "close": {
+    "success": false,
+    "failure": "never_touched",
+    "steps": 300,
+    "peak_force": 416.39,
+    "slams": 0
+   },
+   "success": false,
+   "failure": "lid_not_opened",
+   "lid_opened": 0.0,
+   "picked": true,
+   "seated": false,
+   "latched": false,
+   "state": "empty",
+   "ik_failures": 253,
+   "error": null,
+   "cycle_s": 65.9
+  },
+  {
+   "index": 78,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "left",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 100,
+    "peak_force": 268.97,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 48,
+    "peak_force": 48.92,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1391,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 30.7
+  },
+  {
+   "index": 79,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "out",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 74,
+    "peak_force": 16.37,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 71,
+    "peak_force": 20.31,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2673,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 6,
+   "error": null,
+   "cycle_s": 30.3
+  },
+  {
+   "index": 80,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "right",
+   "spring": true,
+   "open": {
+    "success": false,
+    "failure": "not_opened",
+    "steps": 300,
+    "peak_force": 156.22,
+    "slams": 0
+   },
+   "close": {
+    "success": false,
+    "failure": "never_touched",
+    "steps": 300,
+    "peak_force": 0.0,
+    "slams": 0
+   },
+   "success": false,
+   "failure": "lid_not_opened",
+   "lid_opened": 0.0,
+   "picked": true,
+   "seated": false,
+   "latched": false,
+   "state": "empty",
+   "ik_failures": 41,
+   "error": null,
+   "cycle_s": 55.5
+  },
+  {
+   "index": 81,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "right",
+   "spring": true,
+   "open": {
+    "success": false,
+    "failure": "never_touched",
+    "steps": 300,
+    "peak_force": 0.0,
+    "slams": 0
+   },
+   "close": {
+    "success": false,
+    "failure": "never_touched",
+    "steps": 300,
+    "peak_force": 184.91,
+    "slams": 0
+   },
+   "success": false,
+   "failure": "lid_not_opened",
+   "lid_opened": 0.0,
+   "picked": true,
+   "seated": false,
+   "latched": false,
+   "state": "empty",
+   "ik_failures": 81,
+   "error": null,
+   "cycle_s": 56.5
+  },
+  {
+   "index": 82,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "out",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 77,
+    "peak_force": 19.4,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 71,
+    "peak_force": 32.88,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.273,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 9,
+   "error": null,
+   "cycle_s": 30.75
+  },
+  {
+   "index": 83,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "left",
+   "spring": false,
+   "open": {
+    "success": false,
+    "failure": "not_opened",
+    "steps": 300,
+    "peak_force": 8.44,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 10,
+    "peak_force": 0.0,
+    "slams": 0
+   },
+   "success": false,
+   "failure": "lid_not_opened",
+   "lid_opened": 0.0567,
+   "picked": true,
+   "seated": false,
+   "latched": true,
+   "state": "empty",
+   "ik_failures": 43,
+   "error": null,
+   "cycle_s": 41.45
+  },
+  {
+   "index": 84,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "right",
+   "spring": true,
+   "open": {
+    "success": false,
+    "failure": "not_opened",
+    "steps": 300,
+    "peak_force": 184.21,
+    "slams": 0
+   },
+   "close": {
+    "success": false,
+    "failure": "not_released",
+    "steps": 300,
+    "peak_force": 451.71,
+    "slams": 0
+   },
+   "success": false,
+   "failure": "lid_not_opened",
+   "lid_opened": 0.0,
+   "picked": true,
+   "seated": false,
+   "latched": true,
+   "state": "empty",
+   "ik_failures": 95,
+   "error": null,
+   "cycle_s": 57.85
+  },
+  {
+   "index": 85,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "left",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 97,
+    "peak_force": 89.11,
+    "slams": 1
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 46,
+    "peak_force": 47.85,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1249,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 31.05
+  },
+  {
+   "index": 86,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "right",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 105,
+    "peak_force": 222.96,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 49,
+    "peak_force": 6.25,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1331,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 30.9
+  },
+  {
+   "index": 87,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "out",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 77,
+    "peak_force": 21.38,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 71,
+    "peak_force": 16.56,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2684,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 11,
+   "error": null,
+   "cycle_s": 30.85
+  },
+  {
+   "index": 88,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "out",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 76,
+    "peak_force": 16.74,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 70,
+    "peak_force": 20.24,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2682,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 8,
+   "error": null,
+   "cycle_s": 30.65
+  },
+  {
+   "index": 89,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "out",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 74,
+    "peak_force": 17.77,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 71,
+    "peak_force": 11.42,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2701,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 7,
+   "error": null,
+   "cycle_s": 30.5
+  },
+  {
+   "index": 90,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "right",
+   "spring": false,
+   "open": {
+    "success": false,
+    "failure": "not_opened",
+    "steps": 300,
+    "peak_force": 187.14,
+    "slams": 0
+   },
+   "close": {
+    "success": false,
+    "failure": "never_touched",
+    "steps": 300,
+    "peak_force": 0.0,
+    "slams": 0
+   },
+   "success": false,
+   "failure": "lid_not_opened",
+   "lid_opened": 0.0,
+   "picked": true,
+   "seated": false,
+   "latched": false,
+   "state": "empty",
+   "ik_failures": 51,
+   "error": null,
+   "cycle_s": 58.0
+  },
+  {
+   "index": 91,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "out",
+   "spring": false,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 73,
+    "peak_force": 28.39,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 72,
+    "peak_force": 17.07,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2665,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 5,
+   "error": null,
+   "cycle_s": 30.15
+  },
+  {
+   "index": 92,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "out",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 76,
+    "peak_force": 28.99,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 69,
+    "peak_force": 12.64,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2663,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 12,
+   "error": null,
+   "cycle_s": 30.8
+  },
+  {
+   "index": 93,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "out",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 74,
+    "peak_force": 20.71,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 70,
+    "peak_force": 39.25,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2652,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 8,
+   "error": null,
+   "cycle_s": 30.25
+  },
+  {
+   "index": 94,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "out",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 76,
+    "peak_force": 20.55,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 71,
+    "peak_force": 56.49,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.2703,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 9,
+   "error": null,
+   "cycle_s": 30.7
+  },
+  {
+   "index": 95,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "left",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 103,
+    "peak_force": 185.22,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 46,
+    "peak_force": 40.03,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1218,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 31.2
+  },
+  {
+   "index": 96,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "right",
+   "spring": true,
+   "open": {
+    "success": false,
+    "failure": "not_opened",
+    "steps": 300,
+    "peak_force": 184.22,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 10,
+    "peak_force": 0.0,
+    "slams": 0
+   },
+   "success": false,
+   "failure": "lid_not_opened",
+   "lid_opened": -0.0,
+   "picked": true,
+   "seated": false,
+   "latched": true,
+   "state": "empty",
+   "ik_failures": 37,
+   "error": null,
+   "cycle_s": 40.85
+  },
+  {
+   "index": 97,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "left",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 100,
+    "peak_force": 71.98,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 47,
+    "peak_force": 48.16,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1301,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 30.65
+  },
+  {
+   "index": 98,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "left",
+   "spring": true,
+   "open": {
+    "success": false,
+    "failure": "not_opened",
+    "steps": 300,
+    "peak_force": 156.55,
+    "slams": 0
+   },
+   "close": {
+    "success": false,
+    "failure": "never_touched",
+    "steps": 300,
+    "peak_force": 2980.67,
+    "slams": 0
+   },
+   "success": false,
+   "failure": "lid_not_opened",
+   "lid_opened": 0.0107,
+   "picked": true,
+   "seated": false,
+   "latched": false,
+   "state": "empty",
+   "ik_failures": 46,
+   "error": null,
+   "cycle_s": 55.15
+  },
+  {
+   "index": 99,
+   "actor": "run:runs/door_v2_bc_ppo_r5_seed2@final",
+   "slide": "left",
+   "spring": true,
+   "open": {
+    "success": true,
+    "failure": null,
+    "steps": 66,
+    "peak_force": 151.09,
+    "slams": 0
+   },
+   "close": {
+    "success": true,
+    "failure": null,
+    "steps": 49,
+    "peak_force": 29.25,
+    "slams": 0
+   },
+   "success": true,
+   "failure": null,
+   "lid_opened": 0.1365,
+   "picked": true,
+   "seated": true,
+   "latched": true,
+   "state": "running",
+   "ik_failures": 0,
+   "error": null,
+   "cycle_s": 29.45
+  }
+ ]
+}
