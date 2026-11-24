@@ -117,3 +117,21 @@ Committed before anything has been run on `door_final_v1`. That set is as create
 
 - **The scoring** is `scripts/door_final_report.py` (tests: `tests/test_door_final_report.py`), committed here: each target as worded above; "pooled" means all three seeds' episodes, each scripted baseline's single run paired with every seed by episode; T2 is an exact two-sided McNemar test, and the policy must also be the better one.
 - **Whatever the result,** it is the v4.0 door result, reported as it comes, misses included. T5 (the learned door in the line, reported with no bar) follows separately.
+
+## The one-shot run, as it came (2026-11-24)
+
+Run once from `0cf6f2b` (no uncommitted changes) at 14:40, after the lock was pushed; results and the report in `2505955` (`results/v4/door/final_report_door_final_v1.json`).
+
+| | Seed 0 | Seed 1 | Seed 2 | Pooled | feel_v2 | camera | nominal |
+|---|---|---|---|---|---|---|---|
+| Success | 400/400 | 398/400 | 397/400 | 99.6 % | 393/400 (98.2 %) | 183/400 (45.8 %) | 69/400 (17.2 %) |
+| Worst cell | 100 % | 96 % (open/left/spring) | 91 % (open/right/spring) | | 86 % | 0 % | 0 % |
+| Median steps to success | 50 | 48 | 50 | 49 | 177 | 187 | 152 |
+| Median peak force | 32 N | 30 N | 30 N | 30.9 N | 25.6 N | 19.7 N | 8.8 N |
+| Slam episodes | 1 | 2 | 3 | | 0 | 0 | 0 |
+
+- **T1 met:** every seed above 95 %, every cell of every seed at 90 % or more (seed 2's springy right-sliding opens 91 %, all 3 of its failures).
+- **T2 met:** 647 episodes only the learned policy completes, 1 only the camera script; exact McNemar p = 1e-192.
+- **T3 met:** 1.3 points above the feel script; median 49 against 177 steps on the 1174 episode pairs both complete, 72 % shorter.
+- **T4 missed:** the median peak force is 30.9 N against the feel script's 25.6 N (opens 29.7 against 20.6 N, closes 31.9 against 38.7 N). Its slam bar is met on every seed (1, 2 and 3 of 400).
+- **Against the forecast written in the lock:** as expected, except that the slam bar, expected to be missed on seed 2, was met.

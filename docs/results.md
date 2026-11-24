@@ -312,3 +312,40 @@ Targets were committed before any v3.2 training ([v3_2_targets.md](v3_2_targets.
 - **The adopted grasp is significantly better than v3.1 on the floor** (p = 0.021) **and on the size-varied floor** (p = 4e-6), with no lying regression (98.3 against 97.8 %, p = 0.65).
 - **Seed 0's floor weakness remains,** on the same kind of case in both sets: standing cubes near the base turned close to −45°. It is still behind the scripted pick there (0 / 11, p = 0.001).
 - **The stand-up was not retrained.** v3.1's stand-up learned from `grasp_anypose6`'s hand-offs, so the v3.2 cell pairs it with a grasp it was not trained after.
+
+## v4.0: a learned door for machines it has not seen
+
+The skill opens or closes the sliding lid of a benchtop machine it has never seen ([door_env.md](door_env.md)). Every episode draws a new machine: which way the lid slides (right, left or out) and how far, its friction and damping, a closing spring with a hold-open notch on half of them, where the handle sits and how high, how fast the latch needs the lid to arrive, and where the machine stands and how it is turned. None of these is observed. The robot sees its own arm, a camera estimate of the handle (1 mm error), contact and force estimates, and the machine's door signals. Targets were committed before any training ([v4_targets.md](v4_targets.md)). The baselines are three scripts on the same machines: `nominal` (written for one nominal machine), `camera` (handle located by camera) and `feel` (camera, and it feels: it tries the other way when blocked, pushes to the stop and retries a latch). All runs have 400 episodes; the learned skill runs 3 seeds.
+
+| Development, `door_dev_v1` (per seed 0 / 1 / 2) | Success | Worst cell | Median steps | Median peak force | Slams (T4: ≤ 4) |
+|---|---|---|---|---|---|
+| Clone of the feel script's demonstrations (seed 0) | 43 / 400 | 0 % | 207 | 42 N | 0 |
+| PPO from scratch, 3M steps (seed 0, reference) | 169 / 400 | 0 % | 95 | 65 N | 25 |
+| Round 1: PPO from the clone, best checkpoints | 394 / 397 / 396 | 87 / 93 / 92 % | 54 / 55 / 80 | 38–41 N | 29 / 31 / 0 |
+| Round 2: a penalty per slam, best | 398 / 400 / 399 | 96 / 100 / 98 % | 53–61 | 41–47 N | 12 / 12 / 3 |
+| Round 3: slam penalty from 0.12 m/s, **final** checkpoints (rule changed before seeds 1–2) | 400 / 397 / 392 | 100 / 94 / **76 %** | 52–55 | 36–40 N | 2 / 2 / 1 |
+| Round 4: the machine's **door-open switch** observed, final | 398 / 400 / 399 | 97 / 100 / 98 % | 51–53 | 37–40 N | 1 / **11** / **5** |
+| Round 5 (one more than the 4 planned): slam penalty from 0.10 m/s, force penalty from 20 N, final | 399 / 394 / 400 | 98 / 91 / 100 % | 50–52 | 30–32 N | 2 / 1 / **5** |
+| feel / feel_v2 (the feel script, and with the door-open switch) | 393 / 393 | 88 / 88 % | 180 / 178 | 45 / 25 N | 0 / 0 |
+| camera / nominal | 196 / 61 | 0 / 0 % | 188 / 152 | 22 / 11 N | 0 / 0 |
+
+- **Demonstrations first, then RL.** Cloning the feel script alone solves 11 % of the machines; PPO from the clone reaches 99 % in one round, where PPO from scratch reaches 42 % in 3M steps.
+- **Round 4's switch.** Round 3's seed 2 let go of springy lids a few millimetres short of their hold-open notch; the spring pulled them shut, and with nothing observed at the open end, the hand never went back. Real machines expose a door-open switch beside the door-closed one; with it, a hand that let go early went back 37 times out of 38, and seed 2's weak cell went from 16/21 to 21/21. The feel script got the same switch (`feel_v2`): it ends an open when the switch comes, so its median peak force fell from 45 to 25 N.
+- **Round 5,** one more than the 4 rounds the targets allowed, added openly before training ([v4_targets.md](v4_targets.md)): slams were at the 1 % bar in every round (a checkpoint's count is a draw: 5 to 17 per 1200 between checkpoints of rounds 3 and 4), and the force peaks were free impacts at the bar and at the stop under a 40 N penalty threshold. It halved slams and cut force by 7 N.
+
+| One-shot `door_final_v1`, run once from the lock (`0cf6f2b`) | **Learned (round 5, final checkpoints)** | feel_v2 | camera | nominal | Target |
+|---|---|---|---|---|---|
+| Success, per seed 0 / 1 / 2 | **400 / 398 / 397** (pooled 99.6 %) | 393 (98.2 %) | 183 (45.8 %) | 69 (17.2 %) | T1: ≥ 95 % per seed: **met** |
+| Worst command × slide × spring cell | **100 / 96 / 91 %** | 86 % | 0 % | 0 % | T1: ≥ 90 % in every cell, every seed: **met** |
+| Against the camera script, pooled | 647 episodes only the learned skill completes, 1 only the script (p = 1e-192) | | | | T2: significantly better: **met** |
+| Against the feel script, pooled | +1.3 points; median **49 against 177 steps** on the 1174 episodes both complete (72 % shorter) | | | | T3: ≥ −2 points and ≥ 20 % shorter: **met** |
+| Median peak force, pooled | 30.9 N (opens 29.7, closes 31.9) | 25.6 N (opens 20.6, closes 38.7) | 19.7 N | 8.8 N | T4: no higher than feel_v2: **missed** |
+| Slam episodes, per seed | 1 / 2 / 3 | 0 | 0 | 0 | T4: ≤ 1 % per seed: **met** |
+
+*Run once at `0cf6f2b`, the lock committed and pushed before any run on the set, with the scoring script `scripts/door_final_report.py`; results in `2505955`. Development numbers are flattering after five rounds on that set; the one-shot came out level with them.*
+
+- **The learned door works on machines it has not seen:** 99.6 % on 400 new machines, against 46 % for the camera-located script and 17 % for the script written for one machine.
+- **It matches the well-written feel script and is 3.6× faster.** The feel script still fails 7 of 400 (5 closes not shut on right-sliding lids, 2 opens).
+- **It is not as gentle (T4 missed).** Pushing a lid takes about 6 N; the peaks are impacts when the fingers meet the bar and the lid meets its stop, and the robot arrives at 0.2 m/s where the script creeps at 0.05. On closes it is gentler than the script (32 against 39 N), on opens harder (30 against 21 N), and it has more hard knocks: 20 % of episodes above 50 N against 8 %, the hardest 224 N against 108 N.
+- **Seed 2's old weak spot shows:** all 3 of its failures are springy right-sliding lids not opened (that cell 91 %, just above the bar). Seed 1 failed one open and one close that did not latch; seed 0 none.
+- **Still to come for v4.0:** T5, the learned door inside the line's full tending cycle (reported, no bar). Candidates for v4.1: slow down just before contact and before the stop, and seed 2's springy right-sliding lids, measured on a fresh one-shot set.
