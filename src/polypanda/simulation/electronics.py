@@ -8,7 +8,9 @@ moving body, so the physics of the line is unchanged. It:
   zone, green ESD-area boundary tape, white walls and steel, a blue ESD mat on the workbench,
   clear polycarbonate guarding on light aluminium;
 - brightens and cools the light (ceiling LED panels, a cooler key light, more ambient);
-- restyles the line's machines as test stations (brushed metal, a blue gasket line);
+- restyles the line's machines as test stations (brushed metal, a blue gasket line); v4.1's
+  drawer and pneumatic testers (MachineConfig.kind) as RF shield boxes with a light tower driven
+  by their state, a gasket line round the door and a test screen (v4.0's lid machine as before);
 - adds an SMT line behind the cell (magazine loader, printer, paste inspection, two
   pick-and-place machines, a reflow oven, optical inspection, an OK/NG unloader, each with a
   light tower, boards on the conveyor), a smart reel tower and dry cabinets, a burn-in rack with
@@ -23,6 +25,7 @@ import numpy as np
 
 from polypanda.simulation.factory import BENCH_X, BENCH_Y, FLOOR_Z, GUARD
 from polypanda.simulation.line_dressing import _text_texture
+from polypanda.simulation.machine import LAMPS
 
 _BOX, _CYL = mujoco.mjtGeom.mjGEOM_BOX, mujoco.mjtGeom.mjGEOM_CYLINDER
 BEIGE = [0.86, 0.85, 0.8, 1.0]
@@ -169,6 +172,98 @@ def _testers(spec, names) -> None:
                 if g.name and "handle" in g.name:
                     continue
                 g.rgba = [0.72, 0.75, 0.79, 1.0]
+        drawer = spec.body(f"{name}_drawer")        # a drawer tester (v4.1): the tray as the lid,
+        if drawer is not None:                      # its front plate a shade darker
+            for g in drawer.geoms:
+                if g.name and "handle" in g.name:
+                    continue
+                g.rgba = ([0.62, 0.66, 0.71, 1.0] if g.name.endswith("_face")
+                          else [0.72, 0.75, 0.79, 1.0])
+        kind = tester_kind(spec, name)
+        if kind != "lid":                           # v4.1's shield boxes (v4.0's lid unchanged)
+            _shield_box(spec, name, kind)
+
+
+def tester_kind(spec, name: str) -> str:
+    """A machine's kind (MachineConfig.kind), read from its built spec: a drawer has a drawer
+    body, a pneumatic tester a lid without a handle."""
+    if spec.body(f"{name}_drawer") is not None:
+        return "drawer"
+    if spec.body(f"{name}_lid") is not None and spec.geom(f"{name}_handle") is None:
+        return "pneumatic"
+    return "lid"
+
+
+TOWER_POLE = 0.06            # m, the light tower's pole above the box's roof
+TOWER_LAMP = (0.015, 0.011)  # m, each lamp's radius and half height
+
+
+def _shield_box(spec, name: str, kind: str) -> None:
+    """A drawer or pneumatic tester as an RF shield box (docs/v4_1_plan.md, section 5.3; the
+    approved look-and-feel still): its status lamps rebuilt as a light tower on a pole (the same
+    four lamp geoms, so the machine's runtime still lights them from its real state: green ready,
+    amber testing, blue done, red fault), a blue gasket line round the door, and a test screen on
+    the front. A pneumatic tester also shows its cylinder on the back wall. Only visual geoms are
+    moved or added, all on the static machine body."""
+    body = spec.body(name)
+    base = spec.geom(f"{name}_lamp_base")
+    lx, ly, z = (float(v) for v in base.pos)
+    top = z - 0.004                                      # the roof's top (machine._add_dressing)
+    back, side = lx + 0.03, ly + 0.03                    # the box's back face and half width
+    base.size = [0.005, TOWER_POLE / 2, 0.0]
+    base.pos = [lx, ly, top + TOWER_POLE / 2]
+    base.rgba = DARK
+    r, h = TOWER_LAMP
+    for k, lamp in enumerate(LAMPS):                     # bottom to top, as machine.LAMPS
+        g = spec.geom(f"{name}_lamp_{lamp}")
+        g.size = [r, h, 0.0]
+        g.pos = [lx, ly, top + TOWER_POLE + h + (2 * h + 0.001) * k]
+    _g(body, (r + 0.001, 0.003), (lx, ly, top + TOWER_POLE + (2 * h + 0.001) * len(LAMPS) + 0.003),
+       DARK, _CYL, name=f"{name}_tower_cap")
+    if kind == "drawer":
+        jamb = spec.geom(f"{name}_wall_front_left")
+        face = spec.geom(f"{name}_drawer_face")
+        x = float(jamb.pos[0] - jamb.size[0])            # the box's front face
+        wall_h = 2 * float(jamb.size[2])
+        for sign in (1, -1):                             # the gasket either side of the plate
+            _g(body, (0.0008, 0.0015, wall_h / 2 - 0.002),
+               (x - 0.0008, sign * (float(face.size[1]) + 0.0015), wall_h / 2), ESD_BLUE,
+               name=f"{name}_gasket_{'l' if sign > 0 else 'r'}")
+        trim = spec.geom(f"{name}_trim_f")
+        trim.rgba = ESD_BLUE                             # and along the roof's front edge
+        sy, sz = min(0.022, float(jamb.size[1]) - 0.008), 0.016
+        screen = (x - 0.0012, float(jamb.pos[1]) + 0.004, top - 0.035)
+    else:
+        for tag in "fblr":                               # the gasket round the lid's opening
+            spec.geom(f"{name}_trim_{tag}").rgba = ESD_BLUE
+        front = spec.geom(f"{name}_wall_front")
+        x = float(front.pos[0] - front.size[0])
+        sy, sz = 0.017, 0.016                            # (beside the front window)
+        screen = (x - 0.0012, side - 0.03, top - 0.028)
+        _cylinder(spec, body, name, back, side, top)
+    _g(body, (0.001, sy + 0.003, sz + 0.003), (screen[0] + 0.0012, screen[1], screen[2]), DARK,
+       name=f"{name}_screen_bezel")
+    mat = _text_texture(spec, f"{name}_test_screen", [name, "RF TEST"], size=(288, 160),
+                        fg=(120, 255, 170), bg=(8, 22, 18))
+    _g(body, (0.0008, sy, sz), screen, [1, 1, 1, 1], material=mat, name=f"{name}_test_screen")
+
+
+def _cylinder(spec, body, name: str, back: float, side: float, top: float) -> None:
+    """A pneumatic lid's cylinder, drawn along its slide on the box's back wall (or on its left
+    wall for a lid sliding out): a barrel and a rod, static."""
+    axis = np.asarray(spec.joint(f"{name}_lid").axis, dtype=float)
+    z = top - 0.02
+    if abs(axis[0]) > 0.5:                               # sliding out: along the left wall
+        pos, quat, length = (0.0, side + 0.012, z), [np.cos(np.pi / 4), 0.0, np.sin(np.pi / 4),
+                                                       0.0], 0.1
+    else:                                                # sideways: along the back wall
+        pos, quat, length = (back + 0.012, 0.0, z), [np.cos(np.pi / 4), -np.sin(np.pi / 4),
+                                                       0.0, 0.0], 0.1
+    _g(body, (0.011, length), pos, ALU, _CYL, quat=quat, name=f"{name}_cylinder_barrel")
+    for s in (-1, 1):                                    # its end caps
+        end = np.asarray(pos) + s * length * (np.array([1.0, 0, 0]) if abs(axis[0]) > 0.5
+                                              else np.array([0, 1.0, 0]))
+        _g(body, (0.013, 0.006), end, DARK, _CYL, quat=quat, name=f"{name}_cylinder_cap{s + 1}")
 
 
 def _light_tower(body, x, y, z, states=(1, 0, 0)) -> None:
