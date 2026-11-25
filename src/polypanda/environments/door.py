@@ -215,6 +215,25 @@ class DoorStartConfig:
     jitter_z: float = 0.02           # m either way
     jitter_yaw: float = 0.17         # rad either way (10 deg)
     close_margin: float = 0.005      # m: close episodes start at most travel - this open
+    # v4.1 (docs/v4_1_targets.md, Part II): **hand-over starts drawn wide**, so the door needs no
+    # careful hand-over (v4.0's T5). Off by default: v4.0's start, draw for draw. On, the TCP
+    # starts wide_height above the handle bar's centre, wide_radial along the station's radial
+    # (+: away from the robot) and up to wide_side across it from the carry point over the
+    # station (where the machine's pocket, or an open drawer's nest, is), and turned up to
+    # wide_yaw from the carry posture (pi/2: the fingers any way round), each uniform: reachable
+    # (the IK converges) and at least wide_clearance from the machine and the bench, or drawn
+    # again (DoorEnv._draw_wide_start). It is stored as the episode's "jitter" (from the carry
+    # point), so a wide episode replays like any other. The test cell's own hand-overs (TCP 10 cm
+    # over a lid's bar, 15 cm over a drawer's; over a shut drawer's nest, 11 cm out; the wrist
+    # turned up to 90 deg after loading a drawer) and the line's (31 cm, T5) are inside these
+    # ranges (docs/door_env.md).
+    wide: bool = False
+    wide_height: tuple[float, float] = (0.03, 0.35)    # m, TCP above the bar's centre
+    wide_radial: tuple[float, float] = (-0.08, 0.20)   # m from the carry point
+    wide_side: float = 0.08                            # m either way
+    wide_yaw: float = float(np.pi / 2)                 # rad either way
+    wide_clearance: float = 0.01                       # m, the arm from anything else
+    wide_tries: int = 200
 
 
 @dataclass(frozen=True)
@@ -437,9 +456,15 @@ class DoorEnv(gym.Env):
             raise RuntimeError("carry posture unreachable")
         return q
 
-    def draw_episode(self, rng: np.random.Generator, command: str | None = None) -> dict:
+    def draw_episode(self, rng: np.random.Generator, command: str | None = None,
+                     kind: str | None = None) -> dict:
         """One episode: the command, the machine variant and where it stands (in the station
-        frame), the lid's start, the arm's jitter and the camera's errors."""
+        frame), the lid's start, the arm's jitter and the camera's errors. `command` and `kind`
+        (one of variation.kinds) override the drawn ones (both are drawn anyway, so the stream
+        does not depend on them)."""
+        if kind is not None and kind not in self.config.variation.kinds:
+            raise ValueError(f"kind {kind!r} is not among variation.kinds")
+        wanted_kind = kind
         v, s, n = self.config.variation, self.config.start, self.config.sensing
 
         def log_uniform(lo_hi):
@@ -457,6 +482,8 @@ class DoorEnv(gym.Env):
         kind = v.kinds[0]
         if len(v.kinds) > 1:                                  # (no draw with one kind)
             kind = str(v.kinds[int(rng.integers(len(v.kinds)))])
+        if wanted_kind is not None:
+            kind = wanted_kind
         if focus:
             kind = "drawer" if focus[1] == DRAWER_SLIDE else "lid"
         if kind == "drawer":
@@ -507,7 +534,11 @@ class DoorEnv(gym.Env):
             # lid moves no faster than soft_close_speed
             ep["damping"] = max(ep["damping"], ep["spring"] * travel / v.soft_close_speed)
         ep["lid"] = 0.0 if command == "open" else lid
-        ep["jitter"] = (sym(s.jitter_xy), sym(s.jitter_xy), sym(s.jitter_z), sym(s.jitter_yaw))
+        if s.wide:
+            ep["jitter"] = self._draw_wide_start(rng, ep)
+        else:
+            ep["jitter"] = (sym(s.jitter_xy), sym(s.jitter_xy), sym(s.jitter_z),
+                            sym(s.jitter_yaw))
         ep["handle_bias"] = tuple(float(x) for x in rng.normal(0.0, n.handle_bias, 3))
         ep["bar_yaw_bias"] = float(rng.normal(0.0, n.bar_yaw_bias))
         return ep
@@ -554,8 +585,15 @@ class DoorEnv(gym.Env):
                 layout.place(m, PARKED, 0.0)
         d.qpos[self.machine.lid_qpos] = ep["lid"]
         d.qvel[self.machine.lid_dof] = 0.0
-        # the arm: the carry posture, jittered in the station frame, then turned to the station
-        jx, jy, jz, jyaw = ep["jitter"]
+        self._place_arm(ep["jitter"])
+        self.machine.reset()
+
+    def _place_arm(self, jitter) -> bool:
+        """The arm at the carry posture, jittered in the station frame by `jitter` (x, y, z, yaw)
+        then turned to the station, fingers open, at rest (then mj_forward). Returns whether
+        the IK reached the pose (if not, the arm is left at the carry posture)."""
+        m, d, sc = self.model, self.data, self.config.scene
+        jx, jy, jz, jyaw = jitter
         _, R_carry = self._ik.forward(self._carry)
         q, ok = self._ik.solve(self._carry, [sc.radius + jx, jy,
                                              self.config.start.carry_height + jz],
@@ -570,7 +608,50 @@ class DoorEnv(gym.Env):
         d.qvel[:] = 0.0
         d.ctrl[self.arm.gripper_actuator] = GRIPPER_OPEN
         mujoco.mj_forward(m, d)
-        self.machine.reset()
+        return ok
+
+    def _draw_wide_start(self, rng: np.random.Generator, ep: dict) -> tuple:
+        """A wide hand-over start (DoorStartConfig.wide) for episode `ep` (drawn up to its lid):
+        the arm's "jitter" from the carry point, with the TCP wide_height above the true handle
+        bar's centre, reachable and wide_clearance clear of everything else, drawn again until
+        it is (each try draws height, radial, side and yaw, in that order)."""
+        s = self.config.start
+        if self.layouts is None:
+            raise ValueError("a shared scene draws no episodes")
+        self._start({**ep, "jitter": (0.0, 0.0, 0.0, 0.0)})    # the episode's machine, placed
+        bar_z = float(self.handle_xyz()[2])
+        for _ in range(s.wide_tries):
+            height = float(rng.uniform(*s.wide_height))
+            radial = float(rng.uniform(*s.wide_radial))
+            side = float(rng.uniform(-s.wide_side, s.wide_side))
+            yaw = float(rng.uniform(-s.wide_yaw, s.wide_yaw))
+            jitter = (radial, side, bar_z + height - s.carry_height, yaw)
+            if self._place_arm(jitter) and self.arm_clearance() >= s.wide_clearance:
+                return jitter
+        raise RuntimeError(f"no reachable, clear hand start in {s.wide_tries} draws")
+
+    def arm_clearance(self, cap: float = 0.05) -> float:
+        """The smallest distance (m, at most `cap`) between a collidable geom of the arm's moving
+        links (hand and fingers included; not its base, which stands on the bench) and one of
+        anything else nearby (the machine, its lid or drawer, the bench), at the current state
+        (after mj_forward)."""
+        m, d = self.model, self.data
+        if not hasattr(self, "_clearance_geoms"):
+            base = m.body_rootid[self.hand]
+            solid = [g for g in range(m.ngeom) if m.geom_contype[g] or m.geom_conaffinity[g]]
+            self._clearance_geoms = (
+                [g for g in solid if m.geom_bodyid[g] in self.arm_bodies - {base}],
+                [g for g in solid if m.geom_bodyid[g] not in self.arm_bodies])
+        arm, other = self._clearance_geoms
+        tcp = tcp_position(d, self.arm)
+        near = [g for g in other if m.geom_bodyid[g] == 0
+                or np.linalg.norm(d.geom_xpos[g][:2] - tcp[:2]) < 1.0]
+        fromto = np.zeros(6)
+        best = cap
+        for a in arm:
+            for g in near:
+                best = min(best, mujoco.mj_geomDistance(m, d, a, g, cap, fromto))
+        return float(best)
 
     def _continue(self, options: dict):
         """Start from the scene as it is (a skill inside a larger task): option "command"

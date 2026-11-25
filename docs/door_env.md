@@ -132,3 +132,54 @@ A 20k-step smoke run of `door_v1_ppo` (2 subprocess envs, under `nice`) ran end 
 - Validation on fixed episodes (`eval_fixed_episodes` in a training config,
   training/fixed_eval.py): the same `eval_episodes` episodes, drawn once from `eval_seed`, every
   validation, logged per cell to `eval/cells.jsonl`.
+
+## Hand-over starts drawn wide (v4.1)
+
+v4.0's T5 showed the skill depends on starting where it was trained: 67 % of machines running
+when the line handed the door over from its carry posture (hand about 31 cm over the handle),
+95 % from the trained start (about 8 cm over it; [v4_targets.md](v4_targets.md), T5 and T5b).
+v4.1 trains and evaluates from **any hand-over** ([v4_1_targets.md](v4_1_targets.md), Part II;
+[v4_1_plan.md](v4_1_plan.md), section 4.1): `DoorStartConfig.wide`.
+
+- **Off by default**, so v4.0's start, draws, sets and policies are untouched
+  (`tests/test_lid_identity.py`, unchanged, passes; `door_dev_v1`, `door_final_v1`,
+  `door_stretch_v1` and `door_drawer_probe_v1` redraw byte for byte).
+- **On**, each episode's hand start is drawn, uniformly and independently:
+
+  | | Range | Measured from |
+  |---|---|---|
+  | TCP height | 0.03–0.35 m above the handle bar's centre (`wide_height`) | the true bar, as the episode places it (lid open or shut) |
+  | along the station's radial | −0.08 to +0.20 m (`wide_radial`; + away from the robot) | the carry point over the station (a lid's pocket, an open drawer's nest) |
+  | across it | ±0.08 m (`wide_side`) | the same |
+  | wrist yaw | ±90° (`wide_yaw`: the fingers any way round) | the carry posture's |
+
+  A draw is kept only if the arm reaches it (the IK converges) and every moving link of the
+  arm (hand and fingers included) is at least 1 cm (`wide_clearance`) from the machine, its lid
+  or drawer and the bench (`DoorEnv.arm_clearance`, MuJoCo's geom distance); otherwise it is drawn
+  again (`DoorEnv._draw_wide_start`; about 1 draw in 70 is redrawn). The start is stored as the
+  episode's `jitter` (from the carry point), so a wide episode replays exactly like any other,
+  in any version of the env.
+- **The cell's real hand-overs, and how the range covers them** (measured in the test cell,
+  `control/test_cell.py`, planned testers A lid, B drawer, both hand-overs, dev shifts 1 and 2,
+  8 modules each; the TCP relative to the true handle and to the machine's origin, machine
+  frame, x away from the robot):
+
+  | Hand-over | Kind, command | TCP over the bar | TCP from the machine's origin (x) | Wrist yaw from the carry posture |
+  |---|---|---|---|---|
+  | `door_start` (the cell's default) | lid, open / close | 0.10 m | 0.00 | 0° |
+  | | drawer, open (shut drawer) | 0.15 m | **+0.11 m** (over the believed nest inside the box; 8.5 cm beyond the bar) | 0° |
+  | | drawer, close (open drawer) | 0.15 m | 0.00 (9.5 cm beyond the bar) | up to ±17° |
+  | `carry` | lid, open / close | 0.10 m | 0.00 | 0° |
+  | | drawer, open | 0.15 m | 0.00 | 0° |
+  | | drawer, close (after loading it) | 0.15 m | 0.00 | **89°** (the wrist still turned to reach into the drawer: `MachineConfig.hand_axis`) |
+  | the line's carry (v4.0's T5) | lid | 0.31 m | 0.00 | 0° |
+
+  v4.0's own start (TCP 0.32 m ± 2 cm over the pocket, ±2 cm, ±10°) is 8–13 cm over a lid's
+  bar and 14–18 cm over a drawer's, within ±3 cm of the origin. It never started over a shut
+  drawer's nest (+0.11 m) nor with the wrist turned more than 10°. The wide range holds every
+  row above: heights 0.10, 0.15 and 0.31 m inside 0.03–0.35, the shut drawer's +0.11 m inside
+  +0.20 (a drawer's nest sits at most its travel, 0.14 m, behind the origin), the cell's lateral
+  errors (under 1 cm) inside ±8 cm, and the 89° wrist inside ±90°.
+- `scripts/make_door_sets.py --wide-start` draws a set with wide starts and records the start
+  config in the file (`start`); with several `--kinds` it takes them in turn, two episodes
+  each (open, close), so 400 episodes are exactly 100 per kind × command.
