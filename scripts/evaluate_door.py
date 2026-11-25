@@ -107,7 +107,7 @@ def summarize(rows: list[dict]) -> dict:
         if not r["success"]:
             failures[f"{r['command']}/{r['slide']}/{r['failure']}"] += 1
     ok_steps = [r["steps"] for r in rows if r["success"]]
-    return {
+    out = {
         "n": n, "success": k, "rate": k / n if n else 0.0, "wilson95": wilson(k, n),
         "cells": {c: {"success": v[0], "n": v[1], "rate": v[0] / v[1]}
                   for c, v in sorted(cells.items())},
@@ -117,6 +117,27 @@ def summarize(rows: list[dict]) -> dict:
         "slam_episodes": sum(r["slams"] > 0 for r in rows),
         "failures": dict(sorted(failures.items())),
     }
+    if any("kind" in r for r in rows):
+        # v4.1 sets (docs/v4_1_targets.md, D1): per kind x command, and the largest peak force
+        groups = defaultdict(list)
+        for r in rows:
+            groups[f"{r.get('kind', 'lid')}/{r['command']}"].append(r)
+        out["kind_command"] = {g: brief(rs) for g, rs in sorted(groups.items())}
+        out["peak_force_max"] = float(max(r["peak_force"] for r in rows))
+    return out
+
+
+def brief(rows: list[dict]) -> dict:
+    """Success (with its Wilson interval), median steps to success, median and largest peak
+    force, and slam episodes of a group of rows."""
+    n, k = len(rows), sum(r["success"] for r in rows)
+    ok_steps = [r["steps"] for r in rows if r["success"]]
+    force = [r["peak_force"] for r in rows]
+    return {"n": n, "success": k, "rate": k / n if n else 0.0, "wilson95": wilson(k, n),
+            "steps_to_success_median": float(np.median(ok_steps)) if ok_steps else None,
+            "peak_force_median": float(np.median(force)) if force else None,
+            "peak_force_max": float(max(force)) if force else None,
+            "slam_episodes": sum(r["slams"] > 0 for r in rows)}
 
 
 def git_state() -> dict:
@@ -158,6 +179,10 @@ def main() -> None:
           f"{100 * summary['worst_cell_rate']:.0f} %, median steps to success "
           f"{summary['steps_to_success_median']}, peak force median "
           f"{summary['peak_force_median']:.0f} N, slam episodes {summary['slam_episodes']}")
+    for g, b in summary.get("kind_command", {}).items():
+        print(f"   {g}: {b['success']}/{b['n']}, median steps {b['steps_to_success_median']}, "
+              f"peak force median {b['peak_force_median']:.1f} / max {b['peak_force_max']:.1f} N, "
+              f"slams {b['slam_episodes']}")
     print("   failures:", summary["failures"])
     print(f"   wrote {out} ({wall:.0f} s)")
 
