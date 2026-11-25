@@ -12,7 +12,7 @@ station (simulation/rail.py). World frame, the robot's base riding the rail alon
     tester A  "TA"          -0.9      -90     (-0.9,   -0.5)      lid tester (each with a tight,
     tester B  "TB"          -0.45     -90     (-0.45,  -0.5)      drawer (*)  keyed, stiff nest)
     tester C  "TC"           0.0      -90     ( 0.0,   -0.5)      pneumatic (*)
-                                              (*) a lid tester stands in until track B merges
+                                              (*) by default a lid tester stands in (see Testers)
     vision station          -0.45    +150     (-0.883,  0.25)     a camera; the robot presents the
                                                                   held module to it (no set-down)
     PASS tray               -0.9     +150     (-1.333,  0.25)     2 x 4 pockets
@@ -53,12 +53,13 @@ orange (5S: on hold).
 
 **Testers.** `TesterSpot` is the line's MachineSpot with the `kind` it is built as and the kind the
 plan gives it (`planned`): A a lid, B a drawer, C a pneumatic tester (`PLANNED_KINDS`). The drawer
-and the pneumatic tester are built on another branch (`MachineConfig.kind`, track B); until that
-merges, `built_kinds()` is ("lid",) and B and C are **lid testers standing in** for them (v4.0's
-machine with `machine.tight_nest` as its nest), marked `planned="drawer"` / `"pneumatic"` and
-recorded as stand-ins in every result. Once MachineConfig has a `kind`, `planned_cell()` builds
-the plan's three kinds (the controller already opens each kind its own way:
-control/test_cell.py). The cycle (the test) defaults to 45 s, the middle of the plan's 30-60 s.
+and the pneumatic tester were built on another branch (`MachineConfig.kind`, track B); by default
+B and C are still **lid testers standing in** for them (v4.0's machine with `machine.tight_nest`
+as its nest), marked `planned="drawer"` / `"pneumatic"` and recorded as stand-ins in every
+result, so that the merge changed no result by itself. `planned_testers()` builds the plan's
+three kinds (control/test_cell.py opens each kind its own way, reaches into a drawer across it
+and holds it open with its index pin); the drawer's key slot is in a side wall (`PLANNED_NEST`).
+The cycle (the test) defaults to 45 s, the middle of the plan's 30-60 s.
 
 **Modules.** The cell's parts, keyed (`LineConfig.keyed_parts`) and stiff (`part_contact`), drawn
 as sensor modules: a dark housing (the part's own box), a green board edge around it, a white
@@ -190,9 +191,18 @@ def stand_in_testers(cycle_s: float = 45.0) -> tuple[TesterSpot, ...]:
                  for n, k in PLANNED_KINDS.items())
 
 
+# per kind, how the planned tester's nest differs from the default: a drawer is reached into with
+# the fingers closing across it (MachineConfig.hand_axis), so its key slot is cut in a side wall
+# (on the drawer's +y), where the fingers then hold a seated module across its rib's face and
+# leave its front (the label) free for the vision camera, as on the lid testers
+PLANNED_NEST = {"lid": {}, "drawer": {"key_wall": 1}, "pneumatic": {}}
+
+
 def planned_testers(cycle_s: float = 45.0) -> tuple[TesterSpot, ...]:
-    """The plan's three testers as their own kinds (needs MachineConfig.kind, track B)."""
-    return tuple(tester(n, STOPS[n], k, cycle_s=cycle_s) for n, k in PLANNED_KINDS.items())
+    """The plan's three testers as their own kinds (needs MachineConfig.kind, track B), each
+    with its nest as PLANNED_NEST gives it."""
+    return tuple(tester(n, STOPS[n], k, cycle_s=cycle_s, **PLANNED_NEST[k])
+                 for n, k in PLANNED_KINDS.items())
 
 
 @dataclass(frozen=True)
@@ -489,6 +499,12 @@ def build_test_cell_spec(cfg: TestCellConfig | None = None) -> mujoco.MjSpec:
         if b is not None:
             for g in b.geoms:
                 g.group = HIDDEN_GROUP
+    # the two fingers never collide with each other: closed on nothing (a missed grasp), their
+    # pads meet at full speed under the cell's stiff grip (WorkcellConfig.finger_stiffness),
+    # pass into each other and lock there (measured: -8.4 mm each, held by ~100 N contacts that
+    # opening cannot undo), and every later grasp fails. Holding a part they never touch, so
+    # nothing else changes
+    spec.add_exclude(bodyname1="left_finger", bodyname2="right_finger")
     _restyle_fail_bin(spec, cfg)
     _add_tray(spec, cfg, "pass")
     _add_tray(spec, cfg, "rework")

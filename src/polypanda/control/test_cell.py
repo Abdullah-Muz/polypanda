@@ -37,14 +37,22 @@ tester whose door fails twice in a row is taken out of the shift (blocked).
   privileged "expert", or a trained policy "run:<path>[@final]" (**the learned door**). `LineDoor`
   is the line's own scripted lid move (ScriptedTending.move_lid with the camera's belief; lids
   only). A string names one of these (`make_door`). Pneumatic testers do not use the slot: the
-  cell signals them (Machine.request_open / request_close, track B).
+  cell signals them (Machine.request_open / request_close, track B). An opened drawer is held at
+  its open stop by its index pin (Machine.index_open, withdrawn before it is closed): on a free
+  slide any push on the nest moves it.
 - the **insertion** (`insertion`, an `InsertionActor`): seats the held module in the tester's
   nest. The placeholder is `StraightDown` (ScriptedTending.load: the cell's closed-loop place,
   straight down where the camera puts the nest, the key turned to the slot); the straight-down and
   force-guided search scripts of control/scripted_insertion.py and **the learned insertion** go
   here. An insertion with the call `insert(ctl, part, xy, yaw)` (a `PoseInsertion`, as
   SearchInsertion on main) goes in through `NestInsertion`, which aims it (`aim`: the believed
-  nest, the wrist turned so the key meets the slot). `make_insertion` names them.
+  nest, the wrist turned so the key meets the slot) and, at a drawer, whose nest stands on its
+  tray, presents it heights from the nest's floor (`_NestFrame`: the frozen search is written for
+  nests on the bench). `make_insertion` names them.
+**Reaching into a tester.** The hand (about 200 x 65 mm) passes a lid's opening lengthwise, its
+fingers closing along the tester's x, but reaches into a drawer with them closing across it
+(MachineConfig.hand_axis): lengthwise it would reach over the drawer's front plate and into the
+box. Loading (the keyed turn) and unloading (ScriptedTending.unload with the tester) follow it.
 The contracts are in the two Protocols' docstrings. The controller judges every result itself
 (Machine.lid and latched for a door, Machine.in_pocket for a seat), measures the peak force on
 the nest during an insertion, and retries: `door_attempts` per door move, `insert_attempts` per
@@ -171,9 +179,93 @@ def aim(ctl: TestCellController, part: CubeIndices, tester: str) -> tuple[np.nda
     return xy, carry + turn
 
 
+class _Rows:
+    """Rows of a (n, 3) position array (MjData.xpos, site_xpos) read with heights less `dz`."""
+
+    def __init__(self, rows: np.ndarray, dz: float) -> None:
+        self._rows, self._dz = rows, dz
+
+    def __getitem__(self, i) -> np.ndarray:
+        return self._rows[i] - np.array([0.0, 0.0, self._dz])
+
+
+class _DataView:
+    """MjData with positions read `dz` lower (`_NestFrame`); `real` is the MjData itself."""
+
+    def __init__(self, data: mujoco.MjData, dz: float) -> None:
+        self.real = data
+        self.xpos, self.site_xpos = _Rows(data.xpos, dz), _Rows(data.site_xpos, dz)
+
+    def __getattr__(self, name):
+        return getattr(self.real, name)
+
+
+class _IKView:
+    """The controller's IK with forward kinematics reported `dz` lower (`_NestFrame`)."""
+
+    def __init__(self, ik, dz: float) -> None:
+        self._ik, self._dz = ik, dz
+
+    def forward(self, q):
+        pos, R = self._ik.forward(q)
+        return np.array([pos[0], pos[1], pos[2] - self._dz]), R
+
+    def __getattr__(self, name):
+        return getattr(self._ik, name)
+
+
+class _NestFrame:
+    """The controller as a PoseInsertion sees it when the nest's floor stands `dz` above the
+    bench (a drawer's tray: MachineConfig.nest_floor): every height it reads (the part's, the
+    hand's, the arm's commanded pose) and commands (IK targets, vertical moves) is measured from
+    the nest's floor, so an insertion written for a nest on the bench (control/scripted_insertion
+    .py's frozen SearchInsertion: its rim height, its seated test) runs unchanged on it. Nothing
+    else changes: the physics, the forces it reads, its timing. Attributes it sets (q_cmd, grip)
+    are the controller's."""
+
+    def __init__(self, ctl: TestCellController, dz: float) -> None:
+        object.__setattr__(self, "_ctl", ctl)
+        object.__setattr__(self, "_dz", float(dz))
+        object.__setattr__(self, "d", _DataView(ctl.d, dz))
+        object.__setattr__(self, "ik", _IKView(ctl.ik, dz))
+
+    def __getattr__(self, name):
+        return getattr(self._ctl, name)
+
+    def __setattr__(self, name, value) -> None:
+        setattr(self._ctl, name, value)
+
+    def _solve(self, pos, quat, seed) -> np.ndarray:
+        return self._ctl._solve([pos[0], pos[1], pos[2] + self._dz], quat, seed)
+
+    def vertical(self, xy, z_to: float, yaw: float, track=None) -> None:
+        carry = self._ctl.config.carry_height
+        z = z_to if z_to >= carry else z_to + self._dz    # (the carry height is the cell's own)
+        if z >= self._ctl.d.site_xpos[self._ctl.arm.tcp_site][2]:
+            # straight up from where the hand is (an insertion that kept the hand's position
+            # from before, as a live view of MjData's array, would read it so)
+            xy = self._ctl.d.site_xpos[self._ctl.arm.tcp_site][:2].copy()
+        self._ctl.vertical(xy, z, yaw, track)
+
+
+@contextmanager
+def _wrench_on_real_data():
+    """scripted_insertion.part_wrench given a _DataView reads the MjData behind it (MuJoCo's
+    contact force call takes only MjData)."""
+    from polypanda.control import scripted_insertion as si
+    real = si.part_wrench
+    si.part_wrench = lambda m, d, part: real(m, getattr(d, "real", d), part)
+    try:
+        yield
+    finally:
+        si.part_wrench = real
+
+
 class NestInsertion:
     """A PoseInsertion in the insertion slot: `aim` (the believed nest and the keyed yaw), the
-    actor's insert, and a release if it returned still holding the part (the slot's contract)."""
+    actor's insert, and a release if it returned still holding the part (the slot's contract).
+    A nest whose floor is not on the bench (a drawer's) is presented to the insertion in its
+    floor's frame (`_NestFrame`), as the PoseInsertions are written for nests on the bench."""
 
     def __init__(self, inner: PoseInsertion, name: str | None = None) -> None:
         self.inner = inner
@@ -181,7 +273,12 @@ class NestInsertion:
 
     def insert(self, ctl: TestCellController, part: CubeIndices, tester: str) -> dict:
         xy, yaw = aim(ctl, part, tester)
-        out = dict(self.inner.insert(ctl, part, xy, yaw) or {})
+        floor = ctl.beliefs[tester].config.nest_floor
+        if floor == 0.0:
+            out = dict(self.inner.insert(ctl, part, xy, yaw) or {})
+        else:
+            with _wrench_on_real_data():
+                out = dict(self.inner.insert(_NestFrame(ctl, floor), part, xy, yaw) or {})
         if ctl.cell.attached(part):
             out["released_by_slot"] = True
             ctl.cell.detach(part)
@@ -502,16 +599,22 @@ class TestCellController(ScriptedTending):
         return m.lid >= needed_opening(m.cfg) - 0.003
 
     def open_tester(self, name: str) -> bool:
-        """Open tester `name` (at its stop, facing it) unless it is open already."""
+        """Open tester `name` (at its stop, facing it) unless it is open already; an open
+        drawer is then held at its open stop by its index pin (Machine.index_open), so that
+        loading or unloading its nest does not push it."""
         for _ in range(self.door_attempts):
             if self.opened(name):
-                return True
+                break
             with self.doing("open", name):
                 self.door_move(name, "open")
-        return self.opened(name)
+        ok = self.opened(name)
+        if ok and self.cell.spots[name].kind == "drawer":
+            self.cell.machines[name].index_open()
+        return ok
 
     def close_tester(self, name: str) -> bool:
         m = self.cell.machines[name]
+        m.release_index()                  # (a drawer's index pin out before it is pushed shut)
         for _ in range(self.door_attempts):
             if m.latched:
                 return True
@@ -523,8 +626,24 @@ class TestCellController(ScriptedTending):
     def measure(self, name: str) -> None:
         """Measure tester `name` (its nest's pose and its handle) with the camera, or take the
         truth (nest_belief "true")."""
-        self.beliefs[name] = (camera_belief(self.cell, name, self.rng)
-                              if self.nest_belief == "camera" else true_belief(self.cell, name))
+        if self.nest_belief == "camera":
+            self.beliefs[name] = camera_belief(self.cell, name, self.rng)
+            return
+        b = true_belief(self.cell, name)
+        if self.cell.spots[name].kind == "drawer":
+            # the nest where it is (true_belief gives the machine's origin: a drawer's nest at
+            # its open stop), and the handle shut, as camera_belief has them
+            m = self.cell.machines[name]
+            b.origin = m.pocket_xyz()
+            b.handle = m.handle_xyz() - b.R @ b.config.slide_axis * m.lid
+        self.beliefs[name] = b
+
+    def fell_out(self, part, name: str) -> bool:
+        """A part let go over drawer `name`'s nest that fell off the drawer's tray (it lies on
+        the bench under the box, out of the hand's reach). (On a lid tester a part knocked out
+        of the nest stays in the box, and the robot tries to pick it out as before.)"""
+        return (self.cell.spots[name].kind == "drawer"
+                and not self.cell.machines[name].in_pocket(part)[0])
 
     def insert(self, part, name: str, rec: ModuleRecord) -> bool:
         """Seat the held part in tester `name`'s nest with the insertion actor, up to
@@ -552,8 +671,10 @@ class TestCellController(ScriptedTending):
                 return True
             self.fail(rec, "insert", attempt=attempt)
             if attempt + 1 < self.insert_attempts:
+                if self.fell_out(part, name):
+                    return False       # nothing to pick out of the nest
                 with self.doing("unjam", name, rec.index):
-                    self.unload(part)
+                    self.unload(part, name)
                 if not self.cell.attached(part):
                     return False
         return False
@@ -585,15 +706,17 @@ class TestCellController(ScriptedTending):
         self.place(part, xy, 0)
         self.to_carry()
 
-    def regrip(self, part, rec: ModuleRecord | None, stage: str) -> bool:
-        """After a pick: if the grasp did not hold, let go and try once more."""
+    def regrip(self, part, rec: ModuleRecord | None, stage: str,
+               tester: str | None = None) -> bool:
+        """After a pick (out of `tester`'s nest, if given): if the grasp did not hold, let go
+        and try once more."""
         if self.cell.attached(part):
             return True
         self.fail(rec, stage)
         self.grip = GRIPPER_OPEN
         self.step(self.config.grip_steps)
         self.to_carry()
-        self.pick(part)
+        self.unload(part, tester)
         return self.cell.attached(part)
 
     def operator_clears(self, part, rec: ModuleRecord | None, why: str) -> None:
@@ -699,7 +822,13 @@ class TestCellController(ScriptedTending):
         if ok:
             rec.sorted_to = where
         else:
+            # it did not land in its place (it fell over: a module picked out of a jam is held
+            # cocked): an operator takes it away (counted, not sorted), or it would lie in the
+            # tray, under the next module set there, for the rest of the shift
             self.fail(rec, f"sort_{where}")
+            self.events.append({"t": round(self.now, 2), "stage": "operator",
+                                "why": f"fallen at the {where}", "module": rec.index})
+            cell.release(cell.cubes.index(part))
         self.log(f"{self.now:7.1f} s  {rec.serial}: {verdict.upper()}"
                  f"{' (' + reason + ')' if reason else ''} -> {rec.sorted_to or 'lost'} "
                  f"(truth {'good' if rec.good else 'bad'})")
@@ -764,6 +893,13 @@ class TestCellController(ScriptedTending):
             return part, rec
         return None
 
+    def acknowledge(self, name: str) -> None:
+        """Reset tester `name` (an aborted test acknowledged, or a module taken back); an open
+        drawer stays held at its stop (the reset withdraws its index pin)."""
+        self.cell.machines[name].reset()
+        if self.cell.spots[name].kind == "drawer" and self.opened(name):
+            self.cell.machines[name].index_open()
+
     def take_out(self, name: str) -> None:
         """Unload the module of an open tester: a tested one is inspected on the way and
         sorted; one whose test was aborted (or that has no result) goes to the REWORK tray,
@@ -775,14 +911,14 @@ class TestCellController(ScriptedTending):
         rec = self.record_of(part)
         rec.test_result = result
         with self.doing("unload", name, rec.index):
-            self.unload(part)
-        if not self.regrip(part, rec, "unload"):
+            self.unload(part, name)
+        if not self.regrip(part, rec, "unload", name):
             self.operator_clears(part, rec, "unload failed")
             if m.state == FAULT:
-                m.reset()
+                self.acknowledge(name)
             return
         if m.state == FAULT:
-            m.reset()                              # the cell acknowledges the aborted test
+            self.acknowledge(name)                 # the cell acknowledges the aborted test
         if result not in ("pass", "fail"):
             self.sort(part, rec, "not_tested",
                       "test_aborted" if result == "fault" else "no_result")
@@ -812,6 +948,9 @@ class TestCellController(ScriptedTending):
             self.take_out(name)
         got = self.fetch(name)
         if got is None:
+            # no module came (the conveyor failed): this tester waits at the back of the queue,
+            # so the robot serves the others (whose tests may have finished) before trying again
+            self.ready_since[name] = self.now
             return
         part, rec = got
         rec.tester = name
@@ -819,13 +958,17 @@ class TestCellController(ScriptedTending):
             self.go_to(name)
         if not self.insert(part, name, rec):
             # not seated: out again and to the REWORK tray, not tested (a part that cannot be
-            # picked out of the nest is cleared by an operator)
-            if not cell.attached(part):
-                self.pick(part)
+            # picked out of the nest is cleared by an operator, and so is one that fell out of
+            # the nest: off a drawer's tray it lies on the bench under the box, where the hand
+            # cannot reach and, measured, a pick there drove the arm round over the conveyor)
+            fell = not cell.attached(part) and self.fell_out(part, name)
+            if not cell.attached(part) and not fell:
+                self.unload(part, name)
             if cell.attached(part):
                 self.sort(part, rec, "not_tested", "not_seated")
             else:
-                self.operator_clears(part, rec, "jammed in the nest")
+                self.operator_clears(part, rec, "fell out of the nest" if fell
+                                     else "jammed in the nest")
             return
         if not self.close_tester(name):
             self.fail(rec, "door_close", tester=name)
@@ -851,13 +994,13 @@ class TestCellController(ScriptedTending):
             self.blocked.add(name)
             return
         with self.doing("unload", name, rec.index):
-            self.unload(part)
-        if self.regrip(part, rec, "unload"):
+            self.unload(part, name)
+        if self.regrip(part, rec, "unload", name):
             self.sort(part, rec, "not_tested", "not_running")
         else:
             self.operator_clears(part, rec, "stuck in the tester")
         if m.state != EMPTY:
-            m.reset()
+            self.acknowledge(name)
 
     # --- the shift ------------------------------------------------------------------------------
     def choose(self) -> str | None:

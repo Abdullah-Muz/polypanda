@@ -607,6 +607,148 @@ def test_insertion_actors_by_name():
         assert make_insertion("search").name == "search"
 
 
+def test_the_planned_drawers_key_slot_is_on_its_side():
+    """The drawer is reached into with the fingers closing across it, so its slot is cut in a
+    side wall: a seated module is then held across its rib's face, its front free for the
+    vision camera (as on the lid testers, slot at the back, fingers closing along x)."""
+    kinds = {t.name: t.config for t in planned_testers()}
+    assert kinds["TB"].kind == "drawer" and kinds["TB"].key_wall % 2 == 1
+    assert kinds["TA"].key_wall % 2 == 0 and kinds["TC"].key_wall % 2 == 0
+    for c in kinds.values():      # the slot's direction along the hand's closing axis
+        assert abs(np.sin(c.key_yaw - c.hand_axis)) < 1e-9
+
+
+def test_closing_the_gripper_on_nothing_leaves_the_fingers_working(cell):
+    """A missed grasp: the fingers close on nothing and open again (they do not collide with
+    each other; when they did, they passed into each other and locked, and every later grasp
+    failed)."""
+    from polypanda.environments.grasp import GRIPPER_CLOSED, GRIPPER_OPEN
+    ctl = TestCellController(cell, nest_belief="true")
+    cell.reset_shift([])
+    ctl.to_carry()
+    m, d = cell.model, cell.data
+    fingers = [m.joint(f"finger_joint{k}").qposadr[0] for k in (1, 2)]
+    ctl.grip = GRIPPER_CLOSED
+    ctl.step(ctl.config.grip_steps + 10)
+    assert np.all(d.qpos[fingers] > -0.001)
+    ctl.grip = GRIPPER_OPEN
+    ctl.step(ctl.config.grip_steps)
+    np.testing.assert_allclose(d.qpos[fingers], 0.04, atol=0.002)
+
+
+def test_a_nest_frame_measures_heights_from_the_nests_floor(cell):
+    """_NestFrame (NestInsertion at a drawer): an insertion written for a nest on the bench
+    reads and commands heights from the nest's floor; the rest is the controller."""
+    from polypanda.control.test_cell import _NestFrame
+    ctl = TestCellController(cell, nest_belief="true")
+    cell.reset_shift([])
+    ctl.to_carry()
+    dz = 0.01
+    view = _NestFrame(ctl, dz)
+    b = cell.cubes[0].body
+    np.testing.assert_allclose(view.d.xpos[b], ctl.d.xpos[b] - [0.0, 0.0, dz])
+    tcp = ctl.arm.tcp_site
+    np.testing.assert_allclose(view.d.site_xpos[tcp], ctl.d.site_xpos[tcp] - [0.0, 0.0, dz])
+    assert view.d.time == ctl.d.time and view.d.ncon == ctl.d.ncon and view.m is ctl.m
+    pos, R = ctl.ik.forward(ctl.q_cmd)
+    vpos, vR = view.ik.forward(ctl.q_cmd)
+    np.testing.assert_allclose(vpos, pos - [0.0, 0.0, dz])
+    np.testing.assert_allclose(vR, R)
+    target = ctl.d.site_xpos[tcp] - [0.0, 0.0, 0.05]
+    quat = top_down_quat(ctl.carry_yaw(ctl.base_angle))
+    np.testing.assert_allclose(view._solve(target - [0.0, 0.0, dz], quat, ctl.q_cmd),
+                               ctl._solve(target, quat, ctl.q_cmd))
+    q = ctl.q_cmd.copy()
+    view.q_cmd = q + 0.001                    # attributes it sets are the controller's
+    np.testing.assert_allclose(ctl.q_cmd, q + 0.001)
+    ctl.q_cmd = q
+    from polypanda.control import scripted_insertion as si
+    from polypanda.control.test_cell import _wrench_on_real_data
+    with _wrench_on_real_data():
+        si.part_wrench(ctl.m, view.d, cell.cubes[0])       # MuJoCo gets the real MjData
+    assert si.part_wrench.__name__ == "part_wrench"         # (and the original is back)
+
+
+@pytest.fixture(scope="module")
+def planned_cell():
+    c = TestCell.build(cell_config(dressing=False, testers=planned_testers()))
+    yield c
+    c.close()
+
+
+def test_a_module_is_taken_out_of_the_drawer_across_it(planned_cell):
+    """Unloading a drawer: the fingers close across the drawer (its y), the wrist turned within
+    its range (left to the IK, the far turn swung the whole arm round over the conveyor), and
+    the arm stays on the testers' side; the drawer, held by its index pin, does not move. The
+    true belief of a drawer is its nest where it is."""
+    cell = planned_cell
+    ctl = TestCellController(cell, nest_belief="true")
+    cell.reset_shift([])
+    m, d = cell.model, cell.data
+    tb = cell.machines["TB"]
+    d.qpos[tb.door_qpos] = tb.cfg.travel
+    mujoco.mj_forward(m, d)
+    assert tb.index_open()
+    ctl.to_carry()
+    ctl.go_to("TB")
+    ctl.measure("TB")
+    np.testing.assert_allclose(ctl.beliefs["TB"].origin, tb.pocket_xyz())
+    part = cell.cubes[0]
+    p = tb.pocket_xyz()
+    R = d.xmat[tb.nest_body].reshape(3, 3)
+    yaw = np.arctan2(R[1, 0], R[0, 0]) + tb.cfg.key_yaw              # its rib in the slot
+    d.qpos[part.qpos:part.qpos + 7] = [p[0], p[1], p[2] + part.half_size[2] + 0.0005,
+                                       *_yaw_quat(yaw)]
+    d.qvel[:] = 0.0
+    mujoco.mj_forward(m, d)
+    ctl.step(10)
+    assert tb.in_pocket(part)[1]
+    seen = []
+    on_step = ctl.on_step
+
+    def watch():
+        on_step()
+        seen.append((d.site_xpos[ctl.arm.tcp_site].copy(),
+                     closing_yaw(d.site_xmat[ctl.arm.tcp_site].reshape(3, 3)), tb.lid))
+    ctl.on_step = watch
+    try:
+        ctl.unload(part, "TB")
+    finally:
+        ctl.on_step = on_step
+    assert cell.attached(part)
+    tcp = np.array([s[0] for s in seen])
+    assert tcp[:, 1].max() < -0.2                         # never over to the conveyor's side
+    low = [s for s in seen if s[0][2] < 0.15]               # down at the nest
+    across = np.arctan2(R[1, 1], R[0, 1])                   # the drawer's y in the world
+    assert low and all(abs(np.sin(y - across)) < np.sin(np.radians(10)) for _, y, _ in low)
+    assert all(abs(q - tb.cfg.travel) < 0.002 for *_, q in seen)
+
+
+def test_a_short_shift_on_the_planned_testers_serves_every_kind():
+    """The plan's lid, drawer and pneumatic testers, one module each (short tests, the nest's
+    true pose, the force-guided search): every module tested and sorted, nothing pushed out of
+    place. At the drawer the hand reaches in across it, the index pin holds it open, a seated
+    module's front is free for the camera, and the search runs in the nest floor's frame.
+    (Straight down, the drawer's nest at its true pose is missed by 1 mm every time with this
+    seed: a miss the dev runs count, not a flow this test can check.)"""
+    insertion = "search"
+    truths = [ModuleTruth(f"m{k}", True) for k in range(3)]
+    # (tests of 12 s: a shorter one can end, and unlatch the lid, before the door actor has
+    # handed back after closing it, and the controller then sees it unlatched)
+    out = run_shift(3, seed=0, truths=truths, cycle_s=12.0, nest_belief="true", dressing=False,
+                    door="feel_v2", insertion=insertion, testers=planned_testers(12.0))
+    k = out["kpis"]
+    rows = out["modules"]
+    assert {r["tester"] for r in rows} == {"TA", "TB", "TC"}, rows
+    assert k["sorted"] == 3 and k["sort_correct"] == 3 and k["not_tested"] == 0, k
+    assert k["failures_by_stage"] == {} and k["operator"] == {}, k
+    assert all(r["inserts"][0]["seated"] for r in rows)
+    assert all(not r["vision"]["front_held"] for r in rows)
+    drawer = next(r for r in rows if r["tester"] == "TB")
+    assert drawer["inserts"][0]["peak_force"] < 60.0
+    assert out["config"]["testers"]["TB"]["kind"] == "drawer"
+
+
 def test_machine_config_default_is_not_the_testers():
     """The testers' tight nests are theirs only: MachineConfig's defaults are v4.0's."""
     assert MachineConfig().clearance == 0.002 and not MachineConfig().keyed
