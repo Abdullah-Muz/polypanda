@@ -15,6 +15,7 @@ from polypanda.control.test_cell import (
     ModuleRecord,
     NestInsertion,
     StraightDown,
+    TestCellController,
     camera_belief,
     make_door,
     make_insertion,
@@ -77,11 +78,19 @@ def test_the_testers_and_stations_stand_where_the_layout_says(cell, cfg):
     np.testing.assert_allclose(cell.pick_xy, [0.0, 0.5], atol=1e-9)
     lo, hi = cfg.rail.low, cfg.rail.high
     stops = [s.stop for s in cfg.testers] + [cfg.vision.stop, cfg.tray.stop, cfg.fail_bin.stop,
-                                             cfg.infeed.stop]
+                                             cfg.rework.stop, cfg.infeed.stop]
     assert all(lo <= s <= hi for s in stops)
     assert len(cell.pockets) == cfg.tray_rows * cfg.tray_cols == 8
-    for station in (cfg.vision, cfg.tray, cfg.fail_bin, cfg.infeed):
+    assert len(cell.rework_pockets) == cfg.rework_rows * cfg.rework_cols == 4
+    for station in (cfg.vision, cfg.tray, cfg.fail_bin, cfg.rework, cfg.infeed):
         assert abs(station.angle) <= 160    # inside joint 1's +-166 deg, with a margin
+    # the vision camera looks at a held module's front from the outer side, 25 deg down
+    cam = cfg.camera("vision")
+    look = np.subtract(cam.target, cam.pos)
+    assert np.degrees(np.arcsin(-look[2] / np.linalg.norm(look))) == pytest.approx(25.0)
+    assert np.linalg.norm(look) == pytest.approx(0.28)
+    assert cam.target[2] > 0.3 and "vision_plate" not in [cell.model.body(b).name
+                                                          for b in range(cell.model.nbody)]
 
 
 def test_every_station_is_reachable_from_its_stop(cell, cfg):
@@ -96,6 +105,7 @@ def test_every_station_is_reachable_from_its_stop(cell, cfg):
     targets += [(cfg.vision.stop, cell.vision_xy), (cfg.fail_bin.stop, cell.reject_xy),
                 (cfg.infeed.stop, cell.pick_xy)]
     targets += [(cfg.tray.stop, p) for p in cell.pockets]
+    targets += [(cfg.rework.stop, p) for p in cell.rework_pockets]
     for stop, xy in targets:
         rel = np.asarray(xy) - [stop, 0.0]
         a = float(np.arctan2(rel[1], rel[0]))
@@ -121,8 +131,13 @@ def test_no_station_overlaps_a_tester_the_bin_or_the_conveyor(cell, cfg):
     # the conveyor's frame (drawn) runs along y = 0.5 from x = -0.88 to +0.98, 0.12 m wide plus
     # its side frames; its far side carries a motor near the downstream end
     boxes.append(("conveyor", np.array([-0.9, 0.38]), np.array([1.0, 0.82])))
-    # module footprints (with the 8 mm rib and the open fingers' 5 cm either way radially)
-    spots = [("vision", cell.vision_xy)] + [(f"pocket{i}", p) for i, p in enumerate(cell.pockets)]
+    # the rail's cable carrier (drawn, simulation/rail.py): y -0.272..-0.218 along the rail
+    boxes.append(("cable carrier", np.array([cfg.rail.low - 0.15, -0.272]),
+                  np.array([cfg.rail.high + 0.15, -0.218])))
+    # module footprints (with the 8 mm rib and the open fingers' 5 cm either way radially); the
+    # vision station has nothing on the bench (the module is held up to its camera)
+    spots = [(f"pocket{i}", p) for i, p in enumerate(cell.pockets)]
+    spots += [(f"rework{i}", p) for i, p in enumerate(cell.rework_pockets)]
     for name, xy in spots:
         for other, lo, hi in boxes:
             gap = np.maximum(lo - xy, xy - hi).max()
@@ -227,34 +242,78 @@ def test_bodies_are_recycled_through_a_long_shift(cell):
 
 
 # --- the image rules ------------------------------------------------------------------------------
+def _presented(cell, rib: float):
+    """Body 0's module held as the cell holds one it took out of a keyed nest (gripped across
+    its rib's face, the rib `rib` rad from pointing away from the robot: 0 or pi in a nest), and
+    presented to the vision camera (TestCellController.present). Returns (controller, part,
+    present's (turn, front_held))."""
+    cube, d, vision = cell.cubes[0], cell.data, cell.cell_config.vision
+    if cell.attached(cube):
+        cell.detach(cube)
+
+    def stand():
+        d.qpos[cube.qpos:cube.qpos + 7] = [*cell.vision_xy, 0.03,
+                                           *_yaw_quat(np.radians(vision.angle) + rib)]
+        d.qvel[cube.qvel:cube.qvel + 6] = 0.0
+        mujoco.mj_forward(cell.model, d)
+
+    stand()                                     # (out of a hand that may still hold it)
+    ctl = TestCellController(cell, nest_belief="true")
+    ctl.q_cmd = ctl.home.copy()
+    ctl.to_carry()
+    ctl.go_station(vision)
+    stand()
+    ctl.pick(cube)
+    assert cell.attached(cube)
+    out = ctl.present(cube)
+    return ctl, cube, out
+
+
+def _vision_image(cell, truth):
+    cell.show(0, truth)
+    mujoco.mj_forward(cell.model, cell.data)
+    try:
+        return cell.camera_image("vision")
+    except Exception as exc:  # noqa: BLE001
+        pytest.skip(f"no offscreen renderer: {exc}")
+
+
 @pytest.mark.parametrize("dressing,theme", [(True, "electronics"), (True, "factory"),
                                             (False, "electronics")])
 def test_the_scan_and_the_vision_rule_see_what_is_drawn(dressing, theme):
-    from polypanda.simulation.test_cell import ModuleTruth
+    """The vision camera on a module held up to it in the hand (its front turned to the camera,
+    the hand and fingers in the picture), the scanner on modules on the belt as the conveyor
+    sets them down; clean and noisy images, in each look of the hall."""
     cell = TestCell.build(cell_config(dressing=dressing, theme=theme))
     looks = [ModuleTruth("a", True), ModuleTruth("b", True, "missing_label"),
              ModuleTruth("c", True, "red_mark")]
-    cell.reset_shift(looks)
+    cell.reset_shift([])
     m, d = cell.model, cell.data
-    try:
-        cell.camera_image("vision")
-    except Exception as exc:  # noqa: BLE001
-        pytest.skip(f"no offscreen renderer: {exc}")
     rng = np.random.default_rng(0)
     try:
-        for k, truth in enumerate(looks):
-            cube = cell.cubes[cell.body_module.index(k)]
-            for camera, xy, lift in (("vision", cell.vision_xy, 0.0),
-                                     ("scanner", cell.pick_xy, 0.002)):
-                for yaw in (0.3, 2.2):
-                    d.qpos[cube.qpos:cube.qpos + 7] = [*xy, 0.03 + lift, *_yaw_quat(yaw)]
-                    mujoco.mj_forward(m, d)
-                    image = cell.camera_image(camera)
-                    for ins in (inspect(image), inspect(NOISE.apply(image, rng))):
-                        assert ins.readable == (truth.defect != "missing_label"), (camera, ins)
-                        if camera == "vision":
-                            assert ins.defect == (truth.defect is not None), (truth, ins)
-            d.qpos[cube.qpos:cube.qpos + 3] = [3.0, 3.0, 0.03]
+        _, part, (_, held) = _presented(cell, 0.0)
+        assert not held and cell.attached(part)
+        R = d.xmat[part.body].reshape(3, 3)
+        out = np.subtract(cell.cell_config.camera("vision").pos, d.xpos[part.body])
+        out[2] = 0.0
+        assert -R[:, 1] @ out / np.linalg.norm(out) > 0.99       # the front faces the camera
+        for truth in looks:
+            image = _vision_image(cell, truth)
+            for ins in (inspect(image), inspect(NOISE.apply(image, rng))):
+                assert ins.readable == (truth.defect != "missing_label"), (truth, ins)
+                assert ins.defect == (truth.defect is not None), (truth, ins)
+        cube = cell.cubes[1]                    # on the belt, at the pick point
+        heading = float(np.arctan2(*cell.conveyor.travel[::-1]))
+        for truth in looks:
+            cell.show(1, truth)
+            for yaw in (-0.087, 0.087):         # the conveyor's +-5 deg
+                d.qpos[cube.qpos:cube.qpos + 7] = [*cell.pick_xy, 0.032,
+                                                   *_yaw_quat(heading + yaw)]
+                mujoco.mj_forward(m, d)
+                image = cell.camera_image("scanner")
+                for ins in (inspect(image), inspect(NOISE.apply(image, rng))):
+                    assert ins.readable == (truth.defect != "missing_label"), (truth, ins)
+        d.qpos[cube.qpos:cube.qpos + 3] = [3.0, 3.0, 0.03]
         mujoco.mj_forward(m, d)
         assert not inspect(cell.camera_image("scanner")).readable      # nothing there
     finally:
@@ -262,28 +321,30 @@ def test_the_scan_and_the_vision_rule_see_what_is_drawn(dressing, theme):
 
 
 def test_the_vision_rule_misses_faint_marks_and_takes_big_residue_for_a_mark():
-    """The rule's built-in imperfection (perception/inspection.py), on clean images: the
-    faintest red mark is not seen (an escape, if the module passes its test), the largest
-    residue patch is (a false reject), a small one is not; a full mark always is."""
+    """The rule's built-in imperfection (perception/inspection.py), on clean images of a held
+    module, held either way round: the faintest red mark is not seen (an escape, if the module
+    passes its test), the largest residue patch is (a false reject), a small one is not; a full
+    mark always is. And a finger over the front (a module held across it) hides a mark and reads
+    as a label, which is why the controller does not trust that image."""
     cell = TestCell.build(cell_config(dressing=False))
     cases = [(ModuleTruth("faint", True, "red_mark", severity=MIN_SEVERITY), False),
              (ModuleTruth("full", True, "red_mark", severity=1.0), True),
              (ModuleTruth("res_small", True, residue=0.3), False),
              (ModuleTruth("res_big", True, residue=1.0), True)]
     cell.reset_shift([])
-    cube = cell.cubes[0]
-    m, d = cell.model, cell.data
     try:
-        for truth, seen in cases:
-            cell.show(0, truth)
-            for yaw in (0.3, 1.4, 2.2, 4.0):
-                d.qpos[cube.qpos:cube.qpos + 7] = [*cell.vision_xy, 0.03, *_yaw_quat(yaw)]
-                mujoco.mj_forward(m, d)
-                try:
-                    ins = inspect(cell.camera_image("vision"))
-                except Exception as exc:  # noqa: BLE001
-                    pytest.skip(f"no offscreen renderer: {exc}")
-                assert ins.mark == seen and ins.label, (truth, yaw, ins)
+        for rib in (0.0, np.pi):
+            _, _, (turn, held) = _presented(cell, rib)
+            assert not held and abs(abs(np.degrees(turn)) - 90.0) < 1.0
+            for truth, seen in cases:
+                ins = inspect(_vision_image(cell, truth))
+                assert ins.mark == seen and ins.label, (truth, rib, ins)
+        _, _, (_, held) = _presented(cell, np.pi / 2)    # gripped across its front
+        assert held
+        ins = inspect(_vision_image(cell, ModuleTruth("x", True, "missing_label")))
+        assert ins.label and not ins.defect
+        ins = inspect(_vision_image(cell, ModuleTruth("y", True, "red_mark", severity=1.0)))
+        assert not ins.mark
     finally:
         cell.close()
 
@@ -329,9 +390,70 @@ def test_a_sort_is_right_when_it_matches_the_truth():
     assert good.good and not bad.good and bad.electrical_defect == "short"
     for rec, where, right in ((good, "pass_tray", True), (good, "fail_bin", False),
                               (bad, "fail_bin", True), (bad, "pass_tray", False),
-                              (good, None, False), (bad, None, False)):
+                              (good, None, False), (bad, None, False),
+                              (good, "rework_tray", False), (bad, "rework_tray", False)):
         rec.sorted_to = where
         assert rec.correct == right
+        assert rec.judged == (where in ("pass_tray", "fail_bin"))
+
+
+def test_kpis_count_modules_not_tested_apart():
+    """A module in the REWORK tray is neither a false reject nor in the test yield; it counts
+    as not tested, by reason and truth, and in the modules handled per hour only."""
+    from types import SimpleNamespace
+
+    from polypanda.evaluation.test_cell import kpis
+
+    def rec(i, truth, where, **kw):
+        r = ModuleRecord.of(i, truth)
+        r.t_taken, r.sorted_to = 10.0 * i, where
+        r.scan, r.inserts = {"read": True, "tries": 1}, [{"attempt": 0, "seated": True,
+                                                          "s": 5.0, "peak_force": 10.0}]
+        for k, v in kw.items():
+            setattr(r, k, v)
+        return r
+
+    good, bad = ModuleTruth("g", True), ModuleTruth("b", False, electrical_defect="short")
+    recs = [rec(0, good, "pass_tray", test_result="pass", verdict="pass"),
+            rec(1, bad, "fail_bin", test_result="fail", verdict="fail",
+                reject_reason="test_fail"),
+            rec(2, good, "rework_tray", verdict="not_tested", rework_reason="not_seated"),
+            rec(3, bad, "rework_tray", verdict="not_tested", rework_reason="not_running"),
+            rec(4, good, None)]
+    ctl = SimpleNamespace(records=recs, t_start=0.0, t_end=3600.0, timeline=[],
+                          cell=SimpleNamespace(machines={"TA": None}), activities=[],
+                          events=[], timed_out=False, tray_swaps=0, bin_emptied=0,
+                          rework_collected=0, ik_failures=0)
+    k = kpis(ctl)
+    assert k["sorted"] == 2 and k["modules_per_hour"] == 2.0 and k["handled_per_hour"] == 4.0
+    assert k["not_tested"] == 2 and k["not_tested_rate"] == pytest.approx(0.4)
+    assert k["not_tested_by_reason"] == {"not_seated": 1, "not_running": 1}
+    assert k["not_tested_truth"] == {"good": 1, "bad": 1}
+    assert k["not_sorted"] == 1
+    assert k["false_rejects"] == 0 and k["escapes"] == 0
+    assert k["test_yield"] == 0.5 and k["tested"] == 2
+    assert k["sort_correct"] == 2 and k["sort_correct_rate"] == 1.0
+    assert k["caught"] == {"test_fail": 1, "not_tested": 1}
+    assert k["first_pass_yield"] == pytest.approx(0.2)
+    assert k["confusion"]["good->rework_tray"] == 1
+
+
+def test_a_module_not_tested_goes_to_the_rework_tray():
+    """The REWORK tray: placed upright in a free pocket, recorded as not tested with its
+    reason, not judged; an operator takes the tray's modules away when it is full."""
+    cell = TestCell.build(cell_config(dressing=False))
+    cell.reset_shift([ModuleTruth("a", True)])
+    try:
+        ctl, part, _ = _presented(cell, 0.0)
+        rec = ModuleRecord.of(0, ModuleTruth("a", True))
+        ctl.sort(part, rec, "not_tested", "not_seated")
+        assert rec.sorted_to == "rework_tray" and cell.pocket_of(part, which="rework") == 0
+        assert rec.verdict == "not_tested" and rec.rework_reason == "not_seated"
+        assert rec.reject_reason is None and not rec.judged and not rec.correct
+        assert [a["what"] for a in ctl.activities] == ["rework"]
+        assert cell.free_pocket("rework") == 1 and cell.free_pocket("pass") == 0
+    finally:
+        cell.close()
 
 
 def test_first_pass_means_once_through_cleanly():
@@ -345,7 +467,7 @@ def test_first_pass_means_once_through_cleanly():
     rec.inserts.append({"attempt": 1, "seated": True})
     assert not first_pass(rec)
     rec.inserts.pop()
-    rec.failures.append("vision_pick")
+    rec.failures.append("insert")
     assert not first_pass(rec)
 
 
@@ -402,7 +524,9 @@ def test_a_short_shift_tests_and_sorts_every_module():
     assert [rows[s]["reject_reason"] for s in ("good", "elec", "mark", "nolabel")] == [
         None, "test_fail", "vision", "no_read"]
     assert k["caught"] == {"test_fail": 1, "vision": 1, "no_read": 1}
-    assert k["escapes"] == k["false_rejects"] == 0
+    assert k["escapes"] == k["false_rejects"] == k["not_tested"] == 0
+    assert all(not r["vision"]["front_held"] for r in out["modules"] if r["vision"])
+    assert rows["nolabel"]["vision"] is None          # rejected at the scan, never inspected
     assert k["tested"] == 3 and not k["timed_out"]
     assert k["test_yield"] == pytest.approx(2 / 3, abs=1e-3)
     assert 0.0 <= k["first_pass_yield"] <= 1 / 4      # only "good" can pass, if seated at once
