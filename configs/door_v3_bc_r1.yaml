@@ -1,0 +1,38 @@
+# v4.1 door on testers, dev round 1, the clone (docs/v4_1_targets.md, Part II; scripts/train_bc.py,
+# training/bc.py): feel_v2's demonstrations on configs/door_v3.yaml's distribution (lids and
+# drawers, wide hand-over starts), cloned into each seed's v4.0 round-5 FINAL policy
+# (runs/door_v2_bc_ppo_r5_seed{seed}, the same observation door-v2-50d), so the clone keeps what
+# that policy knows and learns drawers and wide starts from the script. PPO then refines it
+# (configs/door_v3_bc_ppo_r1.yaml). Clone seed = the run's seed.
+#   uv run python scripts/record_door_demos.py --config configs/door_v3_bc_r1.yaml
+#   uv run python scripts/train_bc.py --config configs/door_v3_bc_r1.yaml --seed 0   (1, 2)
+training_config: configs/door_v3_bc_ppo_r1.yaml   # its task (door_v2), env, network, gamma
+demos: runs/door_demos/feel_v2_door_v3_3000_20261133.npz
+record:
+  task: door_v2               # DoorV2Env: the observation the policy has (door-v2-50d)
+  env_config: configs/door_v3.yaml   # recorded as evaluated: without round 5's focus cells
+  script: feel_v2             # the fair baseline, 398/400 on door_dev_v2 (the demonstration check)
+  episodes: 3000              # as v4.0's clone (2,740 kept, 539k steps)
+  seed: 20261133              # episode k draws from default_rng(20261133 * 1000 + k): a stream
+  #                             apart from the door sets' (default_rng(<set seed>)), the training
+  #                             envs' (seed + rank) and validation's (100000)
+  noise: 0.2                  # v4.0's DART noise on executed hand actions, on half the episodes:
+  noise_share: 0.5            # the clone sees states off the script's path and its recoveries
+  jobs: 3
+clone:
+  init_from: runs/door_v2_bc_ppo_r5_seed{seed}   # v4.0's policy for the seed (a symlink to the
+  init_checkpoint: final                         # main repo's runs/, read-only)
+  # A refresh, not a fresh clone: v4.0 fitted a new network for 40 epochs at 1e-3. Here the
+  # network already works lids from v4.0's starts, about 3x faster than the feel script; a short,
+  # gentler fit (10 epochs at 3e-4, about 5k gradient steps) teaches drawers and wide starts
+  # without fully overwriting it with the slower script's lid behaviour. bc_log.json records
+  # how far the source was from the demonstrations at first (start_val_mse).
+  epochs: 10
+  learning_rate: 0.0003
+  batch_size: 1024
+  value_epochs: 10            # the critic too, in the source's return normalization
+  log_std: null               # keep round 5's action noise (log std about -1.9 on the hand's
+  #                             moves, -1.3 on the turn, -0.65 on the gripper): rounds 2-5
+  #                             warm-started without resetting it
+  val_share: 0.05
+demos_source: scripts/record_door_demos.py --config configs/door_v3_bc_r1.yaml

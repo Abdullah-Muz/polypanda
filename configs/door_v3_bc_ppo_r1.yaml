@@ -1,0 +1,43 @@
+# v4.1 door on testers, dev round 1 (docs/v4_1_targets.md, Part II; at most 3 rounds): PPO on
+# task door_v2 with configs/door_v3.yaml (v4.0 round 5's env + lids and drawers + wide hand-over
+# starts), warm-started from the seed's refreshed clone (runs/door_v3_bc_r1_seed{seed}: v4.0's
+# round-5 final policy, cloned on feel_v2's demonstrations; configs/door_v3_bc_r1.yaml).
+# PPO settings are round 5's, unchanged (configs/door_v2_bc_ppo_r5.yaml): lr 5e-5 -> 1e-5 (the
+# network is already a working door policy: rounds 3-5 refined at this rate without losing
+# it), 2M steps, n_steps 512 x 8 envs, entropy 0.005, the clone's action noise kept (no
+# init_log_std). Validation: the same 200 episodes every 100k steps (eval_seed 100000, a training
+# stream; drawn as evaluated: lids and drawers half each, wide starts), per cell, with the
+# targets' kind x command cells. The seed's policy = this run's FINAL checkpoint (if it is the
+# last round).
+algorithm: ppo
+task: door_v2
+env_config: configs/door_v3.yaml
+seed: 0
+n_envs: 8
+vec_env: subproc
+total_timesteps: 2000000
+normalize_obs: true
+normalize_reward: true
+eval_freq: 100000
+eval_episodes: 200
+eval_seed: 100000
+eval_fixed_episodes: true
+checkpoint_freq: 250000
+torch_threads: 1
+init_from: runs/door_v3_bc_r1_seed{seed}
+init_checkpoint: final
+
+ppo:
+  learning_rate: 0.00005
+  learning_rate_final: 0.00001
+  n_steps: 512
+  batch_size: 256
+  n_epochs: 10
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_range: 0.2
+  ent_coef: 0.005
+  vf_coef: 0.5
+  max_grad_norm: 0.5
+  net_arch: [256, 256]
+  log_std_init: 0.0

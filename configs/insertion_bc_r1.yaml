@@ -1,0 +1,48 @@
+# v4.1 learned insertion, dev round 1, the clone (docs/v4_1_targets.md, Part I: demonstrations
+# from the search script, behaviour cloning, then PPO; scripts/train_bc.py, training/bc.py).
+# The frozen search's demonstrations (control/scripted_insertion.py, unchanged), recorded and
+# replayed in InsertionEnv on 3,000 freshly drawn training episodes:
+#   uv run python scripts/record_insertion_demos.py --episodes 3000 --jobs 3 \
+#     --pick-pool data/handoff/insertion_picks_train_v1.json
+# (the demonstrations' stream: SeedSequence(20261132, spawn_key=(0x1A60,)), never an evaluation
+# set's; its first 200 episodes are the replay check's of docs/insertion_env.md; grasps from the
+# training pick pool), keeping the successful replays (within the 30 s budget). Cloned as v4.0's
+# door clone (40 epochs at 1e-3, the critic fitted to the demonstrations' returns), into the
+# network of configs/insertion_bc_ppo_r1.yaml. Clone seed = the run's seed.
+#   uv run python scripts/train_bc.py --config configs/insertion_bc_r1.yaml --seed 0   (1, 2)
+training_config: configs/insertion_bc_ppo_r1.yaml   # its task (insertion), env, network, gamma
+demos: runs/insertion_demos/search_3000_20261132.npz
+clone:
+  epochs: 40
+  batch_size: 1024
+  learning_rate: 0.001
+  value_epochs: 20
+  val_share: 0.05
+  # The release (action 4) is one step in a demonstration (+1 once, -1 before and after). Once
+  # released it cannot be undone and the env ignores the action, so labelling it +1 from the
+  # "released" input on (observation 40) changes nothing the search did, and stops the labels
+  # saying "do not let go" in every state after it let go. (A probe clone of the 155 replay-check
+  # demonstrations, run on 20 training episodes, never let go: its release output stayed
+  # below 0.5 everywhere, as v4.0's door clone kept holding the bar.)
+  latch_action: 4
+  latch_obs: 40
+  # The clone's action noise, which PPO explores with (kept: configs/insertion_bc_ppo_r1.yaml
+  # sets no init_log_std), per action [dx, dy, dz, dyaw, release]:
+  # - the hand's moves and turn: log std -3 (std 0.05 of full scale: 0.5 mm, 0.0025 rad per
+  #   step). In the search's demonstrations (the 155 replay-check episodes) the hand moves
+  #   0.66 of full scale (6.6 mm) per step on the way down, and with the module at the nest
+  #   0.0007 median / 0.013 p90 sideways and 0.03 / 0.055 down (0.3-0.55 mm per step); its
+  #   wiggle turns 0.75 (0.038 rad). The hand target integrates the actions, so per-step noise
+  #   random-walks the module: at -3 about 2 mm over a second unless the policy corrects it,
+  #   at -2.5 (0.8 mm per step) 3.6 mm, at v4.0's door -1 (3.7 mm per step) 17 mm, against
+  #   0.25-0.5 mm of clearance and a 50 N limit. -3 is the bottom of the env's suggested range
+  #   (-2 to -3, docs/insertion_env.md): about the size of the search's own fine moves.
+  # - the release: log std -1 (v4.0's clone noise, std 0.37), so PPO can find letting go:
+  #   from the clone's mean of about -1 a release is a 4-sigma draw (about 0.4 % of episodes
+  #   let go at random over the search's ~170 steps); where the clone's mean rises toward the
+  #   seat, more often. At -3 a release from -1 would be a 30-sigma draw: never.
+  log_std: [-3.0, -3.0, -3.0, -3.0, -1.0]
+demos_source: >-
+  scripts/record_insertion_demos.py --episodes 3000 --jobs 3 --pick-pool
+  data/handoff/insertion_picks_train_v1.json (seed 20261132, spawn key 0x1A60; successful
+  replays; results/v4/insertion/demo_replay_search_3000_20261132.json)
