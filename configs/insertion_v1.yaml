@@ -1,0 +1,58 @@
+# v4.1 learned insertion: the env (environments/insertion.py, docs/insertion_env.md), task
+# "insertion". The defaults, written out. Training draws its episodes from env.reset(seed=...)
+# (gymnasium's plain seeded stream), the module's grasp from the training pick pool (real picks,
+# its own stream); the evaluation sets carry their own grasps (scripts/make_insertion_sets.py).
+variation:                    # docs/v4_1_targets.md, "The episode distribution"
+  testers: [TA, TB, TC]       # the cell's lid, drawer and pneumatic testers, uniformly
+  clearance: [0.00025, 0.0005]  # m per side, uniform
+  chamfer: [0.0005, 0.001]    # m, uniform
+  position: 0.015             # m either way, each axis of the station frame (v4.0's machines)
+  turn: 10.0                  # deg either way
+  camera_xy: 0.0008           # m, sigma per horizontal axis (mean 1.0 mm radial)
+  camera_xy_clip: 0.003       # m, radially
+  camera_yaw: 0.5             # deg, sigma
+  camera_yaw_clip: 2.0        # deg
+  pick_lateral: 0.003         # m either way across the infeed belt (the test cell's)
+  pick_yaw: 5.0               # deg either way
+
+action:
+  max_step: 0.01              # m per step per axis
+  max_rot: 0.05               # rad per step
+  max_lead: 0.03              # m: hand target within this of the measured hand
+  max_turn: 0.35              # rad: hand yaw within this of the aimed yaw
+  release_above: 0.5
+
+sensing:
+  force_noise: 0.1            # N per axis per step (wrist force-torque sensor)
+  torque_noise: 0.002         # N m per axis per step
+
+success:
+  floor_gap: 0.001            # m
+  tilt: 2.0                   # deg
+  slack: 0.0002               # m beyond the clearance
+  force_limit: 50.0           # N, the damage limit
+  carry_margin: 0.01          # m
+
+reward:
+  insert_z: 10.0
+  insert_xy: 100.0
+  seat: 3.0
+  release_seated: 1.0
+  release_unseated: 2.0
+  retreat: 5.0
+  success: 10.0
+  force: 0.05
+  force_soft: 20.0
+  damage: 10.0
+  failure: 5.0
+  collision: 0.05
+  time: 0.01
+  action: 0.001
+  non_finite: 10.0
+
+start:
+  carry_height: 0.32
+  settle_steps: 10
+
+horizon: 600                  # 30 s at 20 Hz
+pick_pool: data/handoff/insertion_picks_train_v1.json

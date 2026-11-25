@@ -30,6 +30,11 @@ where it was compiled, so a drawer drawn with another travel stops elsewhere whe
 is at the machine's origin only at the compiled travel). A pneumatic lid has no handle; its
 variants change the joint, the cylinder's stroke (`actuator_actrange`, the travel) and speed
 (`pneumatic_speed`, read by Machine.request_open/close).
+
+**v4.1: the nest** (`NestLayout`): a tight nest's clearance and chamfer are re-cut at runtime for
+the learned insertion's episodes (environments/insertion.py): the pocket's geoms as
+machine._add_pocket draws them (`nest_geoms` reads them from that very function) and the pocket
+bodies' bounding-volume hierarchies (`refresh_bvh`, now a function of any body).
 """
 
 from __future__ import annotations
@@ -153,43 +158,118 @@ class MachineLayout:
         self.refresh_bvh(model)
 
     def refresh_bvh(self, model: mujoco.MjModel) -> None:
-        """Recompute the lid body's bounding-volume hierarchy (`bvh_aabb`) from its geoms as they
-        are now. The compiler builds it from the geoms' compiled placements, and collision's
-        midphase prunes against it: a handle moved outside its compiled box is passed through
-        by a finger (measured before this existed). The boxes are in the body's inertial frame;
-        leaves bound one geom, inner nodes their children."""
-        b = self.lid_body
-        adr, num = int(model.body_bvhadr[b]), int(model.body_bvhnum[b])
-        if adr < 0 or num == 0:
-            return
-        R_i, R_g = np.zeros(9), np.zeros(9)
-        mujoco.mju_quat2Mat(R_i, model.body_iquat[b])
-        R_i = R_i.reshape(3, 3)
-        ipos = model.body_ipos[b]
-        signs = np.array([[x, y, z] for x in (-1, 1) for y in (-1, 1) for z in (-1, 1)], float)
-
-        def bounds(k: int) -> tuple[np.ndarray, np.ndarray]:
-            g = int(model.bvh_nodeid[adr + k])
-            if g >= 0:
-                mujoco.mju_quat2Mat(R_g, model.geom_quat[g])
-                R = R_g.reshape(3, 3)
-                box = model.geom_aabb[g]
-                corners = model.geom_pos[g] + (box[:3] + signs * box[3:]) @ R.T  # body frame
-                local = (corners - ipos) @ R_i                                    # inertial
-                lo, hi = local.min(axis=0), local.max(axis=0)
-            else:
-                (lo1, hi1), (lo2, hi2) = (bounds(int(c)) for c in model.bvh_child[adr + k])
-                lo, hi = np.minimum(lo1, lo2), np.maximum(hi1, hi2)
-            model.bvh_aabb[adr + k] = [*(lo + hi) / 2, *(hi - lo) / 2]
-            return lo, hi
-
-        bounds(0)
+        """Recompute the lid body's bounding-volume hierarchy (`refresh_bvh`)."""
+        refresh_bvh(model, self.lid_body)
 
     def place(self, model: mujoco.MjModel, xy, yaw: float) -> None:
         """Stand the machine with its pocket's centre at `xy` on the bench, turned by `yaw`
         (rad; its +x points away from a robot at angle yaw + pi from it)."""
         model.body_pos[self.body] = [float(xy[0]), float(xy[1]), 0.0]
         model.body_quat[self.body] = _yaw_quat(yaw)
+
+
+def refresh_bvh(model: mujoco.MjModel, b: int) -> None:
+    """Recompute body `b`'s bounding-volume hierarchy (`bvh_aabb`) from its geoms as they are
+    now. The compiler builds it from the geoms' compiled placements, and collision's midphase
+    prunes against it: a handle moved outside its compiled box is passed through by a finger
+    (measured before this existed). The boxes are in the body's inertial frame; leaves bound one
+    geom, inner nodes their children."""
+    adr, num = int(model.body_bvhadr[b]), int(model.body_bvhnum[b])
+    if adr < 0 or num == 0:
+        return
+    R_i, R_g = np.zeros(9), np.zeros(9)
+    mujoco.mju_quat2Mat(R_i, model.body_iquat[b])
+    R_i = R_i.reshape(3, 3)
+    ipos = model.body_ipos[b]
+    signs = np.array([[x, y, z] for x in (-1, 1) for y in (-1, 1) for z in (-1, 1)], float)
+
+    def bounds(k: int) -> tuple[np.ndarray, np.ndarray]:
+        g = int(model.bvh_nodeid[adr + k])
+        if g >= 0:
+            mujoco.mju_quat2Mat(R_g, model.geom_quat[g])
+            R = R_g.reshape(3, 3)
+            box = model.geom_aabb[g]
+            corners = model.geom_pos[g] + (box[:3] + signs * box[3:]) @ R.T  # body frame
+            local = (corners - ipos) @ R_i                                    # inertial
+            lo, hi = local.min(axis=0), local.max(axis=0)
+        else:
+            (lo1, hi1), (lo2, hi2) = (bounds(int(c)) for c in model.bvh_child[adr + k])
+            lo, hi = np.minimum(lo1, lo2), np.maximum(hi1, hi2)
+        model.bvh_aabb[adr + k] = [*(lo + hi) / 2, *(hi - lo) / 2]
+        return lo, hi
+
+    bounds(0)
+
+
+# --- v4.1: the nest's clearance and chamfer, at runtime -------------------------------------------
+class _PocketRecorder:
+    """Stands in for an MjSpec body while machine._add_pocket builds a nest: it records the
+    geoms (name -> size, pos, quat) instead of adding them, so the runtime nest is exactly the
+    geometry add_machine compiles (the same function draws both)."""
+
+    def __init__(self, geoms: dict, bodies: list) -> None:
+        self.geoms, self.bodies = geoms, bodies
+
+    def add_body(self, name: str, **_) -> _PocketRecorder:
+        self.bodies.append(name)
+        return self
+
+    def add_geom(self, name: str, size, pos, quat=(1.0, 0.0, 0.0, 0.0), **_) -> None:
+        self.geoms[name] = (np.asarray(size, float), np.asarray(pos, float),
+                            np.asarray(quat, float))
+
+
+def nest_geoms(name: str, cfg: MachineConfig) -> tuple[dict, list[str]]:
+    """The geoms of machine `name`'s nest (pocket) for `cfg`, as add_machine compiles them:
+    ({geom name: (size, pos, quat) in its pocket body's frame}, the pocket bodies' names)."""
+    from polypanda.simulation.machine import _add_pocket
+    geoms: dict = {}
+    bodies: list = []
+    _add_pocket(_PocketRecorder(geoms, bodies), name, cfg)
+    return geoms, bodies
+
+
+# what a runtime nest may change (a tight nest's clearance; its chamfer, through pocket_straight)
+NEST_VARIABLE = ("clearance", "pocket_straight")
+
+
+class NestLayout:
+    """The nest of one compiled machine named `name`, re-cut at runtime to another clearance
+    and chamfer (machine.tight_nest), without recompiling: the pocket's geoms (`geom_size`,
+    `geom_pos`, `geom_quat`, their bounding sphere and box `geom_rbound`, `geom_aabb`) and the
+    pocket bodies' bounding-volume hierarchies (refresh_bvh). Not edited: the pocket bodies'
+    mass and inertia (static on a lid or pneumatic tester; on a drawer, sub-millimetre changes
+    of a few grams on a drawer held by its index pin)."""
+
+    def __init__(self, model: mujoco.MjModel, name: str, compiled: MachineConfig) -> None:
+        self.name, self.compiled = name, compiled
+        geoms, bodies = nest_geoms(name, compiled)
+        self.geoms = {g: model.geom(g).id for g in geoms}
+        self.bodies = [model.body(b).id for b in bodies]
+
+    def apply(self, model: mujoco.MjModel, cfg: MachineConfig,
+              machine: Machine | None = None) -> None:
+        """Make the compiled nest the one of `cfg` (call mj_forward afterwards); with `machine`
+        (its runtime), its seat check follows (Machine.cfg)."""
+        for f in fields(MachineConfig):
+            if (f.name not in NEST_VARIABLE + VARIABLE
+                    and getattr(cfg, f.name) != getattr(self.compiled, f.name)):
+                raise ValueError(f"{f.name} cannot change at runtime "
+                                 f"({getattr(self.compiled, f.name)} compiled)")
+        geoms, _ = nest_geoms(self.name, cfg)
+        if set(geoms) != set(self.geoms):
+            raise ValueError("the nest's geoms differ from the compiled ones")
+        for g, (size, pos, quat) in geoms.items():
+            i = self.geoms[g]
+            model.geom_size[i] = size
+            model.geom_pos[i] = pos
+            model.geom_quat[i] = quat / np.linalg.norm(quat)
+            model.geom_rbound[i] = float(np.linalg.norm(size))
+            model.geom_aabb[i] = [0.0, 0.0, 0.0, *size]
+        for b in self.bodies:
+            refresh_bvh(model, b)
+        if machine is not None:
+            machine.cfg = cfg
 
 
 def variant(base: MachineConfig, **changes) -> MachineConfig:

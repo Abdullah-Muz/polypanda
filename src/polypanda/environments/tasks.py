@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 
-from polypanda.environments import door, grasp, place, reach, standup, transport
+from polypanda.environments import door, grasp, insertion, place, reach, standup, transport
 
 
 @dataclass(frozen=True)
@@ -28,6 +28,8 @@ TASKS = {
     "standup_v3": TaskSpec(standup.StandUpV3Env, standup.StandUpConfig, standup.OBS_SCHEMA_V3),
     "door": TaskSpec(door.DoorEnv, door.DoorConfig, door.OBS_SCHEMA),
     "door_v2": TaskSpec(door.DoorV2Env, door.DoorConfig, door.OBS_SCHEMA_V2),
+    "insertion": TaskSpec(insertion.InsertionEnv, insertion.InsertionConfig,
+                          insertion.OBS_SCHEMA),
 }
 
 
