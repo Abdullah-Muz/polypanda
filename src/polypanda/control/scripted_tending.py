@@ -128,7 +128,7 @@ class ScriptedTending(ScriptedCell):
             # the cube is square in plan: turn by the smallest angle that squares it to the pocket
             turn = (b.yaw - cube_yaw(self.d, cube) + np.pi / 4) % (np.pi / 2) - np.pi / 4
         yaw = carry + turn
-        rest = CUBE_HEIGHT * 0.5
+        rest = CUBE_HEIGHT * 0.5 + b.config.nest_floor     # (a drawer's nest stands on its tray)
         tcp = self.d.site_xpos[self.arm.tcp_site]
         offset = tcp[2] - self.d.xpos[cube.body][2]
         self.vertical(xy, rest + self.config.release_clearance + offset, yaw, track=cube.body)
@@ -144,6 +144,12 @@ class ScriptedTending(ScriptedCell):
         cell would read it with the camera (the rib stands out of the part's side and is seen
         from above), and a belief could carry it with that camera's error."""
         return cube_yaw(self.d, cube)          # the rib is on the part's local +x face
+
+    @staticmethod
+    def hand_axis(b: Belief) -> float:
+        """The direction (rad, world, mod pi) the fingers must close along to reach into the
+        believed machine's nest (MachineConfig.hand_axis: its x for a lid, its y for a drawer)."""
+        return b.yaw + b.config.hand_axis
 
     def _wrist_turns(self, turn: float, q7: float, hand_yaw: float | None = None,
                      machine_yaw: float = 0.0) -> list[float]:
@@ -180,7 +186,7 @@ class ScriptedTending(ScriptedCell):
             for pick_turn in self._wrist_turns(g - carry_pick, self.carry[6]):
                 # back in the carry posture the rib sits at (rib - g) from the closing direction
                 load_turns = self._wrist_turns(slot - (carry_load + rib - g), self.carry[6],
-                                               carry_load, b.yaw)
+                                               carry_load, self.hand_axis(b))
                 if load_turns:
                     cost = abs(pick_turn) + abs(load_turns[0])
                     if best is None or cost < best[0]:
@@ -220,11 +226,12 @@ class ScriptedTending(ScriptedCell):
         the wrong faces, e.g. by the cell's plain pick) is set down beside the machine and
         picked again with `pick_for` (a regrasp)."""
         slot = b.yaw + b.config.key_yaw
-        turns = self._wrist_turns(slot - self.rib_yaw(cube), self.q_cmd[6], carry, b.yaw)
+        axis = self.hand_axis(b)
+        turns = self._wrist_turns(slot - self.rib_yaw(cube), self.q_cmd[6], carry, axis)
         if not turns:
             self.regrasp(cube, name)
             self.swing_to(self.angle_of(xy))
-            turns = self._wrist_turns(slot - self.rib_yaw(cube), self.q_cmd[6], carry, b.yaw)
+            turns = self._wrist_turns(slot - self.rib_yaw(cube), self.q_cmd[6], carry, axis)
             if not turns:
                 raise RuntimeError("no wrist turn brings the rib to the slot")
         turn = turns[0]
@@ -253,6 +260,38 @@ class ScriptedTending(ScriptedCell):
         self.to_carry()
         self.pick_for(cube, name)
 
-    def unload(self, cube: CubeIndices) -> None:
-        """Take the part out of the pocket (the cell's pick: the fingers close above the rim)."""
-        self.pick(cube)
+    def unload(self, cube: CubeIndices, name: str | None = None) -> None:
+        """Take the part out of the pocket (the cell's pick: the fingers close above the rim).
+        With the machine `name` given and a drawer, the fingers close along the drawer's y
+        (`hand_axis`; the cell's pick would close them radially, the hand reaching over the
+        drawer's front plate and into the box)."""
+        b = self.beliefs.get(name) if name is not None else None
+        if b is None or b.config.kind != "drawer":
+            self.pick(cube)
+            return
+        # of the part's four face pairs, the grasps that close across the drawer, the wrist
+        # turned within joint 7's range (as pick_for turns it: an IK left to find a far turn on
+        # its own swings the whole arm round, measured sweeping the conveyor); the least turn
+        c = self.d.xpos[cube.body].copy()
+        angle = self.angle_of(c)
+        carry = self.carry_yaw(angle)
+        faces = cube_yaw(self.d, cube)
+        turns = [t for k in range(4) for t in self._wrist_turns(
+            faces + k * np.pi / 2 - carry, self.q_cmd[6], carry, self.hand_axis(b))]
+        if not turns:
+            self.pick(cube)
+            return
+        turn = min(turns, key=abs)
+        yaw = carry + turn
+        z_carry = self.config.carry_height
+        seed = self.q_cmd.copy()
+        seed[6] -= turn
+        self.move_joints(self._solve([c[0], c[1], z_carry], top_down_quat(yaw), seed))
+        self.vertical(c[:2], c[2], yaw)
+        self.grip = GRIPPER_CLOSED
+        self.step(self.config.grip_steps)
+        self.cell.attach(cube)
+        self.vertical(c[:2], z_carry, yaw)
+        q = self.carry.copy()
+        q[0] += angle
+        self.move_joints(q, rate=1.0)  # wrist back to the carry yaw (the part turns with it)
