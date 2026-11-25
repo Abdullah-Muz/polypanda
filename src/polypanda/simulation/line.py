@@ -59,6 +59,9 @@ class LineConfig:
     # pocket (MachineConfig.keyed) only one way round
     keyed_parts: bool = False
     rib: Rib = Rib()
+    # the look (visual only; with the cell's dressing on): "factory" (v4.0's automotive hall) or
+    # "electronics" (v4.1's electronics test cell, simulation/electronics.py)
+    theme: str = "factory"
 
     def station_xy(self, stop: float, angle_deg: float) -> np.ndarray:
         """Where a station at `angle_deg` in front of rail stop `stop` sits on the bench."""
@@ -77,6 +80,11 @@ def build_line_spec(cfg: LineConfig | None = None) -> mujoco.MjSpec:
     if cfg.keyed_parts:
         for k in range(cfg.cell.n_cubes):
             add_rib(spec, CUBE_NAME.format(k), cfg.rib)
+    if cfg.theme not in ("factory", "electronics"):
+        raise ValueError(f"unknown theme {cfg.theme!r}")
+    if cfg.theme == "electronics" and cfg.cell.dressing:
+        from polypanda.simulation.electronics import restyle_electronics
+        restyle_electronics(spec, machines=tuple(s.name for s in cfg.machines))
     return spec
 
 
