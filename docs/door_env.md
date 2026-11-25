@@ -212,3 +212,42 @@ rank, and validates on episodes drawn from its `eval_seed`; the sets come from
 64 ranks above it) is a set's seed (`tests/test_door_wide_start.py`, for every
 `configs/door_*.yaml`). v4.1's door training configs need `start.wide: true` and
 `variation.kinds: [lid, drawer]` to train on this distribution.
+
+### The baselines and v4.0's policies on `door_dev_v2` (before any v4.1 door training)
+
+Run once each from `be2362c` (clean), `scripts/evaluate_door.py --set eval_sets/door_dev_v2.json
+--jobs 3`; results in `results/v4/door/<policy>_door_dev_v2.json`. v4.0's policies are the locked
+round-5 final checkpoints (`runs/door_v2_bc_ppo_r5_seed{0,1,2}@final`, the starting point of
+v4.1's retraining), read from the main checkout's `runs/` unchanged. `door_final_v2` has not been
+run on.
+
+| Policy | Lid open | Lid close | Drawer open | Drawer close | All | Median steps to success | Peak force median / max | Slam episodes |
+|---|---|---|---|---|---|---|---|---|
+| expert (privileged) | 100 | 100 | 100 | 100 | 400/400 | 119 | 8.7 / 346 N | 0 |
+| **`feel_v2`** | 100 | 98 | 100 | 100 | **398/400 (99.5 %)** | 146 | 21.2 / 325 N | 0 |
+| `camera` | 43 | 48 | 99 | 52 | 242/400 (60.5 %) | 144 | 6.6 / 325 N | 0 |
+| `nominal` | 17 | 15 | 53 | 64 | 149/400 (37.2 %) | 148 | 17.5 / 566 N | 3 |
+| v4.0 r5, seed 0 | 59 | 80 | 0 | 1 | 140/400 (35.0 %) | 66 | 88.5 / 1325 N | 12 |
+| v4.0 r5, seed 1 | 78 | 86 | 0 | 10 | 174/400 (43.5 %) | 68 | 113 / 668 N | 15 |
+| v4.0 r5, seed 2 | 62 | 60 | 0 | 0 | 122/400 (30.5 %) | 68 | 111 / 531 N | 39 |
+
+(Each kind × command cell is out of 100; per-cell steps and forces are in each file's
+`summary.kind_command`.)
+
+- **The demonstration check passes:** `feel_v2` succeeds on 398 of 400 (99.5 %, 95 % CI
+  98.2–99.9), every kind × command cell at 98 % or more. Its two failures are springy
+  left-sliding lids to close (episodes 25 and 329: hand 18 and 28 cm over the bar, wrist turned
+  49° and 87°, stiff latches of 0.089 and 0.099 m/s): it tries right first, flips, and pushes
+  three times without the latch catching (`not_closed` at the horizon). Its worst
+  command × slide × spring cell is close/left/spring.
+- **The wide starts cost the scripts almost nothing** (by start height, wrist turn and radial
+  place `feel_v2` is 98–100 % everywhere). One start (episode 78: a shut drawer, hand 20 cm up
+  and 19 cm beyond the origin, wrist turned 82°) makes the expert, `feel_v2` and `camera` land
+  a finger on top of the drawer's bar on their way down (325–346 N for a few steps); all but
+  `camera` then succeed. It is the expert's and `feel_v2`'s only peak above 110 N.
+- **v4.0's policies do not work from these starts, nor on drawers.** On drawers they succeed 0–10
+  of 200 (never trained on them; per-cell median peak forces 95–315 N); on lids
+  59–86 % against 98.5–100 % on `door_dev_v1`, losing most with the wrist turned more than 45°
+  (52–74 of 95) and from high starts. This is what v4.1's retraining starts from.
+- **The v4.0 policies are unchanged:** on `door_dev_v1`, at `be2362c`, each seed's 400 rows are
+  identical to its committed result from `d3b085c` (399, 394 and 400 of 400).
