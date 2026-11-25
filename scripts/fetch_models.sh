@@ -3,12 +3,12 @@
 # archive's checksum. Afterwards every "run:runs/<name>" command in the docs works without
 # training, e.g.: uv run python scripts/view_workcell.py --pick run:runs/grasp_cart_seed2 \
 #     --place run:runs/place_stack_v3_seed2
-# Usage: scripts/fetch_models.sh   (v3.2 holds every run of v1.0, v2.0, v3.0 and v3.1 as well)
+# Usage: scripts/fetch_models.sh   (v4.0 holds every run of v1.0 to v3.2 as well)
 set -euo pipefail
 
-TAG="v3.2"
+TAG="v4.0"
 ARCHIVE="polypanda-models-${TAG}.tar.gz"
-SHA256="b1ec9f4f4a8835ea4744b51a3ae0446874a36782f744b65fab285aea5e013449"
+SHA256="513eda0c052c75be4a3f9cffcbd5e919ebb55ab823a65705bb37cd81241c1bd6"
 URL="https://github.com/Abdullah-Muz/polypanda/releases/download/${TAG}/${ARCHIVE}"
 
 cd "$(dirname "$0")/.."
