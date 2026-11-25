@@ -109,7 +109,10 @@ class SearchInsertion:
     max_lateral_step: float = 0.00002
     # rotational wiggle while trying (the industrial answer to a part turned a little from the
     # nest: a twist sensed from friction-laden contacts is too weak and noisy to steer by)
-    wiggle: float = 0.026           # rad (1.5 deg) either way
+    # rad (2.5 deg) either way. The ONE documented revision after freezing (user, 2026-11-24):
+    # 1.5 deg could not cover a nest turned 2 deg (results/v4/insertion_baselines_dev.json:
+    # 0/20 at 0.25 mm clearance even with exact aim); nothing else changed, frozen for good
+    wiggle: float = 0.0436
     wiggle_period: float = 0.3      # s (6 control steps)
     drop: float = 0.002             # m the part must sink below its stall height: it is in
     seat_force: float = 15.0        # N: the most the seating push may press with
