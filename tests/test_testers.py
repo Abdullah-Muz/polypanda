@@ -156,6 +156,61 @@ def test_a_part_rides_in_the_drawer_and_runs_a_cycle():
     assert m1.state == DONE and not m1.latched
 
 
+def _push_shut(line: Line, force: float, seconds: float) -> None:
+    """Push the drawer toward shut with `force` (N), physics only."""
+    m1, d = line.machines["M1"], line.data
+    for _ in range(int(seconds / line.model.opt.timestep)):
+        d.qfrc_applied[m1.door_dof] = -force
+        mujoco.mj_step(line.model, d)
+    d.qfrc_applied[m1.door_dof] = 0.0
+
+
+def test_a_drawers_index_pin_holds_it_at_its_open_stop():
+    """A free slide gives way to any push on the nest (a part pressed on its chamfer shoves it
+    shut); the index pin, engaged by the cell near the open stop, pulls the drawer onto the stop
+    and holds it there within a couple of millimetres under 40 N."""
+    line = make_line("drawer")
+    m1, d = line.machines["M1"], line.data
+    travel = m1.cfg.travel
+    assert not m1.indexed
+    d.qpos[m1.door_qpos] = travel - 0.05
+    mujoco.mj_forward(line.model, d)
+    assert not m1.index_open() and not m1.indexed        # too far from the stop to catch
+    d.qpos[m1.door_qpos] = travel - 0.006
+    mujoco.mj_forward(line.model, d)
+    assert m1.index_open() and m1.indexed
+    _push_shut(line, 0.0, 0.3)
+    assert m1.lid == pytest.approx(travel, abs=0.0005)    # pulled onto its stop
+    _push_shut(line, 40.0, 0.5)
+    assert m1.lid > travel - 0.002
+    m1.release_index()
+    assert not m1.indexed
+    _push_shut(line, 40.0, 0.2)
+    assert m1.lid < travel - 0.02                         # free again: shoved shut
+    m1.index_open(catch=1.0)
+    m1.reset()
+    assert not m1.indexed                                 # a reset withdraws it
+    lid = make_line("lid").machines["M1"]
+    with pytest.raises(ValueError):
+        lid.index_open()
+    lid.release_index()                                   # (no-op without a pin)
+    assert not lid.indexed
+
+
+def test_a_drawer_is_reached_into_across_it_and_its_nest_stands_on_its_tray():
+    """The hand (about 200 x 65 mm) passes a lid's opening lengthwise (fingers closing along the
+    machine's x) but must reach into a drawer with its fingers closing across it (its y), between
+    the front plate and the box; a drawer's nest stands on its tray, not on the bench."""
+    lid, drawer = MachineConfig(), MachineConfig(kind="drawer")
+    assert lid.hand_axis == 0.0 and MachineConfig(kind="pneumatic").hand_axis == 0.0
+    assert drawer.hand_axis == pytest.approx(np.pi / 2)
+    assert lid.nest_floor == 0.0 and MachineConfig(kind="pneumatic").nest_floor == 0.0
+    assert drawer.nest_floor == drawer.drawer_floor > 0.0
+    line = make_line("drawer")
+    m1 = line.machines["M1"]
+    assert m1.pocket_xyz()[2] == pytest.approx(drawer.nest_floor)
+
+
 # --- the pneumatic tester ------------------------------------------------------------------
 def test_a_pneumatic_tester_has_no_handle_and_opens_on_a_signal():
     line = make_line("pneumatic")

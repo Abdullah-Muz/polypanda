@@ -12,6 +12,7 @@ image in a corner (3x, the rule's window outlined) and what the rule read from i
 
 Usage:
   uv run python scripts/render_test_cell.py --out media/v41_test_cell
+  uv run python scripts/render_test_cell.py --testers planned --views overview closeup
 Writes <out>_<view>.png for each view.
 """
 
@@ -27,7 +28,7 @@ from PIL import Image, ImageDraw
 from polypanda.control.test_cell import TestCellController
 from polypanda.perception.inspection import NOISE, RULE, inspect
 from polypanda.simulation.machine import RUNNING
-from polypanda.simulation.test_cell import ModuleTruth, TestCell
+from polypanda.simulation.test_cell import ModuleTruth, TestCell, cell_config, planned_testers
 from polypanda.simulation.workcell import _yaw_quat
 
 VIEWS = {  # lookat (x, y, z), azimuth, elevation, distance
@@ -62,10 +63,13 @@ def stage(cell: TestCell) -> None:
     def in_nest(k: int, name: str) -> None:
         mach = cell.machines[name]
         R = d.xmat[mach.body].reshape(3, 3)
-        put(k, mach.pocket_xyz()[:2], float(np.arctan2(R[1, 0], R[0, 0])) + mach.cfg.key_yaw)
+        put(k, mach.pocket_xyz()[:2], float(np.arctan2(R[1, 0], R[0, 0])) + mach.cfg.key_yaw,
+            mach.pocket_xyz()[2] + 0.03)                    # (a drawer's nest is on its tray)
 
     tb = cell.machines["TB"]
-    d.qpos[tb.lid_qpos] = tb.cfg.travel - 0.005
+    # (a drawer stands open at its stop, held there by its index pin)
+    d.qpos[tb.lid_qpos] = tb.cfg.travel - (0.0 if tb.cfg.kind == "drawer" else 0.005)
+    mujoco.mj_forward(m, d)
     in_nest(4, "TA")
     in_nest(5, "TB")
     for i, k in enumerate((6, 7, 8)):
@@ -151,8 +155,11 @@ def main() -> None:
     p.add_argument("--width", type=int, default=1600)
     p.add_argument("--height", type=int, default=900)
     p.add_argument("--views", nargs="+", default=list(VIEWS), choices=list(VIEWS))
+    p.add_argument("--testers", choices=("stand_in", "planned"), default="stand_in",
+                   help="stand_in: three lid testers; planned: lid, drawer, pneumatic")
     args = p.parse_args()
-    cell = TestCell.build()
+    cell = TestCell.build(cell_config(testers=planned_testers()) if args.testers == "planned"
+                          else None)
     cell.model.mat_reflectance[:] = 0.0   # floor reflections render with streaks off-screen
     args.out.parent.mkdir(parents=True, exist_ok=True)
     staged = [v for v in args.views if v != "inspect"]
