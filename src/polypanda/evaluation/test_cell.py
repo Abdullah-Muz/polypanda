@@ -7,25 +7,33 @@ testers' states over time (the data a dashboard overlay draws).
 
 KPIs, all over the shift's simulated time (from the first move to the last module handled, or
 the end of the run):
-- **modules per hour** (parts per hour): modules the robot sorted (PASS tray or FAIL bin) per
-  hour; and **seconds per module** (the shift over the modules sorted);
+- **modules per hour** (parts per hour): modules the robot judged and sorted (PASS tray or FAIL
+  bin) per hour, and **seconds per module** (the shift over those); beside it **handled per
+  hour**, the REWORK tray's modules included;
+- **not tested** (handling faults): modules the robot put in the REWORK tray because it could not
+  get them tested (would not seat, knocked out of the seat before the test, test aborted), by
+  reason and by their truth, and their rate over the modules taken; they are neither false
+  rejects nor in any yield's denominator but the first-pass yield's; and modules an operator had
+  to clear (`not_sorted`). This is what the insertion costs the cell;
 - **tester utilization**: the share of the shift each tester spent testing (RUNNING), and their
   mean;
 - **first-pass yield**: modules that went through once, cleanly (read at the first scan, seated
   at the first insertion, no failed step, passed the test and the vision check) into the PASS
   tray, over the modules the robot took off the conveyor; beside it the **test yield** (the
   tester's passes over its results);
-- **sort correctness** against the hidden truth (good: PASS tray; bad: FAIL bin; a module the
-  robot did not sort counts as wrong), the confusion matrix, **escapes** (bad modules in the PASS
-  tray, with their defects) and **false rejects** (good modules in the FAIL bin), the latter by
-  reason (no read, not seated, a test fault, the vision check);
-- where bad modules were **caught**: at the scan (no read), by the test, by the vision check;
+- **sort correctness** against the hidden truth over the modules judged (good: PASS tray; bad:
+  FAIL bin), the confusion matrix (every module, the REWORK tray and the unsorted ones too),
+  **escapes** (bad modules in the PASS tray, with their defects) and **false rejects** (good
+  modules in the FAIL bin), the latter by reason (no read, the vision check);
+- where bad modules were **caught**: at the scan (no read), by the test, by the vision check (or
+  "not_tested", or "missed");
 - **failures by stage**: every failed step (a pick, an insertion attempt, a door, a sort), and
   operator interventions;
 - the **cycle-time breakdown**: the robot's total and mean time per activity (drive, open, close,
-  fetch (scan and pick at the conveyor), insert, unjam, unload, vision, sort, wait) and their share
-  of the shift; the insertions' time, force and first-try rate; each module's lead time (taken
-  off the conveyor to sorted).
+  fetch (scan and pick at the conveyor), insert, unjam, unload, vision (carrying the module to
+  the camera and showing it), sort, rework (to the REWORK tray), wait) and their share of the
+  shift; the insertions' time, force and first-try rate; each module's lead time (taken off the
+  conveyor to sorted).
 """
 
 from __future__ import annotations
@@ -72,7 +80,9 @@ def kpis(ctl: TestCellController) -> dict:
     recs = ctl.records
     t0, t1 = ctl.t_start, ctl.t_end
     span = max(t1 - t0, 1e-9)
-    sorted_ = [r for r in recs if r.sorted_to is not None]
+    sorted_ = [r for r in recs if r.judged]
+    rework = [r for r in recs if r.sorted_to == "rework_tray"]
+    handled = sorted_ + rework
     taken = [r for r in recs if r.t_taken is not None]
     util = utilization(ctl.timeline, list(ctl.cell.machines), t0, t1)
     confusion = Counter(f"{'good' if r.good else 'bad'}->{r.sorted_to or 'not_sorted'}"
@@ -81,7 +91,7 @@ def kpis(ctl: TestCellController) -> dict:
     for r in recs:
         if not r.good:
             caught[r.reject_reason if r.sorted_to == "fail_bin" and r.reject_reason
-                   else "missed"] += 1
+                   else "not_tested" if r.sorted_to == "rework_tray" else "missed"] += 1
     results = [r.test_result for r in recs if r.test_result in ("pass", "fail")]
     times: dict[str, list] = {}
     for a in ctl.activities:
@@ -94,15 +104,22 @@ def kpis(ctl: TestCellController) -> dict:
     return {
         "modules": len(recs), "taken": len(taken), "sorted": len(sorted_),
         "tested": len(results),
+        "not_tested": len(rework),
+        "not_tested_by_reason": dict(Counter(r.rework_reason for r in rework)),
+        "not_tested_truth": dict(Counter("good" if r.good else "bad" for r in rework)),
+        "not_tested_rate": round(len(rework) / len(taken), 4) if taken else None,
+        "not_sorted": sum(r.sorted_to is None and r.t_taken is not None for r in recs),
         "shift_s": round(span, 1), "timed_out": bool(ctl.timed_out),
         "modules_per_hour": round(len(sorted_) / span * 3600.0, 1),
+        "handled_per_hour": round(len(handled) / span * 3600.0, 1),
         "seconds_per_module": round(span / len(sorted_), 1) if sorted_ else None,
         "utilization": util, "utilization_mean": round(float(np.mean(list(util.values()))), 4),
         "first_pass_yield": round(sum(first_pass(r) for r in taken) / len(taken), 4)
         if taken else None,
         "test_yield": round(results.count("pass") / len(results), 4) if results else None,
         "sort_correct": sum(r.correct for r in recs),
-        "sort_correct_rate": round(sum(r.correct for r in recs) / max(len(recs), 1), 4),
+        "sort_correct_rate": round(sum(r.correct for r in sorted_) / len(sorted_), 4)
+        if sorted_ else None,
         "confusion": dict(confusion),
         "escapes": len(escapes),
         "escaped": [{"serial": r.serial, "defects": [d for d in (r.electrical_defect, r.defect)
@@ -126,6 +143,7 @@ def kpis(ctl: TestCellController) -> dict:
         "lead_time_median_s": _median([r.t_sorted - r.t_taken for r in recs
                                        if r.t_sorted is not None and r.t_taken is not None]),
         "tray_swaps": ctl.tray_swaps, "bin_emptied": ctl.bin_emptied,
+        "rework_collected": ctl.rework_collected,
         "ik_failures": ctl.ik_failures,
     }
 

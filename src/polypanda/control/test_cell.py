@@ -4,11 +4,19 @@ simulation/test_cell.py has the cell).
 Per module: pick it from the conveyor (after the barcode scan over the pick point), drive to a
 tester, load it into the nest, close the tester (the test starts by itself: Machine's interlock),
 and serve the other testers while it runs; when its test ends, open the tester, unload the
-module, show it to the vision station, and sort it: **PASS tray** if the test passed and the
-camera saw no defect, **FAIL bin** otherwise. A module the scanner cannot read goes straight to
-the FAIL bin, untested; so does one that will not seat in the nest (it goes to rework from
-there); one stuck in the nest is cleared by an operator (counted, not sorted). Every FAIL has its
-reason (ModuleRecord.reject_reason).
+module, **present it to the vision camera on the way** (`present`: carried to the vision
+station, the wrist turned so the module's front looks at the camera, a brief stop, on: no
+set-down), and sort it: **PASS tray** if the test passed and the camera saw no defect, **FAIL
+bin** otherwise. A module the scanner cannot read goes straight to the FAIL bin, untested.
+A module the robot could not get tested goes to the **REWORK tray**, not judged ("not tested":
+`rework_reason`): one that would not seat in the nest after its retries ("not_seated"), one
+knocked out of its seat between the insertion and the test's start ("not_running"), one whose
+test was aborted (lid opened or module unseated while running: "test_aborted") or that has no
+result ("no_result"), or one that passed its test but whose front a finger covered at the camera
+("not_inspected"; it does not happen with a module taken out of a keyed nest, which is held
+across its rib's face). These measure the cell's handling, not the module: they are neither
+passed nor rejected (an operator takes them for a retest). One stuck in the nest is cleared by
+an operator (counted, not sorted). Every FAIL has its reason (ModuleRecord.reject_reason).
 
 **Serving testers.** The robot has one gripper and opens doors with an empty hand, so a tester is
 served in one visit: open it; if it holds a tested module, unload it, inspect and sort it; fetch
@@ -18,8 +26,8 @@ inspects, sorts and fetches (a dual gripper or a buffer nest would avoid that; n
 remain), the one that has waited longest: the one whose test finished first (empty testers count
 from when they became empty; at the start of a shift A, then B, then C). If none needs it, the
 robot waits at the tester that will finish first. Faulted testers (a test aborted: lid opened or
-module unseated while running) are served the same way, the module going to the FAIL bin; a tester
-whose door fails twice in a row is taken out of the shift (blocked).
+module unseated while running) are served the same way, the module going to the REWORK tray; a
+tester whose door fails twice in a row is taken out of the shift (blocked).
 
 **Actor slots, where learned skills plug in** (everything else is scripted in v4.1):
 - the **door** (`door`, a `DoorActor`): opens and closes a lid or drawer tester by its handle.
@@ -63,8 +71,8 @@ from typing import Protocol
 import mujoco
 import numpy as np
 
-from polypanda.control.ik import top_down_quat
-from polypanda.control.scripted_cell import CellControllerConfig
+from polypanda.control.ik import closing_yaw, top_down_quat
+from polypanda.control.scripted_cell import CUBE_HEIGHT, CellControllerConfig
 from polypanda.control.scripted_tending import Belief, ScriptedTending, true_belief
 from polypanda.environments.grasp import GRIPPER_OPEN
 from polypanda.perception.inspection import NOISE, ImagingNoise, Inspection, inspect
@@ -289,7 +297,10 @@ def make_door(door: str | DoorActor, handover: str = "door_start") -> DoorActor:
     return LineDoor() if door == LINE_DOOR else EnvDoor(door, handover)
 
 
-REJECT_REASONS = ("no_read", "not_seated", "test_fail", "test_fault", "vision")
+REJECT_REASONS = ("no_read", "test_fail", "vision")              # to the FAIL bin
+REWORK_REASONS = ("not_seated", "not_running", "test_aborted", "no_result",   # not tested
+                  "not_inspected")     # (tested, passed, but its front was under a finger)
+VERDICTS = {"pass": "pass_tray", "fail": "fail_bin", "not_tested": "rework_tray"}
 
 
 @dataclass
@@ -307,9 +318,11 @@ class ModuleRecord:
     inserts: list = field(default_factory=list)
     test_result: str | None = None
     vision: dict | None = None
-    verdict: str | None = None    # "pass" or "fail": the controller's decision
+    verdict: str | None = None    # "pass", "fail" or "not_tested": the controller's decision
     reject_reason: str | None = None   # why a "fail" verdict (one of REJECT_REASONS)
-    sorted_to: str | None = None  # "pass_tray", "fail_bin", or None (not sorted by the robot)
+    rework_reason: str | None = None   # why "not_tested" (one of REWORK_REASONS)
+    sorted_to: str | None = None  # "pass_tray", "fail_bin", "rework_tray", or None (not sorted
+                                  # by the robot)
     failures: list = field(default_factory=list)
     t_taken: float | None = None
     t_test_start: float | None = None
@@ -322,19 +335,27 @@ class ModuleRecord:
                    truth.electrical_defect, truth.severity, truth.residue)
 
     @property
+    def judged(self) -> bool:
+        """Sorted PASS or FAIL (not to rework, not cleared by an operator)."""
+        return self.sorted_to in ("pass_tray", "fail_bin")
+
+    @property
     def correct(self) -> bool:
+        """A judged module sorted as its truth says (a module not judged is not correct)."""
         return (self.sorted_to == "pass_tray" and self.good) or (
             self.sorted_to == "fail_bin" and not self.good)
 
     def as_dict(self) -> dict:
         d = dict(self.__dict__)
-        d["correct"] = self.correct
+        d["judged"], d["correct"] = self.judged, self.correct
         return d
 
 
 class TestCellController(ScriptedTending):
     belt_wait: float = 30.0         # s to wait for the conveyor to bring a module
-    settle_steps: int = 4           # control steps between setting a module down and imaging it
+    settle_steps: int = 4           # control steps for a module dropped in the FAIL bin to land
+    present_steps: int = 4          # control steps the hand stops at the vision camera (0.2 s:
+                                    # the arm settles; the image is taken at the end)
     bin_capacity: int = 4           # modules in the FAIL bin before an operator empties it
 
     pneumatic_timeout: float = 6.0  # s for a pneumatic lid to open or latch on its signal
@@ -372,7 +393,7 @@ class TestCellController(ScriptedTending):
         self.ready_since: dict[str, float] = {}
         self.blocked: set[str] = set()
         self.taken = 0
-        self.tray_swaps = self.bin_emptied = 0
+        self.tray_swaps = self.bin_emptied = self.rework_collected = 0
         self._peak = 0.0
 
     @property
@@ -585,48 +606,106 @@ class TestCellController(ScriptedTending):
         self.to_carry()
         self.cell.release(self.cell.cubes.index(part))
 
+    def present(self, part) -> tuple[float, bool]:
+        """Inspection on the fly: carry the held module to the vision station and show its
+        front to the camera. At the station's rail stop, one joint move from the carry posture
+        swings the base to the station and turns the wrist (both about the vertical: the hand
+        stays level) so that the module's front looks out at the camera; a brief stop
+        (`present_steps`) lets the arm settle. The module stays in the hand, held as it was
+        taken out of the nest. How it sits in the hand is the cell's own knowledge (it put the
+        keyed module into the nest and took it out). If no wrist turn within joint 7's range
+        brings the front round, the wrist turns as far as it can (the front at an angle).
+        Returns the wrist's turn (rad) and whether a finger holds the front (then the camera
+        sees the finger, not the label: a module taken out of a keyed nest is held across its
+        rib's face, which leaves the front free)."""
+        st = self.cell.cell_config.vision
+        self.drive_to(st.stop)
+        a = np.radians(st.angle)
+        R = self.d.site_xmat[self.arm.tcp_site].reshape(3, 3)
+        front = -self.d.xmat[part.body].reshape(3, 3)[:, 1]      # the module's local -y
+        held = bool(abs(front @ R[:, 1]) > np.cos(np.pi / 4))     # the fingers close along y
+        rel = float(np.arctan2(front[1], front[0])) - closing_yaw(R)
+        turn = (a - self.carry_yaw(a) - rel + np.pi) % (2 * np.pi) - np.pi
+        q = self.carry.copy()
+        delta = (a - self.base_angle + np.pi) % (2 * np.pi) - np.pi    # as swing_to
+        q[0] = self.q_cmd[0] + delta
+        if abs(q[0]) > 2.89:
+            q[0] -= np.sign(q[0]) * 2 * np.pi
+        turns = self._wrist_turns(turn, q[6])
+        if turns:
+            turn = turns[0]
+        q[6] = float(np.clip(q[6] - turn, self.ik.q_low[6] + self.wrist_margin,
+                             self.ik.q_high[6] - self.wrist_margin))
+        self.move_joints(q, rate=self.config.swing_rate)
+        self.step(self.present_steps)
+        return float(self.carry[6] - q[6]), held
+
     def inspect_visual(self, part, rec: ModuleRecord) -> bool:
-        """Set the module on the vision station's plate, image it, pick it up again. Returns
-        whether it is held again."""
+        """Present the held module to the vision camera (`present`) and image its front
+        (`front_held`: a finger is over it, so the image does not count). Returns whether the
+        module is still held."""
         with self.doing("vision", None, rec.index):
-            self.go_station(self.cell.cell_config.vision)
-            self.place(part, self.cell.vision_xy, 0)
-            self.step(self.settle_steps)
+            turn, held = self.present(part)
             ins = self.look("vision")
-            rec.vision = {"defect": ins.defect, **ins.as_dict()}
-            self.pick(part)
-            return self.regrip(part, rec, "vision_pick")
+            rec.vision = {"defect": ins.defect, "front_held": held,
+                          "wrist_turn_deg": round(np.degrees(turn), 1), **ins.as_dict()}
+        return self.cell.attached(part)
+
+    def reject(self, cube) -> None:
+        """ScriptedCell.reject with the hand turned as it holds the module (a module presented
+        to the camera keeps the wrist turned: the drop works either way, and the hand does not
+        snap round on the way down)."""
+        xy = self.cell.reject_xy
+        yaw = closing_yaw(self.d.site_xmat[self.arm.tcp_site].reshape(3, 3))
+        offset = self.d.site_xpos[self.arm.tcp_site][2] - self.d.xpos[cube.body][2]
+        drop = self.cell.config.bin_height + 0.05 + CUBE_HEIGHT / 2   # bottom 5 cm over the walls
+        self.vertical(xy, drop + offset, yaw)
+        self.cell.detach(cube)
+        self.grip = GRIPPER_OPEN
+        self.step(self.config.grip_steps)
+        self.vertical(self.d.site_xpos[self.arm.tcp_site][:2].copy(), self.config.carry_height,
+                      yaw)
+        if abs(self.q_cmd[6] - self.carry[6]) > 0.01:     # the wrist back, the hand empty
+            self.to_carry()
 
     def sort(self, part, rec: ModuleRecord, verdict: str, reason: str | None = None) -> None:
-        """PASS tray or FAIL bin (`reason`: why a "fail", one of REJECT_REASONS); the part's
-        place is checked afterwards."""
+        """PASS tray, FAIL bin, or REWORK tray (`verdict` "pass", "fail" or "not_tested";
+        `reason`: why a "fail", one of REJECT_REASONS, or why "not_tested", one of
+        REWORK_REASONS); the part's place is checked afterwards."""
         cell, cfg = self.cell, self.cell.cell_config
-        rec.verdict, rec.reject_reason = verdict, reason
-        with self.doing("sort", None, rec.index):
-            if verdict == "pass":
-                pocket = cell.free_pocket()
-                if pocket is None:
-                    self.swap_tray()
-                    pocket = cell.free_pocket()
-                self.drive_to(cfg.tray.stop)
-                self.place_at(part, cell.pockets[pocket])
-                ok = cell.pocket_of(part) == pocket
-                where = "pass_tray"
-            else:
+        where = VERDICTS[verdict]
+        rec.verdict = verdict
+        if verdict == "not_tested":
+            rec.rework_reason = reason
+        else:
+            rec.reject_reason = reason
+        with self.doing("rework" if verdict == "not_tested" else "sort", None, rec.index):
+            if verdict == "fail":
                 self.go_station(cfg.fail_bin)
                 self.reject(part)
                 self.step(self.settle_steps)
                 ok = cell.in_bin(part)
-                where = "fail_bin"
+            else:
+                which, station = (("pass", cfg.tray) if verdict == "pass"
+                                  else ("rework", cfg.rework))
+                pocket = cell.free_pocket(which)
+                if pocket is None:
+                    self.collect(which)
+                    pocket = cell.free_pocket(which)
+                self.drive_to(station.stop)
+                self.place_at(part, cell.tray(which)[pocket])
+                ok = cell.pocket_of(part, which=which) == pocket
         rec.t_sorted = round(self.now, 2)
         if ok:
             rec.sorted_to = where
         else:
             self.fail(rec, f"sort_{where}")
-        self.log(f"{self.now:7.1f} s  {rec.serial}: {verdict.upper()} -> "
-                 f"{rec.sorted_to or 'lost'} (truth {'good' if rec.good else 'bad'})")
-        if cell.free_pocket() is None:
-            self.swap_tray()
+        self.log(f"{self.now:7.1f} s  {rec.serial}: {verdict.upper()}"
+                 f"{' (' + reason + ')' if reason else ''} -> {rec.sorted_to or 'lost'} "
+                 f"(truth {'good' if rec.good else 'bad'})")
+        for which in ("pass", "rework"):
+            if cell.free_pocket(which) is None:
+                self.collect(which)
         in_bin = [k for k, c in enumerate(cell.cubes) if cell.module_of(c) is not None
                   and cell.in_bin(c)]
         if len(in_bin) >= self.bin_capacity:
@@ -634,13 +713,19 @@ class TestCellController(ScriptedTending):
                 cell.release(k)
             self.bin_emptied += 1
 
-    def swap_tray(self) -> None:
-        """An operator exchanges the full PASS tray for an empty one."""
+    def collect(self, which: str = "pass") -> None:
+        """An operator exchanges the full PASS tray for an empty one, or takes the REWORK
+        tray's modules to the rework bench."""
         for k, c in enumerate(self.cell.cubes):
-            if self.cell.module_of(c) is not None and self.cell.pocket_of(c) is not None:
+            if (self.cell.module_of(c) is not None
+                    and self.cell.pocket_of(c, which=which) is not None):
                 self.cell.release(k)
-        self.tray_swaps += 1
-        self.events.append({"t": round(self.now, 2), "stage": "operator", "why": "tray swap",
+        if which == "pass":
+            self.tray_swaps += 1
+        else:
+            self.rework_collected += 1
+        self.events.append({"t": round(self.now, 2), "stage": "operator",
+                            "why": "tray swap" if which == "pass" else "rework collected",
                             "module": None})
 
     # --- one tester's visit ---------------------------------------------------------------------
@@ -680,7 +765,9 @@ class TestCellController(ScriptedTending):
         return None
 
     def take_out(self, name: str) -> None:
-        """Unload the tested (or aborted) module of an open tester, inspect it and sort it."""
+        """Unload the module of an open tester: a tested one is inspected on the way and
+        sorted; one whose test was aborted (or that has no result) goes to the REWORK tray,
+        not tested."""
         cell, m = self.cell, self.cell.machines[name]
         part, result = m.part, cell.tester_result(name)
         if part is None:
@@ -696,11 +783,18 @@ class TestCellController(ScriptedTending):
             return
         if m.state == FAULT:
             m.reset()                              # the cell acknowledges the aborted test
-        if not self.inspect_visual(part, rec):
-            self.operator_clears(part, rec, "vision pick failed")
+        if result not in ("pass", "fail"):
+            self.sort(part, rec, "not_tested",
+                      "test_aborted" if result == "fault" else "no_result")
             return
-        reason = ({"fail": "test_fail", "pass": None}.get(result, "test_fault")
-                  or ("vision" if rec.vision["defect"] else None))
+        if not self.inspect_visual(part, rec):
+            self.operator_clears(part, rec, "dropped at the vision station")
+            return
+        if rec.vision["front_held"] and result == "pass":
+            self.sort(part, rec, "not_tested", "not_inspected")     # its front was not seen
+            return
+        reason = ("test_fail" if result == "fail"
+                  else "vision" if rec.vision["defect"] else None)
         self.sort(part, rec, "fail" if reason else "pass", reason)
 
     def serve(self, name: str) -> None:
@@ -724,12 +818,12 @@ class TestCellController(ScriptedTending):
         with self.doing("drive", name, rec.index):
             self.go_to(name)
         if not self.insert(part, name, rec):
-            # not seated: out again and to the FAIL bin, untested (a part that cannot be picked
-            # out of the nest is cleared by an operator)
+            # not seated: out again and to the REWORK tray, not tested (a part that cannot be
+            # picked out of the nest is cleared by an operator)
             if not cell.attached(part):
                 self.pick(part)
             if cell.attached(part):
-                self.sort(part, rec, "fail", "not_seated")
+                self.sort(part, rec, "not_tested", "not_seated")
             else:
                 self.operator_clears(part, rec, "jammed in the nest")
             return
@@ -740,7 +834,7 @@ class TestCellController(ScriptedTending):
         self.step(2)
         if m.state != RUNNING:
             # shut and latched but the test did not start: the module was knocked out of its
-            # seat (by the door move); take it out again, untested, to the FAIL bin
+            # seat (by the door move); take it out again, not tested, to the REWORK tray
             self.fail(rec, "not_running", state=m.state)
             self.take_back(name, part, rec)
             return
@@ -748,8 +842,9 @@ class TestCellController(ScriptedTending):
         self.log(f"{self.now:7.1f} s  {rec.serial} testing in {name}")
 
     def take_back(self, name: str, part, rec: ModuleRecord) -> None:
-        """A module that went into tester `name` but cannot be tested: open the tester, pick the
-        module out and sort it to the FAIL bin ("not_seated"), or have an operator clear it."""
+        """A module that went into tester `name` but whose test did not start: open the tester,
+        pick the module out and put it in the REWORK tray ("not_running": the same case as one
+        that would not seat, found later), or have an operator clear it."""
         m = self.cell.machines[name]
         if not self.open_tester(name):
             self.fail(rec, "door_open", tester=name)
@@ -758,7 +853,7 @@ class TestCellController(ScriptedTending):
         with self.doing("unload", name, rec.index):
             self.unload(part)
         if self.regrip(part, rec, "unload"):
-            self.sort(part, rec, "fail", "not_seated")
+            self.sort(part, rec, "not_tested", "not_running")
         else:
             self.operator_clears(part, rec, "stuck in the tester")
         if m.state != EMPTY:
@@ -821,3 +916,6 @@ class TestCellController(ScriptedTending):
                 break
         self.t_end = self.now
         self.timed_out = self.now >= limit
+
+
+TestCellController.__test__ = False   # (not a pytest test class)

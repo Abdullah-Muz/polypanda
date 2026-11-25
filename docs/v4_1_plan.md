@@ -35,6 +35,8 @@
 4. It closes the tester; the test runs. Meanwhile it serves the other testers (a scripted rule: whichever tester finishes first).
 5. When the test ends: open, unload, show the module to the **vision station**, then sort: **pass → the pass tray**, **fail → the fail bin** in the red quality zone. Every module carries a hidden truth (about 5 % fail the electrical test, about 3 % have a visible defect), so sorting is scored against ground truth.
 
+*Amended 2026-11-24 (user decisions after the first scripted dev run):* the module is **inspected on the fly**: the robot carries it to the vision camera and stops briefly with the module's front (label and defect face) turned to the camera, without setting it down; and a module the robot cannot get tested (it would not seat after its retries, it was knocked out of its seat before the test started, or its test was aborted) goes to a **rework tray** as **not tested**, counted on its own in the KPIs, not as a false reject and not in the test yield.
+
 ## 2. Decisions (user, 2026-11-24)
 
 - **Scenario:** the electronics test cell (option A of the brainstorm), over a machining job shop.
