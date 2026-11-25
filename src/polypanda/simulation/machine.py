@@ -33,7 +33,10 @@ separate compiled model (sizes and joint axes are compile-time); variants are dr
   pushing the plate shut. The box is the machine body; the drawer, its plate, bar and nest are the
   drawer body. The machine's origin is the nest's centre with the drawer at its open stop (at
   `nest_inset` = the travel, by default), so a drawer is placed like a lid machine: by where the
-  robot loads it;
+  robot loads it. Its nest stands on the drawer's tray (`nest_floor` above the bench), and the
+  robot reaches into it with its fingers closing across the drawer (`hand_axis`). An **index
+  pin** (`Machine.index_open`, signalled by the cell) holds an open drawer at its stop while the
+  robot loads it; the door env never engages it (there the drawer slides freely);
 - "pneumatic": the lid machine without a handle, its lid driven by a pneumatic cylinder (an
   integrated-velocity servo, so the lid moves at a steady `pneumatic_speed` with at most
   `pneumatic_force`) on the cell's signal: `Machine.request_open()` and `request_close()`. It opens
@@ -237,6 +240,21 @@ class MachineConfig:
         if self.kind == "drawer":
             return np.array([self.nest_inset, 0.0, self.drawer_floor])
         return np.array([0.0, 0.0, self.height + self.lid_thickness / 2])
+
+    @property
+    def nest_floor(self) -> float:
+        """The nest's floor above the bench (m): the drawer's tray top for a drawer, the bench
+        itself for a lid or pneumatic tester (whose pocket stands on the bench)."""
+        return float(self.drawer_floor) if self.kind == "drawer" else 0.0
+
+    @property
+    def hand_axis(self) -> float:
+        """The direction (rad, machine frame, mod pi) the robot's fingers must close along when
+        it reaches into the nest: the machine's x for a lid (the hand, about 200 x 65 mm, passes
+        the lid's 240 x 100 mm opening only lengthwise), its y for a drawer (65 mm thick across
+        its fingers, the hand fits between the drawer's front plate and the box; lengthwise it
+        would reach over both: needed_opening)."""
+        return np.pi / 2 if self.kind == "drawer" else 0.0
 
     @property
     def drawer_face(self) -> float:
@@ -544,6 +562,12 @@ def _add_drawer(spec: mujoco.MjSpec, body, name: str, cfg: MachineConfig):
     spec.add_equality(name=f"{name}_latch", type=mujoco.mjtEq.mjEQ_JOINT,
                       objtype=mujoco.mjtObj.mjOBJ_JOINT, name1=f"{name}_drawer", active=False,
                       data=[0.0] * 11)
+    # the index pin: holds the drawer at its open stop while the robot loads it (off unless the
+    # cell engages it: Machine.index_open), as stiff as the nest's own contacts (a millimetre or
+    # two of give under 40 N; the latch's default setting gives centimetres)
+    spec.add_equality(name=f"{name}_index", type=mujoco.mjtEq.mjEQ_JOINT,
+                      objtype=mujoco.mjtObj.mjOBJ_JOINT, name1=f"{name}_drawer", active=False,
+                      data=[cfg.travel] + [0.0] * 10, **contact("stiff"))
     return drawer
 
 
@@ -658,6 +682,7 @@ class Machine:
         self.lid_qpos, self.lid_dof = self.door_qpos, self.door_dof
         self.door_body = model.body(door).id
         self.latch_eq = model.equality(f"{name}_latch").id
+        self.index_eq = model.equality(f"{name}_index").id if cfg.kind == "drawer" else -1
         self.body = model.body(name).id
         self.nest_body = self.door_body if cfg.kind == "drawer" else self.body
         self.pocket_site = model.site(f"{name}_pocket").id
@@ -681,6 +706,8 @@ class Machine:
         self._armed = self.lid > 0.005
         self._prev_q, self._prev_t = self.lid, float(self.d.time)
         self.d.eq_active[self.latch_eq] = 0
+        if self.index_eq >= 0:
+            self.d.eq_active[self.index_eq] = 0
         if self.cylinder >= 0:        # the cylinder holds the lid where it is, until signalled
             self.d.ctrl[self.cylinder] = 0.0
             self.d.act[self.m.actuator_actadr[self.cylinder]] = float(
@@ -734,6 +761,32 @@ class Machine:
     @property
     def latched(self) -> bool:
         return bool(self.d.eq_active[self.latch_eq])
+
+    # --- the drawer's index pin (kind "drawer") -----------------------------------------------
+    def index_open(self, catch: float = 0.01) -> bool:
+        """Engage a drawer's index pin: it pulls the drawer onto its open stop and holds it there,
+        so the nest stays put while the robot loads or unloads it (a free slide gives way to any
+        push on the nest's chamfer: a part pressed into an open drawer shoves it shut). The cell
+        signals it once the drawer is open, as it signals a pneumatic tester. Catches only a
+        drawer within `catch` (m) of its stop; returns whether it is engaged. (Not used by the
+        door env: there a drawer slides freely.)"""
+        if self.index_eq < 0:
+            raise ValueError(f"{self.name} is a {self.cfg.kind!r} machine: it has no index pin")
+        if self.lid < self.cfg.travel - catch:
+            return False
+        self.m.eq_data[self.index_eq, 0] = self.cfg.travel
+        self.d.eq_active[self.index_eq] = 1
+        return True
+
+    def release_index(self) -> None:
+        """Withdraw a drawer's index pin (before it is pushed shut). No-op on other kinds."""
+        if self.index_eq >= 0:
+            self.d.eq_active[self.index_eq] = 0
+
+    @property
+    def indexed(self) -> bool:
+        """A drawer held at its open stop by its index pin."""
+        return self.index_eq >= 0 and bool(self.d.eq_active[self.index_eq])
 
     @property
     def held_open(self) -> bool:
