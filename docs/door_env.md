@@ -183,3 +183,32 @@ v4.1 trains and evaluates from **any hand-over** ([v4_1_targets.md](v4_1_targets
 - `scripts/make_door_sets.py --wide-start` draws a set with wide starts and records the start
   config in the file (`start`); with several `--kinds` it takes them in turn, two episodes
   each (open, close), so 400 episodes are exactly 100 per kind × command.
+
+### The v2 door sets (v4.1, generated before any v4.1 door training)
+
+As [v4_1_targets.md](v4_1_targets.md), Part II: lids and drawers, half `open` and half `close`
+within each kind, hand-over starts drawn wide; every other range as v4.0's training ranges
+(drawers as `door_drawer_probe_v1`'s). Generated at `4d05cf2`:
+
+```bash
+uv run python scripts/make_door_sets.py --name door_dev_v2 --seed 20261130 --kinds lid drawer --wide-start
+uv run python scripts/make_door_sets.py --name door_final_v2 --seed 20261201 --kinds lid drawer --wide-start
+```
+
+| Set | Episodes | Seed | Digest | File sha256 | Used for |
+|---|---|---|---|---|---|
+| `door_dev_v2` | 400: 100 each of lid/open, lid/close, drawer/open, drawer/close; lids right 57, left 74, out 69, 95 springy | 20261130 | `231dbe288150` | `60640238011d0377…` | development |
+| `door_final_v2` | 400, the same mix (lids right 55, left 73, out 72, 92 springy) | 20261201 | `1db12384e8da` | `653f031533797728…` | the one-shot result, run once |
+
+Both redraw byte for byte (`tests/test_door_wide_start.py` redraws `door_dev_v2`). In
+`door_dev_v2` the TCP starts 0.03–0.35 m over the bar (median 0.19 m; 48 % above 0.20 m, 18 % in
+v4.0's 8–13 cm), 41 of the 100 shut drawers with the hand beyond +0.09 m (over the nest inside
+the box), and 137 of 400 with the wrist turned more than 60°.
+
+**Training never sees them.** As in v4.0, training draws a fresh episode every reset from the
+env's own generator (`env.np_random`), seeded by the trainer with the run's `seed` plus the env's
+rank, and validates on episodes drawn from its `eval_seed`; the sets come from
+`np.random.default_rng(20261130)` and `(20261201)`. No door config's `seed` or `eval_seed` (with
+64 ranks above it) is a set's seed (`tests/test_door_wide_start.py`, for every
+`configs/door_*.yaml`). v4.1's door training configs need `start.wide: true` and
+`variation.kinds: [lid, drawer]` to train on this distribution.
