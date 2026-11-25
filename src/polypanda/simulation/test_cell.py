@@ -13,10 +13,14 @@ station (simulation/rail.py). World frame, the robot's base riding the rail alon
     tester B  "TB"          -0.45     -90     (-0.45,  -0.5)      drawer (*)  keyed, stiff nest)
     tester C  "TC"           0.0      -90     ( 0.0,   -0.5)      pneumatic (*)
                                               (*) a lid tester stands in until track B merges
-    vision station          -0.45    +150     (-0.883,  0.25)     a plate under a camera
+    vision station          -0.45    +150     (-0.883,  0.25)     a camera; the robot presents the
+                                                                  held module to it (no set-down)
     PASS tray               -0.9     +150     (-1.333,  0.25)     2 x 4 pockets
     FAIL bin                -0.9     -150     (-1.333, -0.25)     the cell's reject bin, moved, red,
                                                                   in a red-taped quality zone
+    REWORK tray             -0.45    +150     (-0.883,  0.25)     2 x 2 pockets on the bench, under
+                                                                  the presented module: modules
+                                                                  the robot could not get tested
 
 Why this layout: the conveyor's belt and frame run along y = 0.5 from x = -0.88 (its downstream
 end, past the pick point) to +0.98, with the hopper beside its upstream end: all of it is the
@@ -28,9 +32,24 @@ end), onto a 0.7 m **bench extension** (x from -1.55 to -0.85, drawn; the bench'
 plane is infinite already), and the rail's travel is extended to -0.95..0.1 so every stop is in
 range. Nothing stands at 180 deg: joint 1 reaches +-166 deg, and the cell's carry posture turns
 the base only. The PASS tray is on the same side as the vision station (a short swing for the
-~92 % that pass); the FAIL bin across (a long swing, for the few that fail). Tower A (v4.0's
-outfeed stack) and the buffer slots are not used; the tower is left out and the slots' painted
-squares are hidden.
+~92 % that pass); the FAIL bin across (a long swing, for the few that fail). The REWORK tray
+stands on the bench at the vision station, under where the robot presents a module (the camera's
+view passes over it; the -y side has no room for it between the bin, tester A and the rail's
+cable carrier). Tower A (v4.0's outfeed stack) and the buffer slots are not used; the tower is
+left out and the slots' painted squares are hidden.
+
+**The vision station** is a camera on a post that looks at a module **held in the carry posture**
+over the station's point (`present_z` its centre's height there), at the module's inspected face,
+from the outer side, `vision_elevation` above the horizontal: the robot brings the module, turns
+its wrist so that face looks at the camera, stops briefly and goes on (control/test_cell.py,
+`present`). Nothing stands on the bench there (v4.1's first build set the module down on a plate
+under the camera and picked it up again; the plate is gone).
+
+**The REWORK tray** takes the modules the robot could not get tested (one that would not seat in a
+nest after its retries, one knocked out of its seat before its test started, one whose test was
+aborted): they are not judged good or bad; an operator takes them to the rework bench (in the
+hall's red quality zone, out of the robot's reach) for a retest. Drawn as the PASS tray is, in
+orange (5S: on hold).
 
 **Testers.** `TesterSpot` is the line's MachineSpot with the `kind` it is built as and the kind the
 plan gives it (`planned`): A a lid, B a drawer, C a pneumatic tester (`PLANNED_KINDS`). The drawer
@@ -43,27 +62,33 @@ control/test_cell.py). The cycle (the test) defaults to 45 s, the middle of the 
 
 **Modules.** The cell's parts, keyed (`LineConfig.keyed_parts`) and stiff (`part_contact`), drawn
 as sensor modules: a dark housing (the part's own box), a green board edge around it, a white
-label with a barcode on top, gold contact pads underneath. Every one of these is a visual geom on
-the part's body (contype 0, conaffinity 0, mass 0): the part's mass, inertia and collision
-geometry are exactly the plain part's (tests/test_test_cell.py checks it).
+label with a barcode on its **front** (the side face at the part's local -y), gold contact pads
+underneath. Every one of these is a visual geom on the part's body (contype 0, conaffinity 0,
+mass 0): the part's mass, inertia and collision geometry are exactly the plain part's
+(tests/test_test_cell.py checks it). Why the front and not the top: the cell grips a part at its
+centre, so a held part's top is 4 mm under the hand's palm, which no camera sees past; the
+front is a face the fingers leave free when a module is taken out of a keyed nest (they close on
+the rib's face and the face opposite), and it faces the scanner on the conveyor (the belt carries
+the parts with their local +x along its travel, so their front faces away from the robot).
 
 **Hidden truth.** Each module of a shift carries a truth drawn from its own seeded stream
 (`draw_truths`): about 5 % fail the electrical test (an open circuit, a short, or an RF
 measurement out of spec: what the tester finds), about 3 % have a visible defect, drawn as
 something a camera can see: a missing label (the label and barcode are hidden) or a red mark on
-the housing's top (a burn or a damaged-seal mark), of a drawn **severity**: its size, from a
-faint 2.4 x 1.6 mm spot to a 12 x 8 mm mark, so the small ones are hard to see. Independently,
-about 4 % of modules carry harmless brownish **flux residue** on the housing (cosmetic: the module
+the housing's front, under the label (a burn or a damaged-seal mark), of a drawn **severity**: its
+size, from a faint 2.4 x 1.6 mm spot to a 12 x 8 mm mark, so the small ones are hard to see.
+Independently, about 4 % of modules carry harmless brownish **flux residue** on the front, beside
+where a mark would be (cosmetic: the module
 is good if nothing else is wrong), which a colour rule can mistake for a mark. The truth is never
 read by the controller except through the tester's result (electrical) and the two cameras
 (visible), whose images carry exposure and sensor noise (perception/inspection.py).
 
 **Bodies are recycled.** The model has `n_bodies` part bodies; a shift may have more modules.
 The conveyor (`ModuleFeeder`) loads the next module of the shift onto any free body waiting in
-the hopper, and gives it that module's look. When the PASS tray is full or the FAIL bin holds a
-few modules, an operator takes them away (`release`: the bodies go back into the hopper, out of
-sight). This is a simulation shortcut for the operator's tray exchange; it costs the robot no
-time, and it is counted.
+the hopper, and gives it that module's look. When the PASS or REWORK tray is full or the FAIL bin
+holds a few modules, an operator takes them away (`release`: the bodies go back into the hopper,
+out of sight). This is a simulation shortcut for the operator's tray exchange; it costs the robot
+no time, and it is counted.
 """
 
 from __future__ import annotations
@@ -103,6 +128,12 @@ RESIDUE_RGBA = (0.62, 0.21, 0.13, 1.0)  # brownish-red flux residue (harmless)
 EDGE_RGBA = (0.05, 0.42, 0.2, 1.0)     # the PCB's green
 PAD_RGBA = (0.86, 0.69, 0.27, 1.0)     # gold
 FAIL_RED = (0.78, 0.1, 0.08, 1.0)
+REWORK_ORANGE = (0.95, 0.5, 0.08, 1.0)
+PRESENT_Z = 0.315                 # m: a held module's centre in the carry posture (the TCP at
+                                  # 0.32 m, less the arm's sag; measured)
+FRONT_UP = 0.010                  # m: the label's layout sits this far above the front's centre
+FRONT_AIM = 0.0085                # m above the front's centre: the middle of that layout (from
+                                  # the label's top to a mark's bottom), where cameras aim
 
 
 def built_kinds() -> tuple[str, ...]:
@@ -178,21 +209,29 @@ class TestCellConfig:
     vision: Station = Station(-0.45, 150.0)
     tray: Station = Station(-0.9, 150.0)
     fail_bin: Station = Station(-0.9, -150.0)
+    rework: Station = Station(-0.45, 150.0)       # on the bench at the vision station
     # the PASS tray: rows along the radius (the fingers close radially, so radial neighbours
     # need room for the open fingers), columns across it
     tray_rows: int = 2
     tray_cols: int = 4
     tray_pitch: tuple[float, float] = (0.10, 0.075)     # m: radial, tangential
+    rework_rows: int = 2           # the REWORK tray, laid out as the PASS tray
+    rework_cols: int = 2
     rail: RailConfig = field(default_factory=lambda: RailConfig(low=-0.95, high=0.1))
     bench_extension: tuple[float, float] = (-1.55, -0.85)   # m of x, drawn
     n_bodies: int = 20             # part bodies in the model (recycled through a shift)
     theme: str = "electronics"
     dressing: bool = True
-    # cameras: square images, small and fast (software rendering); straight from the outer side
-    # at 45 deg, 0.28 m from the module's top, so a hand at the carry height over the module is
-    # far outside the 18 deg field of view
+    # cameras: square images, small and fast (software rendering), 0.28 m from the module's
+    # front (aimed at its label-and-mark layout, FRONT_AIM), looking at it straight from the
+    # outer side: the scanner 45 deg down at a module on
+    # the belt, the vision camera `vision_elevation` down at a held one (the hand above it, 4 mm
+    # over its top, overhangs the front by 9 mm: from 25 deg it hides the top, not the front)
     camera_px: int = 96
     camera_fovy: float = 18.0
+    camera_distance: float = 0.28
+    vision_elevation: float = 25.0     # deg
+    present_z: float = PRESENT_Z
 
     def __post_init__(self):
         for t in self.testers:
@@ -208,23 +247,30 @@ class TestCellConfig:
     def xy(self, station: Station) -> np.ndarray:
         return self.line_config().station_xy(station.stop, station.angle)
 
-    def tray_pockets(self) -> list[np.ndarray]:
-        """The PASS tray's pockets (x, y), row by row, the inner row first."""
-        c = self.xy(self.tray)
-        a = np.radians(self.tray.angle)
+    def tray_pockets(self, which: str = "pass") -> list[np.ndarray]:
+        """The PASS (or "rework") tray's pockets (x, y), row by row, the inner row first."""
+        station, rows, cols = ((self.tray, self.tray_rows, self.tray_cols) if which == "pass"
+                               else (self.rework, self.rework_rows, self.rework_cols))
+        c = self.xy(station)
+        a = np.radians(station.angle)
         u, t = np.array([np.cos(a), np.sin(a)]), np.array([-np.sin(a), np.cos(a)])
-        return [c + (r - (self.tray_rows - 1) / 2) * self.tray_pitch[0] * u
-                + (k - (self.tray_cols - 1) / 2) * self.tray_pitch[1] * t
-                for r in range(self.tray_rows) for k in range(self.tray_cols)]
+        return [c + (r - (rows - 1) / 2) * self.tray_pitch[0] * u
+                + (k - (cols - 1) / 2) * self.tray_pitch[1] * t
+                for r in range(rows) for k in range(cols)]
 
     def camera(self, name: str) -> CameraSetup:
-        """The scanner (over the conveyor's pick point) or the vision station's camera."""
+        """The scanner (over the conveyor's pick point: a module's front on the belt) or the
+        vision station's camera (a held module's front, presented over the station's point)."""
         station = {"scanner": self.infeed, "vision": self.vision}[name]
         a = np.radians(station.angle)
         out = np.array([np.cos(a), np.sin(a), 0.0])
-        top = 0.06 + (0.002 if name == "scanner" else 0.0)       # a module's top (belt lift)
-        target = np.array([*self.xy(station), top])
-        pos = target + 0.2 * out + np.array([0.0, 0.0, 0.2])
+        if name == "scanner":                 # the module's centre on the belt (2 mm lift)
+            centre, elevation = 0.032, 45.0
+        else:
+            centre, elevation = self.present_z, self.vision_elevation
+        target = np.array([*self.xy(station), centre + FRONT_AIM]) + 0.02 * out   # on the front
+        e = np.radians(elevation)
+        pos = target + self.camera_distance * (np.cos(e) * out + np.array([0.0, 0.0, np.sin(e)]))
         return CameraSetup(name, tuple(pos), tuple(target), self.camera_fovy, self.camera_px,
                            self.camera_px)
 
@@ -293,7 +339,11 @@ RESIDUE_HALF = (0.004, 0.0028)    # m: the largest residue patch's half sizes
 
 def add_module_look(spec: mujoco.MjSpec, part: str) -> None:
     """Draw part `part` (a 40 x 40 x 60 mm box) as a sensor module: visual geoms on its body
-    only. Its own box becomes the dark housing (Workcell/TestCell colour it at reset)."""
+    only. Its own box becomes the dark housing (Workcell/TestCell colour it at reset). The label
+    and anything visible that is wrong with the module are on its front (local -y): seen from
+    outside the front, its x runs from left to right and z up, in the layout v4.1's first build
+    had on the top (label above, a mark or residue below), raised by FRONT_UP to clear the board
+    edge. Box sizes are (across, depth, up)."""
     body = spec.body(part)
     hx, hy, hz = spec.geom(part).size
     e = 0.0002                                    # proud of a face, so it draws over it
@@ -301,20 +351,24 @@ def add_module_look(spec: mujoco.MjSpec, part: str) -> None:
     for k, (sx, sy) in enumerate(((1, 0), (-1, 0), (0, 1), (0, -1))):
         size = [e, hy + e, 0.0009] if sx else [hx + e, e, 0.0009]
         _vis(body, size, [sx * (hx + e), sy * (hy + e), z_edge], EDGE_RGBA, f"{part}_edge{k}")
-    # the label on top, with its barcode; the red mark beside it (hidden unless defective)
-    label_c = np.array([0.0, 0.005])
-    _vis(body, [0.014, 0.008, 0.00015], [*label_c, hz + 0.00015], LABEL_RGBA, f"{part}_label")
+
+    def front(u, w, half_u, half_w, proud, rgba, name, **kw):
+        # (the front faces -y: seen from there, +x is to the left, so u runs along -x)
+        _vis(body, [half_u, proud, half_w], [-u, -hy - proud, FRONT_UP + w], rgba, name, **kw)
+
+    # the label with its barcode; the red mark under it (hidden unless defective)
+    label_c = 0.005
+    front(0.0, label_c, 0.014, 0.008, 0.00015, LABEL_RGBA, f"{part}_label")
     unit = 0.001
     x = -sum(BARS) * unit / 2
     for k, w in enumerate(BARS):
         if k % 2 == 0:                            # bars and gaps alternate
-            _vis(body, [w * unit / 2, 0.0055, 0.0001],
-                 [x + w * unit / 2, label_c[1], hz + 0.0004], BAR_RGBA, f"{part}_bar{k}")
+            front(x + w * unit / 2, label_c, w * unit / 2, 0.0055, 0.0004, BAR_RGBA,
+                  f"{part}_bar{k}")
         x += w * unit
-    _vis(body, [*MARK_HALF, 0.00015], [0.0, -0.012, hz + 0.00015], MARK_RGBA, f"{part}_mark",
-         group=HIDDEN_GROUP)
-    _vis(body, [*RESIDUE_HALF, 0.00012], [0.0115, -0.012, hz + 0.00012], RESIDUE_RGBA,
-         f"{part}_residue", group=HIDDEN_GROUP)
+    front(0.0, -0.012, *MARK_HALF, 0.00015, MARK_RGBA, f"{part}_mark", group=HIDDEN_GROUP)
+    front(0.0115, -0.012, *RESIDUE_HALF, 0.00012, RESIDUE_RGBA, f"{part}_residue",
+          group=HIDDEN_GROUP)
     for i in range(3):                            # contact pads underneath
         for j in range(2):
             _vis(body, [0.003, 0.002, 0.0001], [(i - 1) * 0.011, (j - 0.5) * 0.012, -hz - 0.0001],
@@ -342,22 +396,26 @@ def _add_bench_extension(spec: mujoco.MjSpec, cfg: TestCellConfig) -> None:
                  [0.75, 0.77, 0.8, 1.0])
 
 
-def _add_tray(spec: mujoco.MjSpec, cfg: TestCellConfig) -> None:
-    """The PASS tray: an ESD tray with a grid of pockets, drawn (no collision: the modules stand
-    on the bench through it, its floor 0.5 mm high). Its dividers are 8 mm tall, below the open
-    fingers (19 mm and more above the bench when a module is set down)."""
-    c, a = cfg.xy(cfg.tray), np.radians(cfg.tray.angle)
-    body = spec.worldbody.add_body(name="pass_tray", pos=[*c, 0.0], quat=_yaw_quat(a))
+def _add_tray(spec: mujoco.MjSpec, cfg: TestCellConfig, which: str = "pass") -> None:
+    """The PASS (or REWORK) tray: an ESD tray with a grid of pockets, drawn (no collision: the
+    modules stand on the bench through it, its floor 0.5 mm high). Its dividers are 8 mm tall,
+    below the open fingers (19 mm and more above the bench when a module is set down)."""
+    station, rows, cols = ((cfg.tray, cfg.tray_rows, cfg.tray_cols) if which == "pass"
+                           else (cfg.rework, cfg.rework_rows, cfg.rework_cols))
+    c, a = cfg.xy(station), np.radians(station.angle)
+    body = spec.worldbody.add_body(name=f"{which}_tray", pos=[*c, 0.0], quat=_yaw_quat(a))
     pr, pc = cfg.tray_pitch
-    hr, hc = cfg.tray_rows * pr / 2 + 0.01, cfg.tray_cols * pc / 2 + 0.01
-    _vis(body, [hr, hc, 0.00025], [0, 0, 0.00025], [0.16, 0.2, 0.26, 1.0], "pass_tray_floor")
-    for r in range(cfg.tray_rows + 1):
+    hr, hc = rows * pr / 2 + 0.01, cols * pc / 2 + 0.01
+    _vis(body, [hr, hc, 0.00025], [0, 0, 0.00025], [0.16, 0.2, 0.26, 1.0], f"{which}_tray_floor")
+    for r in range(rows + 1):
         _vis(body, [0.003, hc, 0.004], [-hr + 0.01 + r * pr, 0, 0.004], [0.2, 0.26, 0.34, 1.0])
-    for k in range(cfg.tray_cols + 1):
+    for k in range(cols + 1):
         _vis(body, [hr, 0.003, 0.004], [0, -hc + 0.01 + k * pc, 0.004], [0.2, 0.26, 0.34, 1.0])
-    _vis(body, [0.004, hc, 0.006], [hr + 0.004, 0, 0.006], [0.12, 0.62, 0.25, 1.0])  # green lip
+    lip, text, bg = (((0.12, 0.62, 0.25, 1.0), "PASS", (25, 140, 60)) if which == "pass"
+                     else (REWORK_ORANGE, "REWORK", (235, 125, 20)))
+    _vis(body, [0.004, hc, 0.006], [hr + 0.004, 0, 0.006], lip)             # coloured lip
     if cfg.dressing:
-        mat = _text(spec, "pass_sign", ["PASS"], (255, 255, 255), (25, 140, 60))
+        mat = _text(spec, f"{which}_sign", [text], (255, 255, 255), bg)
         _vis(body, [0.02, 0.07, 0.025], [hr + 0.05, 0, 0.12], [1, 1, 1, 1], material=mat)
         _vis(body, [0.006, 0.006, 0.05], [hr + 0.05, 0, 0.05], [0.75, 0.77, 0.8, 1.0])
 
@@ -389,7 +447,7 @@ def _restyle_fail_bin(spec: mujoco.MjSpec, cfg: TestCellConfig) -> None:
 
 def _add_station_hardware(spec: mujoco.MjSpec, cfg: TestCellConfig) -> None:
     """The scanner and the vision camera: drawn housings on posts (no collision), the cameras
-    themselves, the vision station's plate and a ring light."""
+    themselves with their lights, and the vision camera's ring light."""
     for name in ("scanner", "vision"):
         cam = cfg.camera(name)
         add_camera(spec, cam)
@@ -407,13 +465,18 @@ def _add_station_hardware(spec: mujoco.MjSpec, cfg: TestCellConfig) -> None:
         back = R[:2, 2] / np.linalg.norm(R[:2, 2])         # behind the camera, on the bench
         _vis(world, [0.008, 0.008, (pos[2] + 0.02) / 2], [*(pos[:2] + 0.045 * back),
              (pos[2] - 0.02) / 2], [0.75, 0.77, 0.8, 1.0], f"{name}_post")
-    v = cfg.xy(cfg.vision)
-    a = np.radians(cfg.vision.angle)
-    plate = spec.worldbody.add_body(name="vision_plate", pos=[*v, 0.0], quat=_yaw_quat(a))
-    _vis(plate, [0.045, 0.045, 0.00025], [0, 0, 0.00025], [0.3, 0.32, 0.36, 1.0], "vision_plate")
-    for sx, sy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-        size = [0.026, 0.0015, 0.0004] if sx == 0 else [0.0015, 0.026, 0.0004]
-        _vis(plate, size, [0.026 * sx, 0.026 * sy, 0.0006], [0.2, 0.55, 0.95, 1.0])
+        if name == "vision":                               # a ring light round the lens
+            _vis(world, [0.03, 0.003], pos + R[:, 2] * 0.010, [0.85, 0.9, 1.0, 1.0],
+                 "vision_ring_light", gtype=mujoco.mjtGeom.mjGEOM_CYLINDER, quat=list(q))
+        # the camera's own light, a narrow spot from the lens at the module's front (a front
+        # faces sideways, which the hall's lights from above leave dim, and differently in
+        # each look of the hall), so that what the rules see depends on the module only (the
+        # scanner's brighter: it lights the front at 45 deg)
+        look = np.asarray(cam.target) - pos
+        light = [1.0] * 3 if name == "scanner" else [0.7] * 3
+        world.add_light(name=f"{name}_light", pos=list(pos),
+                        dir=list(look / np.linalg.norm(look)), diffuse=light,
+                        specular=[0.05] * 3, cutoff=12.0, exponent=1.0, castshadow=False)
 
 
 def build_test_cell_spec(cfg: TestCellConfig | None = None) -> mujoco.MjSpec:
@@ -427,7 +490,8 @@ def build_test_cell_spec(cfg: TestCellConfig | None = None) -> mujoco.MjSpec:
             for g in b.geoms:
                 g.group = HIDDEN_GROUP
     _restyle_fail_bin(spec, cfg)
-    _add_tray(spec, cfg)
+    _add_tray(spec, cfg, "pass")
+    _add_tray(spec, cfg, "rework")
     _add_station_hardware(spec, cfg)
     if cfg.dressing:
         _add_bench_extension(spec, cfg)
@@ -505,7 +569,8 @@ class TestCell(Line):
             cell.looks.append(_Look(model.geom(name).id, label, model.geom(f"{name}_mark").id,
                                     model.geom(f"{name}_residue").id))
         cell._label_group = int(model.geom_group[cell.looks[0].label[0]])
-        cell.pockets = cfg.tray_pockets()
+        cell.pockets = cfg.tray_pockets("pass")
+        cell.rework_pockets = cfg.tray_pockets("rework")
         cell._renderer = None
         cell.truths: list[ModuleTruth] = []
         cell.body_module: list[int | None] = [None] * cfg.n_bodies
@@ -521,23 +586,28 @@ class TestCell(Line):
 
     @property
     def vision_xy(self) -> np.ndarray:
+        """Where a module is presented to the vision camera (held over this point)."""
         return self.cell_config.xy(self.cell_config.vision)
 
-    def pocket_of(self, part: CubeIndices, tol: float = 0.012) -> int | None:
-        """The PASS tray pocket a part stands in (upright, on the bench, centred within `tol`),
-        or None."""
+    def tray(self, which: str = "pass") -> list[np.ndarray]:
+        return self.pockets if which == "pass" else self.rework_pockets
+
+    def pocket_of(self, part: CubeIndices, tol: float = 0.012, which: str = "pass"
+                  ) -> int | None:
+        """The PASS (or "rework") tray pocket a part stands in (upright, on the bench, centred
+        within `tol`), or None."""
         p = self.data.xpos[part.body]
         up = self.data.xmat[part.body].reshape(3, 3)[2, 2]
         if up < 0.99 or abs(p[2] - part.half_size[2]) > 0.003:
             return None
-        for i, xy in enumerate(self.pockets):
+        for i, xy in enumerate(self.tray(which)):
             if np.linalg.norm(p[:2] - xy) < tol:
                 return i
         return None
 
-    def free_pocket(self) -> int | None:
-        taken = {self.pocket_of(c) for c in self.cubes}
-        return next((i for i in range(len(self.pockets)) if i not in taken), None)
+    def free_pocket(self, which: str = "pass") -> int | None:
+        taken = {self.pocket_of(c, which=which) for c in self.cubes}
+        return next((i for i in range(len(self.tray(which))) if i not in taken), None)
 
     # --- the shift's modules ----------------------------------------------------------------
     @property
@@ -588,10 +658,10 @@ class TestCell(Line):
             m.geom_group[g] = HIDDEN_GROUP if missing else self._label_group
         marked = truth is not None and truth.defect == "red_mark"
         m.geom_group[look.mark] = self._label_group if marked else HIDDEN_GROUP
-        m.geom_size[look.mark, :2] = np.asarray(MARK_HALF) * (truth.severity if marked else 1.0)
+        m.geom_size[look.mark, ::2] = np.asarray(MARK_HALF) * (truth.severity if marked else 1.0)
         residue = truth.residue if truth is not None else 0.0
         m.geom_group[look.residue] = self._label_group if residue > 0 else HIDDEN_GROUP
-        m.geom_size[look.residue, :2] = np.asarray(RESIDUE_HALF) * (residue or 1.0)
+        m.geom_size[look.residue, ::2] = np.asarray(RESIDUE_HALF) * (residue or 1.0)
 
     def reset_shift(self, truths: list[ModuleTruth], rng: np.random.Generator | None = None,
                     lateral: float = 0.0, yaw: float = 0.0) -> None:

@@ -1,35 +1,49 @@
 """v4.1: the test cell's two image checks, a barcode scan and a visual inspection
 (docs/v4_1_plan.md, section 1; simulation/test_cell.py has the cameras and the modules' looks).
 
-Both cameras look at a module's top from its outer side, 45 deg down, 0.28 m away, through an
-18 deg lens (96 x 96 pixels, about 1 mm per pixel at the module). Every image goes through
-`ImagingNoise` first: an exposure that varies from image to image (the ring light, the module's
-height and tilt in the hand-off, ageing) and sensor noise per pixel. The rules then read only the
-image, by colour, inside the central 70 % of it (the module's top is there; the edges show the
-bench and whatever stands behind it):
+Both cameras look straight at a module's **front** (the side face with the label; a held
+module's top is under the hand) from its outer side, 0.28 m away, through an 18 deg lens (96 x 96
+pixels, about 1 mm per pixel at the module), each lit by its own narrow light: the scanner 45 deg
+down at a module on the conveyor, the vision camera 25 deg down at a module **held** in the carry
+posture and turned to it (inspection on the fly: control/test_cell.py, `present`). In the vision
+camera's image the hand and the fingers are there too: the palm over the module's top, the
+fingers beside the front, behind its plane. Every image goes through `ImagingNoise` first: an
+exposure that varies from image to image (the light, the module's place and tilt in the hand,
+ageing) and sensor noise per pixel. The rules then read only the image, by colour, inside a
+central **window** where the cell puts the front's label and mark area (36 % across, 42 % up:
+the front is aimed at, and the robot presents it at a fixed pose, so the window stays on the
+front, clear of the fingers, the palm and the background, with a few millimetres to spare for
+the module's place in the hand):
 
 - **label**: the share of white pixels (every channel at least 200, the channels within 40 of
-  each other). A module's label covers 2-4 % of the window; none, 0 %. A label is seen if the
-  share is at least `label_min` (1 %).
+  each other). A label covers 15-22 % of the window; none, 0 %. A label is seen if the share is
+  at least `label_min` (8 %).
 - **red mark**: the share of strongly red pixels (red at least 140 and more than twice green and
-  blue). A mark is seen at `red_min`.
+  blue). A mark is seen at `red_min` (0.9 %, 14 pixels: the same size of mark as in v4.1's first
+  build, which read the top through a wider window).
 
 The **scan** (at the conveyor's pick point) reads the barcode if the label is seen. It does not
 decode the bars: in the simulation a seen label stands for a good read, and the serial read is
 the module's own. A module whose label is missing cannot be read: "no read".
 
 The **visual inspection** (at the vision station, after the test) finds a visible defect if the
-label is not seen or a red mark is.
+label is not seen or a red mark is. It cannot see through a finger: a module held across its
+front shows the finger, which reads as white (a label) and hides a mark. The controller knows
+how it holds a module and does not trust such an image (it does not happen with modules taken out
+of a keyed nest).
 
 **Imperfect, the way such a rule is.** It is a fixed colour threshold on a small, noisy image:
 - a small red mark (the drawn severity: down to 2.4 x 1.6 mm, a few pixels) falls under the
-  threshold, more often the smaller it is and the darker the exposure: an **escape** if the
-  module passes its electrical test;
-- harmless brownish flux residue is near the rule's idea of red; in a bright exposure, with
-  noise, enough of its pixels pass the ratio test to read as a mark: a **false reject**.
-No rule is tuned on shift results. The thresholds and the noise were set from renders of the
-drawn looks only (tests/test_test_cell.py checks the separation at full size and that a faint
-mark or residue lands in between).
+  threshold: with the camera's own light the mark is vivid, so it is its size that decides
+  (marks under about 0.4 of the largest are missed; noise moves the borderline ones): an
+  **escape** if the module passes its electrical test;
+- harmless brownish flux residue passes the rule's idea of red under that light; a patch over
+  about 0.6 of the largest reads as a mark (with noise and exposure deciding near that size): a
+  **false reject**.
+No rule is tuned on shift results. The window, the thresholds and the noise were set from renders
+of the drawn looks only (tests/test_test_cell.py checks the separation at full size, held, in
+each look of the hall, and that a faint mark or small residue is missed and large residue is
+not).
 """
 
 from __future__ import annotations
@@ -41,13 +55,14 @@ import numpy as np
 
 @dataclass(frozen=True)
 class InspectionRule:
-    window: float = 0.7           # the central share of the image (each way) that is read
+    window: tuple[float, float] = (0.36, 0.42)  # the central share of the image that is read
+                                                # (across, up): the front's label-and-mark area
     white_min: int = 200          # every channel at least this
     white_spread: int = 40        # channels within this of each other
     red_min_value: int = 140
     red_ratio: float = 2.0        # red more than this times green and blue
-    label_min: float = 0.01       # share of white pixels that is a label
-    red_min: float = 0.003        # share of red pixels that is a mark
+    label_min: float = 0.08       # share of white pixels that is a label
+    red_min: float = 0.009        # share of red pixels that is a mark (14 pixels)
 
 
 RULE = InspectionRule()
@@ -101,7 +116,7 @@ class Inspection:
 def inspect(image: np.ndarray, rule: InspectionRule = RULE) -> Inspection:
     """Read an RGB image (H x W x 3, uint8) with the rule."""
     h, w = image.shape[:2]
-    mh, mw = int(h * (1 - rule.window) / 2), int(w * (1 - rule.window) / 2)
+    mw, mh = (int(n * (1 - s) / 2) for n, s in ((w, rule.window[0]), (h, rule.window[1])))
     f = np.asarray(image[mh:h - mh, mw:w - mw, :3], dtype=int)
     lo, hi = f.min(-1), f.max(-1)
     white = float(((lo >= rule.white_min) & (hi - lo <= rule.white_spread)).mean())
