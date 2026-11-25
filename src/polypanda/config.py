@@ -19,8 +19,13 @@ def from_dict[T](cls: type[T], data: dict) -> T:
     kwargs = {}
     for name, value in data.items():
         hint = hints[name]
+        # an optional dataclass (`X | None`), given as a mapping
+        optional = [a for a in typing.get_args(hint) if dataclasses.is_dataclass(a)]
         if dataclasses.is_dataclass(hint):
             value = from_dict(hint, value)
+        elif len(optional) == 1 and type(None) in typing.get_args(hint) and isinstance(value,
+                                                                                       dict):
+            value = from_dict(optional[0], value)
         elif isinstance(value, list):
             value = tuple(value)
         kwargs[name] = value
