@@ -15,6 +15,14 @@ latching, the hand moves back so the other finger pulls the lid 2.5 cm open, and
 faster. Then the hand backs off the bar and rises clear. The pushes are servoed on the hand's
 commanded target (feed-forward); the moves through free space close the loop on the measured
 TCP, which takes out the servos' few millimetres of sag.
+
+**Drawers (v4.1).** A drawer's bar stands off its front plate by a few centimetres, and the open
+fingers span 8 cm: come down centred on the bar, the finger behind it would land on the plate. So
+the hand comes down off-centre, toward the robot (`hook_offset`), with that finger HOOK_MARGIN
+behind the bar's back face, in the gap between bar and plate. Opening, it pulls the bar toward
+the robot; closing, the same finger pushes the plate (its back) home. The rest is the lid's
+script with the drawer's slack (`hook_slack`) and a smaller back-off (half the gap left beside
+the finger), so the finger stays clear of both bar and plate before it rises out of the gap.
 """
 
 from __future__ import annotations
@@ -25,6 +33,47 @@ from polypanda.control.ik import closing_yaw
 from polypanda.simulation.panda import tcp_position
 
 FINGER_SPAN = 0.08            # m between the open fingers' pads (Menagerie hand)
+FINGER_THICK = 0.015          # m, a finger across its pad, over the bar's height (the hand's
+#                               collision hull: 10 mm at the tip, 15 mm 1.5 cm up, 27 mm at the top)
+HOOK_MARGIN = 0.005           # m: a drawer's hooking finger comes down this far behind the bar
+
+
+def hook_offset(cfg) -> float:
+    """Where the TCP comes down, from the bar's centre along the opening direction (m): over the
+    bar for a lid (the fingers straddle it with 3 cm to spare on each side); for a drawer, toward
+    the robot, so the finger behind the bar comes down HOOK_MARGIN behind its back face."""
+    if cfg.kind != "drawer":
+        return 0.0
+    return FINGER_SPAN / 2 - cfg.handle_radius - HOOK_MARGIN
+
+
+def hook_slack(cfg, command: str) -> float:
+    """How far the hand moves along its push before the finger meets what it pushes, plus 4 mm:
+    on a lid, half the finger span less half the bar; on a drawer, opening, the margin behind the
+    bar, and closing, the gap from the finger to the plate (the bar's stand-off less half the bar,
+    the margin and the finger)."""
+    if cfg.kind != "drawer":
+        return FINGER_SPAN / 2 - cfg.handle_radius + 0.004
+    if command == "open":
+        return HOOK_MARGIN + 0.004
+    return cfg.handle_height - cfg.handle_radius - HOOK_MARGIN - FINGER_THICK + 0.004
+
+
+def reopen_reach(cfg) -> float:
+    """How far the hand moves back from a push that shut the lid before its other finger meets
+    the bar (to pull it open for a retry): across the finger span less the bar on a lid; on a
+    drawer, the finger behind the bar back across the gap from the plate."""
+    if cfg.kind != "drawer":
+        return FINGER_SPAN - 2 * cfg.handle_radius
+    return cfg.handle_height - cfg.handle_radius - FINGER_THICK
+
+
+def back_off_for(cfg, default: float) -> float:
+    """How far the hand backs off what it pushed before rising: `default` on a lid; on a
+    drawer, to the middle of the gap left beside the finger between bar and plate."""
+    if cfg.kind != "drawer":
+        return default
+    return max(0.003, (cfg.handle_height - cfg.handle_radius - FINGER_THICK) / 2)
 
 
 class DoorExpert:
@@ -88,7 +137,7 @@ class DoorExpert:
         lid = env.machine.lid
         if self.start is None:
             self.start = env.adapter.target_pos.copy()
-        slack = FINGER_SPAN / 2 - cfg.handle_radius + 0.004
+        slack = hook_slack(cfg, env.command)
         if env.command == "open":
             self.sign, self.speed = 1.0, self.open_speed
             self.goal_q = min(env.needed + self.open_past, cfg.travel - 0.002)
@@ -111,6 +160,9 @@ class DoorExpert:
         handle = env.handle_xyz()
         axis = env.slide_axis()
         tcp = tcp_position(env.data, env.arm)
+        hook = handle                 # where the TCP comes down (a drawer's: off the bar's centre)
+        if machine.cfg.kind == "drawer":
+            hook = handle + axis * hook_offset(machine.cfg)
         if self.yaw_goal is None:     # fingers across the bar, along the slide: the nearer way
             psi = float(np.arctan2(axis[1], axis[0]))
             cur = closing_yaw(env.adapter.target_R)
@@ -119,13 +171,13 @@ class DoorExpert:
         move, yaw = np.zeros(3), 0.0
         dt = env.adapter.control_dt
         if self.phase == "approach":
-            goal = handle + [0.0, 0.0, self.hover]
+            goal = hook + [0.0, 0.0, self.hover]
             move, yaw = self._move(goal, self.approach_speed), self._yaw_action()
             if np.linalg.norm(goal - tcp) < 0.006 and abs(yaw) * env.adapter.max_rot < 0.03:
                 self._next("descend")
         elif self.phase == "descend":
-            move, yaw = self._move(handle, self.descend_speed), self._yaw_action()
-            if np.linalg.norm(handle - tcp) < 0.002 or self.count > 60:
+            move, yaw = self._move(hook, self.descend_speed), self._yaw_action()
+            if np.linalg.norm(hook - tcp) < 0.002 or self.count > 60:
                 self.s = 0.0
                 self._start_push()
         elif self.phase == "push":
@@ -144,8 +196,7 @@ class DoorExpert:
                     if env.command == "close" and self.tries < self.retries:
                         self.tries += 1                     # not latched: reopen, push again
                         self.speed = min(self.speed * 1.5, self.close_speed[1])
-                        self.back_to = self.s - (FINGER_SPAN - 2 * machine.cfg.handle_radius
-                                                 + self.reopen)
+                        self.back_to = self.s - (reopen_reach(machine.cfg) + self.reopen)
                         self._next("back")
                     else:
                         self._next("clear")
@@ -157,7 +208,8 @@ class DoorExpert:
                 if self.wait > 3:
                     self._start_push()
         elif self.phase == "clear":                       # back off the bar, then rise
-            goal = self.start + axis * self.sign * (self.s - self.back_off)
+            goal = self.start + axis * self.sign * (self.s - back_off_for(machine.cfg,
+                                                                          self.back_off))
             move = self._move(goal, 0.05, measured=False)
             if np.linalg.norm(goal - env.adapter.target_pos) < 1e-4 or self.count > 40:
                 self.wait += 1

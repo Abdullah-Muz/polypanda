@@ -89,6 +89,21 @@ hooking policy never closes them). The episode then terminates. Otherwise it is 
 `horizon` steps (15 s at 20 Hz) and info["failure"] says why: not_opened, not_closed,
 closed_not_latched (shut too slowly to latch), not_released (the goal reached but the hand not
 clear above the bar), never_touched, or non_finite.
+
+**Drawers (v4.1, docs/v4_1_plan.md sections 1 and 4.1).** `variation.kinds` lists the tester
+kinds drawn: ("lid",), the default, is v4.0's task exactly (the same scene, draws, episodes and
+observations, so v4.0's policies run unchanged; tests/test_lid_identity.py); with "drawer" in it,
+the scene also holds a drawer tester ("D"; the lid machine stays "M") at the same station, the
+other one parked out of the way, and each episode draws its kind (uniformly; no draw with one
+kind). A drawer opens toward the robot (slide
+"toward"); its handle is a bar on the drawer's front plate, hooked from above with open fingers:
+the finger behind the bar pulls it open and pushes the plate shut, so for a drawer "touching the
+handle" (the contact flags, touch_travel, the touch reward, success's "clear of the handle") means
+the bar or the plate. The observation is unchanged: the kind is not an input, but it shows in the
+camera's handle estimate (a drawer's bar is low and in front, about 0.15 m above the bench, a
+lid's on top at 0.2 m or more). Drawers vary in travel, friction, damping, the latch speed, and
+where the bar sits (along it, up and down, and how far it stands off the plate); by default
+without a closing spring.
 """
 
 from __future__ import annotations
@@ -107,7 +122,14 @@ from polypanda.control.ik import PoseIK, closing_yaw, top_down_quat
 from polypanda.environments.grasp import GRIPPER_OPEN
 from polypanda.environments.reach import ActionConfig, CartesianConfig
 from polypanda.simulation.assets import panda_spec
-from polypanda.simulation.machine import SLIDES, Machine, MachineConfig, add_machine
+from polypanda.simulation.machine import (
+    ALL_SLIDES,
+    DRAWER_SLIDE,
+    SLIDES,
+    Machine,
+    MachineConfig,
+    add_machine,
+)
 from polypanda.simulation.machine_variation import MachineLayout, needed_opening, variant
 from polypanda.simulation.panda import PandaIndices, reset_to_home, tcp_position
 from polypanda.simulation.workcell import set_finger_stiffness
@@ -134,6 +156,9 @@ OBS_SLICES_V2 = {**OBS_SLICES, "door_open_switch": slice(OBS_DIM, OBS_DIM_V2)}
 ACTION_SCHEMA = "cartesian-v1-4d+gripper"   # the hand motion of cartesian-v1-4d, then a gripper
 COMMANDS = ("open", "close")
 MACHINE = "M"
+DOOR_KINDS = ("lid", "drawer")       # the testers the robot opens (a pneumatic one opens itself)
+MACHINES = {"lid": MACHINE, "drawer": "D"}
+PARKED = (0.0, 5.0)                  # m: where the machine of the other kind waits (out of reach)
 FINGER_OPEN = 0.04       # m per finger at gripper ctrl 255 (the Menagerie hand)
 
 
@@ -166,6 +191,20 @@ class DoorVariationConfig:
     latch_speed: tuple[float, float] = (0.01, 0.1)      # m/s closing speed to latch, log-uniform
     position: float = 0.015            # m either way, each axis of the station frame
     turn: float = 10.0                 # deg either way
+    # v4.1: the testers drawn (uniformly; no draw with one kind). ("lid",) is v4.0's task, draw
+    # for draw; "drawer" adds drawer testers (simulation/machine.py), varied as below
+    kinds: tuple[str, ...] = ("lid",)
+    travel_drawer: tuple[float, float] = (0.12, 0.14)   # m; needed: 0.112
+    drawer_spring_prob: float = 0.0    # share of self-closing drawers (springs as on lids)
+    handle_offset_drawer: float = 0.03   # m either way along the bar (an 18 cm plate)
+    handle_shift_drawer: float = 0.005   # m up or down on the plate (the hand clears the box's
+    #                                      top by 24 mm less this when it hooks the bar)
+    handle_height_drawer: tuple[float, float] = (0.035, 0.05)  # m, bar centre off the plate: a
+    #                                      finger needs ~2 cm between bar and plate
+
+    def __post_init__(self) -> None:
+        if not self.kinds or set(self.kinds) - set(DOOR_KINDS):
+            raise ValueError(f"kinds must be some of {DOOR_KINDS}, not {self.kinds!r}")
 
 
 @dataclass(frozen=True)
@@ -215,15 +254,16 @@ class DoorSuccessConfig:
 @dataclass(frozen=True)
 class DoorFocusConfig:
     """Training only (DoorConfig.for_evaluation drops it): a share of episodes drawn from chosen
-    cells, "command/slide/spring" or "command/slide/plain" (e.g. "open/out/spring"), the rest
-    as usual. With prob 0 the episode stream is the plain one, draw for draw."""
+    cells, "command/slide/spring" or "command/slide/plain" (e.g. "open/out/spring"; a drawer's
+    slide is "toward"), the rest as usual. With prob 0 the episode stream is the plain one, draw
+    for draw."""
     prob: float = 0.0
     cells: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         for c in self.cells:
             parts = c.split("/")
-            if (len(parts) != 3 or parts[0] not in COMMANDS or parts[1] not in SLIDES
+            if (len(parts) != 3 or parts[0] not in COMMANDS or parts[1] not in ALL_SLIDES
                     or parts[2] not in ("spring", "plain")):
                 raise ValueError(f"focus cell {c!r}: command/slide/spring|plain")
         if self.prob > 0 and not self.cells:
@@ -283,15 +323,21 @@ class DoorConfig:
         return replace(self, focus=DoorFocusConfig())
 
 
-def build_door_scene(cfg: DoorSceneConfig) -> tuple[mujoco.MjModel, mujoco.MjData, MachineConfig]:
-    """The Panda on the bench and one nominal machine (re-laid out per episode)."""
+def build_door_scene(cfg: DoorSceneConfig, kinds: tuple[str, ...] = ("lid",)
+                     ) -> tuple[mujoco.MjModel, mujoco.MjData, dict[str, MachineConfig]]:
+    """The Panda on the bench and one nominal machine of each kind (named MACHINES[kind]),
+    re-laid out per episode. With the lid alone (the default) this is v4.0's scene."""
     spec = panda_spec()
     set_finger_stiffness(spec, cfg.finger_stiffness)
     a = np.radians(cfg.station_angle)
-    machine = add_machine(spec, MACHINE, (cfg.radius * np.cos(a), cfg.radius * np.sin(a)),
-                          cfg.station_angle, MachineConfig())
+    compiled = {}
+    for kind in DOOR_KINDS:            # (a fixed order: the lid machine first, as in v4.0)
+        if kind in kinds:
+            compiled[kind] = add_machine(spec, MACHINES[kind],
+                                         (cfg.radius * np.cos(a), cfg.radius * np.sin(a)),
+                                         cfg.station_angle, MachineConfig(kind=kind))
     model = spec.compile()
-    return model, mujoco.MjData(model), machine
+    return model, mujoco.MjData(model), compiled
 
 
 def _rz(angle: float) -> np.ndarray:
@@ -317,15 +363,20 @@ class DoorEnv(gym.Env):
         if a.space != "cartesian" or a.cartesian.dof != 4:
             raise ValueError("the door skill acts with cartesian-v1-4d hand motions")
         if scene is None:
-            self.model, self.data, compiled = build_door_scene(self.config.scene)
-            self.machine = Machine(self.model, self.data, MACHINE, compiled, parts=[])
-            self.layout = MachineLayout(self.model, MACHINE, compiled)
+            kinds = self.config.variation.kinds
+            self.model, self.data, compiled = build_door_scene(self.config.scene, kinds)
+            self.machines = {k: Machine(self.model, self.data, MACHINES[k], c, parts=[])
+                             for k, c in compiled.items()}
+            self.layouts = {k: MachineLayout(self.model, MACHINES[k], c)
+                            for k, c in compiled.items()}
             self.frame = np.radians(self.config.scene.station_angle)
         else:
             if machine is None:
                 raise ValueError("a shared scene needs its machine's runtime")
+            if machine.cfg.kind not in DOOR_KINDS:
+                raise ValueError(f"a {machine.cfg.kind!r} machine opens itself")
             self.model, self.data = scene
-            self.machine, self.layout = machine, None
+            self.machines, self.layouts = {machine.cfg.kind: machine}, None
             self.frame = 0.0    # until set_station() (StationView does it)
         self.base = np.zeros(3)  # where the robot's base axis stands (a rail, v4: set_station)
         m = self.model
@@ -336,12 +387,12 @@ class DoorEnv(gym.Env):
                            == m.body_rootid[self.hand]}
         self._fingers = (m.body("left_finger").id, m.body("right_finger").id)
         self._finger_qpos = [m.joint(f"finger_joint{i}").qposadr[0] for i in (1, 2)]
-        name = self.machine.name
-        self.bar_geom = m.geom(f"{name}_handle").id
-        self.lid_body = m.body(f"{name}_lid").id
-        # the machine's body (walls, roof, pocket; not the lid and its handle) and the bench
-        self.machine_bodies = {self.machine.body} | {
-            m.body(f"{name}_pocket{k}").id for k in range(4)} | {0}
+        self._activate(next(iter(self.machines)))
+        f = self.config.focus
+        if self.layouts is not None and any(
+                ("drawer" if c.split("/")[1] == DRAWER_SLIDE else "lid") not in self.layouts
+                for c in f.cells):
+            raise ValueError("a focus cell's kind is not among variation.kinds")
         limit = action_limit(self.config.action)
         self.action_space = spaces.Box(-limit, limit, shape=(5,), dtype=np.float32)
         self.observation_space = spaces.Box(-np.inf, np.inf, shape=(OBS_DIM,), dtype=np.float32)
@@ -356,6 +407,23 @@ class DoorEnv(gym.Env):
     @property
     def elapsed_steps(self) -> int:
         return self._steps
+
+    def _activate(self, kind: str) -> None:
+        """Work on the machine of `kind` (lid or drawer): its runtime, layout, handle, the geoms
+        that count as touching the handle (the bar; a drawer's front plate too, which the finger
+        behind the bar pushes it shut by) and the bodies that count as collisions (its body,
+        walls, roof and pocket, and the bench; not the moving lid or drawer)."""
+        self.kind = kind
+        self.machine = self.machines[kind]
+        self.layout = self.layouts[kind] if self.layouts is not None else None
+        m, name = self.model, self.machine.name
+        self.bar_geom = m.geom(f"{name}_handle").id
+        self.touch_geoms = {self.bar_geom}
+        if kind == "drawer":
+            self.touch_geoms.add(m.geom(f"{name}_drawer_face").id)
+        self.lid_body = self.machine.door_body
+        self.machine_bodies = {self.machine.body} | {
+            m.body(f"{name}_pocket{k}").id for k in range(4)} | {0}
 
     # --- episodes ------------------------------------------------------------------------
     def _carry_posture(self) -> np.ndarray:
@@ -386,24 +454,51 @@ class DoorEnv(gym.Env):
                  if f.prob > 0 and rng.uniform() < f.prob else None)   # (no draw at prob 0)
         draw_command = COMMANDS[0] if rng.uniform() < s.open_prob else COMMANDS[1]
         command = command or (focus[0] if focus else draw_command)
-        slide = str(v.slides[int(rng.integers(len(v.slides)))])
-        slide = focus[1] if focus else slide
-        out = slide == "out"
-        travel = float(rng.uniform(*(v.travel_out if out else v.travel_side)))
-        friction, damping = log_uniform(v.friction), log_uniform(v.damping)
-        spring = float(rng.uniform(*v.spring)) if rng.uniform() < v.spring_prob else 0.0
+        kind = v.kinds[0]
+        if len(v.kinds) > 1:                                  # (no draw with one kind)
+            kind = str(v.kinds[int(rng.integers(len(v.kinds)))])
         if focus:
-            spring = (spring or float(rng.uniform(*v.spring))) if focus[2] == "spring" else 0.0
-        ep = {
-            "command": command, "slide": slide, "travel": travel,
-            "friction": friction, "damping": damping, "spring": spring,
-            "handle_offset": sym(v.handle_offset_out if out else v.handle_offset_side),
-            "handle_shift": sym(v.handle_shift_out if out else v.handle_shift_side),
-            "handle_height": float(rng.uniform(*v.handle_height)),
-            "latch_speed": log_uniform(v.latch_speed),
-            "offset": (sym(v.position), sym(v.position)), "turn": sym(v.turn),
-        }
-        needed = needed_opening(replace(MachineConfig(), slide=slide))
+            kind = "drawer" if focus[1] == DRAWER_SLIDE else "lid"
+        if kind == "drawer":
+            travel = float(rng.uniform(*v.travel_drawer))
+            friction, damping = log_uniform(v.friction), log_uniform(v.damping)
+            spring = (float(rng.uniform(*v.spring)) if rng.uniform() < v.drawer_spring_prob
+                      else 0.0)
+            if focus:
+                spring = ((spring or float(rng.uniform(*v.spring))) if focus[2] == "spring"
+                          else 0.0)
+            ep = {
+                "kind": kind, "command": command, "slide": DRAWER_SLIDE, "travel": travel,
+                "friction": friction, "damping": damping, "spring": spring,
+                "handle_offset": sym(v.handle_offset_drawer),
+                "handle_shift": sym(v.handle_shift_drawer),
+                "handle_height": float(rng.uniform(*v.handle_height_drawer)),
+                "latch_speed": log_uniform(v.latch_speed),
+                "offset": (sym(v.position), sym(v.position)), "turn": sym(v.turn),
+            }
+            needed = needed_opening(self.layouts["drawer"].compiled)
+        else:
+            slide = str(v.slides[int(rng.integers(len(v.slides)))])
+            slide = focus[1] if focus else slide
+            out = slide == "out"
+            travel = float(rng.uniform(*(v.travel_out if out else v.travel_side)))
+            friction, damping = log_uniform(v.friction), log_uniform(v.damping)
+            spring = float(rng.uniform(*v.spring)) if rng.uniform() < v.spring_prob else 0.0
+            if focus:
+                spring = ((spring or float(rng.uniform(*v.spring))) if focus[2] == "spring"
+                          else 0.0)
+            ep = {
+                "command": command, "slide": slide, "travel": travel,
+                "friction": friction, "damping": damping, "spring": spring,
+                "handle_offset": sym(v.handle_offset_out if out else v.handle_offset_side),
+                "handle_shift": sym(v.handle_shift_out if out else v.handle_shift_side),
+                "handle_height": float(rng.uniform(*v.handle_height)),
+                "latch_speed": log_uniform(v.latch_speed),
+                "offset": (sym(v.position), sym(v.position)), "turn": sym(v.turn),
+            }
+            if len(v.kinds) > 1:      # (v4.0's lid-only episodes carry no kind)
+                ep = {"kind": kind, **ep}
+            needed = needed_opening(replace(MachineConfig(), slide=slide))
         lid_hi = max(needed, travel - s.close_margin)
         lid = float(rng.uniform(needed, lid_hi))
         if ep["spring"] > 0:
@@ -418,7 +513,9 @@ class DoorEnv(gym.Env):
         return ep
 
     def machine_config(self, ep: dict) -> MachineConfig:
-        return variant(self.layout.compiled, slide=ep["slide"], travel=ep["travel"],
+        """The episode's machine variant (of its kind: "kind", a lid without it)."""
+        layout = self.layouts[ep.get("kind", "lid")]
+        return variant(layout.compiled, slide=ep["slide"], travel=ep["travel"],
                        lid_friction=ep["friction"], lid_damping=ep["damping"],
                        lid_spring=ep["spring"], handle_offset=ep["handle_offset"],
                        handle_shift=ep["handle_shift"], handle_height=ep["handle_height"],
@@ -441,6 +538,10 @@ class DoorEnv(gym.Env):
 
     def _start(self, ep: dict) -> None:
         m, d = self.model, self.data
+        kind = ep.get("kind", "lid")
+        if kind not in self.layouts:
+            raise ValueError(f"a {kind!r} episode, but variation.kinds is {tuple(self.layouts)}")
+        self._activate(kind)
         cfg = self.machine_config(ep)
         reset_to_home(m, d, self.arm)
         self.layout.apply(m, cfg, self.machine)
@@ -448,6 +549,9 @@ class DoorEnv(gym.Env):
         R = _rz(self.frame)
         xy = (R @ np.array([sc.radius + ep["offset"][0], ep["offset"][1], 0.0]))[:2]
         self.layout.place(m, xy, self.frame + np.radians(ep["turn"]))
+        for other, layout in self.layouts.items():      # the other kind waits out of reach
+            if other != kind:
+                layout.place(m, PARKED, 0.0)
         d.qpos[self.machine.lid_qpos] = ep["lid"]
         d.qvel[self.machine.lid_dof] = 0.0
         # the arm: the carry posture, jittered in the station frame, then turned to the station
@@ -564,11 +668,15 @@ class DoorEnv(gym.Env):
     def _finger_contacts(self) -> tuple[bool, bool]:
         found = dict.fromkeys(self._fingers, False)
         d, m = self.data, self.model
+        touch = self.touch_geoms
         for i in range(d.ncon):
             c = d.contact[i]
-            if self.bar_geom not in (c.geom1, c.geom2):
+            if c.geom1 in touch:
+                other = m.geom_bodyid[c.geom2]
+            elif c.geom2 in touch:
+                other = m.geom_bodyid[c.geom1]
+            else:
                 continue
-            other = m.geom_bodyid[c.geom2 if c.geom1 == self.bar_geom else c.geom1]
             if other in found:
                 found[other] = True
         return found[self._fingers[0]], found[self._fingers[1]]
