@@ -21,6 +21,15 @@ edited in place instead:
 (the handle's 60 g moving by a few centimetres shifts the lid's centre of mass by under 1 cm),
 and the body's size, opening, lid size and fixture, which every door variant shares (they are
 checked to be unchanged).
+
+**v4.1: drawers and pneumatic lids** (simulation/machine.py, MachineConfig.kind). A drawer's
+variant changes the same fields of its slide joint (its axis stays toward the robot: a drawer has
+one slide) and of its handle: the bar along the plate (handle_offset), up or down on it
+(handle_shift) and how far it stands off it (handle_height: the posts' length). Its box stays
+where it was compiled, so a drawer drawn with another travel stops elsewhere when open (its nest
+is at the machine's origin only at the compiled travel). A pneumatic lid has no handle; its
+variants change the joint, the cylinder's stroke (`actuator_actrange`, the travel) and speed
+(`pneumatic_speed`, read by Machine.request_open/close).
 """
 
 from __future__ import annotations
@@ -30,19 +39,33 @@ from dataclasses import fields, replace
 import mujoco
 import numpy as np
 
-from polypanda.simulation.machine import Machine, MachineConfig, _quat_z_to
+from polypanda.simulation.machine import (
+    DOOR_NAME,
+    POST_HALF,
+    POST_INSET,
+    Machine,
+    MachineConfig,
+    _quat_z_to,
+    drawer_handle_layout,
+)
 
 # what a runtime variant may change (everything else must match the compiled machine)
 VARIABLE = ("slide", "travel", "lid_damping", "lid_friction", "lid_spring", "handle_offset",
             "handle_shift", "handle_height", "latch_catch", "latch_speed", "fault_open",
-            "cycle_s", "colour")
-POST_HALF = 0.006          # m, the posts' square half section (machine._add_lid)
-POST_INSET = 0.01          # m, the posts stand this far in from the bar's ends
+            "cycle_s", "colour", "pneumatic_speed")
 
 
 def needed_opening(cfg: MachineConfig) -> float:
     """How far the lid must slide to uncover the whole opening: the opening's size along the
-    slide plus the lid's overlap (as in evaluation/tending.py)."""
+    slide plus the lid's overlap (as in evaluation/tending.py).
+
+    A drawer (v4.1) must bring its nest fully out of the box with room behind it: its front to
+    the nest's centre, the nest's outer half, and `drawer_room` (3 cm) between the nest's back
+    edge and the box's front. The room is for the hand loading it with its fingers closing across
+    the slide (the hand is 65 mm thick that way; it is 200 mm long the other way, which would
+    reach over the box: load a drawer with the fingers closing along the machine's y)."""
+    if cfg.kind == "drawer":
+        return float(cfg.drawer_front + cfg.nest_half + cfg.drawer_room)
     along = cfg.opening[0] if cfg.slide == "out" else cfg.opening[1]
     return float(along + cfg.lid_overlap)
 
@@ -56,13 +79,17 @@ class MachineLayout:
 
     def __init__(self, model: mujoco.MjModel, name: str, compiled: MachineConfig) -> None:
         self.name, self.compiled = name, compiled
-        j = model.joint(f"{name}_lid")
+        door = DOOR_NAME[compiled.kind].format(name)
+        j = model.joint(door)
         self.joint, self.dof = j.id, int(j.dofadr[0])
         self.body = model.body(name).id
-        self.lid_body = model.body(f"{name}_lid").id
-        self.handle = model.geom(f"{name}_handle").id
-        self.posts = [model.geom(f"{name}_handle_post{k}").id for k in (0, 1)]
-        self.site = model.site(f"{name}_handle").id
+        self.lid_body = self.door_body = model.body(door).id   # (v4.0's name, for every kind)
+        handled = compiled.kind != "pneumatic"
+        self.handle = model.geom(f"{name}_handle").id if handled else -1
+        self.posts = [model.geom(f"{name}_handle_post{k}").id for k in (0, 1)] if handled else []
+        self.site = model.site(f"{name}_handle").id if handled else -1
+        self.cylinder = (model.actuator(f"{name}_cylinder").id
+                         if compiled.kind == "pneumatic" else -1)
 
     def check(self, cfg: MachineConfig) -> None:
         """Refuse a variant that changes what only a recompile can change."""
@@ -81,6 +108,11 @@ class MachineLayout:
         model.dof_frictionloss[self.dof] = cfg.lid_friction
         model.dof_damping[self.dof] = cfg.lid_damping
         model.jnt_stiffness[self.joint] = cfg.lid_spring
+        if cfg.kind != "lid":
+            self._apply_tester(model, cfg)
+            if machine is not None:
+                machine.cfg = cfg
+            return
         half = cfg.lid_half
         centre = cfg.handle_centre() - np.array([0.0, 0.0, cfg.height + half[2]])  # lid frame
         bar = cfg.bar_axis
@@ -100,6 +132,25 @@ class MachineLayout:
         self.refresh_bvh(model)
         if machine is not None:
             machine.cfg = cfg
+
+    def _apply_tester(self, model: mujoco.MjModel, cfg: MachineConfig) -> None:
+        """The v4.1 kinds' variable parts (the joint is done): a drawer's handle (as
+        machine._add_drawer places it, through the same drawer_handle_layout), or a pneumatic
+        lid's cylinder stroke."""
+        if cfg.kind == "pneumatic":
+            model.actuator_actrange[self.cylinder] = [0.0, cfg.travel]
+            return
+        centre, q_bar, posts, size = drawer_handle_layout(cfg)
+        model.geom_pos[self.handle] = centre
+        model.geom_quat[self.handle] = q_bar
+        for p, g in zip(posts, self.posts, strict=True):
+            model.geom_pos[g] = p
+            model.geom_quat[g] = [1.0, 0.0, 0.0, 0.0]
+            model.geom_size[g] = size
+            model.geom_rbound[g] = float(np.linalg.norm(size))
+            model.geom_aabb[g] = [0.0, 0.0, 0.0, *size]
+        model.site_pos[self.site] = centre
+        self.refresh_bvh(model)
 
     def refresh_bvh(self, model: mujoco.MjModel) -> None:
         """Recompute the lid body's bounding-volume hierarchy (`bvh_aabb`) from its geoms as they
@@ -147,3 +198,31 @@ def variant(base: MachineConfig, **changes) -> MachineConfig:
     if bad:
         raise ValueError(f"not runtime-variable: {sorted(bad)}")
     return replace(base, **changes)
+
+
+# a pneumatic tester's variants (v4.1): its stroke and speed, and the slide's friction and damping
+# (the door env's ranges: environments/door.DoorVariationConfig). The slide's direction stays as
+# compiled (its cylinder is drawn along it), and so does the latch: the cylinder shuts the lid at
+# 0.06 m/s or more, above the nominal 0.02 m/s the latch needs.
+PNEUMATIC_TRAVEL = (0.12, 0.14)       # m (sideways; an outward lid: + 0.145, as the door env's)
+PNEUMATIC_SPEED = (0.06, 0.10)        # m/s
+PNEUMATIC_FRICTION = (0.2, 10.0)      # N, log-uniform
+PNEUMATIC_DAMPING = (1.0, 10.0)       # N s/m, log-uniform
+
+
+def draw_pneumatic(rng: np.random.Generator, base: MachineConfig | None = None
+                   ) -> MachineConfig:
+    """A pneumatic tester drawn from `rng` (lid and drawer testers are drawn by the door env:
+    DoorEnv.draw_episode, then DoorEnv.machine_config)."""
+    base = base or MachineConfig(kind="pneumatic")
+    if base.kind != "pneumatic":
+        raise ValueError(f"a {base.kind!r} machine is not pneumatic")
+
+    def log_uniform(lo_hi):
+        return float(np.exp(rng.uniform(*np.log(lo_hi))))
+
+    extra = 0.145 if base.slide == "out" else 0.0
+    return variant(base, travel=float(rng.uniform(*PNEUMATIC_TRAVEL)) + extra,
+                   pneumatic_speed=float(rng.uniform(*PNEUMATIC_SPEED)),
+                   lid_friction=log_uniform(PNEUMATIC_FRICTION),
+                   lid_damping=log_uniform(PNEUMATIC_DAMPING))

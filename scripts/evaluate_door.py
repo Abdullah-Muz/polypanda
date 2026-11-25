@@ -9,6 +9,9 @@ Usage:
   uv run python scripts/evaluate_door.py --policy feel --set eval_sets/door_dev_v1.json
 Writes results/v4/door/<policy>_<set>.json: one row per episode and a summary (success with its
 95 % Wilson interval, per command x slide x spring cell, steps to success, peak force, slams).
+
+v4.1: a set with drawers (episodes with "kind", scripts/make_door_sets.py --kinds) runs in a scene
+with the kinds it holds; a drawer's slide is "toward" (the robot) in the cells.
 """
 
 from __future__ import annotations
@@ -53,9 +56,16 @@ def _make_actor(policy: str, env):
 
 def _run_chunk(args) -> list[dict]:
     policy, episodes, indices = args
-    from polypanda.environments.door import DoorEnv
+    from dataclasses import replace
+
+    from polypanda.environments.door import DOOR_KINDS, DoorConfig, DoorEnv
     from polypanda.evaluation.policies import run_env_cls
-    env = run_env_cls(policy[4:])() if policy.startswith("run:") else DoorEnv()
+    # a set with drawers (v4.1: episodes with "kind") needs a scene with them; v4.0's sets have
+    # lids only, and run in v4.0's scene
+    kinds = tuple(k for k in DOOR_KINDS if any(ep.get("kind", "lid") == k for ep in episodes))
+    config = (None if kinds == ("lid",) else
+              replace(DoorConfig(), variation=replace(DoorConfig().variation, kinds=kinds)))
+    env = run_env_cls(policy[4:])(config) if policy.startswith("run:") else DoorEnv(config)
     act, reset, script = _make_actor(policy, env)
     rows = []
     for i in indices:
@@ -80,6 +90,8 @@ def _run_chunk(args) -> list[dict]:
             "flipped": bool(getattr(script, "flipped", False)),
             "retries": int(getattr(script, "tries", 0)),
         })
+        if "kind" in ep:              # (v4.1 sets: the tester's kind)
+            rows[-1]["kind"] = ep["kind"]
     return rows
 
 

@@ -19,6 +19,13 @@ where stated.
 All three hook the bar with open fingers, as the expert (control/scripted_door.py) and the line's
 scripted door do, and move along the slide at the line's door speed (0.05 m/s) at first. The
 feel script is also the source of the demonstrations: it decides from what the policy can see.
+
+**Drawers (v4.1).** Every script knows which kind of tester it faces (a drawer is plain to see,
+and a cell knows its testers), and so that a drawer opens toward the robot: it never tries the
+other way. It believes the nominal drawer (MachineConfig(kind="drawer")): its travel, the bar's
+16 mm width (where to come down behind it: scripted_door.hook_offset) and its 3.5 cm stand-off
+(the slack before the finger meets the plate when closing). The camera script sees the bar; the
+nominal one believes it where the nominal drawer has it.
 """
 
 from __future__ import annotations
@@ -26,12 +33,19 @@ from __future__ import annotations
 import numpy as np
 
 from polypanda.control.ik import closing_yaw
-from polypanda.control.scripted_door import FINGER_SPAN, DoorExpert
+from polypanda.control.scripted_door import (
+    DoorExpert,
+    back_off_for,
+    hook_offset,
+    hook_slack,
+    reopen_reach,
+)
 from polypanda.simulation.machine import MachineConfig
 from polypanda.simulation.panda import tcp_position
 
 MODES = ("nominal", "camera", "feel", "feel_v2")
 NOMINAL = MachineConfig()
+NOMINAL_DRAWER = MachineConfig(kind="drawer")
 NOMINAL_OUT_TRAVEL = 0.27        # the line's outward lid (evaluation/tending.make_variant)
 
 
@@ -53,6 +67,8 @@ class BaselineDoor(DoorExpert):
     reopen: float = 0.04          # m a lid is pulled back open for a retry (a run-up)
     retry_gain: float = 1.6       # each retry pushes this much faster
     max_open: float = 0.30        # m of lid travel the feel script pushes at most
+    drawer_stop_force: float = 18.0  # N: a drawer's stop (a free drawer resists with at most
+    #                               ~12 N, and the finger pushing it shut gives way: below)
 
     def __init__(self, env, mode: str) -> None:
         if mode not in MODES:
@@ -64,6 +80,7 @@ class BaselineDoor(DoorExpert):
     def reset(self) -> None:
         super().reset()
         self.belief = None
+        self.clear_give = 0.0     # (a drawer: how far the closing finger had given way)
         self.flipped = False      # tried the other way
         self.confirmed = False    # the lid moved: the way is right, never flip again
         self.restart = False      # after backing off: push again from where the hand is
@@ -79,6 +96,8 @@ class BaselineDoor(DoorExpert):
     def _believe(self) -> dict:
         env = self.env
         radial, tangent = self._station()
+        if env.machine.cfg.kind == "drawer":
+            return self._believe_drawer(radial)
         if self.mode == "nominal":
             cfg = NOMINAL
             travel = cfg.travel
@@ -100,9 +119,38 @@ class BaselineDoor(DoorExpert):
                 axis = axis if axis @ -tangent > 0 else -axis  # the nominal sense: right
                 travel = NOMINAL.travel
             q = 0.0 if env.command == "open" else travel - self.open_margin
-        return {"handle": handle, "axis": axis, "travel": travel, "q": q}
+        return {"handle": handle, "axis": axis, "travel": travel, "q": q, "cfg": NOMINAL}
+
+    def _believe_drawer(self, radial: np.ndarray) -> dict:
+        """A drawer: it opens toward the robot, so the way is known (`confirmed`); the nominal
+        drawer's travel; the handle where the nominal drawer has it (nominal) or where the camera
+        sees it, the slide's axis across the seen bar, toward the robot."""
+        env, cfg = self.env, NOMINAL_DRAWER
+        self.confirmed = True
+        q = 0.0 if env.command == "open" else cfg.travel - self.open_margin
+        if self.mode == "nominal":
+            centre = np.array([env.config.scene.radius, 0.0, 0.0]) + cfg.handle_centre(q)
+            c, s = np.cos(env.frame), np.sin(env.frame)
+            handle = (np.array([[c, -s, 0.0], [s, c, 0.0], [0.0, 0.0, 1.0]]) @ centre
+                      + env.base)
+            axis = -radial
+        else:
+            handle = env._seen_handle.copy()
+            yaw = env._seen_yaw
+            axis = np.array([-np.sin(yaw), np.cos(yaw), 0.0])  # across the bar
+            axis = axis if axis @ radial < 0 else -axis      # toward the robot
+        return {"handle": handle, "axis": axis, "travel": cfg.travel, "q": q, "cfg": cfg}
 
     # --- policy -----------------------------------------------------------------------------
+    def _give(self) -> float:
+        """How far the finger pushing a drawer shut has given way (m): it pushes the plate with
+        its back, against the hand's finger servo (scene.finger_stiffness, 1000 N/m), not its
+        open stop as a pad does, so it yields 1 mm per newton the robot feels. Backing off, the
+        hand moves this much more before the finger leaves the plate. 0 on a lid, and opening."""
+        if self.belief["cfg"].kind != "drawer" or self.env.command != "close":
+            return 0.0
+        return float(np.linalg.norm(self.env._force)) / self.env.config.scene.finger_stiffness
+
     def _lag(self) -> float:
         """How far the measured TCP trails the commanded target along the push."""
         env = self.env
@@ -110,8 +158,9 @@ class BaselineDoor(DoorExpert):
         return float(lag @ (self.belief["axis"] * self.sign))
 
     def _begin_push(self) -> None:
-        b, cfg = self.belief, NOMINAL
-        self.slack = FINGER_SPAN / 2 - cfg.handle_radius + 0.004
+        b = self.belief
+        cfg = b["cfg"]
+        self.slack = hook_slack(cfg, self.env.command)
         if self.start is None:
             self.start = self.env.adapter.target_pos.copy()
         self.s = 0.0
@@ -135,6 +184,9 @@ class BaselineDoor(DoorExpert):
         b = self.belief
         handle, axis = b["handle"], b["axis"]
         tcp = tcp_position(env.data, env.arm)
+        hook = handle                 # where the TCP comes down (a drawer's: off the bar's centre)
+        if b["cfg"].kind == "drawer":
+            hook = handle + axis * hook_offset(b["cfg"])
         if self.yaw_goal is None:     # fingers across the bar, along the slide: the nearer way
             psi = float(np.arctan2(axis[1], axis[0]))
             cur = closing_yaw(env.adapter.target_R)
@@ -144,14 +196,14 @@ class BaselineDoor(DoorExpert):
         dt = env.adapter.control_dt
         feel = self.mode == "feel"
         if self.phase == "approach":
-            goal = handle + [0.0, 0.0, self.hover]
+            goal = hook + [0.0, 0.0, self.hover]
             move, yaw = self._move(goal, self.approach_speed), self._yaw_action()
             if (np.linalg.norm(goal - tcp) < 0.006 and abs(yaw) * env.adapter.max_rot < 0.03) \
                     or self.count > 120:
                 self._next("descend")
         elif self.phase == "descend":
-            move, yaw = self._move(handle, self.descend_speed), self._yaw_action()
-            if np.linalg.norm(handle - tcp) < 0.002 or self.count > 60:
+            move, yaw = self._move(hook, self.descend_speed), self._yaw_action()
+            if np.linalg.norm(hook - tcp) < 0.002 or self.count > 60:
                 self.start = env.adapter.target_pos.copy()
                 self._begin_push()
         elif self.phase == "push":
@@ -166,7 +218,9 @@ class BaselineDoor(DoorExpert):
             force = float(np.linalg.norm(env._force))
             if feel and env._touch_at is not None and moved >= wrong:
                 self.confirmed = True
-            limit_lag, limit_force = ((self.blocked_lag, self.stop_force) if self.confirmed
+            stop_force = (self.drawer_stop_force if b["cfg"].kind == "drawer"
+                          else self.stop_force)
+            limit_lag, limit_force = ((self.blocked_lag, stop_force) if self.confirmed
                                       else (self.probe_lag, self.probe_force))
             if self.fresh_touch and env._touch_at is None:
                 self.fresh_touch = False                     # off the bar: the old touch is gone
@@ -188,8 +242,9 @@ class BaselineDoor(DoorExpert):
                         and self.tries < self.retries:
                     self.tries += 1                           # shut, not latched: again, faster
                     self.speed = min(self.speed * self.retry_gain, self.max_speed)
-                    self.back_to = self.s - (FINGER_SPAN - 2 * NOMINAL.handle_radius
-                                             + self.reopen)
+                    self.back_to = self.s - (reopen_reach(b["cfg"]) + self.reopen)
+                    if b["cfg"].kind == "drawer":
+                        self.back_to -= self._give()
                     self.restart = True
                     self._next("back")
                 else:
@@ -213,7 +268,12 @@ class BaselineDoor(DoorExpert):
                         self.start = self.start + axis * self.sign * self.s
                     self._begin_push()
         elif self.phase == "clear":                          # back off the bar, then rise
-            goal = self.start + axis * self.sign * (self.s - self.back_off)
+            back = back_off_for(b["cfg"], self.back_off)
+            if b["cfg"].kind == "drawer":                    # (and off a finger that gave way)
+                if self.count == 1:
+                    self.clear_give = self._give()
+                back += self.clear_give
+            goal = self.start + axis * self.sign * (self.s - back)
             move = self._move(goal, self.back_speed, measured=False)
             if np.linalg.norm(goal - env.adapter.target_pos) < 1e-4 or self.count > 40:
                 self.wait += 1

@@ -8,6 +8,10 @@ Usage:
   uv run python scripts/make_door_sets.py --name door_dev_v1 --seed 20261124
   uv run python scripts/make_door_sets.py --name door_final_v1 --seed 20261125
   uv run python scripts/make_door_sets.py --name door_stretch_v1 --seed 20261126 --stretch
+v4.1 (development only): drawers, `--kinds drawer` (or `--kinds lid drawer`), e.g. the 50
+drawers the scripts were first measured on (results/v4/door/*_door_drawer_probe_v1.json):
+  uv run python scripts/make_door_sets.py --name door_drawer_probe_v1 --seed 4101 --n 50 \\
+    --kinds drawer
 """
 
 import argparse
@@ -18,7 +22,12 @@ from pathlib import Path
 
 import numpy as np
 
-from polypanda.environments.door import COMMANDS, DoorConfig, DoorEnv
+from polypanda.environments.door import COMMANDS, DOOR_KINDS, DoorConfig, DoorEnv
+from polypanda.simulation.machine import ALL_SLIDES
+
+# DoorVariationConfig's v4.1 fields (tester kinds; drawers)
+TESTER_FIELDS = ("kinds", "travel_drawer", "drawer_spring_prob", "handle_offset_drawer",
+                 "handle_shift_drawer", "handle_height_drawer")
 
 # beyond the training ranges (docs/v4_targets.md). Outward lids keep their handle ranges: their
 # handle already ends near the arm's reach.
@@ -32,14 +41,18 @@ STRETCH = {
 }
 
 
-def make_set(n: int, seed: int, stretch: bool) -> tuple[list[dict], dict]:
+def make_set(n: int, seed: int, stretch: bool, kinds=("lid",)) -> tuple[list[dict], dict]:
     cfg = DoorConfig()
     if stretch:
         cfg = replace(cfg, variation=replace(cfg.variation, **STRETCH))
+    cfg = replace(cfg, variation=replace(cfg.variation, kinds=tuple(kinds)))
     env = DoorEnv(cfg)
     rng = np.random.default_rng(seed)
     episodes = [env.draw_episode(rng, COMMANDS[k % 2]) for k in range(n)]
-    return episodes, asdict(cfg.variation)
+    variation = asdict(cfg.variation)
+    if tuple(kinds) == ("lid",):    # v4.0's sets record v4.0's fields only (byte-identical files)
+        variation = {k: v for k, v in variation.items() if k not in TESTER_FIELDS}
+    return episodes, variation
 
 
 def main() -> None:
@@ -48,9 +61,11 @@ def main() -> None:
     p.add_argument("--seed", type=int, required=True)
     p.add_argument("--n", type=int, default=400)
     p.add_argument("--stretch", action="store_true")
+    p.add_argument("--kinds", nargs="+", default=["lid"], choices=DOOR_KINDS,
+                   help="tester kinds drawn (v4.1): lid (v4.0's sets), drawer, or both")
     p.add_argument("--out-dir", type=Path, default=Path("eval_sets"))
     args = p.parse_args()
-    episodes, variation = make_set(args.n, args.seed, args.stretch)
+    episodes, variation = make_set(args.n, args.seed, args.stretch, args.kinds)
     body = json.dumps(episodes, sort_keys=True)
     digest = hashlib.sha256(body.encode()).hexdigest()[:12]
     out = {"name": args.name, "seed": args.seed, "n": args.n, "stretch": args.stretch,
@@ -58,7 +73,7 @@ def main() -> None:
     path = args.out_dir / f"{args.name}.json"
     path.write_text(json.dumps(out, indent=1, sort_keys=True))
     springy = sum(e["spring"] > 0 for e in episodes)
-    slides = {s: sum(e["slide"] == s for e in episodes) for s in ("right", "left", "out")}
+    slides = {s: sum(e["slide"] == s for e in episodes) for s in ALL_SLIDES}
     print(f"{path}: {args.n} episodes, digest {digest}, springy {springy}, slides {slides}")
 
 
