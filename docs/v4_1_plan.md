@@ -8,7 +8,9 @@
 
 **Industry.** Contract electronics manufacturing: the companies that build and test devices for brands (Foxconn, Jabil, Flex). Their lines are **high-mix**: products change every few weeks, and the test floor is a mixed fleet of testers from different vendors. Loading test stations is the most common cobot job in electronics (Sennheiser's UR5 loads boards into testers, output up 33 %; Universal Robots' guidance for in-circuit testing), and it is still often done by hand: shield-box vendors write that the device is loaded manually and the rest is automated (section 9).
 
-**The part.** A small electronic module, for example an IoT sensor module: a rigid board in a plastic housing, about 50 × 40 × 15 mm, with a connector edge. It is **keyed**: it fits its test nest only one way round.
+**The part.** A small electronic module, for example an industrial sensor module: a rigid board in a plastic housing, with contact pads underneath that meet the nest's pogo pins. It is **keyed**: it fits its test nest only one way round.
+
+*Amended 2026-11-24, at the start of Phase 2:* the module is **40 × 40 × 60 mm**, the size of the cell's existing parts, not the 50 × 40 × 15 mm first written here. Every pick, place and grasp the cell has (the learned grasp included) works on that size unchanged, and v4.0's keyed rib gives it its one-way fit; it is drawn as a sensor module (dark housing, a board edge, a label). The nest is v4.0's machine pocket made tight with `machine.tight_nest` (clearance 0.25–0.5 mm, a small chamfer, keyed, stiff contacts on both sides via `simulation/contacts.py` and `LineConfig.part_contact`).
 
 **The testers.** RF shield boxes and functional testers on the bench. The module goes into a **nest** with a tight fit (a few tenths of a millimetre) and a small chamfer, the box closes, and a test runs for 30–60 s. Real boxes come in three kinds, and the cell has one of each (all three differ from tester to tester in size, lid travel, latch and nest position, drawn per machine as in v4.0):
 

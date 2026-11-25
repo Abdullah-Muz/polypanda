@@ -31,6 +31,7 @@ from dataclasses import dataclass
 import mujoco
 import numpy as np
 
+from polypanda.simulation.contacts import contact
 from polypanda.simulation.scenes import CubeIndices
 
 EMPTY, LOADED, RUNNING, DONE, FAULT = "empty", "loaded", "running", "done", "fault"
@@ -115,6 +116,8 @@ class MachineConfig:
     rib: Rib = Rib()                  # the rib the slot is cut for
     key_clearance: float = 0.002      # m: slot width = rib + 2 x this; slot depth = rib + this
     key_tolerance: float = 10.0       # deg: a seated keyed part's rib points at the slot within
+    # the pocket's contact setting (simulation/contacts.py): "stiff" for tight nests (v4.1)
+    contact: str = "default"
     # --- the cycle ---
     cycle_s: float = 40.0             # s of simulated time
 
@@ -123,6 +126,9 @@ class MachineConfig:
             raise ValueError(f"slide must be one of {SLIDES}, not {self.slide!r}")
         if self.keyed and self.rib.width / 2 + self.key_clearance >= _CUBE_HALF:
             raise ValueError("the key slot is wider than the part")
+        contact(self.contact)             # refuses an unknown setting
+        if not 0.0 < self.pocket_straight <= self.pocket_depth:
+            raise ValueError("the pocket's straight part must be within its depth")
 
     @property
     def key_yaw(self) -> float:
@@ -157,6 +163,20 @@ class MachineConfig:
         a = self.slide_axis
         return (self.bar_axis * self.handle_offset + a * (self.handle_shift + lid_q)
                 + np.array([0.0, 0.0, self.lid_top + self.handle_height]))
+
+
+def tight_nest(cfg: MachineConfig | None = None, clearance: float = 0.0003,
+               chamfer: float = 0.001) -> MachineConfig:
+    """A v4.1 test nest (docs/v4_1_plan.md, sections 1 and 3): the pocket `clearance` per side
+    (at least 0.25 mm, what stiff contacts resolve), a 45-degree `chamfer` on its rim instead of
+    Phase 0's 5 mm lead-in, keyed, with stiff contacts. The part needs `part_contact="stiff"` on
+    the line too."""
+    from dataclasses import replace
+    cfg = cfg or MachineConfig()
+    if clearance < 0.00025:
+        raise ValueError("stiff contacts resolve clearances of 0.25 mm and wider (Phase 0)")
+    return replace(cfg, clearance=clearance, pocket_straight=cfg.pocket_depth - chamfer,
+                   keyed=True, contact="stiff")
 
 
 def add_machine(spec: mujoco.MjSpec, name: str, xy, angle_deg: float,
@@ -211,7 +231,9 @@ def _add_pocket(body, name: str, cfg: MachineConfig) -> None:
     normal = np.array([-np.sin(theta), 0.0, np.cos(theta)])
     lead_pos = np.array([a, 0.0, cfg.pocket_straight]) + along * length / 2 - normal * half_thick
     lead_quat = [np.cos(theta / 2), 0.0, -np.sin(theta / 2), 0.0]
-    extra = {"solref": [0.01, 1.0], "rgba": [0.36, 0.4, 0.44, 1.0]}
+    extra = {**contact(cfg.contact), "rgba": [0.36, 0.4, 0.44, 1.0]}
+    if cfg.contact == "default":
+        extra.pop("solimp")             # as before v4.1: the geoms' own default solimp
     box = mujoco.mjtGeom.mjGEOM_BOX
     w = cfg.pocket_wall
     for k in range(4):

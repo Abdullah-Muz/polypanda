@@ -62,6 +62,9 @@ class LineConfig:
     # the look (visual only; with the cell's dressing on): "factory" (v4.0's automotive hall) or
     # "electronics" (v4.1's electronics test cell, simulation/electronics.py)
     theme: str = "factory"
+    # the parts' contact setting (simulation/contacts.py): "stiff" with v4.1's tight nests
+    # (machine.tight_nest), so neither side of a tight fit is soft
+    part_contact: str = "default"
 
     def station_xy(self, stop: float, angle_deg: float) -> np.ndarray:
         """Where a station at `angle_deg` in front of rail stop `stop` sits on the bench."""
@@ -80,6 +83,14 @@ def build_line_spec(cfg: LineConfig | None = None) -> mujoco.MjSpec:
     if cfg.keyed_parts:
         for k in range(cfg.cell.n_cubes):
             add_rib(spec, CUBE_NAME.format(k), cfg.rib)
+    if cfg.part_contact != "default":
+        from polypanda.simulation.contacts import contact
+        c = contact(cfg.part_contact)
+        for k in range(cfg.cell.n_cubes):
+            name = CUBE_NAME.format(k)
+            for g in [spec.geom(name), spec.geom(RIB_GEOM.format(name))]:
+                if g is not None:
+                    g.solref, g.solimp = c["solref"], c["solimp"]
     if cfg.theme not in ("factory", "electronics"):
         raise ValueError(f"unknown theme {cfg.theme!r}")
     if cfg.theme == "electronics" and cfg.cell.dressing:
