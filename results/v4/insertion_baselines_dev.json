@@ -1,0 +1,3962 @@
+{
+ "name": "nest_insertion_probe",
+ "what": "v4.1 Phase 0 probe: does a scripted straight-down insertion seat a part in a TIGHT test nest?",
+ "seed": 20261124,
+ "n_per_condition": 20,
+ "errors_mm": [
+  0.0,
+  1.0,
+  2.0,
+  3.0
+ ],
+ "depth_mm": 10.0,
+ "seated_means": {
+  "gap_mm": 1.0,
+  "tilt_deg": 2.0,
+  "offset_within_clearance_plus_mm": 0.2
+ },
+ "conditions": {
+  "c0.25mm_ch0.5mm_yaw0deg_stiff": {
+   "0mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 18,
+    "rate": 0.9,
+    "ci95": [
+     0.6989617935882066,
+     0.9721341060158468
+    ],
+    "outcomes": {
+     "jammed_on_rim": 2,
+     "seated": 18
+    },
+    "peak_force_n": {
+     "median": 7.393,
+     "p95": 30.807,
+     "max": 30.908
+    },
+    "peak_depth_mm": {
+     "median": 0.038,
+     "p95": 0.152,
+     "max": 0.161
+    },
+    "gap_mm": {
+     "median": -0.019,
+     "p95": 4.128,
+     "max": 4.166
+    },
+    "tilt_deg": {
+     "median": 0.0,
+     "p95": 15.005,
+     "max": 15.192
+    },
+    "insert_s": {
+     "median": 6.4,
+     "p95": 6.4,
+     "max": 6.4
+    },
+    "searched": 0,
+    "gripper_touched_rim": 0
+   },
+   "1mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 8,
+    "rate": 0.4,
+    "ci95": [
+     0.21880396741419272,
+     0.613422057684794
+    ],
+    "outcomes": {
+     "jammed_on_rim": 12,
+     "seated": 8
+    },
+    "peak_force_n": {
+     "median": 31.453,
+     "p95": 41.493,
+     "max": 45.741
+    },
+    "peak_depth_mm": {
+     "median": 0.151,
+     "p95": 0.188,
+     "max": 0.199
+    },
+    "gap_mm": {
+     "median": 4.092,
+     "p95": 4.219,
+     "max": 4.23
+    },
+    "tilt_deg": {
+     "median": 14.824,
+     "p95": 15.458,
+     "max": 15.515
+    },
+    "insert_s": {
+     "median": 6.4,
+     "p95": 6.45,
+     "max": 6.45
+    },
+    "searched": 0,
+    "gripper_touched_rim": 0
+   },
+   "2mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 0,
+    "rate": 0.0,
+    "ci95": [
+     0.0,
+     0.16113012549493322
+    ],
+    "outcomes": {
+     "jammed_on_rim": 20
+    },
+    "peak_force_n": {
+     "median": 18.973,
+     "p95": 32.02,
+     "max": 36.796
+    },
+    "peak_depth_mm": {
+     "median": 0.105,
+     "p95": 0.179,
+     "max": 0.258
+    },
+    "gap_mm": {
+     "median": 4.242,
+     "p95": 8.123,
+     "max": 8.324
+    },
+    "tilt_deg": {
+     "median": 15.577,
+     "p95": 21.889,
+     "max": 38.754
+    },
+    "insert_s": {
+     "median": 6.425,
+     "p95": 6.5,
+     "max": 6.5
+    },
+    "searched": 0,
+    "gripper_touched_rim": 0
+   },
+   "3mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 0,
+    "rate": 0.0,
+    "ci95": [
+     0.0,
+     0.16113012549493322
+    ],
+    "outcomes": {
+     "jammed_on_rim": 20
+    },
+    "peak_force_n": {
+     "median": 16.619,
+     "p95": 29.538,
+     "max": 31.768
+    },
+    "peak_depth_mm": {
+     "median": 0.094,
+     "p95": 0.147,
+     "max": 0.159
+    },
+    "gap_mm": {
+     "median": 4.704,
+     "p95": 9.999,
+     "max": 9.999
+    },
+    "tilt_deg": {
+     "median": 15.457,
+     "p95": 42.013,
+     "max": 47.012
+    },
+    "insert_s": {
+     "median": 6.45,
+     "p95": 6.5,
+     "max": 6.5
+    },
+    "searched": 0,
+    "gripper_touched_rim": 0
+   }
+  },
+  "c0.25mm_ch0.5mm_yaw1deg_stiff": {
+   "0mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 20,
+    "rate": 1.0,
+    "ci95": [
+     0.8388698745050667,
+     1.0
+    ],
+    "outcomes": {
+     "seated": 20
+    },
+    "peak_force_n": {
+     "median": 9.605,
+     "p95": 11.583,
+     "max": 11.851
+    },
+    "peak_depth_mm": {
+     "median": 0.045,
+     "p95": 0.057,
+     "max": 0.058
+    },
+    "gap_mm": {
+     "median": -0.019,
+     "p95": -0.019,
+     "max": -0.019
+    },
+    "tilt_deg": {
+     "median": 0.0,
+     "p95": 0.0,
+     "max": 0.0
+    },
+    "insert_s": {
+     "median": 6.4,
+     "p95": 6.4,
+     "max": 6.4
+    },
+    "searched": 0,
+    "gripper_touched_rim": 0
+   },
+   "1mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 7,
+    "rate": 0.35,
+    "ci95": [
+     0.18118954786794464,
+     0.5671494897805354
+    ],
+    "outcomes": {
+     "jammed_on_rim": 13,
+     "seated": 7
+    },
+    "peak_force_n": {
+     "median": 29.881,
+     "p95": 41.42,
+     "max": 41.493
+    },
+    "peak_depth_mm": {
+     "median": 0.149,
+     "p95": 0.187,
+     "max": 0.188
+    },
+    "gap_mm": {
+     "median": 4.096,
+     "p95": 4.219,
+     "max": 4.224
+    },
+    "tilt_deg": {
+     "median": 14.846,
+     "p95": 15.461,
+     "max": 15.484
+    },
+    "insert_s": {
+     "median": 6.45,
+     "p95": 6.453,
+     "max": 6.5
+    },
+    "searched": 0,
+    "gripper_touched_rim": 0
+   },
+   "2mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 0,
+    "rate": 0.0,
+    "ci95": [
+     0.0,
+     0.16113012549493322
+    ],
+    "outcomes": {
+     "jammed_on_rim": 20
+    },
+    "peak_force_n": {
+     "median": 17.415,
+     "p95": 32.558,
+     "max": 39.899
+    },
+    "peak_depth_mm": {
+     "median": 0.089,
+     "p95": 0.16,
+     "max": 0.181
+    },
+    "gap_mm": {
+     "median": 4.231,
+     "p95": 8.717,
+     "max": 8.785
+    },
+    "tilt_deg": {
+     "median": 15.431,
+     "p95": 20.918,
+     "max": 20.925
+    },
+    "insert_s": {
+     "median": 6.45,
+     "p95": 6.5,
+     "max": 6.5
+    },
+    "searched": 0,
+    "gripper_touched_rim": 0
+   },
+   "3mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 0,
+    "rate": 0.0,
+    "ci95": [
+     0.0,
+     0.16113012549493322
+    ],
+    "outcomes": {
+     "jammed_on_rim": 20
+    },
+    "peak_force_n": {
+     "median": 16.545,
+     "p95": 27.446,
+     "max": 41.355
+    },
+    "peak_depth_mm": {
+     "median": 0.088,
+     "p95": 0.147,
+     "max": 0.185
+    },
+    "gap_mm": {
+     "median": 7.99,
+     "p95": 9.999,
+     "max": 9.999
+    },
+    "tilt_deg": {
+     "median": 7.338,
+     "p95": 37.749,
+     "max": 62.522
+    },
+    "insert_s": {
+     "median": 6.45,
+     "p95": 6.5,
+     "max": 6.5
+    },
+    "searched": 0,
+    "gripper_touched_rim": 0
+   }
+  },
+  "c0.25mm_ch0.5mm_yaw2deg_stiff": {
+   "0mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 20,
+    "rate": 1.0,
+    "ci95": [
+     0.8388698745050667,
+     1.0
+    ],
+    "outcomes": {
+     "seated": 20
+    },
+    "peak_force_n": {
+     "median": 12.926,
+     "p95": 20.501,
+     "max": 22.914
+    },
+    "peak_depth_mm": {
+     "median": 0.073,
+     "p95": 0.116,
+     "max": 0.122
+    },
+    "gap_mm": {
+     "median": -0.019,
+     "p95": -0.019,
+     "max": -0.019
+    },
+    "tilt_deg": {
+     "median": 0.0,
+     "p95": 0.0,
+     "max": 0.0
+    },
+    "insert_s": {
+     "median": 6.4,
+     "p95": 6.4,
+     "max": 6.4
+    },
+    "searched": 0,
+    "gripper_touched_rim": 0
+   },
+   "1mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 1,
+    "rate": 0.05,
+    "ci95": [
+     0.008881219432873136,
+     0.23613589351256675
+    ],
+    "outcomes": {
+     "seated": 1,
+     "jammed_on_rim": 19
+    },
+    "peak_force_n": {
+     "median": 24.584,
+     "p95": 40.803,
+     "max": 42.485
+    },
+    "peak_depth_mm": {
+     "median": 0.116,
+     "p95": 0.196,
+     "max": 0.26
+    },
+    "gap_mm": {
+     "median": 4.099,
+     "p95": 4.403,
+     "max": 8.162
+    },
+    "tilt_deg": {
+     "median": 14.862,
+     "p95": 15.639,
+     "max": 20.404
+    },
+    "insert_s": {
+     "median": 6.4,
+     "p95": 6.5,
+     "max": 6.5
+    },
+    "searched": 0,
+    "gripper_touched_rim": 0
+   },
+   "2mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 0,
+    "rate": 0.0,
+    "ci95": [
+     0.0,
+     0.16113012549493322
+    ],
+    "outcomes": {
+     "jammed_on_rim": 20
+    },
+    "peak_force_n": {
+     "median": 17.616,
+     "p95": 36.211,
+     "max": 37.168
+    },
+    "peak_depth_mm": {
+     "median": 0.092,
+     "p95": 0.169,
+     "max": 0.176
+    },
+    "gap_mm": {
+     "median": 4.19,
+     "p95": 9.302,
+     "max": 9.311
+    },
+    "tilt_deg": {
+     "median": 15.155,
+     "p95": 18.162,
+     "max": 19.437
+    },
+    "insert_s": {
+     "median": 6.45,
+     "p95": 6.553,
+     "max": 6.6
+    },
+    "searched": 0,
+    "gripper_touched_rim": 0
+   },
+   "3mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 0,
+    "rate": 0.0,
+    "ci95": [
+     0.0,
+     0.16113012549493322
+    ],
+    "outcomes": {
+     "jammed_on_rim": 20
+    },
+    "peak_force_n": {
+     "median": 16.57,
+     "p95": 24.786,
+     "max": 29.563
+    },
+    "peak_depth_mm": {
+     "median": 0.089,
+     "p95": 0.122,
+     "max": 0.146
+    },
+    "gap_mm": {
+     "median": 9.647,
+     "p95": 9.999,
+     "max": 9.999
+    },
+    "tilt_deg": {
+     "median": 3.633,
+     "p95": 20.972,
+     "max": 20.997
+    },
+    "insert_s": {
+     "median": 6.45,
+     "p95": 6.5,
+     "max": 6.5
+    },
+    "searched": 0,
+    "gripper_touched_rim": 0
+   }
+  },
+  "c0.25mm_ch1mm_yaw0deg_stiff": {
+   "0mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 20,
+    "rate": 1.0,
+    "ci95": [
+     0.8388698745050667,
+     1.0
+    ],
+    "outcomes": {
+     "seated": 20
+    },
+    "peak_force_n": {
+     "median": 12.396,
+     "p95": 12.916,
+     "max": 12.925
+    },
+    "peak_depth_mm": {
+     "median": 0.037,
+     "p95": 0.054,
+     "max": 0.059
+    },
+    "gap_mm": {
+     "median": -0.019,
+     "p95": -0.019,
+     "max": -0.019
+    },
+    "tilt_deg": {
+     "median": 0.0,
+     "p95": 0.0,
+     "max": 0.0
+    },
+    "insert_s": {
+     "median": 6.4,
+     "p95": 6.4,
+     "max": 6.4
+    },
+    "searched": 0,
+    "gripper_touched_rim": 0
+   },
+   "1mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 13,
+    "rate": 0.65,
+    "ci95": [
+     0.43285051021946463,
+     0.8188104521320554
+    ],
+    "outcomes": {
+     "jammed_on_rim": 7,
+     "seated": 13
+    },
+    "peak_force_n": {
+     "median": 28.24,
+     "p95": 39.242,
+     "max": 40.925
+    },
+    "peak_depth_mm": {
+     "median": 0.146,
+     "p95": 0.187,
+     "max": 0.197
+    },
+    "gap_mm": {
+     "median": -0.019,
+     "p95": 4.211,
+     "max": 4.217
+    },
+    "tilt_deg": {
+     "median": 0.0,
+     "p95": 15.42,
+     "max": 15.451
+    },
+    "insert_s": {
+     "median": 6.4,
+     "p95": 6.45,
+     "max": 6.45
+    },
+    "searched": 0,
+    "gripper_touched_rim": 0
+   },
+   "2mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 0,
+    "rate": 0.0,
+    "ci95": [
+     0.0,
+     0.16113012549493322
+    ],
+    "outcomes": {
+     "jammed_on_rim": 20
+    },
+    "peak_force_n": {
+     "median": 28.627,
+     "p95": 42.432,
+     "max": 43.761
+    },
+    "peak_depth_mm": {
+     "median": 0.145,
+     "p95": 0.191,
+     "max": 0.194
+    },
+    "gap_mm": {
+     "median": 4.141,
+     "p95": 4.244,
+     "max": 4.257
+    },
+    "tilt_deg": {
+     "median": 15.067,
+     "p95": 15.59,
+     "max": 15.656
+    },
+    "insert_s": {
+     "median": 6.375,
+     "p95": 6.5,
+     "max": 6.5
+    },
+    "searched": 0,
+    "gripper_touched_rim": 0
+   },
+   "3mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 0,
+    "rate": 0.0,
+    "ci95": [
+     0.0,
+     0.16113012549493322
+    ],
+    "outcomes": {
+     "jammed_on_rim": 19,
+     "outside": 1
+    },
+    "peak_force_n": {
+     "median": 17.076,
+     "p95": 33.463,
+     "max": 40.345
+    },
+    "peak_depth_mm": {
+     "median": 0.102,
+     "p95": 0.195,
+     "max": 0.3
+    },
+    "gap_mm": {
+     "median": 4.247,
+     "p95": 8.046,
+     "max": 8.067
+    },
+    "tilt_deg": {
+     "median": 15.741,
+     "p95": 25.236,
+     "max": 108.851
+    },
+    "insert_s": {
+     "median": 6.425,
+     "p95": 6.503,
+     "max": 6.55
+    },
+    "searched": 0,
+    "gripper_touched_rim": 0
+   }
+  },
+  "c0.25mm_ch1mm_yaw1deg_stiff": {
+   "0mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 20,
+    "rate": 1.0,
+    "ci95": [
+     0.8388698745050667,
+     1.0
+    ],
+    "outcomes": {
+     "seated": 20
+    },
+    "peak_force_n": {
+     "median": 12.904,
+     "p95": 13.199,
+     "max": 13.273
+    },
+    "peak_depth_mm": {
+     "median": 0.065,
+     "p95": 0.076,
+     "max": 0.077
+    },
+    "gap_mm": {
+     "median": -0.019,
+     "p95": -0.019,
+     "max": -0.019
+    },
+    "tilt_deg": {
+     "median": 0.0,
+     "p95": 0.0,
+     "max": 0.0
+    },
+    "insert_s": {
+     "median": 6.4,
+     "p95": 6.4,
+     "max": 6.4
+    },
+    "searched": 0,
+    "gripper_touched_rim": 0
+   },
+   "1mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 14,
+    "rate": 0.7,
+    "ci95": [
+     0.4810232237710206,
+     0.854524726031006
+    ],
+    "outcomes": {
+     "jammed_on_rim": 6,
+     "seated": 14
+    },
+    "peak_force_n": {
+     "median": 21.328,
+     "p95": 37.271,
+     "max": 37.352
+    },
+    "peak_depth_mm": {
+     "median": 0.112,
+     "p95": 0.176,
+     "max": 0.176
+    },
+    "gap_mm": {
+     "median": -0.019,
+     "p95": 4.142,
+     "max": 4.143
+    },
+    "tilt_deg": {
+     "median": 0.0,
+     "p95": 15.073,
+     "max": 15.079
+    },
+    "insert_s": {
+     "median": 6.4,
+     "p95": 6.45,
+     "max": 6.45
+    },
+    "searched": 0,
+    "gripper_touched_rim": 0
+   },
+   "2mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 0,
+    "rate": 0.0,
+    "ci95": [
+     0.0,
+     0.16113012549493322
+    ],
+    "outcomes": {
+     "jammed_on_rim": 20
+    },
+    "peak_force_n": {
+     "median": 26.452,
+     "p95": 36.4,
+     "max": 38.051
+    },
+    "peak_depth_mm": {
+     "median": 0.139,
+     "p95": 0.171,
+     "max": 0.176
+    },
+    "gap_mm": {
+     "median": 4.127,
+     "p95": 4.247,
+     "max": 4.251
+    },
+    "tilt_deg": {
+     "median": 15.002,
+     "p95": 15.6,
+     "max": 15.625
+    },
+    "insert_s": {
+     "median": 6.4,
+     "p95": 6.503,
+     "max": 6.55
+    },
+    "searched": 0,
+    "gripper_touched_rim": 0
+   },
+   "3mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 0,
+    "rate": 0.0,
+    "ci95": [
+     0.0,
+     0.16113012549493322
+    ],
+    "outcomes": {
+     "jammed_on_rim": 20
+    },
+    "peak_force_n": {
+     "median": 16.713,
+     "p95": 33.331,
+     "max": 37.336
+    },
+    "peak_depth_mm": {
+     "median": 0.094,
+     "p95": 0.173,
+     "max": 0.176
+    },
+    "gap_mm": {
+     "median": 4.247,
+     "p95": 8.095,
+     "max": 9.999
+    },
+    "tilt_deg": {
+     "median": 15.662,
+     "p95": 64.587,
+     "max": 64.84
+    },
+    "insert_s": {
+     "median": 6.45,
+     "p95": 6.503,
+     "max": 6.55
+    },
+    "searched": 0,
+    "gripper_touched_rim": 0
+   }
+  },
+  "c0.25mm_ch1mm_yaw2deg_stiff": {
+   "0mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 20,
+    "rate": 1.0,
+    "ci95": [
+     0.8388698745050667,
+     1.0
+    ],
+    "outcomes": {
+     "seated": 20
+    },
+    "peak_force_n": {
+     "median": 14.333,
+     "p95": 19.618,
+     "max": 23.597
+    },
+    "peak_depth_mm": {
+     "median": 0.081,
+     "p95": 0.114,
+     "max": 0.115
+    },
+    "gap_mm": {
+     "median": -0.019,
+     "p95": -0.019,
+     "max": -0.019
+    },
+    "tilt_deg": {
+     "median": 0.0,
+     "p95": 0.0,
+     "max": 0.0
+    },
+    "insert_s": {
+     "median": 6.4,
+     "p95": 6.4,
+     "max": 6.4
+    },
+    "searched": 0,
+    "gripper_touched_rim": 0
+   },
+   "1mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 15,
+    "rate": 0.75,
+    "ci95": [
+     0.5312949900419365,
+     0.888139947210597
+    ],
+    "outcomes": {
+     "seated": 15,
+     "jammed_on_rim": 5
+    },
+    "peak_force_n": {
+     "median": 29.576,
+     "p95": 36.324,
+     "max": 43.715
+    },
+    "peak_depth_mm": {
+     "median": 0.153,
+     "p95": 0.175,
+     "max": 0.195
+    },
+    "gap_mm": {
+     "median": -0.019,
+     "p95": 4.062,
+     "max": 4.079
+    },
+    "tilt_deg": {
+     "median": 0.0,
+     "p95": 14.679,
+     "max": 14.761
+    },
+    "insert_s": {
+     "median": 6.4,
+     "p95": 6.603,
+     "max": 6.65
+    },
+    "searched": 0,
+    "gripper_touched_rim": 0
+   },
+   "2mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 0,
+    "rate": 0.0,
+    "ci95": [
+     0.0,
+     0.16113012549493322
+    ],
+    "outcomes": {
+     "jammed_on_rim": 20
+    },
+    "peak_force_n": {
+     "median": 18.513,
+     "p95": 34.626,
+     "max": 39.444
+    },
+    "peak_depth_mm": {
+     "median": 0.102,
+     "p95": 0.163,
+     "max": 0.179
+    },
+    "gap_mm": {
+     "median": 4.107,
+     "p95": 4.19,
+     "max": 4.195
+    },
+    "tilt_deg": {
+     "median": 14.899,
+     "p95": 15.314,
+     "max": 15.338
+    },
+    "insert_s": {
+     "median": 6.4,
+     "p95": 6.5,
+     "max": 6.5
+    },
+    "searched": 0,
+    "gripper_touched_rim": 0
+   },
+   "3mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 0,
+    "rate": 0.0,
+    "ci95": [
+     0.0,
+     0.16113012549493322
+    ],
+    "outcomes": {
+     "jammed_on_rim": 20
+    },
+    "peak_force_n": {
+     "median": 17.5,
+     "p95": 32.241,
+     "max": 39.388
+    },
+    "peak_depth_mm": {
+     "median": 0.09,
+     "p95": 0.154,
+     "max": 0.179
+    },
+    "gap_mm": {
+     "median": 4.223,
+     "p95": 9.453,
+     "max": 9.621
+    },
+    "tilt_deg": {
+     "median": 15.133,
+     "p95": 15.922,
+     "max": 20.501
+    },
+    "insert_s": {
+     "median": 6.45,
+     "p95": 6.505,
+     "max": 6.6
+    },
+    "searched": 0,
+    "gripper_touched_rim": 0
+   }
+  },
+  "c0.5mm_ch0.5mm_yaw0deg_stiff": {
+   "0mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 20,
+    "rate": 1.0,
+    "ci95": [
+     0.8388698745050667,
+     1.0
+    ],
+    "outcomes": {
+     "seated": 20
+    },
+    "peak_force_n": {
+     "median": 0.0,
+     "p95": 6.944,
+     "max": 8.003
+    },
+    "peak_depth_mm": {
+     "median": 0.0,
+     "p95": 0.035,
+     "max": 0.039
+    },
+    "gap_mm": {
+     "median": -0.019,
+     "p95": -0.019,
+     "max": -0.019
+    },
+    "tilt_deg": {
+     "median": 0.0,
+     "p95": 0.0,
+     "max": 0.0
+    },
+    "insert_s": {
+     "median": 6.4,
+     "p95": 6.45,
+     "max": 6.45
+    },
+    "searched": 0,
+    "gripper_touched_rim": 0
+   },
+   "1mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 10,
+    "rate": 0.5,
+    "ci95": [
+     0.2992949144298199,
+     0.7007050855701801
+    ],
+    "outcomes": {
+     "jammed_on_rim": 10,
+     "seated": 10
+    },
+    "peak_force_n": {
+     "median": 23.786,
+     "p95": 37.359,
+     "max": 38.394
+    },
+    "peak_depth_mm": {
+     "median": 0.111,
+     "p95": 0.172,
+     "max": 0.179
+    },
+    "gap_mm": {
+     "median": 2.01,
+     "p95": 4.251,
+     "max": 4.252
+    },
+    "tilt_deg": {
+     "median": 7.285,
+     "p95": 15.625,
+     "max": 15.63
+    },
+    "insert_s": {
+     "median": 6.4,
+     "p95": 6.45,
+     "max": 6.45
+    },
+    "searched": 0,
+    "gripper_touched_rim": 0
+   },
+   "2mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 0,
+    "rate": 0.0,
+    "ci95": [
+     0.0,
+     0.16113012549493322
+    ],
+    "outcomes": {
+     "jammed_on_rim": 20
+    },
+    "peak_force_n": {
+     "median": 19.42,
+     "p95": 35.009,
+     "max": 36.925
+    },
+    "peak_depth_mm": {
+     "median": 0.109,
+     "p95": 0.176,
+     "max": 0.195
+    },
+    "gap_mm": {
+     "median": 4.226,
+     "p95": 7.311,
+     "max": 7.898
+    },
+    "tilt_deg": {
+     "median": 15.495,
+     "p95": 35.994,
+     "max": 38.23
+    },
+    "insert_s": {
+     "median": 6.4,
+     "p95": 6.5,
+     "max": 6.5
+    },
+    "searched": 0,
+    "gripper_touched_rim": 0
+   },
+   "3mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 0,
+    "rate": 0.0,
+    "ci95": [
+     0.0,
+     0.16113012549493322
+    ],
+    "outcomes": {
+     "jammed_on_rim": 20
+    },
+    "peak_force_n": {
+     "median": 17.007,
+     "p95": 28.571,
+     "max": 35.534
+    },
+    "peak_depth_mm": {
+     "median": 0.095,
+     "p95": 0.159,
+     "max": 0.164
+    },
+    "gap_mm": {
+     "median": 4.32,
+     "p95": 9.999,
+     "max": 9.999
+    },
+    "tilt_deg": {
+     "median": 15.97,
+     "p95": 63.972,
+     "max": 64.037
+    },
+    "insert_s": {
+     "median": 6.45,
+     "p95": 6.505,
+     "max": 6.6
+    },
+    "searched": 0,
+    "gripper_touched_rim": 0
+   }
+  },
+  "c0.5mm_ch0.5mm_yaw1deg_stiff": {
+   "0mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 20,
+    "rate": 1.0,
+    "ci95": [
+     0.8388698745050667,
+     1.0
+    ],
+    "outcomes": {
+     "seated": 20
+    },
+    "peak_force_n": {
+     "median": 9.18,
+     "p95": 11.395,
+     "max": 12.738
+    },
+    "peak_depth_mm": {
+     "median": 0.045,
+     "p95": 0.055,
+     "max": 0.056
+    },
+    "gap_mm": {
+     "median": -0.019,
+     "p95": -0.019,
+     "max": -0.019
+    },
+    "tilt_deg": {
+     "median": 0.0,
+     "p95": 0.0,
+     "max": 0.0
+    },
+    "insert_s": {
+     "median": 6.4,
+     "p95": 6.4,
+     "max": 6.4
+    },
+    "searched": 0,
+    "gripper_touched_rim": 0
+   },
+   "1mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 9,
+    "rate": 0.45,
+    "ci95": [
+     0.25819502085709295,
+     0.6579179916924003
+    ],
+    "outcomes": {
+     "jammed_on_rim": 11,
+     "seated": 9
+    },
+    "peak_force_n": {
+     "median": 16.946,
+     "p95": 38.63,
+     "max": 38.68
+    },
+    "peak_depth_mm": {
+     "median": 0.094,
+     "p95": 0.181,
+     "max": 0.289
+    },
+    "gap_mm": {
+     "median": 4.064,
+     "p95": 4.219,
+     "max": 4.232
+    },
+    "tilt_deg": {
+     "median": 14.688,
+     "p95": 15.461,
+     "max": 15.524
+    },
+    "insert_s": {
+     "median": 6.4,
+     "p95": 6.45,
+     "max": 6.45
+    },
+    "searched": 0,
+    "gripper_touched_rim": 0
+   },
+   "2mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 0,
+    "rate": 0.0,
+    "ci95": [
+     0.0,
+     0.16113012549493322
+    ],
+    "outcomes": {
+     "jammed_on_rim": 20
+    },
+    "peak_force_n": {
+     "median": 20.704,
+     "p95": 39.583,
+     "max": 42.833
+    },
+    "peak_depth_mm": {
+     "median": 0.109,
+     "p95": 0.182,
+     "max": 0.193
+    },
+    "gap_mm": {
+     "median": 4.185,
+     "p95": 4.31,
+     "max": 4.334
+    },
+    "tilt_deg": {
+     "median": 15.29,
+     "p95": 15.925,
+     "max": 16.054
+    },
+    "insert_s": {
+     "median": 6.4,
+     "p95": 6.5,
+     "max": 6.5
+    },
+    "searched": 0,
+    "gripper_touched_rim": 0
+   },
+   "3mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 0,
+    "rate": 0.0,
+    "ci95": [
+     0.0,
+     0.16113012549493322
+    ],
+    "outcomes": {
+     "jammed_on_rim": 20
+    },
+    "peak_force_n": {
+     "median": 16.171,
+     "p95": 28.736,
+     "max": 38.097
+    },
+    "peak_depth_mm": {
+     "median": 0.091,
+     "p95": 0.141,
+     "max": 0.176
+    },
+    "gap_mm": {
+     "median": 4.292,
+     "p95": 9.999,
+     "max": 9.999
+    },
+    "tilt_deg": {
+     "median": 15.781,
+     "p95": 23.105,
+     "max": 64.514
+    },
+    "insert_s": {
+     "median": 6.45,
+     "p95": 6.508,
+     "max": 6.65
+    },
+    "searched": 0,
+    "gripper_touched_rim": 0
+   }
+  },
+  "c0.5mm_ch0.5mm_yaw2deg_stiff": {
+   "0mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 20,
+    "rate": 1.0,
+    "ci95": [
+     0.8388698745050667,
+     1.0
+    ],
+    "outcomes": {
+     "seated": 20
+    },
+    "peak_force_n": {
+     "median": 8.58,
+     "p95": 15.08,
+     "max": 18.476
+    },
+    "peak_depth_mm": {
+     "median": 0.067,
+     "p95": 0.079,
+     "max": 0.086
+    },
+    "gap_mm": {
+     "median": -0.019,
+     "p95": -0.019,
+     "max": -0.019
+    },
+    "tilt_deg": {
+     "median": 0.0,
+     "p95": 0.0,
+     "max": 0.0
+    },
+    "insert_s": {
+     "median": 6.4,
+     "p95": 6.4,
+     "max": 6.4
+    },
+    "searched": 0,
+    "gripper_touched_rim": 0
+   },
+   "1mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 11,
+    "rate": 0.55,
+    "ci95": [
+     0.3420820083075997,
+     0.7418049791429071
+    ],
+    "outcomes": {
+     "jammed_on_rim": 9,
+     "seated": 11
+    },
+    "peak_force_n": {
+     "median": 23.457,
+     "p95": 36.49,
+     "max": 36.732
+    },
+    "peak_depth_mm": {
+     "median": 0.126,
+     "p95": 0.168,
+     "max": 0.169
+    },
+    "gap_mm": {
+     "median": -0.019,
+     "p95": 4.193,
+     "max": 4.202
+    },
+    "tilt_deg": {
+     "median": 0.0,
+     "p95": 15.331,
+     "max": 15.376
+    },
+    "insert_s": {
+     "median": 6.45,
+     "p95": 6.45,
+     "max": 6.45
+    },
+    "searched": 0,
+    "gripper_touched_rim": 0
+   },
+   "2mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 0,
+    "rate": 0.0,
+    "ci95": [
+     0.0,
+     0.16113012549493322
+    ],
+    "outcomes": {
+     "jammed_on_rim": 20
+    },
+    "peak_force_n": {
+     "median": 18.194,
+     "p95": 39.25,
+     "max": 41.559
+    },
+    "peak_depth_mm": {
+     "median": 0.106,
+     "p95": 0.188,
+     "max": 0.222
+    },
+    "gap_mm": {
+     "median": 4.182,
+     "p95": 4.485,
+     "max": 7.983
+    },
+    "tilt_deg": {
+     "median": 15.273,
+     "p95": 16.029,
+     "max": 18.88
+    },
+    "insert_s": {
+     "median": 6.45,
+     "p95": 6.5,
+     "max": 6.5
+    },
+    "searched": 0,
+    "gripper_touched_rim": 0
+   },
+   "3mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 0,
+    "rate": 0.0,
+    "ci95": [
+     0.0,
+     0.16113012549493322
+    ],
+    "outcomes": {
+     "jammed_on_rim": 20
+    },
+    "peak_force_n": {
+     "median": 15.974,
+     "p95": 27.959,
+     "max": 41.791
+    },
+    "peak_depth_mm": {
+     "median": 0.09,
+     "p95": 0.162,
+     "max": 0.255
+    },
+    "gap_mm": {
+     "median": 4.319,
+     "p95": 9.999,
+     "max": 9.999
+    },
+    "tilt_deg": {
+     "median": 15.804,
+     "p95": 20.848,
+     "max": 20.943
+    },
+    "insert_s": {
+     "median": 6.45,
+     "p95": 6.5,
+     "max": 6.5
+    },
+    "searched": 0,
+    "gripper_touched_rim": 0
+   }
+  },
+  "c0.5mm_ch1mm_yaw0deg_stiff": {
+   "0mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 20,
+    "rate": 1.0,
+    "ci95": [
+     0.8388698745050667,
+     1.0
+    ],
+    "outcomes": {
+     "seated": 20
+    },
+    "peak_force_n": {
+     "median": 2.057,
+     "p95": 12.849,
+     "max": 12.85
+    },
+    "peak_depth_mm": {
+     "median": 0.0,
+     "p95": 0.031,
+     "max": 0.032
+    },
+    "gap_mm": {
+     "median": -0.019,
+     "p95": -0.019,
+     "max": -0.019
+    },
+    "tilt_deg": {
+     "median": 0.0,
+     "p95": 0.0,
+     "max": 0.0
+    },
+    "insert_s": {
+     "median": 6.4,
+     "p95": 6.45,
+     "max": 6.45
+    },
+    "searched": 0,
+    "gripper_touched_rim": 0
+   },
+   "1mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 18,
+    "rate": 0.9,
+    "ci95": [
+     0.6989617935882066,
+     0.9721341060158468
+    ],
+    "outcomes": {
+     "seated": 18,
+     "jammed_on_rim": 2
+    },
+    "peak_force_n": {
+     "median": 15.269,
+     "p95": 30.637,
+     "max": 33.813
+    },
+    "peak_depth_mm": {
+     "median": 0.086,
+     "p95": 0.151,
+     "max": 0.164
+    },
+    "gap_mm": {
+     "median": -0.019,
+     "p95": 4.179,
+     "max": 4.217
+    },
+    "tilt_deg": {
+     "median": 0.0,
+     "p95": 15.256,
+     "max": 15.45
+    },
+    "insert_s": {
+     "median": 6.4,
+     "p95": 6.45,
+     "max": 6.45
+    },
+    "searched": 0,
+    "gripper_touched_rim": 0
+   },
+   "2mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 3,
+    "rate": 0.15,
+    "ci95": [
+     0.05236779195949584,
+     0.36042329588695743
+    ],
+    "outcomes": {
+     "jammed_on_rim": 17,
+     "seated": 3
+    },
+    "peak_force_n": {
+     "median": 28.572,
+     "p95": 39.824,
+     "max": 40.599
+    },
+    "peak_depth_mm": {
+     "median": 0.144,
+     "p95": 0.183,
+     "max": 0.186
+    },
+    "gap_mm": {
+     "median": 4.119,
+     "p95": 4.254,
+     "max": 4.304
+    },
+    "tilt_deg": {
+     "median": 14.958,
+     "p95": 15.637,
+     "max": 15.896
+    },
+    "insert_s": {
+     "median": 6.4,
+     "p95": 6.55,
+     "max": 6.55
+    },
+    "searched": 0,
+    "gripper_touched_rim": 0
+   },
+   "3mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 0,
+    "rate": 0.0,
+    "ci95": [
+     0.0,
+     0.16113012549493322
+    ],
+    "outcomes": {
+     "jammed_on_rim": 20
+    },
+    "peak_force_n": {
+     "median": 19.377,
+     "p95": 35.959,
+     "max": 38.365
+    },
+    "peak_depth_mm": {
+     "median": 0.107,
+     "p95": 0.169,
+     "max": 0.18
+    },
+    "gap_mm": {
+     "median": 4.251,
+     "p95": 7.812,
+     "max": 7.856
+    },
+    "tilt_deg": {
+     "median": 15.723,
+     "p95": 64.028,
+     "max": 64.462
+    },
+    "insert_s": {
+     "median": 6.45,
+     "p95": 6.503,
+     "max": 6.55
+    },
+    "searched": 0,
+    "gripper_touched_rim": 0
+   }
+  },
+  "c0.5mm_ch1mm_yaw1deg_stiff": {
+   "0mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 20,
+    "rate": 1.0,
+    "ci95": [
+     0.8388698745050667,
+     1.0
+    ],
+    "outcomes": {
+     "seated": 20
+    },
+    "peak_force_n": {
+     "median": 8.554,
+     "p95": 10.71,
+     "max": 10.721
+    },
+    "peak_depth_mm": {
+     "median": 0.059,
+     "p95": 0.071,
+     "max": 0.073
+    },
+    "gap_mm": {
+     "median": -0.019,
+     "p95": -0.019,
+     "max": -0.019
+    },
+    "tilt_deg": {
+     "median": 0.0,
+     "p95": 0.0,
+     "max": 0.0
+    },
+    "insert_s": {
+     "median": 6.4,
+     "p95": 6.4,
+     "max": 6.4
+    },
+    "searched": 0,
+    "gripper_touched_rim": 0
+   },
+   "1mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 17,
+    "rate": 0.85,
+    "ci95": [
+     0.6395767041130426,
+     0.9476322080405041
+    ],
+    "outcomes": {
+     "jammed_on_rim": 3,
+     "seated": 17
+    },
+    "peak_force_n": {
+     "median": 14.115,
+     "p95": 20.429,
+     "max": 20.691
+    },
+    "peak_depth_mm": {
+     "median": 0.08,
+     "p95": 0.109,
+     "max": 0.111
+    },
+    "gap_mm": {
+     "median": -0.019,
+     "p95": 4.12,
+     "max": 4.133
+    },
+    "tilt_deg": {
+     "median": 0.0,
+     "p95": 14.963,
+     "max": 15.028
+    },
+    "insert_s": {
+     "median": 6.4,
+     "p95": 6.45,
+     "max": 6.45
+    },
+    "searched": 0,
+    "gripper_touched_rim": 0
+   },
+   "2mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 2,
+    "rate": 0.1,
+    "ci95": [
+     0.027865893984153206,
+     0.30103820641179335
+    ],
+    "outcomes": {
+     "jammed_on_rim": 18,
+     "seated": 2
+    },
+    "peak_force_n": {
+     "median": 27.618,
+     "p95": 37.594,
+     "max": 42.897
+    },
+    "peak_depth_mm": {
+     "median": 0.14,
+     "p95": 0.175,
+     "max": 0.192
+    },
+    "gap_mm": {
+     "median": 4.158,
+     "p95": 4.299,
+     "max": 4.306
+    },
+    "tilt_deg": {
+     "median": 15.154,
+     "p95": 15.87,
+     "max": 15.905
+    },
+    "insert_s": {
+     "median": 6.4,
+     "p95": 6.5,
+     "max": 6.5
+    },
+    "searched": 0,
+    "gripper_touched_rim": 0
+   },
+   "3mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 0,
+    "rate": 0.0,
+    "ci95": [
+     0.0,
+     0.16113012549493322
+    ],
+    "outcomes": {
+     "jammed_on_rim": 20
+    },
+    "peak_force_n": {
+     "median": 18.983,
+     "p95": 34.602,
+     "max": 37.641
+    },
+    "peak_depth_mm": {
+     "median": 0.107,
+     "p95": 0.166,
+     "max": 0.18
+    },
+    "gap_mm": {
+     "median": 4.239,
+     "p95": 6.26,
+     "max": 7.501
+    },
+    "tilt_deg": {
+     "median": 15.524,
+     "p95": 21.109,
+     "max": 64.029
+    },
+    "insert_s": {
+     "median": 6.45,
+     "p95": 6.503,
+     "max": 6.55
+    },
+    "searched": 0,
+    "gripper_touched_rim": 0
+   }
+  },
+  "c0.5mm_ch1mm_yaw2deg_stiff": {
+   "0mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 20,
+    "rate": 1.0,
+    "ci95": [
+     0.8388698745050667,
+     1.0
+    ],
+    "outcomes": {
+     "seated": 20
+    },
+    "peak_force_n": {
+     "median": 13.319,
+     "p95": 13.882,
+     "max": 14.092
+    },
+    "peak_depth_mm": {
+     "median": 0.068,
+     "p95": 0.076,
+     "max": 0.079
+    },
+    "gap_mm": {
+     "median": -0.019,
+     "p95": -0.019,
+     "max": -0.019
+    },
+    "tilt_deg": {
+     "median": 0.0,
+     "p95": 0.0,
+     "max": 0.0
+    },
+    "insert_s": {
+     "median": 6.4,
+     "p95": 6.4,
+     "max": 6.4
+    },
+    "searched": 0,
+    "gripper_touched_rim": 0
+   },
+   "1mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 18,
+    "rate": 0.9,
+    "ci95": [
+     0.6989617935882066,
+     0.9721341060158468
+    ],
+    "outcomes": {
+     "jammed_on_rim": 2,
+     "seated": 18
+    },
+    "peak_force_n": {
+     "median": 19.161,
+     "p95": 26.81,
+     "max": 27.035
+    },
+    "peak_depth_mm": {
+     "median": 0.105,
+     "p95": 0.138,
+     "max": 0.138
+    },
+    "gap_mm": {
+     "median": -0.019,
+     "p95": 4.078,
+     "max": 4.133
+    },
+    "tilt_deg": {
+     "median": 0.0,
+     "p95": 14.756,
+     "max": 15.028
+    },
+    "insert_s": {
+     "median": 6.4,
+     "p95": 6.45,
+     "max": 6.45
+    },
+    "searched": 0,
+    "gripper_touched_rim": 0
+   },
+   "2mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 2,
+    "rate": 0.1,
+    "ci95": [
+     0.027865893984153206,
+     0.30103820641179335
+    ],
+    "outcomes": {
+     "seated": 2,
+     "jammed_on_rim": 18
+    },
+    "peak_force_n": {
+     "median": 23.344,
+     "p95": 37.888,
+     "max": 39.398
+    },
+    "peak_depth_mm": {
+     "median": 0.119,
+     "p95": 0.175,
+     "max": 0.178
+    },
+    "gap_mm": {
+     "median": 4.151,
+     "p95": 4.253,
+     "max": 4.26
+    },
+    "tilt_deg": {
+     "median": 15.116,
+     "p95": 15.631,
+     "max": 15.672
+    },
+    "insert_s": {
+     "median": 6.4,
+     "p95": 6.503,
+     "max": 6.55
+    },
+    "searched": 0,
+    "gripper_touched_rim": 0
+   },
+   "3mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 2,
+    "rate": 0.1,
+    "ci95": [
+     0.027865893984153206,
+     0.30103820641179335
+    ],
+    "outcomes": {
+     "jammed_on_rim": 18,
+     "seated": 2
+    },
+    "peak_force_n": {
+     "median": 17.407,
+     "p95": 31.096,
+     "max": 36.515
+    },
+    "peak_depth_mm": {
+     "median": 0.09,
+     "p95": 0.173,
+     "max": 0.184
+    },
+    "gap_mm": {
+     "median": 4.203,
+     "p95": 4.512,
+     "max": 7.8
+    },
+    "tilt_deg": {
+     "median": 15.379,
+     "p95": 16.269,
+     "max": 19.896
+    },
+    "insert_s": {
+     "median": 6.45,
+     "p95": 6.503,
+     "max": 6.55
+    },
+    "searched": 0,
+    "gripper_touched_rim": 0
+   }
+  },
+  "c0.25mm_ch0.5mm_yaw0deg_stiff_search": {
+   "0mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 20,
+    "rate": 1.0,
+    "ci95": [
+     0.8388698745050667,
+     1.0
+    ],
+    "outcomes": {
+     "seated": 20
+    },
+    "peak_force_n": {
+     "median": 5.041,
+     "p95": 5.591,
+     "max": 5.594
+    },
+    "peak_depth_mm": {
+     "median": 0.029,
+     "p95": 0.034,
+     "max": 0.034
+    },
+    "gap_mm": {
+     "median": -0.019,
+     "p95": -0.019,
+     "max": -0.019
+    },
+    "tilt_deg": {
+     "median": 0.0,
+     "p95": 0.0,
+     "max": 0.0
+    },
+    "insert_s": {
+     "median": 7.9,
+     "p95": 7.95,
+     "max": 7.95
+    },
+    "searched": 16,
+    "gripper_touched_rim": 0
+   },
+   "1mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 18,
+    "rate": 0.9,
+    "ci95": [
+     0.6989617935882066,
+     0.9721341060158468
+    ],
+    "outcomes": {
+     "seated": 18,
+     "jammed_on_rim": 2
+    },
+    "peak_force_n": {
+     "median": 7.213,
+     "p95": 13.443,
+     "max": 13.727
+    },
+    "peak_depth_mm": {
+     "median": 0.042,
+     "p95": 0.079,
+     "max": 0.088
+    },
+    "gap_mm": {
+     "median": -0.019,
+     "p95": 4.571,
+     "max": 9.999
+    },
+    "tilt_deg": {
+     "median": 0.0,
+     "p95": 0.79,
+     "max": 15.801
+    },
+    "insert_s": {
+     "median": 11.0,
+     "p95": 33.4,
+     "max": 33.4
+    },
+    "searched": 20,
+    "gripper_touched_rim": 0
+   },
+   "2mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 20,
+    "rate": 1.0,
+    "ci95": [
+     0.8388698745050667,
+     1.0
+    ],
+    "outcomes": {
+     "seated": 20
+    },
+    "peak_force_n": {
+     "median": 4.814,
+     "p95": 8.961,
+     "max": 13.927
+    },
+    "peak_depth_mm": {
+     "median": 0.03,
+     "p95": 0.052,
+     "max": 0.08
+    },
+    "gap_mm": {
+     "median": -0.019,
+     "p95": -0.019,
+     "max": -0.019
+    },
+    "tilt_deg": {
+     "median": 0.0,
+     "p95": 0.0,
+     "max": 0.0
+    },
+    "insert_s": {
+     "median": 17.8,
+     "p95": 23.2,
+     "max": 30.8
+    },
+    "searched": 20,
+    "gripper_touched_rim": 0
+   },
+   "3mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 13,
+    "rate": 0.65,
+    "ci95": [
+     0.43285051021946463,
+     0.8188104521320554
+    ],
+    "outcomes": {
+     "jammed_on_rim": 7,
+     "seated": 13
+    },
+    "peak_force_n": {
+     "median": 5.457,
+     "p95": 9.361,
+     "max": 13.853
+    },
+    "peak_depth_mm": {
+     "median": 0.031,
+     "p95": 0.052,
+     "max": 0.053
+    },
+    "gap_mm": {
+     "median": -0.019,
+     "p95": 9.999,
+     "max": 9.999
+    },
+    "tilt_deg": {
+     "median": 0.0,
+     "p95": 14.599,
+     "max": 14.599
+    },
+    "insert_s": {
+     "median": 27.65,
+     "p95": 33.4,
+     "max": 33.4
+    },
+    "searched": 20,
+    "gripper_touched_rim": 0
+   }
+  },
+  "c0.25mm_ch0.5mm_yaw1deg_stiff_search": {
+   "0mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 20,
+    "rate": 1.0,
+    "ci95": [
+     0.8388698745050667,
+     1.0
+    ],
+    "outcomes": {
+     "seated": 20
+    },
+    "peak_force_n": {
+     "median": 4.684,
+     "p95": 4.979,
+     "max": 5.008
+    },
+    "peak_depth_mm": {
+     "median": 0.022,
+     "p95": 0.024,
+     "max": 0.025
+    },
+    "gap_mm": {
+     "median": -0.019,
+     "p95": -0.019,
+     "max": -0.019
+    },
+    "tilt_deg": {
+     "median": 0.0,
+     "p95": 0.0,
+     "max": 0.0
+    },
+    "insert_s": {
+     "median": 7.9,
+     "p95": 8.058,
+     "max": 8.2
+    },
+    "searched": 20,
+    "gripper_touched_rim": 0
+   },
+   "1mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 11,
+    "rate": 0.55,
+    "ci95": [
+     0.3420820083075997,
+     0.7418049791429071
+    ],
+    "outcomes": {
+     "seated": 11,
+     "jammed_on_rim": 9
+    },
+    "peak_force_n": {
+     "median": 6.437,
+     "p95": 8.388,
+     "max": 9.333
+    },
+    "peak_depth_mm": {
+     "median": 0.039,
+     "p95": 0.056,
+     "max": 0.091
+    },
+    "gap_mm": {
+     "median": -0.019,
+     "p95": 9.999,
+     "max": 9.999
+    },
+    "tilt_deg": {
+     "median": 0.0,
+     "p95": 15.212,
+     "max": 15.569
+    },
+    "insert_s": {
+     "median": 14.95,
+     "p95": 33.4,
+     "max": 33.4
+    },
+    "searched": 20,
+    "gripper_touched_rim": 0
+   },
+   "2mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 15,
+    "rate": 0.75,
+    "ci95": [
+     0.5312949900419365,
+     0.888139947210597
+    ],
+    "outcomes": {
+     "seated": 15,
+     "jammed_on_rim": 5
+    },
+    "peak_force_n": {
+     "median": 6.043,
+     "p95": 8.703,
+     "max": 9.356
+    },
+    "peak_depth_mm": {
+     "median": 0.039,
+     "p95": 0.056,
+     "max": 0.146
+    },
+    "gap_mm": {
+     "median": -0.019,
+     "p95": 9.999,
+     "max": 9.999
+    },
+    "tilt_deg": {
+     "median": 0.0,
+     "p95": 14.811,
+     "max": 14.968
+    },
+    "insert_s": {
+     "median": 20.725,
+     "p95": 33.4,
+     "max": 33.4
+    },
+    "searched": 20,
+    "gripper_touched_rim": 0
+   },
+   "3mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 16,
+    "rate": 0.8,
+    "ci95": [
+     0.5839782779742401,
+     0.9193436467288
+    ],
+    "outcomes": {
+     "jammed_on_rim": 4,
+     "seated": 16
+    },
+    "peak_force_n": {
+     "median": 4.78,
+     "p95": 14.343,
+     "max": 23.659
+    },
+    "peak_depth_mm": {
+     "median": 0.028,
+     "p95": 0.102,
+     "max": 0.124
+    },
+    "gap_mm": {
+     "median": -0.019,
+     "p95": 9.999,
+     "max": 9.999
+    },
+    "tilt_deg": {
+     "median": 0.0,
+     "p95": 15.783,
+     "max": 15.958
+    },
+    "insert_s": {
+     "median": 29.05,
+     "p95": 33.4,
+     "max": 33.4
+    },
+    "searched": 20,
+    "gripper_touched_rim": 0
+   }
+  },
+  "c0.25mm_ch0.5mm_yaw2deg_stiff_search": {
+   "0mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 0,
+    "rate": 0.0,
+    "ci95": [
+     0.0,
+     0.16113012549493322
+    ],
+    "outcomes": {
+     "jammed_on_rim": 20
+    },
+    "peak_force_n": {
+     "median": 6.655,
+     "p95": 14.164,
+     "max": 22.091
+    },
+    "peak_depth_mm": {
+     "median": 0.044,
+     "p95": 0.111,
+     "max": 0.115
+    },
+    "gap_mm": {
+     "median": 8.784,
+     "p95": 9.999,
+     "max": 9.999
+    },
+    "tilt_deg": {
+     "median": 12.201,
+     "p95": 18.124,
+     "max": 18.272
+    },
+    "insert_s": {
+     "median": 33.4,
+     "p95": 33.4,
+     "max": 33.4
+    },
+    "searched": 20,
+    "gripper_touched_rim": 0
+   },
+   "1mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 1,
+    "rate": 0.05,
+    "ci95": [
+     0.008881219432873136,
+     0.23613589351256675
+    ],
+    "outcomes": {
+     "jammed_on_rim": 19,
+     "seated": 1
+    },
+    "peak_force_n": {
+     "median": 6.709,
+     "p95": 9.539,
+     "max": 13.223
+    },
+    "peak_depth_mm": {
+     "median": 0.04,
+     "p95": 0.083,
+     "max": 0.112
+    },
+    "gap_mm": {
+     "median": 8.457,
+     "p95": 9.999,
+     "max": 9.999
+    },
+    "tilt_deg": {
+     "median": 9.926,
+     "p95": 16.252,
+     "max": 21.059
+    },
+    "insert_s": {
+     "median": 33.4,
+     "p95": 33.4,
+     "max": 33.4
+    },
+    "searched": 20,
+    "gripper_touched_rim": 0
+   },
+   "2mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 2,
+    "rate": 0.1,
+    "ci95": [
+     0.027865893984153206,
+     0.30103820641179335
+    ],
+    "outcomes": {
+     "jammed_on_rim": 18,
+     "seated": 2
+    },
+    "peak_force_n": {
+     "median": 6.515,
+     "p95": 8.657,
+     "max": 8.753
+    },
+    "peak_depth_mm": {
+     "median": 0.042,
+     "p95": 0.112,
+     "max": 0.163
+    },
+    "gap_mm": {
+     "median": 4.248,
+     "p95": 9.999,
+     "max": 9.999
+    },
+    "tilt_deg": {
+     "median": 9.164,
+     "p95": 15.866,
+     "max": 16.146
+    },
+    "insert_s": {
+     "median": 33.4,
+     "p95": 33.4,
+     "max": 33.4
+    },
+    "searched": 20,
+    "gripper_touched_rim": 0
+   },
+   "3mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 4,
+    "rate": 0.2,
+    "ci95": [
+     0.0806563532712,
+     0.41602172202575993
+    ],
+    "outcomes": {
+     "jammed_on_rim": 16,
+     "seated": 4
+    },
+    "peak_force_n": {
+     "median": 4.92,
+     "p95": 13.684,
+     "max": 20.181
+    },
+    "peak_depth_mm": {
+     "median": 0.039,
+     "p95": 0.095,
+     "max": 0.098
+    },
+    "gap_mm": {
+     "median": 8.623,
+     "p95": 9.999,
+     "max": 9.999
+    },
+    "tilt_deg": {
+     "median": 0.009,
+     "p95": 15.196,
+     "max": 15.941
+    },
+    "insert_s": {
+     "median": 33.4,
+     "p95": 33.4,
+     "max": 33.4
+    },
+    "searched": 20,
+    "gripper_touched_rim": 0
+   }
+  },
+  "c0.25mm_ch1mm_yaw0deg_stiff_search": {
+   "0mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 20,
+    "rate": 1.0,
+    "ci95": [
+     0.8388698745050667,
+     1.0
+    ],
+    "outcomes": {
+     "seated": 20
+    },
+    "peak_force_n": {
+     "median": 5.038,
+     "p95": 5.575,
+     "max": 5.577
+    },
+    "peak_depth_mm": {
+     "median": 0.029,
+     "p95": 0.034,
+     "max": 0.034
+    },
+    "gap_mm": {
+     "median": -0.019,
+     "p95": -0.019,
+     "max": -0.019
+    },
+    "tilt_deg": {
+     "median": 0.0,
+     "p95": 0.0,
+     "max": 0.0
+    },
+    "insert_s": {
+     "median": 7.9,
+     "p95": 7.95,
+     "max": 7.95
+    },
+    "searched": 15,
+    "gripper_touched_rim": 0
+   },
+   "1mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 19,
+    "rate": 0.95,
+    "ci95": [
+     0.7638641064874331,
+     0.9911187805671268
+    ],
+    "outcomes": {
+     "seated": 19,
+     "jammed_on_rim": 1
+    },
+    "peak_force_n": {
+     "median": 6.861,
+     "p95": 9.349,
+     "max": 10.729
+    },
+    "peak_depth_mm": {
+     "median": 0.041,
+     "p95": 0.05,
+     "max": 0.052
+    },
+    "gap_mm": {
+     "median": -0.019,
+     "p95": 0.191,
+     "max": 4.19
+    },
+    "tilt_deg": {
+     "median": 0.0,
+     "p95": 0.766,
+     "max": 15.312
+    },
+    "insert_s": {
+     "median": 10.1,
+     "p95": 15.54,
+     "max": 33.4
+    },
+    "searched": 20,
+    "gripper_touched_rim": 0
+   },
+   "2mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 20,
+    "rate": 1.0,
+    "ci95": [
+     0.8388698745050667,
+     1.0
+    ],
+    "outcomes": {
+     "seated": 20
+    },
+    "peak_force_n": {
+     "median": 7.545,
+     "p95": 13.787,
+     "max": 14.25
+    },
+    "peak_depth_mm": {
+     "median": 0.044,
+     "p95": 0.079,
+     "max": 0.082
+    },
+    "gap_mm": {
+     "median": -0.019,
+     "p95": -0.019,
+     "max": -0.019
+    },
+    "tilt_deg": {
+     "median": 0.0,
+     "p95": 0.0,
+     "max": 0.0
+    },
+    "insert_s": {
+     "median": 16.9,
+     "p95": 22.215,
+     "max": 24.4
+    },
+    "searched": 20,
+    "gripper_touched_rim": 0
+   },
+   "3mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 16,
+    "rate": 0.8,
+    "ci95": [
+     0.5839782779742401,
+     0.9193436467288
+    ],
+    "outcomes": {
+     "jammed_on_rim": 4,
+     "seated": 16
+    },
+    "peak_force_n": {
+     "median": 6.168,
+     "p95": 8.584,
+     "max": 13.941
+    },
+    "peak_depth_mm": {
+     "median": 0.038,
+     "p95": 0.08,
+     "max": 0.082
+    },
+    "gap_mm": {
+     "median": -0.019,
+     "p95": 9.999,
+     "max": 9.999
+    },
+    "tilt_deg": {
+     "median": 0.0,
+     "p95": 13.916,
+     "max": 14.95
+    },
+    "insert_s": {
+     "median": 25.6,
+     "p95": 33.403,
+     "max": 33.45
+    },
+    "searched": 20,
+    "gripper_touched_rim": 0
+   }
+  },
+  "c0.25mm_ch1mm_yaw1deg_stiff_search": {
+   "0mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 20,
+    "rate": 1.0,
+    "ci95": [
+     0.8388698745050667,
+     1.0
+    ],
+    "outcomes": {
+     "seated": 20
+    },
+    "peak_force_n": {
+     "median": 3.211,
+     "p95": 5.569,
+     "max": 5.604
+    },
+    "peak_depth_mm": {
+     "median": 0.017,
+     "p95": 0.033,
+     "max": 0.033
+    },
+    "gap_mm": {
+     "median": -0.019,
+     "p95": -0.019,
+     "max": -0.019
+    },
+    "tilt_deg": {
+     "median": 0.0,
+     "p95": 0.0,
+     "max": 0.0
+    },
+    "insert_s": {
+     "median": 7.9,
+     "p95": 8.2,
+     "max": 8.2
+    },
+    "searched": 20,
+    "gripper_touched_rim": 0
+   },
+   "1mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 6,
+    "rate": 0.3,
+    "ci95": [
+     0.14547527396899385,
+     0.5189767762289793
+    ],
+    "outcomes": {
+     "seated": 6,
+     "jammed_on_rim": 14
+    },
+    "peak_force_n": {
+     "median": 7.235,
+     "p95": 8.522,
+     "max": 8.922
+    },
+    "peak_depth_mm": {
+     "median": 0.039,
+     "p95": 0.08,
+     "max": 0.155
+    },
+    "gap_mm": {
+     "median": 4.102,
+     "p95": 9.999,
+     "max": 9.999
+    },
+    "tilt_deg": {
+     "median": 0.001,
+     "p95": 14.994,
+     "max": 15.289
+    },
+    "insert_s": {
+     "median": 33.4,
+     "p95": 33.4,
+     "max": 33.4
+    },
+    "searched": 20,
+    "gripper_touched_rim": 0
+   },
+   "2mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 17,
+    "rate": 0.85,
+    "ci95": [
+     0.6395767041130426,
+     0.9476322080405041
+    ],
+    "outcomes": {
+     "seated": 17,
+     "jammed_on_rim": 3
+    },
+    "peak_force_n": {
+     "median": 6.547,
+     "p95": 11.748,
+     "max": 13.34
+    },
+    "peak_depth_mm": {
+     "median": 0.039,
+     "p95": 0.061,
+     "max": 0.076
+    },
+    "gap_mm": {
+     "median": -0.019,
+     "p95": 4.415,
+     "max": 10.0
+    },
+    "tilt_deg": {
+     "median": 0.0,
+     "p95": 17.415,
+     "max": 63.852
+    },
+    "insert_s": {
+     "median": 16.625,
+     "p95": 33.4,
+     "max": 33.4
+    },
+    "searched": 20,
+    "gripper_touched_rim": 0
+   },
+   "3mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 18,
+    "rate": 0.9,
+    "ci95": [
+     0.6989617935882066,
+     0.9721341060158468
+    ],
+    "outcomes": {
+     "seated": 18,
+     "jammed_on_rim": 2
+    },
+    "peak_force_n": {
+     "median": 6.541,
+     "p95": 13.013,
+     "max": 13.772
+    },
+    "peak_depth_mm": {
+     "median": 0.035,
+     "p95": 0.051,
+     "max": 0.072
+    },
+    "gap_mm": {
+     "median": -0.019,
+     "p95": 4.427,
+     "max": 9.999
+    },
+    "tilt_deg": {
+     "median": 0.0,
+     "p95": 0.754,
+     "max": 15.033
+    },
+    "insert_s": {
+     "median": 25.3,
+     "p95": 33.4,
+     "max": 33.4
+    },
+    "searched": 20,
+    "gripper_touched_rim": 0
+   }
+  },
+  "c0.25mm_ch1mm_yaw2deg_stiff_search": {
+   "0mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 0,
+    "rate": 0.0,
+    "ci95": [
+     0.0,
+     0.16113012549493322
+    ],
+    "outcomes": {
+     "jammed_on_rim": 20
+    },
+    "peak_force_n": {
+     "median": 6.578,
+     "p95": 9.376,
+     "max": 9.429
+    },
+    "peak_depth_mm": {
+     "median": 0.04,
+     "p95": 0.085,
+     "max": 0.145
+    },
+    "gap_mm": {
+     "median": 4.178,
+     "p95": 9.999,
+     "max": 9.999
+    },
+    "tilt_deg": {
+     "median": 14.599,
+     "p95": 15.289,
+     "max": 15.308
+    },
+    "insert_s": {
+     "median": 33.4,
+     "p95": 33.4,
+     "max": 33.4
+    },
+    "searched": 20,
+    "gripper_touched_rim": 0
+   },
+   "1mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 0,
+    "rate": 0.0,
+    "ci95": [
+     0.0,
+     0.16113012549493322
+    ],
+    "outcomes": {
+     "jammed_on_rim": 20
+    },
+    "peak_force_n": {
+     "median": 6.9,
+     "p95": 8.818,
+     "max": 9.186
+    },
+    "peak_depth_mm": {
+     "median": 0.046,
+     "p95": 0.101,
+     "max": 0.25
+    },
+    "gap_mm": {
+     "median": 4.188,
+     "p95": 9.999,
+     "max": 9.999
+    },
+    "tilt_deg": {
+     "median": 14.7,
+     "p95": 15.65,
+     "max": 19.954
+    },
+    "insert_s": {
+     "median": 33.4,
+     "p95": 33.4,
+     "max": 33.4
+    },
+    "searched": 20,
+    "gripper_touched_rim": 0
+   },
+   "2mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 1,
+    "rate": 0.05,
+    "ci95": [
+     0.008881219432873136,
+     0.23613589351256675
+    ],
+    "outcomes": {
+     "jammed_on_rim": 19,
+     "seated": 1
+    },
+    "peak_force_n": {
+     "median": 6.969,
+     "p95": 8.063,
+     "max": 8.596
+    },
+    "peak_depth_mm": {
+     "median": 0.044,
+     "p95": 0.076,
+     "max": 0.081
+    },
+    "gap_mm": {
+     "median": 4.177,
+     "p95": 9.999,
+     "max": 10.0
+    },
+    "tilt_deg": {
+     "median": 8.508,
+     "p95": 15.176,
+     "max": 15.327
+    },
+    "insert_s": {
+     "median": 33.4,
+     "p95": 33.4,
+     "max": 33.4
+    },
+    "searched": 20,
+    "gripper_touched_rim": 0
+   },
+   "3mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 7,
+    "rate": 0.35,
+    "ci95": [
+     0.18118954786794464,
+     0.5671494897805354
+    ],
+    "outcomes": {
+     "jammed_on_rim": 13,
+     "seated": 7
+    },
+    "peak_force_n": {
+     "median": 7.435,
+     "p95": 10.351,
+     "max": 13.342
+    },
+    "peak_depth_mm": {
+     "median": 0.044,
+     "p95": 0.061,
+     "max": 0.081
+    },
+    "gap_mm": {
+     "median": 4.243,
+     "p95": 9.999,
+     "max": 9.999
+    },
+    "tilt_deg": {
+     "median": 0.002,
+     "p95": 20.464,
+     "max": 21.542
+    },
+    "insert_s": {
+     "median": 33.4,
+     "p95": 33.4,
+     "max": 33.4
+    },
+    "searched": 20,
+    "gripper_touched_rim": 0
+   }
+  },
+  "c0.5mm_ch0.5mm_yaw0deg_stiff_search": {
+   "0mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 20,
+    "rate": 1.0,
+    "ci95": [
+     0.8388698745050667,
+     1.0
+    ],
+    "outcomes": {
+     "seated": 20
+    },
+    "peak_force_n": {
+     "median": 0.0,
+     "p95": 4.58,
+     "max": 4.717
+    },
+    "peak_depth_mm": {
+     "median": 0.0,
+     "p95": 0.025,
+     "max": 0.025
+    },
+    "gap_mm": {
+     "median": -0.019,
+     "p95": -0.019,
+     "max": -0.019
+    },
+    "tilt_deg": {
+     "median": 0.0,
+     "p95": 0.0,
+     "max": 0.0
+    },
+    "insert_s": {
+     "median": 7.7,
+     "p95": 7.803,
+     "max": 7.85
+    },
+    "searched": 5,
+    "gripper_touched_rim": 0
+   },
+   "1mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 17,
+    "rate": 0.85,
+    "ci95": [
+     0.6395767041130426,
+     0.9476322080405041
+    ],
+    "outcomes": {
+     "seated": 17,
+     "jammed_on_rim": 3
+    },
+    "peak_force_n": {
+     "median": 5.029,
+     "p95": 10.292,
+     "max": 10.367
+    },
+    "peak_depth_mm": {
+     "median": 0.027,
+     "p95": 0.058,
+     "max": 0.058
+    },
+    "gap_mm": {
+     "median": -0.019,
+     "p95": 9.999,
+     "max": 9.999
+    },
+    "tilt_deg": {
+     "median": 0.0,
+     "p95": 0.0,
+     "max": 0.001
+    },
+    "insert_s": {
+     "median": 10.075,
+     "p95": 33.4,
+     "max": 33.4
+    },
+    "searched": 18,
+    "gripper_touched_rim": 0
+   },
+   "2mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 20,
+    "rate": 1.0,
+    "ci95": [
+     0.8388698745050667,
+     1.0
+    ],
+    "outcomes": {
+     "seated": 20
+    },
+    "peak_force_n": {
+     "median": 4.93,
+     "p95": 13.88,
+     "max": 14.183
+    },
+    "peak_depth_mm": {
+     "median": 0.029,
+     "p95": 0.08,
+     "max": 0.082
+    },
+    "gap_mm": {
+     "median": -0.019,
+     "p95": -0.019,
+     "max": -0.019
+    },
+    "tilt_deg": {
+     "median": 0.0,
+     "p95": 0.0,
+     "max": 0.0
+    },
+    "insert_s": {
+     "median": 16.05,
+     "p95": 20.377,
+     "max": 21.85
+    },
+    "searched": 20,
+    "gripper_touched_rim": 0
+   },
+   "3mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 15,
+    "rate": 0.75,
+    "ci95": [
+     0.5312949900419365,
+     0.888139947210597
+    ],
+    "outcomes": {
+     "jammed_on_rim": 5,
+     "seated": 15
+    },
+    "peak_force_n": {
+     "median": 5.437,
+     "p95": 9.486,
+     "max": 13.853
+    },
+    "peak_depth_mm": {
+     "median": 0.034,
+     "p95": 0.055,
+     "max": 0.055
+    },
+    "gap_mm": {
+     "median": -0.019,
+     "p95": 9.999,
+     "max": 9.999
+    },
+    "tilt_deg": {
+     "median": 0.0,
+     "p95": 0.001,
+     "max": 0.002
+    },
+    "insert_s": {
+     "median": 25.275,
+     "p95": 33.4,
+     "max": 33.4
+    },
+    "searched": 20,
+    "gripper_touched_rim": 0
+   }
+  },
+  "c0.5mm_ch0.5mm_yaw1deg_stiff_search": {
+   "0mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 20,
+    "rate": 1.0,
+    "ci95": [
+     0.8388698745050667,
+     1.0
+    ],
+    "outcomes": {
+     "seated": 20
+    },
+    "peak_force_n": {
+     "median": 3.913,
+     "p95": 5.104,
+     "max": 5.23
+    },
+    "peak_depth_mm": {
+     "median": 0.016,
+     "p95": 0.023,
+     "max": 0.023
+    },
+    "gap_mm": {
+     "median": -0.019,
+     "p95": -0.019,
+     "max": -0.019
+    },
+    "tilt_deg": {
+     "median": 0.0,
+     "p95": 0.0,
+     "max": 0.0
+    },
+    "insert_s": {
+     "median": 7.95,
+     "p95": 7.95,
+     "max": 7.95
+    },
+    "searched": 20,
+    "gripper_touched_rim": 0
+   },
+   "1mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 17,
+    "rate": 0.85,
+    "ci95": [
+     0.6395767041130426,
+     0.9476322080405041
+    ],
+    "outcomes": {
+     "seated": 17,
+     "jammed_on_rim": 3
+    },
+    "peak_force_n": {
+     "median": 5.442,
+     "p95": 9.816,
+     "max": 10.7
+    },
+    "peak_depth_mm": {
+     "median": 0.031,
+     "p95": 0.049,
+     "max": 0.055
+    },
+    "gap_mm": {
+     "median": -0.019,
+     "p95": 9.999,
+     "max": 9.999
+    },
+    "tilt_deg": {
+     "median": 0.0,
+     "p95": 0.001,
+     "max": 0.001
+    },
+    "insert_s": {
+     "median": 10.825,
+     "p95": 33.4,
+     "max": 33.4
+    },
+    "searched": 20,
+    "gripper_touched_rim": 0
+   },
+   "2mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 20,
+    "rate": 1.0,
+    "ci95": [
+     0.8388698745050667,
+     1.0
+    ],
+    "outcomes": {
+     "seated": 20
+    },
+    "peak_force_n": {
+     "median": 5.063,
+     "p95": 8.81,
+     "max": 10.953
+    },
+    "peak_depth_mm": {
+     "median": 0.031,
+     "p95": 0.057,
+     "max": 0.062
+    },
+    "gap_mm": {
+     "median": -0.019,
+     "p95": -0.019,
+     "max": -0.019
+    },
+    "tilt_deg": {
+     "median": 0.0,
+     "p95": 0.0,
+     "max": 0.0
+    },
+    "insert_s": {
+     "median": 15.775,
+     "p95": 24.58,
+     "max": 30.85
+    },
+    "searched": 20,
+    "gripper_touched_rim": 0
+   },
+   "3mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 18,
+    "rate": 0.9,
+    "ci95": [
+     0.6989617935882066,
+     0.9721341060158468
+    ],
+    "outcomes": {
+     "jammed_on_rim": 2,
+     "seated": 18
+    },
+    "peak_force_n": {
+     "median": 4.369,
+     "p95": 7.541,
+     "max": 9.145
+    },
+    "peak_depth_mm": {
+     "median": 0.025,
+     "p95": 0.04,
+     "max": 0.061
+    },
+    "gap_mm": {
+     "median": -0.019,
+     "p95": 4.219,
+     "max": 4.315
+    },
+    "tilt_deg": {
+     "median": 0.0,
+     "p95": 15.461,
+     "max": 15.953
+    },
+    "insert_s": {
+     "median": 26.0,
+     "p95": 33.4,
+     "max": 33.4
+    },
+    "searched": 20,
+    "gripper_touched_rim": 0
+   }
+  },
+  "c0.5mm_ch0.5mm_yaw2deg_stiff_search": {
+   "0mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 17,
+    "rate": 0.85,
+    "ci95": [
+     0.6395767041130426,
+     0.9476322080405041
+    ],
+    "outcomes": {
+     "jammed_on_rim": 3,
+     "seated": 17
+    },
+    "peak_force_n": {
+     "median": 4.473,
+     "p95": 8.118,
+     "max": 18.418
+    },
+    "peak_depth_mm": {
+     "median": 0.025,
+     "p95": 0.048,
+     "max": 0.099
+    },
+    "gap_mm": {
+     "median": -0.019,
+     "p95": 4.415,
+     "max": 7.984
+    },
+    "tilt_deg": {
+     "median": 0.0,
+     "p95": 15.665,
+     "max": 18.815
+    },
+    "insert_s": {
+     "median": 8.0,
+     "p95": 33.4,
+     "max": 33.4
+    },
+    "searched": 20,
+    "gripper_touched_rim": 0
+   },
+   "1mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 12,
+    "rate": 0.6,
+    "ci95": [
+     0.3865779423152061,
+     0.7811960325858074
+    ],
+    "outcomes": {
+     "seated": 12,
+     "jammed_on_rim": 8
+    },
+    "peak_force_n": {
+     "median": 6.54,
+     "p95": 9.298,
+     "max": 11.237
+    },
+    "peak_depth_mm": {
+     "median": 0.037,
+     "p95": 0.053,
+     "max": 0.06
+    },
+    "gap_mm": {
+     "median": -0.019,
+     "p95": 9.999,
+     "max": 9.999
+    },
+    "tilt_deg": {
+     "median": 0.0,
+     "p95": 15.146,
+     "max": 20.537
+    },
+    "insert_s": {
+     "median": 14.075,
+     "p95": 33.4,
+     "max": 33.4
+    },
+    "searched": 20,
+    "gripper_touched_rim": 0
+   },
+   "2mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 9,
+    "rate": 0.45,
+    "ci95": [
+     0.25819502085709295,
+     0.6579179916924003
+    ],
+    "outcomes": {
+     "jammed_on_rim": 11,
+     "seated": 9
+    },
+    "peak_force_n": {
+     "median": 6.487,
+     "p95": 9.263,
+     "max": 9.5
+    },
+    "peak_depth_mm": {
+     "median": 0.039,
+     "p95": 0.057,
+     "max": 0.085
+    },
+    "gap_mm": {
+     "median": 4.074,
+     "p95": 9.999,
+     "max": 9.999
+    },
+    "tilt_deg": {
+     "median": 0.0,
+     "p95": 16.148,
+     "max": 19.914
+    },
+    "insert_s": {
+     "median": 33.4,
+     "p95": 33.4,
+     "max": 33.4
+    },
+    "searched": 20,
+    "gripper_touched_rim": 0
+   },
+   "3mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 11,
+    "rate": 0.55,
+    "ci95": [
+     0.3420820083075997,
+     0.7418049791429071
+    ],
+    "outcomes": {
+     "jammed_on_rim": 9,
+     "seated": 11
+    },
+    "peak_force_n": {
+     "median": 5.638,
+     "p95": 9.783,
+     "max": 13.342
+    },
+    "peak_depth_mm": {
+     "median": 0.035,
+     "p95": 0.056,
+     "max": 0.059
+    },
+    "gap_mm": {
+     "median": -0.019,
+     "p95": 9.999,
+     "max": 9.999
+    },
+    "tilt_deg": {
+     "median": 0.0,
+     "p95": 20.622,
+     "max": 21.156
+    },
+    "insert_s": {
+     "median": 30.925,
+     "p95": 33.4,
+     "max": 33.4
+    },
+    "searched": 20,
+    "gripper_touched_rim": 0
+   }
+  },
+  "c0.5mm_ch1mm_yaw0deg_stiff_search": {
+   "0mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 20,
+    "rate": 1.0,
+    "ci95": [
+     0.8388698745050667,
+     1.0
+    ],
+    "outcomes": {
+     "seated": 20
+    },
+    "peak_force_n": {
+     "median": 0.0,
+     "p95": 4.581,
+     "max": 4.76
+    },
+    "peak_depth_mm": {
+     "median": 0.0,
+     "p95": 0.025,
+     "max": 0.025
+    },
+    "gap_mm": {
+     "median": -0.019,
+     "p95": -0.019,
+     "max": -0.019
+    },
+    "tilt_deg": {
+     "median": 0.0,
+     "p95": 0.0,
+     "max": 0.0
+    },
+    "insert_s": {
+     "median": 7.7,
+     "p95": 7.803,
+     "max": 7.85
+    },
+    "searched": 5,
+    "gripper_touched_rim": 0
+   },
+   "1mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 20,
+    "rate": 1.0,
+    "ci95": [
+     0.8388698745050667,
+     1.0
+    ],
+    "outcomes": {
+     "seated": 20
+    },
+    "peak_force_n": {
+     "median": 6.3,
+     "p95": 9.385,
+     "max": 9.486
+    },
+    "peak_depth_mm": {
+     "median": 0.037,
+     "p95": 0.057,
+     "max": 0.058
+    },
+    "gap_mm": {
+     "median": -0.019,
+     "p95": -0.019,
+     "max": -0.019
+    },
+    "tilt_deg": {
+     "median": 0.0,
+     "p95": 0.0,
+     "max": 0.0
+    },
+    "insert_s": {
+     "median": 8.1,
+     "p95": 14.705,
+     "max": 18.6
+    },
+    "searched": 18,
+    "gripper_touched_rim": 0
+   },
+   "2mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 20,
+    "rate": 1.0,
+    "ci95": [
+     0.8388698745050667,
+     1.0
+    ],
+    "outcomes": {
+     "seated": 20
+    },
+    "peak_force_n": {
+     "median": 7.924,
+     "p95": 12.888,
+     "max": 13.634
+    },
+    "peak_depth_mm": {
+     "median": 0.047,
+     "p95": 0.071,
+     "max": 0.078
+    },
+    "gap_mm": {
+     "median": -0.019,
+     "p95": -0.019,
+     "max": -0.019
+    },
+    "tilt_deg": {
+     "median": 0.0,
+     "p95": 0.0,
+     "max": 0.0
+    },
+    "insert_s": {
+     "median": 14.625,
+     "p95": 19.675,
+     "max": 20.15
+    },
+    "searched": 20,
+    "gripper_touched_rim": 0
+   },
+   "3mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 20,
+    "rate": 1.0,
+    "ci95": [
+     0.8388698745050667,
+     1.0
+    ],
+    "outcomes": {
+     "seated": 20
+    },
+    "peak_force_n": {
+     "median": 6.433,
+     "p95": 13.315,
+     "max": 14.527
+    },
+    "peak_depth_mm": {
+     "median": 0.037,
+     "p95": 0.075,
+     "max": 0.084
+    },
+    "gap_mm": {
+     "median": -0.019,
+     "p95": -0.019,
+     "max": -0.019
+    },
+    "tilt_deg": {
+     "median": 0.0,
+     "p95": 0.0,
+     "max": 0.0
+    },
+    "insert_s": {
+     "median": 20.85,
+     "p95": 29.458,
+     "max": 33.4
+    },
+    "searched": 20,
+    "gripper_touched_rim": 0
+   }
+  },
+  "c0.5mm_ch1mm_yaw1deg_stiff_search": {
+   "0mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 20,
+    "rate": 1.0,
+    "ci95": [
+     0.8388698745050667,
+     1.0
+    ],
+    "outcomes": {
+     "seated": 20
+    },
+    "peak_force_n": {
+     "median": 2.982,
+     "p95": 4.028,
+     "max": 4.44
+    },
+    "peak_depth_mm": {
+     "median": 0.016,
+     "p95": 0.019,
+     "max": 0.022
+    },
+    "gap_mm": {
+     "median": -0.019,
+     "p95": -0.019,
+     "max": -0.019
+    },
+    "tilt_deg": {
+     "median": 0.0,
+     "p95": 0.0,
+     "max": 0.0
+    },
+    "insert_s": {
+     "median": 7.9,
+     "p95": 7.95,
+     "max": 7.95
+    },
+    "searched": 20,
+    "gripper_touched_rim": 0
+   },
+   "1mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 20,
+    "rate": 1.0,
+    "ci95": [
+     0.8388698745050667,
+     1.0
+    ],
+    "outcomes": {
+     "seated": 20
+    },
+    "peak_force_n": {
+     "median": 6.547,
+     "p95": 7.382,
+     "max": 9.519
+    },
+    "peak_depth_mm": {
+     "median": 0.036,
+     "p95": 0.048,
+     "max": 0.055
+    },
+    "gap_mm": {
+     "median": -0.019,
+     "p95": -0.019,
+     "max": -0.019
+    },
+    "tilt_deg": {
+     "median": 0.0,
+     "p95": 0.0,
+     "max": 0.0
+    },
+    "insert_s": {
+     "median": 9.35,
+     "p95": 10.847,
+     "max": 11.75
+    },
+    "searched": 20,
+    "gripper_touched_rim": 0
+   },
+   "2mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 20,
+    "rate": 1.0,
+    "ci95": [
+     0.8388698745050667,
+     1.0
+    ],
+    "outcomes": {
+     "seated": 20
+    },
+    "peak_force_n": {
+     "median": 7.111,
+     "p95": 9.355,
+     "max": 11.927
+    },
+    "peak_depth_mm": {
+     "median": 0.041,
+     "p95": 0.055,
+     "max": 0.063
+    },
+    "gap_mm": {
+     "median": -0.019,
+     "p95": -0.019,
+     "max": -0.019
+    },
+    "tilt_deg": {
+     "median": 0.0,
+     "p95": 0.0,
+     "max": 0.0
+    },
+    "insert_s": {
+     "median": 14.425,
+     "p95": 22.155,
+     "max": 22.25
+    },
+    "searched": 20,
+    "gripper_touched_rim": 0
+   },
+   "3mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 20,
+    "rate": 1.0,
+    "ci95": [
+     0.8388698745050667,
+     1.0
+    ],
+    "outcomes": {
+     "seated": 20
+    },
+    "peak_force_n": {
+     "median": 6.608,
+     "p95": 10.425,
+     "max": 11.065
+    },
+    "peak_depth_mm": {
+     "median": 0.041,
+     "p95": 0.055,
+     "max": 0.071
+    },
+    "gap_mm": {
+     "median": -0.019,
+     "p95": -0.019,
+     "max": -0.019
+    },
+    "tilt_deg": {
+     "median": 0.0,
+     "p95": 0.0,
+     "max": 0.0
+    },
+    "insert_s": {
+     "median": 21.2,
+     "p95": 28.433,
+     "max": 29.05
+    },
+    "searched": 20,
+    "gripper_touched_rim": 0
+   }
+  },
+  "c0.5mm_ch1mm_yaw2deg_stiff_search": {
+   "0mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 20,
+    "rate": 1.0,
+    "ci95": [
+     0.8388698745050667,
+     1.0
+    ],
+    "outcomes": {
+     "seated": 20
+    },
+    "peak_force_n": {
+     "median": 4.602,
+     "p95": 5.506,
+     "max": 5.529
+    },
+    "peak_depth_mm": {
+     "median": 0.027,
+     "p95": 0.031,
+     "max": 0.031
+    },
+    "gap_mm": {
+     "median": -0.019,
+     "p95": -0.019,
+     "max": -0.019
+    },
+    "tilt_deg": {
+     "median": 0.0,
+     "p95": 0.0,
+     "max": 0.0
+    },
+    "insert_s": {
+     "median": 8.05,
+     "p95": 8.2,
+     "max": 8.2
+    },
+    "searched": 20,
+    "gripper_touched_rim": 0
+   },
+   "1mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 4,
+    "rate": 0.2,
+    "ci95": [
+     0.0806563532712,
+     0.41602172202575993
+    ],
+    "outcomes": {
+     "jammed_on_rim": 16,
+     "seated": 4
+    },
+    "peak_force_n": {
+     "median": 6.702,
+     "p95": 8.316,
+     "max": 10.368
+    },
+    "peak_depth_mm": {
+     "median": 0.042,
+     "p95": 0.115,
+     "max": 0.23
+    },
+    "gap_mm": {
+     "median": 4.069,
+     "p95": 9.474,
+     "max": 9.999
+    },
+    "tilt_deg": {
+     "median": 13.178,
+     "p95": 15.117,
+     "max": 15.87
+    },
+    "insert_s": {
+     "median": 33.4,
+     "p95": 33.4,
+     "max": 33.4
+    },
+    "searched": 20,
+    "gripper_touched_rim": 0
+   },
+   "2mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 13,
+    "rate": 0.65,
+    "ci95": [
+     0.43285051021946463,
+     0.8188104521320554
+    ],
+    "outcomes": {
+     "seated": 13,
+     "jammed_on_rim": 7
+    },
+    "peak_force_n": {
+     "median": 6.365,
+     "p95": 8.744,
+     "max": 9.309
+    },
+    "peak_depth_mm": {
+     "median": 0.042,
+     "p95": 0.071,
+     "max": 0.092
+    },
+    "gap_mm": {
+     "median": -0.019,
+     "p95": 9.996,
+     "max": 9.999
+    },
+    "tilt_deg": {
+     "median": 0.0,
+     "p95": 13.232,
+     "max": 15.365
+    },
+    "insert_s": {
+     "median": 20.8,
+     "p95": 33.4,
+     "max": 33.4
+    },
+    "searched": 20,
+    "gripper_touched_rim": 0
+   },
+   "3mm": {
+    "n": 20,
+    "placed": 20,
+    "seated": 14,
+    "rate": 0.7,
+    "ci95": [
+     0.4810232237710206,
+     0.854524726031006
+    ],
+    "outcomes": {
+     "seated": 14,
+     "jammed_on_rim": 6
+    },
+    "peak_force_n": {
+     "median": 6.969,
+     "p95": 9.477,
+     "max": 9.538
+    },
+    "peak_depth_mm": {
+     "median": 0.041,
+     "p95": 0.055,
+     "max": 0.056
+    },
+    "gap_mm": {
+     "median": -0.019,
+     "p95": 9.999,
+     "max": 9.999
+    },
+    "tilt_deg": {
+     "median": 0.0,
+     "p95": 19.211,
+     "max": 20.519
+    },
+    "insert_s": {
+     "median": 27.2,
+     "p95": 33.4,
+     "max": 33.4
+    },
+    "searched": 20,
+    "gripper_touched_rim": 0
+   }
+  }
+ },
+ "created_utc": "2026-11-25T06:15:41.933699+00:00",
+ "git": {
+  "commit": "1d19ee99a1aa307194254fb7bbc996fc9a556054",
+  "dirty": false
+ },
+ "versions": {
+  "mujoco": "3.16.0",
+  "python": "3.12.3"
+ },
+ "wall_s": 3461.8
+}
