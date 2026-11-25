@@ -181,7 +181,8 @@ class ContactMonitor:
         self.contact_steps += touching
 
 
-def run_trial(cell: Workcell, nest: Nest, error_mm: float, trial: int) -> dict:
+def run_trial(cell: Workcell, nest: Nest, error_mm: float, trial: int,
+              method: str = "place", search_timeout: float = 30.0) -> dict:
     cfg, m, d = cell.config, cell.model, cell.data
     rng = np.random.default_rng([SEED, trial])
     cell.reset(WorkOrder(recipes=((), (), ()), arrivals=()))
@@ -194,7 +195,7 @@ def run_trial(cell: Workcell, nest: Nest, error_mm: float, trial: int) -> dict:
     mujoco.mj_forward(m, d)
     monitor = ContactMonitor(cell, cube)
     ctl = ScriptedCell(cell, on_step=monitor)
-    row = {"nest": nest.tag, "clearance_mm": nest.clearance * 1000,
+    row = {"nest": nest.tag, "method": method, "clearance_mm": nest.clearance * 1000,
            "chamfer_mm": nest.chamfer * 1000, "yaw_error_deg": nest.yaw_error,
            "error_mm": error_mm, "trial": trial, "outcome": "pick_failed"}
     ctl.step(10)
@@ -205,7 +206,16 @@ def run_trial(cell: Workcell, nest: Nest, error_mm: float, trial: int) -> dict:
     target = (station_xy(NEST_ANGLE, cfg.radius)
               + error_mm / 1000 * np.array([np.cos(direction), np.sin(direction)]))
     monitor.reset()
-    ctl.place(cube, target, level=0)
+    t0 = d.time
+    if method == "search":   # the force-guided spiral search (control/scripted_insertion.py)
+        from polypanda.control.scripted_insertion import SearchInsertion
+        info = SearchInsertion(rim_z=DEPTH, timeout=search_timeout).insert(ctl, cube, target,
+                                                   ctl.carry_yaw(ctl.angle_of(target)))
+        row |= {k: info[k] for k in ("searched", "spiral_turns", "tries", "dropped_in",
+                                     "yaw_correction_deg")}
+    else:
+        ctl.place(cube, target, level=0)
+    row["insert_s"] = float(d.time - t0)
     ctl.step(20)
     local, gap, tilt, yaw_after = nest_frame(cell, cube, nest)
     before = d.xpos[cube.body].copy()
@@ -225,9 +235,9 @@ def run_trial(cell: Workcell, nest: Nest, error_mm: float, trial: int) -> dict:
 
 
 def run_condition(job) -> list[dict]:
-    nest, error_mm, n = job
+    nest, error_mm, n, method, search_timeout = job
     cell = build_cell(nest)
-    return [run_trial(cell, nest, error_mm, k) for k in range(n)]
+    return [run_trial(cell, nest, error_mm, k, method, search_timeout) for k in range(n)]
 
 
 def summarize(rows: list[dict]) -> dict:
@@ -247,6 +257,8 @@ def summarize(rows: list[dict]) -> dict:
             "peak_force_n": stats("peak_force_n", placed),
             "peak_depth_mm": stats("peak_depth_mm", placed),
             "gap_mm": stats("gap_mm", placed), "tilt_deg": stats("tilt_deg", placed),
+            "insert_s": stats("insert_s", placed),
+            "searched": sum(bool(r.get("searched")) for r in placed),
             "gripper_touched_rim": sum(bool(r.get("gripper_touched_rim")) for r in placed)}
 
 
@@ -264,25 +276,34 @@ def main() -> None:
     p.add_argument("--yaw-errors", type=float, nargs="+", default=[0.0, 1.0, 2.0], help="deg")
     p.add_argument("--errors", type=float, nargs="+", default=[0.0, 1.0, 2.0, 3.0], help="mm")
     p.add_argument("--contacts", nargs="+", default=["default", "stiff"], choices=list(CONTACTS))
+    p.add_argument("--methods", nargs="+", default=["place"], choices=["place", "search"],
+                   help="place: the cell's straight-down place; search: force-guided spiral")
+    p.add_argument("--search-timeout", type=float, default=30.0,
+                   help="s for the whole search insertion, approach included")
     p.add_argument("--n", type=int, default=20)
     p.add_argument("--jobs", type=int, default=6)
     p.add_argument("--out-dir", type=Path, default=Path("results/v4"))
+    p.add_argument("--name", default="nest_insertion_probe")
     args = p.parse_args()
     git = git_state()
     nests = [Nest(c / 1000, ch / 1000, y, ct) for ct in args.contacts for c in args.clearances
              for ch in args.chamfers for y in args.yaw_errors]
-    jobs = [(nest, e, args.n) for nest in nests for e in args.errors]
+    jobs = [(nest, e, args.n, mth, args.search_timeout)
+            for mth in args.methods for nest in nests for e in args.errors]
     start = time.perf_counter()
     with Pool(args.jobs) as pool:
         rows = [r for rs in pool.map(run_condition, jobs) for r in rs]
     wall = time.perf_counter() - start
     conditions: dict = {}
-    for nest in nests:
-        conditions[nest.tag] = {f"{e:g}mm": summarize([r for r in rows if r["nest"] == nest.tag
-                                                       and r["error_mm"] == e])
-                                for e in args.errors}
+    for mth in args.methods:
+        for nest in nests:
+            key = nest.tag if mth == "place" else f"{nest.tag}_{mth}"
+            conditions[key] = {f"{e:g}mm": summarize([r for r in rows if r["nest"] == nest.tag
+                                                      and r["error_mm"] == e
+                                                      and r["method"] == mth])
+                               for e in args.errors}
     args.out_dir.mkdir(parents=True, exist_ok=True)
-    out = args.out_dir / "nest_insertion_probe.json"
+    out = args.out_dir / f"{args.name}.json"
     out.write_text(json.dumps({
         "name": "nest_insertion_probe", "what": __doc__.split("\n")[0], "seed": SEED,
         "n_per_condition": args.n, "errors_mm": args.errors, "depth_mm": DEPTH * 1000,
@@ -291,7 +312,7 @@ def main() -> None:
         "conditions": conditions, "created_utc": datetime.now(UTC).isoformat(), "git": git,
         "versions": {"mujoco": mujoco.__version__, "python": platform.python_version()},
         "wall_s": round(wall, 1)}, indent=1))
-    with open(args.out_dir / "nest_insertion_probe_trials.csv", "w", newline="") as f:
+    with open(args.out_dir / f"{args.name}_trials.csv", "w", newline="") as f:
         keys = sorted({k for r in rows for k in r})
         w = csv.DictWriter(f, fieldnames=keys)
         w.writeheader()
@@ -301,8 +322,10 @@ def main() -> None:
         def fmt(e, s):
             force = s["peak_force_n"]["median"] if s["peak_force_n"] else "-"
             depth = s["peak_depth_mm"]["p95"] if s["peak_depth_mm"] else "-"
-            return f"{e}: {s['seated']}/{s['placed']} (F {force} N, depth p95 {depth} mm)"
-        print(f"  {tag:36s} " + "  ".join(fmt(e, s) for e, s in by_err.items()))
+            secs = s["insert_s"]["median"] if s["insert_s"] else "-"
+            return (f"{e}: {s['seated']}/{s['placed']} (F {force} N, depth p95 {depth} mm, "
+                    f"{secs} s)")
+        print(f"  {tag:43s} " + "  ".join(fmt(e, s) for e, s in by_err.items()))
 
 
 if __name__ == "__main__":
