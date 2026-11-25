@@ -7,7 +7,7 @@ module, activity, event and tester state.
 
 Usage:
   uv run python scripts/run_test_cell.py --n 30 --seeds 1 2 --door feel_v2 --jobs 2
-  (--insertion search once control/scripted_insertion.py is merged)
+  uv run python scripts/run_test_cell.py --n 3 --seeds 1 --testers planned --insertion search
 Writes results/v4/test_cell/<door>_<insertion>_n<n>_seeds<...>.json (with the git commit; an
 existing file is kept unless --force: a result records the code it came from) and prints the
 KPIs of each shift and of all together.
@@ -26,6 +26,10 @@ from pathlib import Path
 
 def _shift(args: dict) -> dict:
     from polypanda.evaluation.test_cell import run_shift
+    from polypanda.simulation.test_cell import planned_testers
+    args = dict(args)
+    if args.pop("testers") == "planned":       # the plan's own kinds: lid, drawer, pneumatic
+        args["testers"] = planned_testers(args["cycle_s"])
     t = time.perf_counter()
     out = run_shift(**args)
     out["wall_s"] = round(time.perf_counter() - t, 1)
@@ -84,7 +88,10 @@ def main() -> None:
                    help="line_camera, a door script (feel_v2, feel, camera, nominal, expert) or "
                         "run:<path>[@final]")
     p.add_argument("--insertion", choices=("straight_down", "search"), default="straight_down",
-                   help="the insertion slot (search: control/scripted_insertion.py, once merged)")
+                   help="the insertion slot (search: control/scripted_insertion.py)")
+    p.add_argument("--testers", choices=("stand_in", "planned"), default="stand_in",
+                   help="stand_in: three lid testers (B, C standing in); planned: lid, drawer, "
+                        "pneumatic")
     p.add_argument("--handover", choices=("carry", "door_start"), default="door_start")
     p.add_argument("--nest-belief", choices=("camera", "true"), default="camera")
     p.add_argument("--cycle-s", type=float, default=45.0, help="each test's duration (s)")
@@ -97,13 +104,15 @@ def main() -> None:
     git = {"commit": run("git", "rev-parse", "HEAD"),
            "dirty": bool(run("git", "status", "--porcelain", "--untracked-files=no"))}
     jobs = [{"n": args.n, "seed": s, "door": args.door, "insertion": args.insertion,
-             "handover": args.handover,
+             "handover": args.handover, "testers": args.testers,
              "nest_belief": args.nest_belief, "cycle_s": args.cycle_s,
              "dressing": not args.no_dressing} for s in args.seeds]
     name = args.door.replace("run:", "").replace("/", "_").replace("@", "_")
     seeds = "-".join(str(s) for s in args.seeds)
     out = args.out or (Path("results/v4/test_cell")
-                       / f"{name}_{args.insertion}_n{args.n}_seeds{seeds}.json")
+                       / f"{name}_{args.insertion}"
+                         f"{'_planned' if args.testers == 'planned' else ''}"
+                         f"_n{args.n}_seeds{seeds}.json")
     if out.exists() and not args.force:            # results record the code they came from
         p.error(f"{out} exists (--out another file, or --force)")
     start = time.perf_counter()
