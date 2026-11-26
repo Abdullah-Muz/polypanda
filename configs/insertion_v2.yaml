@@ -63,22 +63,40 @@ compliance:
   rot_gain: 0.0002            # rad per N m per step (x the wrist's ~2000 N m/rad = 0.4 < 2)
   max_rot_backoff: 0.005      # rad per step
   yaw_lead: 0.0005            # rad: the yaw target's largest lead into a twist (~1 N m)
-  reflex_force: 12.0          # N: between control steps (every physics step of a policy's step)
-  reflex_torque: 3.0          # N m: an external force or twist above these holds the arm where
-  reflex_every: 1             # it is until the next control step (the layer itself acts at
-  #                             20 Hz; a contact met at speed otherwise builds up for 50 ms: the
-  #                             gate's noise reached 100-300 N on the testers' roofs)
+  reflex_force: 20.0          # N across the insertion axis (axis_split), between control steps
+  reflex_torque: 3.0          # N m: (every physics step of a policy's step) a force, twist or
+  reflex_z_force: 35.0        # N along the axis above these holds the arm where it is until
+  reflex_every: 1             # the next control step (the layer itself acts at 20 Hz; a contact
+  #                             met at speed otherwise builds up for 50 ms: the gate's noise
+  #                             reached 100-300 N on the testers' roofs)
+  axis_split: true            # (after pilot 2) the admittance acts across the insertion axis
+  #                             (x, y, yaw); along it the policy may always push, force-limited:
+  #                             pilot 2's policy rubbed the nest's walls while pushing down, the
+  #                             whole-force layer backed off along the walls' push and its 12 N
+  #                             reflex held the arm, and the module stalled 7 mm over the floor
+  z_force: 15.0               # N: the target stops advancing into a vertical contact (no back-off)
+  z_backoff_force: 30.0       # N: it backs off only above this (the damage limit is 50 N)
 
 curriculum:
   enabled: true
-  low: -0.003                 # m: the first lowest start, 3 mm inside the rim (past the 0.5-1 mm
-  #                             chamfer: engaged, still held)
-  low_min: -0.008             # m: never deeper (the rib, 12 mm tall, stays in its slot)
-  step_up: 0.005              # m when the rolling training success > raise_above (IndustReal)
-  step_down: 0.003            # m when it is < lower_below (IndustReal)
-  raise_above: 0.8
-  lower_below: 0.1
-  window: 100                 # training episodes per decision (all 8 envs)
+  mode: reverse               # (after pilot 2) a reverse curriculum, Florensa et al. 2017. Pilot 2:
+  #                             with IndustReal's rule (uniform from `low` to the carry start) only
+  #                             ~5 % of episodes started near the nest, success stayed under 80 %,
+  #                             so `low` sat at -8 mm for 900k steps and the range never moved
+  low: -0.008                 # m: the deepest start, fixed: 8 mm inside the rim, 7 mm over the
+  #                             floor, engaged (the rib, 12 mm tall, stays in its slot)
+  high: 0.005                 # m: the first highest start, 5 mm over the rim
+  high_min: 0.005             # m: it never shrinks below this
+  grow: 1.5                   # x when the curriculum episodes' success > raise_above, / below
+  #                             lower_below: from 5 mm to the carry start (~190-250 mm) in ~9 raises
+  raise_above: 0.7
+  lower_below: 0.2
+  carry_share: 0.15           # of the episodes start at the carry start itself (the approach
+  #                             practised from the first update; logged apart, not in the rule)
+  window: 100                 # curriculum episodes per decision (all 8 envs)
+  low_min: -0.008             # (industreal mode only)
+  step_up: 0.005              # (industreal mode only)
+  step_down: 0.003            # (industreal mode only)
 
 sensing:
   force_noise: 0.1
@@ -92,14 +110,14 @@ success:                      # the targets' (unchanged)
   carry_margin: 0.01
 
 reward:
-  # the held progress term: keypoint_scale x the rise of phi(d) above its best so far this
-  # episode, phi(d) = sum w_i (1 - tanh(d / s_i)) on the module's 4 bottom corners' mean
-  # distance d to their seated places. A straight approach earns what the plain potential
-  # difference would (+5.9 from the carry height to 2 mm over the floor, +5.0 for the last
-  # 2 mm, +11 in all), never more, so it cannot pay for dawdling; but wandering away and back
-  # costs nothing (the gate: with the plain difference, unbiased noise started near the nest
-  # lost ~1.5, d's random walk drifting outward)
-  progress: keypoints_best
+  # the held progress term: keypoint_scale x the change of phi(d) = sum w_i (1 - tanh(d / s_i))
+  # on the module's 4 bottom corners' mean distance d to their seated places (+5.9 from the
+  # carry height to 2 mm over the floor, +5.0 for the last 2 mm, +11 in all): potential-based,
+  # so moving away costs what moving in earned. (Before pilot 3: keypoints_best, paid on new
+  # bests only, so that untrained noise near the nest was not charged ~1.5 for d's outward
+  # drift. Pilot 2 showed the price: leaving the nest cost nothing, and its policy learned to
+  # pull out and drift away (mean dz +0.1, dx -0.1 per step from 8 mm inside; 1 of 12 succeed).)
+  progress: keypoints
   keypoint_scale: 1.0
   keypoint_scales: [0.1, 0.03, 0.001]   # m: the 25 cm approach, the last 3 cm onto the rim, the last mm
   keypoint_weights: [4.0, 2.0, 5.0]     # (the gate: touching down from 2 cm over the rim earns ~+1.5)

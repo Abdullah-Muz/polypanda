@@ -16,7 +16,9 @@ Behaviours (round 1's root-cause measurements, repeated):
   release); hold_release: gently down (0.3) until seated, hold 5 steps, release; hold_forever:
   gently down until seated, hold, never release; release_high: hold still, a release asked every
   step (outside the interlock's window: blocked); noisy_press_release: round 2's untrained noise
-  around a downward push (dz mean -0.5), release noise included.
+  around a downward push (dz mean -0.5), release noise included; lateral_push_release (pilot 2's
+  failure): straight down at full push with lateral noise of the policy's std (2 mm per step),
+  a release asked every step.
 
 Starts: "carry" (the targets' start), "near" (a start height drawn per episode uniformly from
 --near-low..--near-high m above the nest's rim; InsertionEnv reset option "start_height") or
@@ -130,6 +132,17 @@ def noisy_press_release(seed: int):
     return lambda obs, t, env: np.clip(rng.normal(mean, R2_NOISE), -1.0, 1.0)
 
 
+def lateral_push_release(seed: int):
+    """Pilot 2's failure: straight down at full push, lateral noise of the policy's std (0.2:
+    2 mm per step), a release asked every step."""
+    rng = np.random.default_rng(seed)
+
+    def act(obs, t, env):
+        dx, dy = np.clip(rng.normal(0.0, 0.2, 2), -1.0, 1.0)
+        return np.array([dx, dy, -1.0, 0.0, 1.0])
+    return act
+
+
 class _Scorer:
     """InsertionEnv.recorder scoring a script's own run with the env's reward."""
 
@@ -201,6 +214,8 @@ def job(spec) -> tuple:
                                 args, k))
         elif behaviour == "noisy_press_release":
             rows.append(rollout(env, noisy_press_release(7 + k), args, k))
+        elif behaviour == "lateral_push_release":
+            rows.append(rollout(env, lateral_push_release(7 + k), args, k))
         elif behaviour == "search":
             own = search_own(env, args, k)
             acts = own.pop("actions")

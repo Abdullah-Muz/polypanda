@@ -30,6 +30,7 @@ from polypanda.control.action_adapter import action_schema
 from polypanda.environments.tasks import task_spec
 from polypanda.simulation.assets import MENAGERIE_COMMIT
 from polypanda.training.callbacks import (
+    ReverseCurriculumCallback,
     RewardTermsCallback,
     SaveVecNormalizeCallback,
     StartCurriculumCallback,
@@ -241,8 +242,9 @@ def train(cfg: TrainConfig, env_config, run_dir: Path) -> Path:
     extra = []
     curriculum = getattr(env_config, "curriculum", None)
     if getattr(curriculum, "enabled", False):    # (v4.1 insertion round 2: training starts)
-        extra.append(StartCurriculumCallback(curriculum,
-                                             log_path=run_dir / "curriculum.jsonl"))
+        cb = (ReverseCurriculumCallback if getattr(curriculum, "mode", "") == "reverse"
+              else StartCurriculumCallback)
+        extra.append(cb(curriculum, log_path=run_dir / "curriculum.jsonl"))
     callbacks = CallbackList([
         *extra,
         RewardTermsCallback(),

@@ -198,6 +198,18 @@ class InsertionComplianceConfig:
     rot_gain: float = 0.0002        # rad per N m per step (x the wrist's ~2000 N m/rad = 0.4 < 2)
     max_rot_backoff: float = 0.005  # rad per step
     yaw_lead: float = 0.0005        # rad: the yaw target's largest lead into a twist (~1 N m)
+    # axis_split (after pilot 2): the admittance above acts across the insertion axis only (x, y
+    # and yaw); along it (the vertical: the nests' axes are vertical) the policy may always push,
+    # force-limited: the hand target stops advancing into a contact once the vertical contact
+    # force reaches z_force (no back-off), backs off only above z_backoff_force, and the reflex
+    # acts on the force across the axis (above reflex_force), the twist, or a vertical force
+    # above reflex_z_force. Pilot 2's policy rubbed the nest's walls while pushing down: the
+    # whole-force admittance backed off along the wall's push and its reflex held the arm, so
+    # the module stalled 7 mm over the floor.
+    axis_split: bool = False
+    z_force: float = 15.0           # N
+    z_backoff_force: float = 30.0   # N
+    reflex_z_force: float = 35.0    # N
 
 
 @dataclass(frozen=True)
@@ -220,6 +232,18 @@ class InsertionCurriculumConfig:
     raise_above: float = 0.8
     lower_below: float = 0.1
     window: int = 100               # training episodes per decision
+    # mode "industreal" (above): `low` moves, the top is the carry start. Mode "reverse" (a
+    # reverse curriculum, Florensa et al. 2017; after pilot 2): `low` stays where it is set (the
+    # deepest, engaged start) and the top of the range, `high` (m above the rim), starts just over
+    # the rim and moves with the rolling success of the curriculum's episodes: x grow above
+    # raise_above, / grow below lower_below, within [high_min, the carry start]; and a share
+    # `carry_share` of the episodes starts at the carry start itself (the approach practised and
+    # its success logged apart; they do not count for the rule).
+    mode: str = "industreal"
+    high: float = 0.005
+    high_min: float = 0.005
+    grow: float = 1.5
+    carry_share: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -462,12 +486,17 @@ class InsertionEnv(gym.Env):
         self._reflex_on, self._substep, self._reflexes = False, 0, 0
         self._retract_due = False
         self.start_low = self.config.curriculum.low     # the curriculum's lowest start (m)
+        self.start_high = self.config.curriculum.high   # (reverse) its highest
         self.start_height: float | None = None           # this episode's (None: the carry start)
 
     # --- the start-height curriculum (training) ---------------------------------------------
     def set_start_low(self, low: float) -> None:
         """The curriculum's lowest start (StartCurriculumCallback, every training env)."""
         self.start_low = float(low)
+
+    def set_start_high(self, high: float) -> None:
+        """The reverse curriculum's highest start (m above the rim; StartCurriculumCallback)."""
+        self.start_high = float(high)
 
     # --- episodes -----------------------------------------------------------------------------
     def draw_episode(self, rng: np.random.Generator, tester: str | None = None) -> dict:
@@ -600,14 +629,17 @@ class InsertionEnv(gym.Env):
         cur, height = self.config.curriculum, options.get("start_height")
         frac = None
         if height is None and cur.enabled:
-            frac = float(self.np_random.uniform())
+            # (reverse: a share of the episodes from the carry start itself)
+            if cur.mode != "reverse" or self.np_random.uniform() >= cur.carry_share:
+                frac = float(self.np_random.uniform())
         self._start(ep)
         self.start_height = None
         if height is not None or frac is not None:
             top = self.part_height_over_rim()
             if height is None:
                 low = min(self.start_low, top)
-                height = low + frac * (top - low)
+                high = top if cur.mode != "reverse" else min(max(self.start_high, low), top)
+                height = low + frac * (high - low)
             if height < top - 1e-6:
                 self._lower(ep, float(height))
                 self.start_height = float(height)
@@ -835,7 +867,12 @@ class InsertionEnv(gym.Env):
         at the robot's 1 kHz)."""
         cc = self.config.compliance
         F, tz = self.external_force()
-        if float(np.linalg.norm(F)) > cc.reflex_force or abs(tz) > cc.reflex_torque:
+        if cc.axis_split:     # across the axis, the twist, or a vertical push past the limit
+            hit = (float(np.hypot(F[0], F[1])) > cc.reflex_force
+                   or abs(float(F[2])) > cc.reflex_z_force)
+        else:
+            hit = float(np.linalg.norm(F)) > cc.reflex_force
+        if hit or abs(tz) > cc.reflex_torque:
             d = self.data
             self.joint_give()
             d.ctrl[self.arm.arm_actuators] = d.qpos[self.arm.arm_qpos] + self._give
@@ -1095,6 +1132,32 @@ class InsertionEnv(gym.Env):
             tz += float((c.pos[0] - tcp[0]) * f[1] - (c.pos[1] - tcp[1]) * f[0])
         return out, tz
 
+    def _comply_split(self, out: np.ndarray, rest: np.ndarray, F: np.ndarray) -> None:
+        """The compliant layer split at the insertion axis (InsertionComplianceConfig
+        .axis_split), in place on the new target `out`: across it (x, y) the admittance on the
+        horizontal force; along it the target may not advance further into a contact pushing
+        with z_force or more (it stays where the last step left it), and backs off only above
+        z_backoff_force."""
+        cc = self.config.compliance
+        Fl = F[:2]
+        fl = float(np.linalg.norm(Fl))
+        if fl > cc.contact_force:
+            n = Fl / fl
+            if fl > cc.force:
+                out[:2] += n * min(cc.gain * (fl - cc.force), cc.max_backoff)
+            lead = float((rest[:2] - out[:2]) @ n)
+            if lead > cc.lead:
+                out[:2] += n * (lead - cc.lead)
+        fz = float(F[2])                        # > 0: the contacts push the robot up
+        prev = float(self.target[2])
+        if fz >= cc.z_force and out[2] < prev:
+            out[2] = prev
+        elif fz <= -cc.z_force and out[2] > prev:
+            out[2] = prev
+        if abs(fz) > cc.z_backoff_force:
+            out[2] += np.sign(fz) * min(cc.gain * (abs(fz) - cc.z_backoff_force),
+                                        cc.max_backoff)
+
     def comply(self, target: np.ndarray, yaw: float) -> tuple[np.ndarray, float]:
         """The compliant action layer (InsertionComplianceConfig) on a new hand target, around
         the rest target E (`rest_target`):
@@ -1124,14 +1187,17 @@ class InsertionEnv(gym.Env):
             F, tz = self.external_force()
         else:
             F, tz = self.wrench()[:3], 0.0
-        f = float(np.linalg.norm(F))
-        if f > cc.contact_force:
-            n = F / f
-            if f > cc.force:
-                out += n * min(cc.gain * (f - cc.force), cc.max_backoff)
-            lead = float((rest - out) @ n)
-            if lead > cc.lead:
-                out += n * (lead - cc.lead)
+        if cc.axis_split:
+            self._comply_split(out, rest, F)
+        else:
+            f = float(np.linalg.norm(F))
+            if f > cc.contact_force:
+                n = F / f
+                if f > cc.force:
+                    out += n * min(cc.gain * (f - cc.force), cc.max_backoff)
+                lead = float((rest - out) @ n)
+                if lead > cc.lead:
+                    out += n * (lead - cc.lead)
         turned = yaw
         if abs(tz) > cc.torque_contact:
             s = float(np.sign(tz))                  # the contacts twist the hand this way
@@ -1184,6 +1250,8 @@ class InsertionEnv(gym.Env):
             "outcome": out, "seated": now["seated"], "released": now["released"],
             "nest_force": self._step_peak, "stats": dict(self.stats), "reward_terms": terms,
         }
+        if self.config.curriculum.enabled:      # (for the curriculum's callback: None = carry)
+            info["start_height"] = self.start_height
         return self.observation(), float(sum(terms.values())), terminated, truncated, info
 
     def retract(self) -> None:

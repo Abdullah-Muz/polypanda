@@ -2,6 +2,7 @@
 curriculum, release interlock, compliant action layer, keypoint progress reward), the curriculum's
 callback, the round's configs, and that the defaults are round 1's env exactly."""
 
+import json
 from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
@@ -72,8 +73,9 @@ def test_round_2_keeps_the_targets_task():
     for name in ("variation", "sensing", "success", "start", "horizon"):
         assert getattr(cfg, name) == getattr(ref, name)
     assert cfg.compliance.enabled and cfg.curriculum.enabled and cfg.action.release_window
-    assert cfg.reward.progress == "keypoints_best" and cfg.reward.release_unseated == 0.0
-    assert cfg.reward.collision_force
+    assert cfg.reward.progress == "keypoints" and cfg.reward.release_unseated == 0.0
+    assert cfg.reward.collision_force and cfg.compliance.axis_split
+    assert cfg.curriculum.mode == "reverse" and cfg.action.release_retract
     ev = cfg.for_evaluation()
     assert not ev.curriculum.enabled and ev.compliance == cfg.compliance
     assert ev.action == cfg.action and ev.reward == cfg.reward
@@ -121,8 +123,14 @@ def test_curriculum_starts_above_the_rim_keep_the_aim(v2):
         assert v2.seat()["offset"] > 0.0005                         # not the true nest's axis
 
 
+def _industreal():
+    cfg = InsertionConfig.from_yaml(V2)
+    return replace(cfg, curriculum=replace(cfg.curriculum, mode="industreal", low=-0.003,
+                                           raise_above=0.8, lower_below=0.1))
+
+
 def test_the_curriculum_draws_between_its_low_bound_and_the_carry_start():
-    env = InsertionEnv(InsertionConfig.from_yaml(V2))
+    env = InsertionEnv(_industreal())
     env.set_start_low(0.05)
     heights = []
     for seed in range(4):
@@ -147,7 +155,7 @@ class _Envs:
 
 
 def test_the_curriculum_callback_moves_the_low_bound_on_the_rolling_success(tmp_path):
-    cur = replace(InsertionConfig.from_yaml(V2).curriculum, window=4)
+    cur = replace(_industreal().curriculum, window=4)
     envs, logged = _Envs(), {}
     model = SimpleNamespace(get_env=lambda: envs, num_timesteps=0,
                             logger=SimpleNamespace(record=logged.__setitem__))
@@ -172,6 +180,52 @@ def test_the_curriculum_callback_moves_the_low_bound_on_the_rolling_success(tmp_
     episodes([True] * 40)                             # never above high
     assert cb.low == pytest.approx(0.02)
     assert len((tmp_path / "c.jsonl").read_text().splitlines()) == 16   # one per window
+
+
+def test_the_reverse_curriculum_draws_from_the_deep_start_up_to_its_high_bound():
+    cfg = InsertionConfig.from_yaml(V2)
+    env = InsertionEnv(replace(cfg, curriculum=replace(cfg.curriculum, carry_share=0.0)))
+    env.set_start_high(0.01)
+    for seed in range(4):
+        _, info = env.reset(seed=seed)
+        h = info["start_height"]
+        assert -0.008 <= h <= 0.01 and abs(env.part_height_over_rim() - h) < 0.0006
+        _, _, _, _, step_info = env.step([0, 0, 0, 0, -1.0])
+        assert step_info["start_height"] == h          # (for the callback's bins)
+    env = InsertionEnv(replace(cfg, curriculum=replace(cfg.curriculum, carry_share=1.0)))
+    _, info = env.reset(seed=0)
+    assert info["start_height"] is None                 # the carry start itself
+
+
+def test_the_reverse_curriculum_callback_grows_and_shrinks_its_high_bound(tmp_path):
+    from polypanda.training.callbacks import ReverseCurriculumCallback
+    cur = replace(InsertionConfig.from_yaml(V2).curriculum, window=4)
+    envs, logged = _Envs(), {}
+    model = SimpleNamespace(get_env=lambda: envs, num_timesteps=0,
+                            logger=SimpleNamespace(record=logged.__setitem__))
+    cb = ReverseCurriculumCallback(cur, cap=0.02, log_path=tmp_path / "c.jsonl")
+    cb.init_callback(model)
+    cb.on_training_start({}, {})
+    assert envs.calls == [("set_start_low", -0.008), ("set_start_high", 0.005)]
+
+    def episodes(successes, height=0.001):
+        for ok in successes:
+            cb.locals = {"dones": [True], "infos": [{"is_success": ok, "start_height": height}]}
+            cb.on_step()
+    episodes([False] * 3, height=None)                # carry starts: logged, not in the rule
+    episodes([True] * 4)                              # 100 % > 70 %: x 1.5
+    assert cb.high == pytest.approx(0.0075) and envs.calls[-1] == ("set_start_high", cb.high)
+    assert logged["curriculum/high_mm"] == pytest.approx(7.5)
+    assert logged["curriculum/carry_success_rate"] == 0.0
+    assert logged["curriculum/success_0-5mm"] == 1.0
+    episodes([True, True, False, False])              # 50 %: stays
+    assert cb.high == pytest.approx(0.0075)
+    episodes([False] * 4, height=-0.004)              # 0 % < 20 %: / 1.5, floor 5 mm
+    assert cb.high == pytest.approx(0.005) and logged["curriculum/success_inside"] == 0.0
+    episodes([True] * 40)                             # never above the cap
+    assert cb.high == pytest.approx(0.02)
+    first = json.loads((tmp_path / "c.jsonl").read_text().splitlines()[0])
+    assert first["bins"] == {"carry": "0/3", "0-5mm": "4/4"} and first["carry_episodes"] == 3
 
 
 # --- the release interlock ------------------------------------------------------------------------
@@ -261,20 +315,55 @@ def test_the_keypoint_potential_is_gentle_far_and_steep_near(v2):
     assert v2.keypoint_distance() == pytest.approx(0.002, abs=0.0006)   # 2 mm over the floor
 
 
-def test_the_held_progress_term_pays_new_bests_only(v2):
+def test_the_held_progress_term_is_the_potentials_change(v2):
+    """(configs/insertion_v2.yaml: plain potential-based progress; moving away costs it back)"""
     v2.reset(seed=1, options={"episode": _episode(v2, "TA"), "start_height": 0.03})
     start = v2._prev["phi"]
-    _, _, _, _, info = v2.step([0, 0, -1.0, 0, -1.0])
-    t = info["reward_terms"]
-    assert t["insert"] == pytest.approx(v2._prev["phi"] - start) and t["insert"] > 0.0
-    assert t["time"] == -0.005 and t["force"] == 0.0
-    best, paid = v2._prev["phi"], t["insert"]
-    for dz in [1.0] * 4 + [-1.0] * 10:          # away (unpaid, uncharged) and back down past it
+    paid = 0.0
+    for dz in [-1.0] * 3 + [1.0] * 4:
         _, _, _, _, info = v2.step([0, 0, dz, 0, -1.0])
+        paid += info["reward_terms"]["insert"]
+        assert info["reward_terms"]["time"] == -0.005
+    assert info["reward_terms"]["insert"] < 0.0                # going up costs
+    assert paid == pytest.approx(v2._prev["phi"] - start)
+
+
+def test_the_best_so_far_progress_pays_new_bests_only():
+    cfg = InsertionConfig.from_yaml(V2)
+    env = InsertionEnv(replace(cfg, reward=replace(cfg.reward, progress="keypoints_best"),
+                               curriculum=replace(cfg.curriculum, enabled=False)))
+    env.reset(seed=1, options={"episode": _episode(env, "TA"), "start_height": 0.03})
+    start, best, paid = env._prev["phi"], env._prev["phi"], 0.0
+    for dz in [-1.0] + [1.0] * 4 + [-1.0] * 10:  # away (unpaid, uncharged) and back down past it
+        _, _, _, _, info = env.step([0, 0, dz, 0, -1.0])
         assert info["reward_terms"]["insert"] >= 0.0
         paid += info["reward_terms"]["insert"]
-        best = max(best, v2._prev["phi"])
+        best = max(best, env._prev["phi"])
     assert paid == pytest.approx(best - start)  # in all: the best potential reached
+
+
+def test_pushing_down_inside_the_nest_with_lateral_noise_seats_and_succeeds(v2):
+    """Pilot 2's failure (from 8 mm inside, the policy's 2 mm lateral noise): the axis-split
+    layer lets the push through, force-limited along the axis."""
+    rng = np.random.default_rng(3)
+    v2.reset(seed=1, options={"episode": _episode(v2, "TC"), "start_height": -0.008})
+    for _ in range(100):
+        dx, dy = rng.normal(0.0, 0.2, 2)
+        _, _, term, _, info = v2.step([dx, dy, -1.0, 0, 1.0])
+        if term:
+            break
+    assert info["is_success"] and v2.stats["peak_force"] < 50.0
+
+
+def test_the_push_along_the_axis_is_force_limited(v2):
+    """Aimed 2.5 mm off (on the rim), straight down: the target stops advancing at 15 N."""
+    v2.reset(seed=1, options={"episode": _episode(v2, "TA", camera_xy=[0.0025, 0.0],
+                                                  chamfer=0.0005, clearance=0.00025)})
+    fz = []
+    for _ in range(80):
+        v2.step([0, 0, -1.0, 0, -1.0])
+        fz.append(v2.external_force()[0][2])
+    assert 5.0 < np.median(fz[-20:]) < 25.0 and v2.stats["peak_force"] < 50.0
 
 
 def test_the_arm_is_charged_for_pushing_on_the_tester_not_touching(v2, monkeypatch):
