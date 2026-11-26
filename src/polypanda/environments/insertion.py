@@ -235,10 +235,18 @@ class InsertionRewardConfig:
     # module's 4 bottom corners' mean distance d (m) to where they sit when seated (true nest, key
     # in the slot): phi(d) = sum_i w_i (1 - tanh(d / s_i)) over keypoint_scales s_i and
     # keypoint_weights w_i (gentle far, steep in the last millimetres; IndustReal / Isaac Lab).
+    # "keypoints_best": scale x the rise of phi above its best so far in the episode (while held):
+    # the same total for a straight approach, but wandering away and back costs nothing, so
+    # unbiased exploration noise near the nest (where d's random walk drifts outward) is not
+    # charged for it.
     progress: str = "gap"
     keypoint_scale: float = 1.0
     keypoint_scales: tuple[float, ...] = (0.1, 0.01, 0.001)
     keypoint_weights: tuple[float, ...] = (5.0, 1.0, 5.0)
+    # The collision term. False (round 1): -collision per step the arm (not the module) touches
+    # the tester. True (round 2): -collision per N of the arm's largest contact force on the
+    # tester above force_soft (at the control step): a light touch costs nothing, a push does.
+    collision_force: bool = False
 
 
 @dataclass(frozen=True)
@@ -644,11 +652,14 @@ class InsertionEnv(gym.Env):
             self.stats["release_blocked"] = 0
         if self.config.compliance.enabled:
             self.stats["comply_steps"] = 0
+        if self.config.reward.collision_force:
+            self.stats["peak_arm_force"] = 0.0
         self._step_peak = 0.0
         self._last_force = 0.0
         self._damaged = False
         self._attach_hooks()
         self._prev = self._potentials()
+        self._phi_best = self._prev.get("phi")
 
     def _put_part_in_hand(self, grasp: dict) -> None:
         """The module where the grasp holds it in the hand (after kinematics)."""
@@ -806,6 +817,21 @@ class InsertionEnv(gym.Env):
                                                              and b1 in bodies):
                 return True
         return False
+
+    def arm_force(self) -> float:
+        """The largest normal force of a contact between the arm (not the module) and the
+        tester or the bench (N), now."""
+        m, d = self.model, self.data
+        bodies = self._tester_bodies[self.tester]
+        peak = 0.0
+        for i in range(d.ncon):
+            c = d.contact[i]
+            b1, b2 = m.geom_bodyid[c.geom1], m.geom_bodyid[c.geom2]
+            if (b1 in self._arm_bodies and b2 in bodies) or (b2 in self._arm_bodies
+                                                             and b1 in bodies):
+                mujoco.mj_contactForce(m, d, i, self._f6)
+                peak = max(peak, abs(float(self._f6[0])))
+        return peak
 
     def fingers_touch_part(self) -> bool:
         m, d = self.model, self.data
@@ -1041,6 +1067,11 @@ class InsertionEnv(gym.Env):
         after = now["released"] and prev["released"]
         if r.progress == "keypoints":
             insert = r.keypoint_scale * (now["phi"] - prev["phi"]) if held else 0.0
+        elif r.progress == "keypoints_best":
+            insert = 0.0
+            if held and now["phi"] > self._phi_best:
+                insert = r.keypoint_scale * (now["phi"] - self._phi_best)
+                self._phi_best = now["phi"]
         else:
             insert = (r.insert_z * (prev["gap"] - now["gap"])
                       + r.insert_xy * (prev["xy"] - now["xy"])) if held else 0.0
@@ -1051,7 +1082,7 @@ class InsertionEnv(gym.Env):
                         if now["released"] and not released_before else 0.0),
             "retreat": r.retreat * (now["height"] - prev["height"]) if after else 0.0,
             "force": -r.force * max(0.0, self._step_peak - r.force_soft),
-            "collision": -r.collision if self.arm_touches_tester() else 0.0,
+            "collision": self._collision_term(),
             "time": -r.time,
             "action": -r.action * float(a[:4] @ a[:4]),
         }
@@ -1071,6 +1102,14 @@ class InsertionEnv(gym.Env):
                 terms["failure"] = -r.failure
                 terminated = True
         return terms, terminated, out, now
+
+    def _collision_term(self) -> float:
+        r = self.config.reward
+        if not r.collision_force:
+            return -r.collision if self.arm_touches_tester() else 0.0
+        f = self.arm_force()
+        self.stats["peak_arm_force"] = max(self.stats["peak_arm_force"], f)
+        return -r.collision * max(0.0, f - r.force_soft)
 
     def keypoint_distance(self) -> float:
         """The mean distance (m) of the module's 4 bottom corners from where they sit when it is
@@ -1098,7 +1137,7 @@ class InsertionEnv(gym.Env):
                "xy": float(min(np.linalg.norm(rel[:2]), 0.01)),
                "height": float(min(d.site_xpos[self.arm.tcp_site][2],
                                    self.config.start.carry_height))}
-        if self.config.reward.progress == "keypoints":
+        if self.config.reward.progress in ("keypoints", "keypoints_best"):
             out["keypoints"] = self.keypoint_distance()
             out["phi"] = self.keypoint_potential(out["keypoints"])
         return out

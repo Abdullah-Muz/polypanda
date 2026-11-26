@@ -72,7 +72,8 @@ def test_round_2_keeps_the_targets_task():
     for name in ("variation", "sensing", "success", "start", "horizon"):
         assert getattr(cfg, name) == getattr(ref, name)
     assert cfg.compliance.enabled and cfg.curriculum.enabled and cfg.action.release_window
-    assert cfg.reward.progress == "keypoints" and cfg.reward.release_unseated == 0.0
+    assert cfg.reward.progress == "keypoints_best" and cfg.reward.release_unseated == 0.0
+    assert cfg.reward.collision_force
     ev = cfg.for_evaluation()
     assert not ev.curriculum.enabled and ev.compliance == cfg.compliance
     assert ev.action == cfg.action and ev.reward == cfg.reward
@@ -228,13 +229,29 @@ def test_the_keypoint_potential_is_gentle_far_and_steep_near(v2):
     assert v2.keypoint_distance() == pytest.approx(0.002, abs=0.0006)   # 2 mm over the floor
 
 
-def test_the_held_progress_term_is_the_potentials_change(v2):
+def test_the_held_progress_term_pays_new_bests_only(v2):
     v2.reset(seed=1, options={"episode": _episode(v2, "TA"), "start_height": 0.03})
-    prev = v2._prev["phi"]
+    start = v2._prev["phi"]
     _, _, _, _, info = v2.step([0, 0, -1.0, 0, -1.0])
     t = info["reward_terms"]
-    assert t["insert"] == pytest.approx(v2._prev["phi"] - prev) and t["insert"] > 0.0
+    assert t["insert"] == pytest.approx(v2._prev["phi"] - start) and t["insert"] > 0.0
     assert t["time"] == -0.005 and t["force"] == 0.0
+    best, paid = v2._prev["phi"], t["insert"]
+    for dz in [1.0] * 4 + [-1.0] * 10:          # away (unpaid, uncharged) and back down past it
+        _, _, _, _, info = v2.step([0, 0, dz, 0, -1.0])
+        assert info["reward_terms"]["insert"] >= 0.0
+        paid += info["reward_terms"]["insert"]
+        best = max(best, v2._prev["phi"])
+    assert paid == pytest.approx(best - start)  # in all: the best potential reached
+
+
+def test_the_arm_is_charged_for_pushing_on_the_tester_not_touching(v2, monkeypatch):
+    v2.reset(seed=1, options={"episode": _episode(v2, "TB")})
+    monkeypatch.setattr(v2, "arm_force", lambda: 12.0)
+    assert v2._collision_term() == 0.0
+    monkeypatch.setattr(v2, "arm_force", lambda: 25.0)
+    assert v2._collision_term() == pytest.approx(-0.02 * 10.0)
+    assert v2.stats["peak_arm_force"] == 25.0
 
 
 # --- the round's PPO config -----------------------------------------------------------------------

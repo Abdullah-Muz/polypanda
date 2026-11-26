@@ -67,10 +67,17 @@ success:                      # the targets' (unchanged)
   carry_margin: 0.01
 
 reward:
-  progress: keypoints         # the held progress term: keypoint_scale x the change of phi(d)
+  # the held progress term: keypoint_scale x the rise of phi(d) above its best so far this
+  # episode, phi(d) = sum w_i (1 - tanh(d / s_i)) on the module's 4 bottom corners' mean
+  # distance d to their seated places. A straight approach earns what the plain potential
+  # difference would (+5.9 from the carry height to 2 mm over the floor, +5.0 for the last
+  # 2 mm, +11 in all), never more, so it cannot pay for dawdling; but wandering away and back
+  # costs nothing (the gate: with the plain difference, unbiased noise started near the nest
+  # lost ~1.5, d's random walk drifting outward)
+  progress: keypoints_best
   keypoint_scale: 1.0
-  keypoint_scales: [0.1, 0.01, 0.001]   # m: gentle over the 25 cm approach, the pocket, the last mm
-  keypoint_weights: [5.0, 1.0, 5.0]
+  keypoint_scales: [0.1, 0.03, 0.001]   # m: the 25 cm approach, the last 3 cm onto the rim, the last mm
+  keypoint_weights: [4.0, 2.0, 5.0]     # (the gate: touching down from 2 cm over the rim earns ~+1.5)
   insert_z: 10.0              # (unused with progress: keypoints)
   insert_xy: 100.0            # (unused)
   seat: 3.0                   # unchanged
@@ -82,13 +89,14 @@ reward:
   force_soft: 15.0            # N (round 1: 20)
   damage: 10.0                # unchanged; the episode ends
   failure: 5.0                # unchanged
-  collision: 0.02             # per step the arm touches the tester (round 1: 0.05). The gate:
-  #                             untrained noise started near the nest drifts the hand into the
-  #                             tester's roof and walls for ~240 steps (-12 at 0.05, the valley
-  #                             round 1 had from forces); 0.02 keeps it a cost on the force
-  #                             penalty's scale
+  collision: 0.02             # per N per step of the arm's push on the tester above force_soft
+  collision_force: true       # (round 1: -0.05 per step of any touch). The gate: untrained noise
+  #                             started near the nest brushes the testers' roofs and walls with
+  #                             the hand for ~240 steps (-12 at round 1's rate): touching is not
+  #                             damage, pushing is, as for the module's own force
   time: 0.005                 # per step (round 1: 0.01): -3 over the 600-step budget
-  action: 0.001
+  action: 0.0002              # x |hand action|^2 (round 1: 0.001; -0.1 of noise per episode at
+  #                             round 2's std 0.2, now -0.02)
   non_finite: 10.0
 
 start:
