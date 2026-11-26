@@ -115,3 +115,36 @@ Code and design: [insertion_env.md](insertion_env.md), "Round 2's options"; env 
 The first pilot's 250k policy from the same −8 mm starts (seeds 700000–700011, as the main session's probe): stochastic **8/12 succeed, 4 not released, 0 damage** (peaks 15–31 N; before the fix 8 of 9 releases were damage); deterministic 0/12 (it never releases: its release mean is what pilot 1 learned).
 
 **What it costs on time:** the retract (0.6 s for the fingers, then ~0.3 m at the cell's 0.1 m/s) is about 3.4 s of every success, as it is of the search's (whose 8.7 s median on `insertion_dev_v1` includes its own release and rise). I3 asks for a median time to success at least 40 % shorter than the search's (about 5.2 s): the learned skill has about 1.8 s left for the approach (≥ ~1.25 s at the 0.2 m/s step limit, plus the slow zone's last ~3 cm at ~30 mm/s) and the seat. The comparison stays fair (the same retreat for both); whether the bar is still reachable is a question for the user (a faster built-in retract would favour the policy over the frozen search's retreat).
+
+### Pilot 2 and the changes before pilot 3 (2026-11-26; the user's option A, still pure PPO, still round 2)
+
+**Pilot 2** (`runs/insertion_ppo_r2_pilot2_seed0`, 1M steps, NO-GO): validation 0/60 at every 100k, 0 seated, contact 1–59 of 60; the curriculum's low bound sat at −8 mm from 124k on with training success 0–4 %. The main session's probe: success 0/12 from −8, 0, +5, +20, +50 mm and the carry start, with 190–300 blocked release requests per episode. Two causes:
+- **The curriculum** (IndustReal's rule, uniform from `low` to the carry start): only ~5 % of episodes started near the nest, and its +5 mm step (above 80 % success) could never fire.
+- **The policy pulled out of the nest.** Its final policy from −8 mm (12 episodes, our probe with diagnostics): mean action dz **+0.10** and dx −0.1 per step: it rises out of the pocket (closest 2–7 mm over the floor early on) and drifts 30–50 cm away, with the old and the new layer alike (1–2 of 12 succeed). With `keypoints_best` progress, leaving cost nothing, while staying near the nest risked force and contact penalties. (The main session's reading, a stall against the walls, was tested too: scripted pushes down with the policy's 2 mm lateral noise and a release asked every step succeed 12/12 from −8 mm with the old layer as with the new one.)
+
+**Changes for pilot 3:**
+
+| What | As built | Why |
+|---|---|---|
+| Progress | back to the **plain potential difference** (`keypoints`), φ unchanged | leaving the nest must cost what entering earned (pilot 2). The price: untrained noise near the nest is again charged for d's outward drift (−1.2 near-nest; offset there now by its own successes) |
+| Compliance along the insertion axis (`compliance.axis_split`, user's item 1) | across the axis (x, y, yaw) the admittance as before; along it the policy may always push: the target stops advancing into a vertical contact at **15 N** (no back-off), backs off only above **30 N**; the reflex acts on **20 N across**, 3 N m twist, or **35 N along** (was 12 N on the whole force) | the whole-force layer backed off along the walls' push and its 12 N reflex held the arm whenever the module rubbed a wall; pushing down inside a tight nest needs the axis free (force-limited). The slow zone stays: it limits speed (~30 mm/s over the last ~3 cm), not progress (the scripted pushes seat through it) |
+| Curriculum (`curriculum.mode: reverse`, user's item 2) | a **reverse curriculum** (Florensa et al.): starts uniform from the fixed deepest start (−8 mm) to `high`, which starts at +5 mm and grows ×1.5 above 70 % success of the curriculum episodes, shrinks ÷1.5 below 20 % (floor 5 mm), capped at the carry start; **15 %** of episodes from the carry start (not in the rule). `ReverseCurriculumCallback` logs `curriculum/high_mm`, the curriculum and carry success, and success per start-height bin (inside, 0–5, 5–20, 20–50, 50–100, > 100 mm, carry) to TensorBoard and `curriculum.jsonl` | about 85 % of early episodes now start within 5 mm of the rim or inside; ~9 raises reach the carry start |
+
+**The gate before pilot 3** (`28802dc`; 24 episodes each; the search on its own path):
+
+| Behaviour | Carry start | Near start | −8 mm | +2 mm |
+|---|---|---|---|---|
+| The frozen search | **+16.71**, 20/24 | **+6.91**, 13/24 | +15.55, 24/24 | −1.17, 6/24 |
+| Hover | −3.00 | −2.97 | −2.97 | −2.97 |
+| Untrained noise, round 2's | −3.01, 0 dmg | −2.95, 2/24 succeed, 0 dmg | +6.91, 15/24 | |
+| Untrained noise, round 1's | −3.00 | +0.04, 5/24 | | |
+| Down until touching, hold | +1.39 | −2.14 | | |
+| Straight down, keep pressing | +2.89 (5 seated), 10.0 N | +1.59 (14 seated), 9.3 N | | |
+| Push down with lateral noise (2 mm/step), release asked every step | | | +14.13, **24/24**, 0 dmg, 10.8 N, 3.9 s | +11.50, **20/24**, 0 dmg, 15.8 N, 5.4 s |
+| Gently down, seated, hold 5 steps, release | | | +17.38, 24/24, 4.1 s | |
+| Seated, hold forever | | | +3.94 (24 seated) | +1.00 (12 seated) |
+| Press, release asked every step | | | +14.17, 24/24 | |
+| Untrained noise around a downward push | | | +16.37, 24/24 | |
+| Hold still, release asked every step (outside the window) | | | −2.97, all blocked | |
+
+No damage in any row. The search scores highest from the targets' carry start and from near-nest starts; from engaged starts (−8 mm, +2 mm) a direct push-and-release beats it (the search lifts the module back to its own hover height first). Hover stays below down-and-hold (+4.4 carry, +0.8 near). Pilot 2's final policy from −8 mm under the new layer: 1/12 stochastic, 2/12 deterministic (it still rises out: a learned habit, not the layer).
