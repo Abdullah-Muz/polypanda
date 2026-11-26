@@ -680,6 +680,9 @@ class InsertionEnv(gym.Env):
         origin, _ = self.nest_frame()
         mach = self.line.machines[self.tester]
         goal, yaw = self.target.copy(), float(self.target_yaw)
+        # the hand where the aimed command holds it at rest (the servos' static give, ~3 mm
+        # sideways and ~6 mm down at the carry posture), not the command itself
+        goal -= self.rest_target() - d.site_xpos[self.arm.tcp_site]
         q = ctl.q_cmd.copy()
         for _ in range(3):        # the arm's IK pose, corrected on the module's own pose
             q = ctl._solve(goal, top_down_quat(yaw), q)

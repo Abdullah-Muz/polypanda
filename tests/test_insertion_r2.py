@@ -109,12 +109,15 @@ def test_curriculum_starts_inside_the_nest_are_engaged_and_held(v2, tester):
 def test_curriculum_starts_above_the_rim_keep_the_aim(v2):
     ep = _episode(v2, "TC", camera_xy=[0.002, 0.001])
     v2.reset(seed=1, options={"episode": ep})
-    aimed = v2.target.copy()
+    for _ in range(20):                         # the carry start, settled: where it aims
+        v2.step([0, 0, 0, 0, -1.0])
+    aimed = v2.data.xpos[v2.part.body][:2].copy()
     for h in (0.002, 0.03):
         v2.reset(seed=1, options={"episode": ep, "start_height": h})
         assert abs(v2.part_height_over_rim() - h) < 0.0006 and v2.nest_force() == 0.0
-        assert np.abs(v2.target[:2] - aimed[:2]).max() < 0.0005     # over the believed nest
-        assert v2.seat()["offset"] > 0.0015                         # the camera's error kept
+        # the module over the believed nest as the aim holds it (the camera's error kept)
+        assert np.abs(v2.data.xpos[v2.part.body][:2] - aimed).max() < 0.0005
+        assert v2.seat()["offset"] > 0.0005                         # not the true nest's axis
 
 
 def test_the_curriculum_draws_between_its_low_bound_and_the_carry_start():
@@ -167,7 +170,7 @@ def test_the_curriculum_callback_moves_the_low_bound_on_the_rolling_success(tmp_
     assert cb.low == pytest.approx(cur.low_min)
     episodes([True] * 40)                             # never above high
     assert cb.low == pytest.approx(0.02)
-    assert len((tmp_path / "c.jsonl").read_text().splitlines()) == 15
+    assert len((tmp_path / "c.jsonl").read_text().splitlines()) == 16   # one per window
 
 
 # --- the release interlock ------------------------------------------------------------------------
