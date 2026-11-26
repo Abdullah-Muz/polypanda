@@ -34,6 +34,14 @@ action:
   max_turn: 0.35
   release_above: 0.5
   release_window: 0.003       # m: the interlock (the module's bottom this close to the floor)
+  release_retract: true       # release-and-retract (user, 2026-11-26, after the first pilot): a
+  #                             release that takes effect opens the fingers and retracts the hand
+  #                             to the carry height as one built-in motion, the cell's own (as the
+  #                             search's retreat), and the episode ends, judged as always. The
+  #                             first pilot's policy, pressing down, kept pressing with the open
+  #                             hand after a release and drove the fingers into the freed module
+  #                             (8 of 12 stochastic releases ended in damage), so it learned never
+  #                             to let go
 
 compliance:
   enabled: true

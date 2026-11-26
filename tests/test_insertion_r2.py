@@ -188,6 +188,26 @@ def test_a_release_takes_effect_only_near_the_floor(v2):
     assert not v2.line.attached(v2.part) and info["stats"]["release_blocked"] == 0
 
 
+@pytest.mark.parametrize("dz", [0.0, -1.0])     # held still, or pressing on through the release
+def test_a_release_retracts_the_hand_and_ends_the_episode(v2, dz):
+    v2.reset(seed=1, options={"episode": _episode(v2, "TB"), "start_height": -0.0135})
+    _, r, term, trunc, info = v2.step([0, 0, dz, 0, 1.0])
+    out, t = info["outcome"], info["reward_terms"]
+    assert term and not trunc and info["is_success"] and out["hand_up"] and out["seated"]
+    assert v2.stats["peak_force"] < 50.0                     # watched through the retract
+    # the retract's control steps count: the fingers' 12, then the rise to the carry height
+    assert out["steps"] == v2.steps > 13 and t["time"] == pytest.approx(-0.005 * v2.steps)
+    assert t["success"] == 10.0 and t["release"] == 1.0 and t["retreat"] == 0.0
+    assert r == pytest.approx(sum(t.values()))
+
+
+def test_round_1_lets_the_policy_move_the_open_hand(v1):
+    assert not InsertionConfig().action.release_retract
+    v1.reset(seed=1, options={"episode": _episode(v1, "TA"), "start_height": -0.013})
+    _, _, term, _, info = v1.step([0, 0, 0, 0, 1.0])
+    assert info["released"] and not term and v1.steps == 1
+
+
 # --- the compliant action layer -------------------------------------------------------------------
 @pytest.mark.parametrize("tester", ["TA", "TB"])
 def test_pressing_down_on_the_rim_is_compliant(v1, v2, tester):

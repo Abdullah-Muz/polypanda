@@ -11,8 +11,16 @@ Behaviours (round 1's root-cause measurements, repeated):
   the episode; search_replay: its recorded actions replayed through env.step (round 1's way; under
   round 2 the compliant layer acts on them).
 
-Starts: "carry" (the targets' start) or "near" (a start height drawn per episode uniformly from
---near-low..--near-high m above the nest's rim; InsertionEnv reset option "start_height").
+- the release (round 2's release-and-retract), from any start: press_release: straight down at
+  full speed with a release asked every step (the first pilot's habit: pressing on through the
+  release); hold_release: gently down (0.3) until seated, hold 5 steps, release; hold_forever:
+  gently down until seated, hold, never release; release_high: hold still, a release asked every
+  step (outside the interlock's window: blocked); noisy_press_release: round 2's untrained noise
+  around a downward push (dz mean -0.5), release noise included.
+
+Starts: "carry" (the targets' start), "near" (a start height drawn per episode uniformly from
+--near-low..--near-high m above the nest's rim; InsertionEnv reset option "start_height") or
+"deep" (--deep m: the curriculum's deepest start, 8 mm inside the rim).
 
   uv run python scripts/insertion_reward_gate.py --config configs/insertion_v2.yaml --start carry
 Prints a JSON summary per behaviour.
@@ -45,6 +53,8 @@ def make_env(config: str):
 def start_height(args, k: int) -> float | None:
     if args.start == "carry":
         return None
+    if args.start == "deep":
+        return args.deep
     return float(np.random.default_rng(1000 + k).uniform(args.near_low, args.near_high))
 
 
@@ -73,7 +83,7 @@ def rollout(env, act, args, k: int) -> dict:
         if term or trunc:
             break
     out = info.get("outcome") or env.outcome()
-    return {"return": total, "steps": t, "success": bool(out["success"]),
+    return {"return": total, "steps": t, "time_s": out["time_s"], "success": bool(out["success"]),
             "seated": bool(out["seated"]), "failure": out["failure"], "terms": dict(terms),
             "first_release": first_release, "first_contact": first_contact,
             "min_gap_mm": min_gap * 1000, "peak_force": peak,
@@ -95,6 +105,29 @@ def descend_hold():
             state["touch"] = True
         return HOLD if state["touch"] else DOWN
     return act
+
+
+def seat_then(release_after: int | None):
+    """Gently down (dz -0.3) until seated, hold; release `release_after` steps after seating
+    (None: never)."""
+    state = {"seated_at": None}
+
+    def act(obs, t, env):
+        if t == 0:
+            state["seated_at"] = None
+        if state["seated_at"] is None and env._prev["seated"]:
+            state["seated_at"] = t
+        if state["seated_at"] is None:
+            return np.array([0.0, 0.0, -0.3, 0.0, -1.0])
+        release = release_after is not None and t - state["seated_at"] >= release_after
+        return np.array([0.0, 0.0, 0.0, 0.0, 1.0 if release else -1.0])
+    return act
+
+
+def noisy_press_release(seed: int):
+    rng = np.random.default_rng(seed)
+    mean = np.array([0.0, 0.0, -0.5, 0.0, 0.0])
+    return lambda obs, t, env: np.clip(rng.normal(mean, R2_NOISE), -1.0, 1.0)
 
 
 class _Scorer:
@@ -156,6 +189,18 @@ def job(spec) -> tuple:
             rows.append(rollout(env, descend_hold(), args, k))
         elif behaviour == "descend_press":
             rows.append(rollout(env, lambda o, t, e: DOWN, args, k))
+        elif behaviour == "press_release":
+            rows.append(rollout(env, lambda o, t, e: np.array([0.0, 0.0, -1.0, 0.0, 1.0]),
+                                args, k))
+        elif behaviour == "hold_release":
+            rows.append(rollout(env, seat_then(5), args, k))
+        elif behaviour == "hold_forever":
+            rows.append(rollout(env, seat_then(None), args, k))
+        elif behaviour == "release_high":
+            rows.append(rollout(env, lambda o, t, e: np.array([0.0, 0.0, 0.0, 0.0, 1.0]),
+                                args, k))
+        elif behaviour == "noisy_press_release":
+            rows.append(rollout(env, noisy_press_release(7 + k), args, k))
         elif behaviour == "search":
             own = search_own(env, args, k)
             acts = own.pop("actions")
@@ -187,6 +232,9 @@ def summarize(rows: list[dict]) -> dict:
             "release_blocked_mean": round(float(np.mean([r["release_blocked"] for r in rows])),
                                           1),
             "peak_force_median": med("peak_force"), "steps_median": med("steps"),
+            "time_s_success_median": (round(float(np.median(
+                [r["time_s"] for r in rows if r["success"] and r.get("time_s") is not None])), 2)
+                if any(r["success"] and r.get("time_s") is not None for r in rows) else None),
             "min_gap_mm_median": med("min_gap_mm"), "failures": dict(fails),
             "terms_mean": {k: round(float(np.sum(v) / n), 3) for k, v in sorted(terms.items())}}
 
@@ -194,9 +242,10 @@ def summarize(rows: list[dict]) -> dict:
 def main() -> None:
     p = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     p.add_argument("--config", default="configs/insertion_v2.yaml")
-    p.add_argument("--start", choices=("carry", "near"), default="carry")
+    p.add_argument("--start", choices=("carry", "near", "deep"), default="carry")
     p.add_argument("--near-low", type=float, default=-0.003)
     p.add_argument("--near-high", type=float, default=0.02)
+    p.add_argument("--deep", type=float, default=-0.008)
     p.add_argument("--episodes", type=int, default=24)
     p.add_argument("--behaviours", nargs="+",
                    default=["hover", "gauss_r1", "gauss_r2", "descend_hold", "descend_press",
@@ -212,6 +261,8 @@ def main() -> None:
     report = {"config": args.config, "start": args.start, "episodes": args.episodes}
     if args.start == "near":
         report["near_m"] = [args.near_low, args.near_high]
+    if args.start == "deep":
+        report["near_m"] = [args.deep, args.deep]
     for behaviour, rows in results:
         if behaviour == "search":
             report["search"] = summarize([r for r in rows if not r.get("_replay")])

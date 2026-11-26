@@ -152,6 +152,13 @@ class InsertionActionConfig:
     # the module sits in the hand within +-0.03 mm, so the cell knows this depth from its own
     # kinematics; the true pose is read here as the same number.
     release_window: float | None = None
+    # v4.1 round 2 (user, 2026-11-26), release-and-retract: a release that takes effect opens the
+    # fingers and retracts the hand straight up to the carry height as one built-in motion, the
+    # cell's own (ScriptedCell: wait grip_steps for the fingers, then vertical() at its speed),
+    # as the frozen search's retreat runs it; the episode then ends, judged as always. Its
+    # control steps count in the episode's time and the nest-force watch runs through it. False
+    # (round 1): after a release the policy moves the open hand itself.
+    release_retract: bool = False
 
 
 @dataclass(frozen=True)
@@ -453,6 +460,7 @@ class InsertionEnv(gym.Env):
         self._rest_yaw = 0.0
         self._give = np.zeros(len(self._arm_dofs))
         self._reflex_on, self._substep, self._reflexes = False, 0, 0
+        self._retract_due = False
         self.start_low = self.config.curriculum.low     # the curriculum's lowest start (m)
         self.start_height: float | None = None           # this episode's (None: the carry start)
 
@@ -1031,6 +1039,7 @@ class InsertionEnv(gym.Env):
             if c.release_window is None or self.seat()["gap"] < c.release_window:
                 self.line.detach(self.part)
                 ctl.grip = GRIPPER_OPEN
+                self._retract_due = c.release_retract
             else:
                 self.stats["release_blocked"] += 1
         target = self.target + self.nest_R @ (c.max_step * a[:3])
@@ -1139,7 +1148,9 @@ class InsertionEnv(gym.Env):
         r = self.config.reward
         a = np.clip(np.asarray(action, dtype=np.float64), -1.0, 1.0)
         released_before = self.released
+        steps_before = self.steps
         self._step_peak = 0.0
+        self._retract_due = False
         self.command(a)
         cc = self.config.compliance
         self._reflex_on = cc.enabled and cc.reflex_force is not None and not self.released
@@ -1151,12 +1162,19 @@ class InsertionEnv(gym.Env):
         if self._reflexes:
             self.stats["reflexes"] = self.stats.get("reflexes", 0) + self._reflexes
             self._reflexes = 0
+        retracted = self._retract_due
+        if retracted:
+            self.retract()
         if not (np.all(np.isfinite(self.data.qpos)) and np.all(np.isfinite(self.data.qvel))):
             info = {"is_success": False, "failure": "non_finite", "reward_terms": {},
                     "stats": dict(self.stats), "outcome": None}
             return (np.zeros(self.observation_space.shape, np.float32), -r.non_finite, True,
                     False, info)
         terms, terminated, out, now = self.judge(a, released_before)
+        if retracted:
+            # the retract's control steps are the episode's time too; the episode ends here
+            terms["time"] = -r.time * (self.steps - steps_before)
+            terminated = True
         truncated = not terminated and self.steps >= self.config.horizon
         if out is None and (terminated or truncated):
             out = self.outcome()
@@ -1167,6 +1185,18 @@ class InsertionEnv(gym.Env):
             "nest_force": self._step_peak, "stats": dict(self.stats), "reward_terms": terms,
         }
         return self.observation(), float(sum(terms.values())), terminated, truncated, info
+
+    def retract(self) -> None:
+        """Release-and-retract (InsertionActionConfig.release_retract), after the control step
+        that let go: the fingers open for the cell's grip_steps, then the hand goes straight up
+        to the carry height (ScriptedCell.vertical, the cell's own move at its speed), as the
+        frozen search's retreat does. The nest-force watch runs through it."""
+        ctl = self.ctl
+        ctl.step(ctl.config.grip_steps)
+        tcp = self.data.site_xpos[self.arm.tcp_site]
+        ctl.vertical(tcp[:2].copy(), ctl.config.carry_height, self.target_yaw)
+        if ctl.last_command is not None:
+            self.target = ctl.last_command[0].copy()
 
     def judge(self, a: np.ndarray, released_before: bool) -> tuple[dict, bool, dict | None,
                                                                     dict]:
