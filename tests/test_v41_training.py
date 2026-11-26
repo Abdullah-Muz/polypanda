@@ -111,7 +111,7 @@ def test_insertion_summary_counts_damage_and_bins():
 
 def test_the_fixed_episode_callback_writes_insertion_cells(tmp_path):
     from polypanda.training.runner import train
-    cfg = replace(TrainConfig.from_yaml(ROOT / "configs" / "insertion_bc_ppo_r1.yaml"),
+    cfg = replace(TrainConfig.from_yaml(ROOT / "configs" / "insertion_ppo_r1.yaml"),
                   n_envs=1, vec_env="dummy", total_timesteps=8, eval_freq=4, eval_episodes=2,
                   checkpoint_freq=1000, init_from=None,
                   ppo=replace(TrainConfig().ppo, n_steps=8, batch_size=8, n_epochs=1))
@@ -155,12 +155,17 @@ def test_round_1_configs_chain_clone_to_ppo():
     assert door_bc.clone.init_checkpoint == "final" and door_bc.clone.log_std is None
     assert door_bc.record.task == "door_v2" and door_bc.record.script == "feel_v2"
     assert door_bc.record.env_config == door.env_config
-    ins_bc = BCRunConfig.from_yaml(ROOT / "configs" / "insertion_bc_r1.yaml")
-    ins = TrainConfig.from_yaml(ROOT / ins_bc.training_config)
-    assert ins.task == "insertion" and ins.init_from == "runs/insertion_bc_r1_seed{seed}"
-    assert ins.eval_fixed_episodes and ins_bc.record is None and ins_bc.clone.init_from is None
-    for cfg in (door, ins):
-        assert cfg.n_envs == 8 and cfg.eval_episodes == 200 and cfg.eval_freq == 100_000
+    assert door.n_envs == 8 and door.eval_episodes == 200 and door.eval_freq == 100_000
+
+
+def test_the_insertion_is_pure_ppo():
+    """The user's decision of 2026-11-25: PPO from scratch, no demonstrations or clone."""
+    ins = TrainConfig.from_yaml(ROOT / "configs" / "insertion_ppo_r1.yaml")
+    assert ins.task == "insertion" and ins.init_from is None
+    assert ins.env_config == "configs/insertion_v1.yaml" and ins.eval_fixed_episodes
+    assert ins.n_envs == 8 and ins.eval_freq == 100_000 and ins.eval_seed == 100_000
+    assert ins.ppo.log_std_init == (-2.3, -2.3, -2.3, -2.3, -1.2)
+    assert not (ROOT / "configs" / "insertion_bc_r1.yaml").exists()
 
 
 def test_round_1_demonstrations_draw_from_training_streams():
@@ -236,17 +241,16 @@ def test_latched_release_labels_change_only_the_released_steps():
     np.testing.assert_array_equal(out[:, 4], [-1, -1, 1, 1, 1])
     np.testing.assert_array_equal(out[:, :4], act[:, :4])
     assert act[3, 4] == -1.0                          # (a copy)
-    ins = BCRunConfig.from_yaml(ROOT / "configs" / "insertion_bc_r1.yaml").clone
-    assert (ins.latch_action, ins.latch_obs) == (4, OBS_SLICES["released"].start)
-    assert ins.log_std == (-3.0, -3.0, -3.0, -3.0, -1.0)
 
 
 def test_an_insertion_clone_is_a_run_with_its_own_action_noise(tmp_path):
-    train_cfg = TrainConfig.from_yaml(ROOT / "configs" / "insertion_bc_ppo_r1.yaml")
+    """(Cloning works for any task; the v4.1 insertion itself is pure PPO.)"""
+    train_cfg = TrainConfig.from_yaml(ROOT / "configs" / "insertion_ppo_r1.yaml")
     env_cfg = InsertionConfig.from_yaml(ROOT / train_cfg.env_config)
-    cfg = BCRunConfig.from_yaml(ROOT / "configs" / "insertion_bc_r1.yaml").clone
-    model, venv, log = clone(_demos("insertion"), train_cfg, env_cfg,
-                             replace(cfg, epochs=2, value_epochs=1, val_share=0.0))
+    cfg = CloneConfig(epochs=2, value_epochs=1, val_share=0.0,
+                      log_std=(-3.0, -3.0, -3.0, -3.0, -1.0), latch_action=4,
+                      latch_obs=OBS_SLICES["released"].start)
+    model, venv, log = clone(_demos("insertion"), train_cfg, env_cfg, cfg)
     np.testing.assert_allclose(model.policy.log_std.detach().numpy(), [-3, -3, -3, -3, -1])
     assert "init" not in log
     assert model.observation_space.shape == (42,)
