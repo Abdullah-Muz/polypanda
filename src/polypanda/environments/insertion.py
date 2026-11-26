@@ -174,6 +174,23 @@ class InsertionComplianceConfig:
     lead: float = 0.001             # m: the target's largest lead into a contact
     approach_zone: float = 0.015    # m above the nest's rim: the slow zone starts here
     approach_lead: float = 0.005    # m: the target's largest lead in the slow zone
+    approach_yaw_lead: float = 0.35  # rad: the yaw target's largest lead there (0.35: no limit)
+    # the contact reflex between control steps (InsertionEnv._reflex; None: none): every
+    # reflex_every physics steps of a policy's step, an external force above reflex_force (N) or
+    # twist above reflex_torque (N m) holds the arm where it is until the next control step
+    reflex_force: float | None = None
+    reflex_torque: float = 3.0
+    reflex_every: int = 5
+    # the force it complies with: "robot", the external force on the arm and the held module
+    # (the Panda's joint-torque estimate; the hand brushing a tester's roof gives way too), or
+    # "module", the wrist sensor's force on the module only
+    sense: str = "robot"
+    # (sense "robot") in yaw, with the external torque about the vertical through the TCP
+    torque_contact: float = 0.2     # N m: twisted by a contact
+    torque: float = 0.5             # N m: above this the yaw target backs off
+    rot_gain: float = 0.0002        # rad per N m per step (x the wrist's ~2000 N m/rad = 0.4 < 2)
+    max_rot_backoff: float = 0.005  # rad per step
+    yaw_lead: float = 0.0005        # rad: the yaw target's largest lead into a twist (~1 N m)
 
 
 @dataclass(frozen=True)
@@ -409,6 +426,8 @@ class InsertionEnv(gym.Env):
         hand_root = m.body_rootid[m.body("hand").id]
         self._arm_bodies = {b for b in range(m.nbody) if b and m.body_rootid[b] == hand_root}
         self._fingers = {m.body("left_finger").id, m.body("right_finger").id}
+        self._robot = np.zeros(m.nbody, bool)             # the arm and the held module
+        self._robot[list(self._arm_bodies) + [self.part.body]] = True
         self._finger_qpos = [int(m.joint(f"finger_joint{k}").qposadr[0]) for k in (1, 2)]
         self._weld = m.equality("assist0").id
         self.pool = (load_pick_pool(self.config.pick_pool) if self.config.pick_pool else None)
@@ -430,6 +449,10 @@ class InsertionEnv(gym.Env):
         self._part_weight = float(m.body_mass[self.part.body] * -m.opt.gravity[2])
         self._jacp = np.zeros((3, m.nv))
         self._jacs = np.zeros((3, m.nv))
+        self._jacr = np.zeros((3, m.nv))
+        self._rest_yaw = 0.0
+        self._give = np.zeros(len(self._arm_dofs))
+        self._reflex_on, self._substep, self._reflexes = False, 0, 0
         self.start_low = self.config.curriculum.low     # the curriculum's lowest start (m)
         self.start_height: float | None = None           # this episode's (None: the carry start)
 
@@ -780,7 +803,8 @@ class InsertionEnv(gym.Env):
         return float(np.linalg.norm(total))
 
     def _watch(self) -> None:
-        """After every physics step: the nest force."""
+        """After every physics step: the nest force (and, for a policy's step, the compliant
+        layer's contact reflex)."""
         f = self.nest_force()
         self._last_force = f
         if f > self._step_peak:
@@ -789,6 +813,36 @@ class InsertionEnv(gym.Env):
                 self.stats["peak_force"] = f
                 if f > self.config.success.force_limit:
                     self._damaged = True
+        if self._reflex_on:
+            self._substep += 1
+            if self._substep % self.config.compliance.reflex_every == 0:
+                self._reflex()
+
+    def _reflex(self) -> None:
+        """The compliant layer's contact reflex (InsertionComplianceConfig.reflex_force),
+        between control steps: if the external force or twist passes its limit, the arm's
+        servos are set to hold it where it is (its rest pose: the joints plus their give under
+        the weights) for the rest of the control step, so a contact met at speed stops building
+        up force (the layer itself acts only at the 20 Hz control steps; a real admittance runs
+        at the robot's 1 kHz)."""
+        cc = self.config.compliance
+        F, tz = self.external_force()
+        if float(np.linalg.norm(F)) > cc.reflex_force or abs(tz) > cc.reflex_torque:
+            d = self.data
+            self.joint_give()
+            d.ctrl[self.arm.arm_actuators] = d.qpos[self.arm.arm_qpos] + self._give
+            self._reflexes += 1
+
+    def joint_give(self) -> np.ndarray:
+        """The arm's joints' static give under its own and the held module's weight (rad):
+        tau_hold / kp."""
+        m, d = self.model, self.data
+        dofs = self._arm_dofs
+        tau = d.qfrc_bias[dofs].copy()           # gravity (and the small velocity terms)
+        mujoco.mj_jac(m, d, self._jacp, None, d.xipos[self.part.body], self._hand)
+        tau += self._jacp[2, dofs] * self._part_weight
+        self._give = tau / self._kp
+        return self._give
 
     def _before_control_step(self) -> None:
         if self.recorder is not None:
@@ -980,12 +1034,12 @@ class InsertionEnv(gym.Env):
             else:
                 self.stats["release_blocked"] += 1
         target = self.target + self.nest_R @ (c.max_step * a[:3])
+        yaw = self.target_yaw + c.max_rot * a[3]
         if self.config.compliance.enabled and not self.released:
-            target = self.comply(target)
+            target, yaw = self.comply(target, yaw)
         tcp = self.data.site_xpos[self.arm.tcp_site]
         bounded = np.clip(target, tcp - c.max_lead, tcp + c.max_lead)
         self.stats["lead_clips"] += bool(np.any(bounded != target))
-        yaw = self.target_yaw + c.max_rot * a[3]
         turned = float(np.clip(yaw, self.aim_yaw - c.max_turn, self.aim_yaw + c.max_turn))
         self.stats["turn_clips"] += turned != yaw
         self.target, self.target_yaw = bounded, turned
@@ -999,27 +1053,68 @@ class InsertionEnv(gym.Env):
         stiffness."""
         m, d, arm = self.model, self.data, self.arm
         dofs = self._arm_dofs
-        tau = d.qfrc_bias[dofs].copy()           # gravity (and the small velocity terms)
-        mujoco.mj_jac(m, d, self._jacp, None, d.xipos[self.part.body], self._hand)
-        tau += self._jacp[2, dofs] * self._part_weight
-        mujoco.mj_jacSite(m, d, self._jacs, None, arm.tcp_site)
-        return d.site_xpos[arm.tcp_site] + self._jacs[:, dofs] @ (tau / self._kp)
+        give = self.joint_give()
+        mujoco.mj_jacSite(m, d, self._jacs, self._jacr, arm.tcp_site)
+        self._rest_yaw = self.hand_yaw() + float(self._jacr[2, dofs] @ give)
+        return d.site_xpos[arm.tcp_site] + self._jacs[:, dofs] @ give
 
-    def comply(self, target: np.ndarray) -> np.ndarray:
+    def hand_yaw(self) -> float:
+        """The measured hand's yaw, as the hand target's yaw is counted."""
+        meas = closing_yaw(self.data.site_xmat[self.arm.tcp_site].reshape(3, 3))
+        return self.target_yaw + _wrap(meas - self.target_yaw)
+
+    def external_force(self) -> tuple[np.ndarray, float]:
+        """The summed contact force (N, world) on the robot (the arm, the hand, the fingers) and
+        the held module from everything else (the tester, the bench), and its torque about the
+        vertical through the TCP (N m): what the Panda's external wrench estimate (from its joint
+        torque sensors) reports, here summed from the contacts. Contacts within the robot (the
+        fingers on the module) are internal and left out."""
+        m, d = self.model, self.data
+        out, tz = np.zeros(3), 0.0
+        if d.ncon == 0:
+            return out, tz
+        r1 = self._robot[m.geom_bodyid[d.contact.geom1]]
+        r2 = self._robot[m.geom_bodyid[d.contact.geom2]]
+        tcp = d.site_xpos[self.arm.tcp_site]
+        for i in np.flatnonzero(r1 ^ r2):
+            mujoco.mj_contactForce(m, d, int(i), self._f6)
+            c = d.contact[int(i)]
+            f = c.frame.reshape(3, 3).T @ self._f6[:3]   # on geom2
+            if not r2[i]:
+                f = -f
+            out += f
+            tz += float((c.pos[0] - tcp[0]) * f[1] - (c.pos[1] - tcp[1]) * f[0])
+        return out, tz
+
+    def comply(self, target: np.ndarray, yaw: float) -> tuple[np.ndarray, float]:
         """The compliant action layer (InsertionComplianceConfig) on a new hand target, around
         the rest target E (`rest_target`):
         - near the nest (the module's bottom less than `approach_zone` above the rim, or inside)
           the target stays within `approach_lead` of E on each axis: the hand slows to about
           10 x approach_lead per second (the servos' kv/kp = 0.1 s) before it can touch;
-        - in contact (the wrist sensor's force F on the held module above `contact_force`,
-          n = F / |F|, the contacts' push) it backs off along n by gain x (|F| - force) above
-          `force`, and may not lead E into the contact (along -n) by more than `lead`."""
+        - in contact (the external force F above `contact_force`, n = F / |F|, the contacts'
+          push; `sense`: "robot", the force on the arm and the held module from everything else,
+          as the Panda estimates its external wrench from its joint torque sensors; "module",
+          the wrist sensor's force on the module only) it backs off along n by gain x
+          (|F| - force) above `force`, and may not lead E into the contact (along -n) by more
+          than `lead`;
+        - (sense "robot") the same in yaw with the external torque T about the vertical
+          through the TCP: above `torque_contact` the yaw target may not lead the rest yaw into
+          the twist by more than `yaw_lead`, and above `torque` it backs off by rot_gain x
+          (|T| - torque). The wrist is very stiff in yaw (joint 7's kp 2000 N m/rad: 0.01 rad
+          twists the hand with ~20 N m), so a turn that wedges the hand or the module's key is
+          held to a few N m."""
         cc = self.config.compliance
         out = target.copy()
         rest = self.rest_target()
         if self.part_height_over_rim() < cc.approach_zone:
             out = np.clip(out, rest - cc.approach_lead, rest + cc.approach_lead)
-        F = self.wrench()[:3]
+            yaw = float(np.clip(yaw, self._rest_yaw - cc.approach_yaw_lead,
+                                self._rest_yaw + cc.approach_yaw_lead))
+        if cc.sense == "robot":
+            F, tz = self.external_force()
+        else:
+            F, tz = self.wrench()[:3], 0.0
         f = float(np.linalg.norm(F))
         if f > cc.contact_force:
             n = F / f
@@ -1028,9 +1123,17 @@ class InsertionEnv(gym.Env):
             lead = float((rest - out) @ n)
             if lead > cc.lead:
                 out += n * (lead - cc.lead)
-        if np.any(out != target):
+        turned = yaw
+        if abs(tz) > cc.torque_contact:
+            s = float(np.sign(tz))                  # the contacts twist the hand this way
+            if abs(tz) > cc.torque:
+                turned += s * min(cc.rot_gain * (abs(tz) - cc.torque), cc.max_rot_backoff)
+            lead = s * (self._rest_yaw - turned)     # how far the target twists into them
+            if lead > cc.yaw_lead:
+                turned += s * (lead - cc.yaw_lead)
+        if np.any(out != target) or turned != yaw:
             self.stats["comply_steps"] += 1
-        return out
+        return out, turned
 
     def step(self, action):
         r = self.config.reward
@@ -1038,7 +1141,16 @@ class InsertionEnv(gym.Env):
         released_before = self.released
         self._step_peak = 0.0
         self.command(a)
-        self.ctl.step()
+        cc = self.config.compliance
+        self._reflex_on = cc.enabled and cc.reflex_force is not None and not self.released
+        self._substep = 0
+        try:
+            self.ctl.step()
+        finally:
+            self._reflex_on = False
+        if self._reflexes:
+            self.stats["reflexes"] = self.stats.get("reflexes", 0) + self._reflexes
+            self._reflexes = 0
         if not (np.all(np.isfinite(self.data.qpos)) and np.all(np.isfinite(self.data.qvel))):
             info = {"is_success": False, "failure": "non_finite", "reward_terms": {},
                     "stats": dict(self.stats), "outcome": None}

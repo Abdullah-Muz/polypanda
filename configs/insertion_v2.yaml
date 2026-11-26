@@ -43,6 +43,23 @@ compliance:
   gain: 0.00005               # m per N per step: x ~13 N/mm contact stiffness = 0.65 < 2 (stable)
   max_backoff: 0.001          # m per step
   lead: 0.001                 # m: the target's largest lead into a contact (~13 N at ~13 N/mm)
+  approach_zone: 0.015        # m above the rim (and inside): the slow zone (the gate: touching
+  #                             down at round 1's 0.2 m/s gave 35-80 N before any layer could act)
+  approach_lead: 0.003        # m: the target within this of the rest target there (~30 mm/s)
+  sense: robot                # comply with the external force (and its twist about the TCP) on
+  #                             the arm and the module (the Panda's joint-torque estimate), not
+  #                             the module's alone: the gate's noise near the nest pushed the hand
+  #                             into the testers' roofs with hundreds of N
+  torque_contact: 0.2         # N m: twisted by a contact (the wrist is very stiff in yaw)
+  torque: 0.5                 # N m: above this the yaw target backs off
+  rot_gain: 0.0002            # rad per N m per step (x the wrist's ~2000 N m/rad = 0.4 < 2)
+  max_rot_backoff: 0.005      # rad per step
+  yaw_lead: 0.0005            # rad: the yaw target's largest lead into a twist (~1 N m)
+  reflex_force: 12.0          # N: between control steps (every physics step of a policy's step)
+  reflex_torque: 3.0          # N m: an external force or twist above these holds the arm where
+  reflex_every: 1             # it is until the next control step (the layer itself acts at
+  #                             20 Hz; a contact met at speed otherwise builds up for 50 ms: the
+  #                             gate's noise reached 100-300 N on the testers' roofs)
 
 curriculum:
   enabled: true

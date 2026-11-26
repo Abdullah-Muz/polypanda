@@ -217,6 +217,18 @@ def test_the_rest_target_holds_the_hand_still(v2):
         v2.step([0, 0, 0, 0, -1.0])
     # the target that holds the hand where it is, in free air, is the target itself
     assert np.abs(v2.rest_target() - v2.target).max() < 0.0003
+    assert abs(v2._rest_yaw - v2.target_yaw) < 0.002                   # and its yaw
+
+
+def test_twisting_against_the_tester_is_compliant(v2):
+    """Started engaged (the key in the slot), the wrist turned hard both ways: the layer holds
+    the twist to a few N m instead of the stiff wrist's tens."""
+    v2.reset(seed=1, options={"episode": _episode(v2, "TA"), "start_height": -0.005})
+    torques = []
+    for k in range(60):
+        v2.step([0, 0, 0, 1.0 if (k // 15) % 2 == 0 else -1.0, -1.0])
+        torques.append(abs(v2.external_force()[1]))
+    assert max(torques) < 5.0 and v2.nest_force() < 30.0 and v2.stats["peak_force"] < 50.0
 
 
 # --- the keypoint progress reward -----------------------------------------------------------------
