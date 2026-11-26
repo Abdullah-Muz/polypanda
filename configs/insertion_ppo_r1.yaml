@@ -1,0 +1,70 @@
+# v4.1 learned insertion, dev round 1 (docs/v4_1_targets.md, Part I; at most 3 rounds): PPO FROM
+# SCRATCH on task insertion (configs/insertion_v1.yaml, unchanged: the targets' distribution,
+# grasps from the training pick pool, the env's shaped reward). The user's decision of
+# 2026-11-25: no demonstrations and no cloning for the insertion.
+# - Steps: 3M, v4.0's from-scratch door reference length (configs/door_v1_ppo.yaml), more than
+#   the 2M of its warm-started rounds: from scratch the policy has to find the approach (25 cm
+#   down), the seat, the release and the retreat, with no clone to start from. Measured in the
+#   20k-step smoke on a loaded machine: 200-220 steps/s before the first validation (8 envs, with
+#   3 other recording workers and 7 foreign processes on the 16 cores), so about 4 h of training
+#   per seed at that rate; round 2 can extend it if the curve is still rising.
+# - Exploration, one log std per action [dx, dy, dz, dyaw, release]:
+#   * the hand's moves and turn: -2.3 (std 0.1 of full scale: 1 mm and 0.005 rad per step), the
+#     middle of the env's suggested -2 to -3 for precise work (docs/insertion_env.md). The hand
+#     target integrates the actions, so per-step noise random-walks the module: at -2.3 about
+#     4.5 mm over a second unless the policy corrects it, against 0.25-0.5 mm of clearance and
+#     the 50 N limit (the search's fine moves are 0.1-0.5 mm per step); SB3's default std 1
+#     (10 mm per step) would walk 4.5 cm a second and hit the nest's top at random.
+#   * the release: -1.2 (std 0.3). Letting go is a threshold (above 0.5), and success needs it.
+#     From an untrained mean near 0 a release is a 1.7-sigma draw (about 5 % of steps), so early
+#     episodes let go at once and the release penalty (-2 unseated) teaches the mean down fast;
+#     at a mean of -0.5 it is a 3.3-sigma draw (0.05 % of steps), so a module held seated for
+#     ~100 steps is still let go in a few % of episodes, enough for PPO to find the reward of a
+#     seated release (+1, the retreat, +10 success). At the hand's -2.3 (std 0.1) a release
+#     from -0.5 would be a 10-sigma draw: never found.
+# - lr 3e-4 -> 3e-5: v4.0's from-scratch door reference (configs/door_v1_ppo.yaml), the SB3
+#   default rate decayed linearly.
+# - ent_coef 0 (that reference's was 0.005): an entropy bonus pushes every log std up at a
+#   constant rate, and here a larger hand noise mainly breaks the 50 N limit; PPO sets the noise
+#   from the returns alone.
+# - n_steps 512 x 8 envs (4,096 per update), batch 256, 10 epochs, gamma 0.99, network 256x256:
+#   the door's, unchanged.
+# - Validation: the same fixed episodes every 100k steps (eval_seed 100000: gymnasium's plain
+#   seeded stream, as training's, never an insertion set's spawn-keyed stream), per tester, with
+#   damage episodes and success by clearance and camera error (training/fixed_eval.py).
+#   60 episodes, not the door's 200: an untrained insertion holds on for the whole 600-step
+#   budget, and in the smoke 20 such episodes took about 100 s (one env, loaded machine), so 200
+#   would take ~17 min per validation, 30 validations ~8 h, twice the training itself; 60 is
+#   about 5 min (less once episodes succeed in ~170 steps), about 20 per tester. Validation only
+#   watches the run: the seed's policy is its final checkpoint, judged on insertion_dev_v1.
+# The seed's policy = this run's FINAL checkpoint (if it is the last round).
+algorithm: ppo
+task: insertion
+env_config: configs/insertion_v1.yaml
+seed: 0
+n_envs: 8
+vec_env: subproc
+total_timesteps: 3000000
+normalize_obs: true
+normalize_reward: true
+eval_freq: 100000
+eval_episodes: 60
+eval_seed: 100000
+eval_fixed_episodes: true
+checkpoint_freq: 250000
+torch_threads: 1
+
+ppo:
+  learning_rate: 0.0003
+  learning_rate_final: 0.00003
+  n_steps: 512
+  batch_size: 256
+  n_epochs: 10
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_range: 0.2
+  ent_coef: 0.0
+  vf_coef: 0.5
+  max_grad_norm: 0.5
+  net_arch: [256, 256]
+  log_std_init: [-2.3, -2.3, -2.3, -2.3, -1.2]

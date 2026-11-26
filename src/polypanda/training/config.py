@@ -19,7 +19,8 @@ class PPOParams:
     vf_coef: float = 0.5
     max_grad_norm: float = 0.5
     net_arch: tuple[int, ...] = (128, 128)
-    log_std_init: float = 0.0    # initial log of the action noise std (0 -> std 1, SB3 default)
+    # initial log of the action noise std (0 -> std 1, SB3 default); v4.1: or one per action
+    log_std_init: float | tuple[float, ...] = 0.0
     # Generalized state-dependent exploration (gSDE, Raffin et al. 2022): the action noise is a
     # function of the state, redrawn every sde_sample_freq steps (-1: once per rollout), so a
     # whole alternative motion gets tried instead of per-step noise that averages out. With it,

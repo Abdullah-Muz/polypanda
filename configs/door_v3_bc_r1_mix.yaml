@@ -1,0 +1,39 @@
+# v4.1 door on testers, dev round 1, the clone, second recipe (replaces configs/door_v3_bc_r1.yaml
+# before any PPO trained from it; that clone and its dev results stay committed as reported).
+# Why: the feel_v2-only clone (door_v3_bc_r1) fitted the script closely (held-out action error
+# 0.006-0.007; v4.0's round-5 policy differs from the script by 0.4-0.6 per hand action on the
+# same states) and so replaced what round 5 knew, and like v4.0's feel clone (43/400 on
+# door_dev_v1, 315 not_released) it rarely lets go: the script lifts off the bar when its own
+# step counters say so, which the observation does not show (at the script's first lift step on
+# held-out demonstrations the clone's upward action is 0.09 against the script's 0.40, under 0.1
+# in 39 of 60). On door_dev_v2 it scored 63, 22 and 99 of 400, below round 5's 140, 174, 122.
+# The change: each seed's round-5 final policy is the TEACHER where it already works. On every
+# training episode it is tried first (deterministic, no noise); its successful episodes are
+# kept as they are, and feel_v2 (with v4.0's DART noise on half of its episodes) is recorded on
+# the others. The clone, warm-started from the same policy, then learns the script only where
+# round 5 fails (mostly drawers and the widest starts) and is taught round 5's own actions,
+# lift-off included, everywhere else. Everything else as door_v3_bc_r1.yaml.
+#   uv run python scripts/record_door_demos.py --config configs/door_v3_bc_r1_mix.yaml --seed S
+#   uv run python scripts/train_bc.py --config configs/door_v3_bc_r1_mix.yaml --seed S
+training_config: configs/door_v3_bc_ppo_r1.yaml   # its task (door_v2), env, network, gamma
+demos: runs/door_demos/mix_r5_feel_v2_door_v3_3000_20261133_seed{seed}.npz
+record:
+  task: door_v2
+  env_config: configs/door_v3.yaml   # recorded as evaluated: without round 5's focus cells
+  script: feel_v2             # where the teacher fails
+  teacher: runs/door_v2_bc_ppo_r5_seed{seed}@final   # the clone seed's own round-5 policy
+  episodes: 3000              # the same 3,000 training episodes as door_v3_bc_r1
+  seed: 20261133
+  noise: 0.2                  # on half of the script's episodes, as before
+  noise_share: 0.5
+  jobs: 3
+clone:
+  init_from: runs/door_v2_bc_ppo_r5_seed{seed}
+  init_checkpoint: final
+  epochs: 10
+  learning_rate: 0.0003
+  batch_size: 1024
+  value_epochs: 10
+  log_std: null               # round 5's action noise, kept
+  val_share: 0.05
+demos_source: scripts/record_door_demos.py --config configs/door_v3_bc_r1_mix.yaml --seed <S>

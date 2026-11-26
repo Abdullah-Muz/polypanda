@@ -1,0 +1,117 @@
+# v4.1 door on testers, dev round 1 (docs/v4_1_targets.md, Part II): task door_v2 (observation
+# door-v2-50d, unchanged), v4.0's round-5 env (configs/door_v2_r5.yaml: slam margin 0.05, force
+# limit 20 N) with the two v4.1 changes, nothing else:
+# - variation.kinds [lid, drawer]: lid testers (v4.0's machines) and drawers that slide toward the
+#   robot, drawn uniformly (the drawer ranges are DoorVariationConfig's defaults, written out);
+# - start.wide true: hand-over starts drawn wide (the hand 3-35 cm above the bar, -8 to +20 cm
+#   radially, +-8 cm sideways, the wrist +-90 deg; DoorStartConfig, written out), as door_dev_v2.
+# Focus (training only) is round 5's: 20 % of training episodes are open/out/spring lids, the
+# cell v4.0 found hardest; so in training about 60 % of episodes are lids and 40 % drawers.
+# Validation and the demonstrations use the distribution as evaluated (no focus): half each.
+action:
+  space: cartesian
+  n_substeps: 25
+  cartesian:
+    dof: 4
+    max_step: 0.01
+    max_rot: 0.05
+    max_tilt: 0.6
+    max_lead: 0.03
+    box_low: [0.15, -0.5, 0.01]
+    box_high: [0.85, 0.5, 0.6]
+    ik_iters: 2
+    posture_gain: 0.02
+
+scene:
+  station_angle: 0.0          # deg: the machine straight in front of the robot
+  radius: 0.5                 # m: the cell's standard station pose
+  finger_stiffness: 1000.0    # N/m: the cell's gripper
+
+variation:                    # drawn every episode (training and validation)
+  slides: [right, left, out]
+  travel_side: [0.12, 0.14]   # m (needed sideways: 0.115)
+  travel_out: [0.265, 0.275]  # m (needed outward: 0.255; the arm reaches about 0.8 m out)
+  friction: [0.2, 10.0]       # N, log-uniform (nominal 0.4)
+  damping: [1.0, 10.0]        # N s/m, log-uniform (nominal 4)
+  spring_prob: 0.5            # share of machines with a closing spring
+  spring: [10.0, 40.0]        # N/m; a springy lid stays open only in its hold-open detent
+  soft_close_speed: 0.2       # m/s: a springy lid's damper limits how fast it shuts itself
+  handle_offset_side: 0.03    # m either way along the bar
+  handle_offset_out: 0.01
+  handle_shift_side: 0.02     # m either way along the slide
+  handle_shift_out: 0.01
+  handle_height: [0.025, 0.05]  # m, bar centre above the lid's top (nominal 0.035)
+  latch_speed: [0.01, 0.1]    # m/s, log-uniform (nominal 0.02)
+  position: 0.015             # m either way, each axis
+  turn: 10.0                  # deg either way
+  kinds: [lid, drawer]        # v4.1: the testers drawn, uniformly
+  travel_drawer: [0.12, 0.14] # m (needed: 0.112)
+  drawer_spring_prob: 0.0     # drawers do not close themselves
+  handle_offset_drawer: 0.03  # m either way along the bar (an 18 cm plate)
+  handle_shift_drawer: 0.005  # m up or down on the plate
+  handle_height_drawer: [0.035, 0.05]  # m, bar centre off the plate
+
+start:
+  open_prob: 0.5
+  carry_height: 0.32
+  jitter_xy: 0.02             # (unused with wide starts)
+  jitter_z: 0.02
+  jitter_yaw: 0.17
+  close_margin: 0.005
+  wide: true                  # v4.1: hand-over starts drawn wide
+  wide_height: [0.03, 0.35]   # m, TCP above the bar's centre
+  wide_radial: [-0.08, 0.20]  # m from the carry point
+  wide_side: 0.08             # m either way
+  wide_yaw: 1.5707963267948966  # rad either way (pi/2: the fingers any way round)
+  wide_clearance: 0.01        # m, the arm from anything else
+  wide_tries: 200
+
+sensing:
+  handle_bias: 0.001          # m per axis, once per episode (docs/pose_error.md)
+  handle_noise: 0.0003        # m per axis per step
+  occlusion_radius: 0.06
+  bar_yaw_bias: 0.0087        # rad (0.5 deg)
+  bar_yaw_noise: 0.0017
+  observe_bar_yaw: true
+  force_noise: 1.0            # N per axis per step
+  force_clip: 100.0
+  closed_switch: 0.002
+  open_switch: 0.002          # m: the door-open switch (round 4)
+  touch_release: 5            # steps off the bar before touch_travel restarts
+
+gripper:
+  close_above: 0.25
+  open_below: -0.25
+  speed: 0.1                  # m/s per finger
+  chunk: 5
+
+success:
+  clear_height: 0.03
+  hold_steps: 10
+
+reward:
+  approach: 10.0
+  touch: 0.5
+  progress: 10.0
+  retreat: 20.0
+  retreat_cap: 0.05
+  success: 10.0
+  force: 0.01
+  force_limit: 20.0           # N (v4.0 round 5; 40 before)
+  collision: 0.1
+  slam: 20.0
+  slam_open_speed: 0.15
+  slam_close_speed: 0.3
+  slam_hit: 2.0               # once per slam (v4.0 round 2)
+  slam_margin: 0.05           # m/s: penalties paid from 0.05 below the allowed (v4.0 round 5)
+  stop_press: 0.05
+  stop_force: 25.0
+  time: 0.005
+  action: 0.001
+  non_finite: 10.0
+
+horizon: 300
+
+focus:                        # training only (DoorConfig.for_evaluation drops it)
+  prob: 0.2
+  cells: [open/out/spring]
