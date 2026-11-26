@@ -94,7 +94,8 @@ The development grid above used fixed levels up to 3 mm and 2°; this distributi
 
 ### Training rules
 
-- **Demonstrations from the search script** on freshly drawn training episodes (never the evaluation sets); **behaviour cloning**, then **PPO**. The clone's dev result is reported.
+- ~~**Demonstrations from the search script** on freshly drawn training episodes (never the evaluation sets); **behaviour cloning**, then **PPO**. The clone's dev result is reported.~~
+  - **Changed by the user on 2026-11-25, before any insertion policy trained: pure PPO, no demonstrations and no cloning.** The project is an RL project first, and the insertion is v4.1's new skill: it is to come from reinforcement learning alone (the env's shaped reward guides it toward the nest and down onto its floor; [insertion_env.md](insertion_env.md)). What it costs: tight insertion is where exploration rarely succeeds by chance, so the 3 rounds may not be enough; a miss is reported as it comes. The search's demonstrations recorded before the change are not used. Targets I1–I4 are unchanged.
 - **Rounds:** at most **3** development rounds on `insertion_dev_v1`; each round's config committed before it trains.
 - **The policy used for a seed:** the **final checkpoint of its last round** (v4.0's rule after round 2: best-validation checkpoints proved a lottery).
 - **The one-shot run** on `insertion_final_v1` happens once, after a lock commit names the policy, the seeds and the scripts' versions.
@@ -134,6 +135,9 @@ D4 is v4.0's T4, which v4.0 missed (31 vs 26 N). It is kept as strict: if missed
 ### Training rules
 
 As v4.0's, with at most **3** development rounds on `door_dev_v2`, the policy = the final checkpoint of the last round, and one one-shot run after a lock commit.
+
+- **Round 1's recipe (decided by the user on 2026-11-25, before any v4.1 door PPO trained): demonstrations from a mixed teacher, behaviour cloning, then PPO.** For each seed, the teacher is first that seed's v4.0 round-5 final policy (itself trained by PPO); on the training episodes it fails (most drawers, awkward hand-overs) `feel_v2` is recorded instead. Each seed is cloned from its own mixed demonstrations, warm-started from its round-5 policy, then trained with PPO.
+- **Why, and what came first:** the recipe written at approval cloned `feel_v2` alone (configs at `5788def`). Those clones scored 63, 22 and 99 of 400 on `door_dev_v2`, below round 5's 140, 174 and 122 (`8af832a`). Diagnosis: no fault in the plumbing; the clone copies the script's actions closely but, as v4.0's first clone did, never lets go of the bar (the script times its release by internal counters the policy cannot see), and it overwrites what round 5 had learned. The user weighed pure PPO from round 5 and chose the mixed teacher. Both sets of clone results are reported.
 
 ## Part III: the cell
 
