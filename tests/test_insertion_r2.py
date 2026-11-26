@@ -259,11 +259,11 @@ def test_the_held_progress_term_pays_new_bests_only(v2):
 
 def test_the_arm_is_charged_for_pushing_on_the_tester_not_touching(v2, monkeypatch):
     v2.reset(seed=1, options={"episode": _episode(v2, "TB")})
-    monkeypatch.setattr(v2, "arm_force", lambda: 12.0)
-    assert v2._collision_term() == 0.0
-    monkeypatch.setattr(v2, "arm_force", lambda: 25.0)
+    monkeypatch.setattr(v2, "arm_force", lambda: 18.0)
+    assert v2._collision_term() == 0.0                       # under the soft limit, 20 N
+    monkeypatch.setattr(v2, "arm_force", lambda: 30.0)
     assert v2._collision_term() == pytest.approx(-0.02 * 10.0)
-    assert v2.stats["peak_arm_force"] == 25.0
+    assert v2.stats["peak_arm_force"] == 30.0
 
 
 # --- the round's PPO config -----------------------------------------------------------------------

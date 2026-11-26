@@ -57,3 +57,38 @@ Ruled out: a bug in the environment (the search runs through the same environmen
 **Gate before any training:** the round-1 measurements above are repeated under the round-2 environment; "down until touching, then hold" must now score clearly above hovering, untrained exploration must no longer drop the module, and the search must still score highest. **Then a one-seed pilot** (1M steps) with a go/no-go on contact, first seats and a rising success rate, before the three seeds.
 
 Unchanged: the targets, the evaluation sets and their start, the success definition and the 50 N limit, the frozen scripts.
+
+## As built (2026-11-26, branch `v41-insertion-r2`, before any round-2 training)
+
+Code and design: [insertion_env.md](insertion_env.md), "Round 2's options"; env `configs/insertion_v2.yaml`, PPO `configs/insertion_ppo_r2.yaml`. Every round-2 option is off by default: `configs/insertion_v1.yaml` is round 1's env exactly (a test replays round 1's returns and observations to the last digit).
+
+**As planned:** release interlock 3 mm from the floor (no penalty, `release_unseated` 0); compliance threshold 10 N, lead 1 mm, back-off 0.05 mm/N; curriculum from 3 mm inside the rim, +5 mm above 80 % / −3 mm below 10 % training success (100-episode windows), the full range always sampled, deepest −8 mm, training only; time −0.005 per step; seat and success bonuses unchanged; PPO lr 1e-4 (constant), 5 epochs, target KL 0.02, entropy 0.001, gamma 0.995, log std −1.6 (hand) / −1.0 (release), 8 envs, validation as round 1 at the carry start.
+
+**Changed or added by the gate** (each because a measured behaviour showed the trap the plan meant to remove):
+
+| What | As built | Why (measured) |
+|---|---|---|
+| Compliance reference | the arm's **rest target** (measured TCP + the servos' static give under the weights, J τ/kp) | the arm hangs ~5.5 mm below its target; a lead measured from the hand allowed ~85 N |
+| Slow zone | module's bottom < 15 mm above the rim (or inside): target within 3 mm of the rest target (hand ≤ ~30 mm/s) | a touch-down at 0.2 m/s gave 35–80 N before the 20 Hz layer could act |
+| What the layer senses | the **external force and twist on the whole robot and the module** (as the Panda's joint-torque estimate), with a yaw admittance (0.2 / 0.5 N m, 0.5 mrad lead) | untrained noise near the nest pushed the hand into the testers' roofs with 100–300 N; the wrist is ~2000 N m/rad stiff in yaw |
+| Contact reflex | between control steps, every physics step of a policy's step: external force > 12 N or twist > 3 N m holds the arm at its rest pose until the next control step | a contact met at speed built up force for up to 50 ms |
+| Progress term | φ(d) = 4(1−tanh(d/100 mm)) + 2(1−tanh(d/30 mm)) + 5(1−tanh(d/1 mm)) (planned 5/1/5 at 100/10/1 mm); paid on **new bests** of φ only (`keypoints_best`) | +5.9 for the approach and +5.0 for the last 2 mm as planned, +1.5 for touching down from 2 cm over the rim; with the plain difference untrained noise near the nest lost ~1.5 (d's random walk drifts outward). A straight approach earns exactly the potential difference, so dawdling is still not paid |
+| Force penalty | −0.02 per N per step above **20 N** (planned 15 N) | sustained pressing is held near 12 N by the reflex, so the penalty only charges impacts; from 15 N it charged noise near the nest −0.5 for 15–25 N touches |
+| Arm on the tester | −0.02 per N of its push above 20 N (round 1: −0.05 per step of any touch) | noise near the nest brushed the testers' roofs for ~240 steps (−12) |
+| Action penalty | −0.0002 × \|a\|² (round 1 −0.001) | −0.1 of pure noise per episode at std 0.2 |
+
+**The gate** (`scripts/insertion_reward_gate.py`, the same 24 training-stream episodes, seeds 900000–900023; mean return, successes, damage episodes (> 50 N), median peak nest force; "near" = start heights drawn 3 mm inside to 20 mm above the rim, the curriculum's first range). Round 1's carry-start numbers reproduce this note's table above.
+
+| Behaviour | Round 1 env, carry start | Round 2 env, carry start | Round 1 env, near start | Round 2 env, near start |
+|---|---|---|---|---|
+| The frozen search (its own control path) | +12.13; 20/24; 0 dmg; 10.5 N | **+16.74**; 20/24; 0; 10.5 N | +3.17; 13/24; 0; 13.0 N | **+6.98**; 13/24; 0; 13.0 N |
+| Hover, never release | −5.91 | −3.00 | −6.00 | −2.97 |
+| Untrained noise, round 1's (std 0.1, release 0.3) | −24.92; 16 dmg; 297 N; all drop the module | −2.99; 0 dmg; no release | −36.04; 10 dmg | −2.78; 0 dmg; 13.2 N |
+| Untrained noise, round 2's (std 0.2, release 0.37) | −22.30; 10 dmg | −2.98; 0 dmg; no release | −28.43; 19 dmg | −2.91; 0 dmg; 18.2 N |
+| Down until touching, then hold | −74.15; 8 dmg; 46.5 N | **+1.39**; 0 dmg; 9.1 N | −47.48; 3 dmg | −2.07; 0 dmg; 7.7 N |
+| Straight down, keep pressing (never release) | −11.30; 24 dmg; 70 N | +3.31; 0 dmg; 11.2 N; 6 seated | −94.97; 18 dmg | +2.07; 0 dmg; 9.7 N; 14 seated |
+
+- **Met:** the search scores highest from both starts; untrained exploration never lets go away from the floor and never breaks 50 N, and from near-nest starts scores at or above hovering (−2.78 / −2.91 against −2.97); down-and-hold scores above hovering (+4.4 at the carry start, +0.9 near the nest, where little distance is left to gain); no naive behaviour damages the nest.
+- **Pressing and waiting** (straight down, never releasing) scores above holding because it seats the module (6 and 14 of 24) and collects the seat bonus; its median peak force is 9.7–11.2 N, under the 12 N reflex and the 20 N penalty start, so there is no "press hard" to learn. It still forgoes the success bonus (+10, plus the release and retreat): with the interlock a release near the floor is the next step, and the release noise (std 0.37) requests one on ~9 % of steps.
+- **The search's recorded actions replayed through the round-2 action layer** fail (0/24 at the carry start): the layer is the learned skill's controller, not the scripts'; the frozen search keeps its own control path (and is scored on it).
+- **The curriculum's share of near starts:** drawn uniformly from 3 mm inside the rim to the carry start (~+190 to +250 mm), about 10 % of early training episodes start within 2 cm of the rim; most start high, where the approach is learned. This is the approved rule (IndustReal's); the pilot shows whether it is enough.

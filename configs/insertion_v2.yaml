@@ -103,7 +103,10 @@ reward:
   retreat: 5.0                # unchanged
   success: 10.0               # unchanged
   force: 0.02                 # per N per step above force_soft (round 1: 0.05)
-  force_soft: 15.0            # N (round 1: 20)
+  force_soft: 20.0            # N (round 1: 20; the plan's 15 N, changed by the gate): sustained
+  #                             pressing is capped near 12 N by the reflex, so the penalty only
+  #                             charges impacts (physics-step peaks); from 15 N it charged untrained
+  #                             noise near the nest for its 15-25 N touches (-0.5, below hovering)
   damage: 10.0                # unchanged; the episode ends
   failure: 5.0                # unchanged
   collision: 0.02             # per N per step of the arm's push on the tester above force_soft
