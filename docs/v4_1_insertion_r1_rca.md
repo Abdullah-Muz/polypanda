@@ -92,3 +92,26 @@ Code and design: [insertion_env.md](insertion_env.md), "Round 2's options"; env 
 - **Pressing and waiting** (straight down, never releasing) scores above holding because it seats the module (6 and 14 of 24) and collects the seat bonus; its median peak force is 9.7–11.2 N, under the 12 N reflex and the 20 N penalty start, so there is no "press hard" to learn. It still forgoes the success bonus (+10, plus the release and retreat): with the interlock a release near the floor is the next step, and the release noise (std 0.37) requests one on ~9 % of steps.
 - **The search's recorded actions replayed through the round-2 action layer** fail (0/24 at the carry start): the layer is the learned skill's controller, not the scripts'; the frozen search keeps its own control path (and is scored on it).
 - **The curriculum's share of near starts:** drawn uniformly from 3 mm inside the rim to the carry start (~+190 to +250 mm), about 10 % of early training episodes start within 2 cm of the rim; most start high, where the approach is learned. This is the approved rule (IndustReal's); the pilot shows whether it is enough.
+
+### Pilot 1 and release-and-retract (2026-11-26)
+
+**Pilot 1** (`runs/insertion_ppo_r2_pilot1_stopped_seed0`, one seed, stopped by the user at ~300k of 1M): validation at 100k and 200k 0/60 successes, 0 seated, contact 21 → 41 of 60, no damage, every episode `not_released`; the curriculum went to its deepest start (−8 mm) by 125k with training success 0. From −8 mm a scripted gentle push, release and lift succeeds 12/12 (the env is sound); the 250k policy never releases deterministically, and stochastically 8 of its 12 releases ended in **damage**: having learned to press down while holding, it kept pressing with the open hand after the release and drove the fingers into the freed module (> 50 N). Letting go looked dangerous, so it was suppressed.
+
+**Fix (approved by the user, before the 3 seeds): release-and-retract** (`action.release_retract`, off by default, on in `configs/insertion_v2.yaml`). A release that takes effect (inside the interlock's 3 mm window) opens the fingers and retracts the hand straight up to the carry height as one built-in motion, the industrial release-and-retract macro: the cell's own (`grip_steps` for the fingers, then `ScriptedCell.vertical` at the cell's speed), as the frozen search's retreat runs it. The episode then ends, judged as always (seated, released, hand clear, no damage). The policy still chooses where to seat and when to let go. The retract's control steps count in the episode's time (and in the time penalty); the nest-force watch runs through it; the post-release `retreat` shaping no longer pays anything under it; seat and success bonuses unchanged.
+
+**The gate after it** (24 episodes each; the carry and near tables above are unchanged, the search runs its own path): from the curriculum's **deepest start (−8 mm, 7 mm over the floor)**:
+
+| Behaviour | Return | Success | Damage | Peak nest force, median | Time to success, median |
+|---|---|---|---|---|---|
+| Press down (full speed), a release asked every step (the pilot's habit) | +14.18 | **24/24** | 0 | 3.2 N | 3.75 s |
+| Gently down until seated, hold 5 steps, release | **+17.86** | **24/24** | 0 | 5.2 N | 4.1 s |
+| Gently down until seated, hold, never release | +4.89 | 0 (24 seated) | 0 | 5.4 N | |
+| Untrained noise around a downward push (round 2's noise, release noise included) | +14.87 | 24/24 | 0 | 17.5 N | 5.4 s |
+| Hold still, a release asked every step (outside the window) | −2.97 | 0 (600 blocked per episode) | 0 | 0 | |
+| Untrained noise (round 2's) | −1.53 | 3/24 | 0 | 23.3 N | |
+| Hover | −2.97 | 0 | 0 | 0 | |
+| The frozen search (own path) | +15.55 | 24/24 | 0 | 12.1 N | |
+
+The first pilot's 250k policy from the same −8 mm starts (seeds 700000–700011, as the main session's probe): stochastic **8/12 succeed, 4 not released, 0 damage** (peaks 15–31 N; before the fix 8 of 9 releases were damage); deterministic 0/12 (it never releases: its release mean is what pilot 1 learned).
+
+**What it costs on time:** the retract (0.6 s for the fingers, then ~0.3 m at the cell's 0.1 m/s) is about 3.4 s of every success, as it is of the search's (whose 8.7 s median on `insertion_dev_v1` includes its own release and rise). I3 asks for a median time to success at least 40 % shorter than the search's (about 5.2 s): the learned skill has about 1.8 s left for the approach (≥ ~1.25 s at the 0.2 m/s step limit, plus the slow zone's last ~3 cm at ~30 mm/s) and the seat. The comparison stays fair (the same retreat for both); whether the bar is still reachable is a question for the user (a faster built-in retract would favour the policy over the frozen search's retreat).
