@@ -61,6 +61,13 @@ tester or the nest's floor, checked at every 2 ms physics step), all within the 
 steps).
 
 **Reward** (InsertionRewardConfig; terms in info["reward_terms"]): see docs/insertion_env.md.
+
+**Round 2's options** (configs/insertion_v2.yaml; all off by default, the defaults are round 1's
+env exactly; docs/insertion_env.md, "Round 2's options"): the release interlock
+(`InsertionActionConfig.release_window`), the compliant action layer (`InsertionComplianceConfig`,
+`comply`, `rest_target`), the training start-height curriculum (`InsertionCurriculumConfig`,
+`set_start_low`, reset option `start_height`) and the keypoint progress reward
+(`InsertionRewardConfig.progress`).
 """
 
 from __future__ import annotations
@@ -138,6 +145,57 @@ class InsertionActionConfig:
     max_lead: float = 0.03          # m: the hand target within this of the measured hand, per axis
     max_turn: float = 0.35          # rad: the hand's yaw within this of the aimed yaw
     release_above: float = 0.5      # release action above this lets go
+    # v4.1 round 2, the release interlock: a release takes effect only with the module's bottom
+    # within this of the nest's floor (m); elsewhere it is ignored, unpenalised, and counted
+    # (stats "release_blocked"). None (round 1): a release lets go wherever the module is. The
+    # floor's height is the cell's programmed one (the camera's error is horizontal only) and
+    # the module sits in the hand within +-0.03 mm, so the cell knows this depth from its own
+    # kinematics; the true pose is read here as the same number.
+    release_window: float | None = None
+
+
+@dataclass(frozen=True)
+class InsertionComplianceConfig:
+    """v4.1 round 2: the learned skill's compliant action layer (an admittance on the hand
+    target, as industrial insertion runs on impedance or admittance control; IndustReal, FORGE).
+    Read at each control step from the wrist sensor (the force on the held module, without its
+    noise): above `contact_force` the hand target may lead the measured hand into the contact
+    (along the force) by at most `lead`; above `force` it also backs off along the force by
+    `gain` x (F - force), at most `max_backoff` per step. A stiff position-controlled arm
+    otherwise keeps pressing wherever its target went (round 1: 30-50 N held at the rim). The
+    frozen scripts do not use it: they command the arm through their own control path."""
+    enabled: bool = False
+    contact_force: float = 2.0      # N: the module is in contact
+    force: float = 10.0             # N: above this the target backs off
+    # m per N per control step: gain x contact stiffness (~13 N/mm, measured for the search)
+    # below 2 keeps the loop stable (scripted_insertion.SearchInsertion.force_gain's rule)
+    gain: float = 0.00005
+    max_backoff: float = 0.001      # m per control step
+    lead: float = 0.001             # m: the target's largest lead into a contact
+    approach_zone: float = 0.015    # m above the nest's rim: the slow zone starts here
+    approach_lead: float = 0.005    # m: the target's largest lead in the slow zone
+
+
+@dataclass(frozen=True)
+class InsertionCurriculumConfig:
+    """v4.1 round 2: the training starts' height curriculum (IndustReal's sampling-based
+    curriculum). Each training episode starts with the module's bottom at a height above the
+    nest's rim drawn uniformly from [low, the carry start's]; below the rim (negative) the module
+    starts engaged: on the true nest's axis, its key to the slot (a partly inserted start; no
+    interpenetration), still held; above it, over the believed nest as the aim puts it (the
+    camera's error kept). `low` moves with the rolling training success: up `step_up` above
+    `raise_above`, down `step_down` below `lower_below` (training/callbacks
+    .StartCurriculumCallback, over `window` episodes), within [low_min, the carry start]. The full
+    range is always sampled. Training only: evaluation and validation start at the carry height
+    (InsertionConfig.for_evaluation)."""
+    enabled: bool = False
+    low: float = -0.003             # m below (negative) or above the rim: the initial lowest start
+    low_min: float = -0.008         # m: the deepest it goes (the rib, 12 mm, stays in the slot)
+    step_up: float = 0.005          # m
+    step_down: float = 0.003        # m
+    raise_above: float = 0.8
+    lower_below: float = 0.1
+    window: int = 100               # training episodes per decision
 
 
 @dataclass(frozen=True)
@@ -172,6 +230,15 @@ class InsertionRewardConfig:
     time: float = 0.01              # per step
     action: float = 0.001           # x |hand action|^2
     non_finite: float = 10.0
+    # The held progress term ("insert"). "gap" (round 1): insert_z per m of gap closed and
+    # insert_xy per m of centring. "keypoints" (round 2): scale x the change of a potential on the
+    # module's 4 bottom corners' mean distance d (m) to where they sit when seated (true nest, key
+    # in the slot): phi(d) = sum_i w_i (1 - tanh(d / s_i)) over keypoint_scales s_i and
+    # keypoint_weights w_i (gentle far, steep in the last millimetres; IndustReal / Isaac Lab).
+    progress: str = "gap"
+    keypoint_scale: float = 1.0
+    keypoint_scales: tuple[float, ...] = (0.1, 0.01, 0.001)
+    keypoint_weights: tuple[float, ...] = (5.0, 1.0, 5.0)
 
 
 @dataclass(frozen=True)
@@ -193,10 +260,17 @@ class InsertionConfig:
     # scripts/make_insertion_sets.py --picks, from a stream apart from the evaluation sets');
     # None: simulate the episode's pick at reset
     pick_pool: str | None = None
+    compliance: InsertionComplianceConfig = field(default_factory=InsertionComplianceConfig)
+    curriculum: InsertionCurriculumConfig = field(default_factory=InsertionCurriculumConfig)
 
     @classmethod
     def from_yaml(cls, path: str | Path) -> InsertionConfig:
         return load_yaml(cls, path)
+
+    def for_evaluation(self) -> InsertionConfig:
+        """The task as evaluated: no training curriculum (every episode starts at the carry
+        height, the targets' start); everything else, the policy's controller included, kept."""
+        return replace(self, curriculum=replace(self.curriculum, enabled=False))
 
 
 STRETCH = {"camera_xy": 0.0015, "camera_xy_clip": 0.004, "camera_yaw": 1.0,
@@ -337,6 +411,24 @@ class InsertionEnv(gym.Env):
         self.recorder = None
         self._f6 = np.zeros(6)
         self._pyramidal = m.opt.cone == mujoco.mjtCone.mjCONE_PYRAMIDAL
+        # round 2's progress potential: the module's 4 bottom corners (its frame)
+        hx, hy, hz = self.part.half_size
+        self._corners = np.array([[sx * hx, sy * hy, -hz] for sx in (1, -1) for sy in (1, -1)])
+        # round 2's compliant action layer (rest_target): the arm's servo gains, its dofs, the
+        # held module's weight
+        self._arm_dofs = np.asarray(self.arm.arm_qvel)
+        self._kp = m.actuator_gainprm[np.asarray(self.arm.arm_actuators), 0].copy()
+        self._hand = m.body("hand").id
+        self._part_weight = float(m.body_mass[self.part.body] * -m.opt.gravity[2])
+        self._jacp = np.zeros((3, m.nv))
+        self._jacs = np.zeros((3, m.nv))
+        self.start_low = self.config.curriculum.low     # the curriculum's lowest start (m)
+        self.start_height: float | None = None           # this episode's (None: the carry start)
+
+    # --- the start-height curriculum (training) ---------------------------------------------
+    def set_start_low(self, low: float) -> None:
+        """The curriculum's lowest start (StartCurriculumCallback, every training env)."""
+        self.start_low = float(low)
 
     # --- episodes -----------------------------------------------------------------------------
     def draw_episode(self, rng: np.random.Generator, tester: str | None = None) -> dict:
@@ -464,9 +556,27 @@ class InsertionEnv(gym.Env):
         if ep["tester"] not in self.spots:
             raise ValueError(f"unknown tester {ep['tester']!r}")
         ep = self.complete_episode(ep)
+        # the start's height: given (option "start_height", m of the module's bottom above the
+        # nest's rim), or drawn by the curriculum (training), or the carry start (None)
+        cur, height = self.config.curriculum, options.get("start_height")
+        frac = None
+        if height is None and cur.enabled:
+            frac = float(self.np_random.uniform())
         self._start(ep)
+        self.start_height = None
+        if height is not None or frac is not None:
+            top = self.part_height_over_rim()
+            if height is None:
+                low = min(self.start_low, top)
+                height = low + frac * (top - low)
+            if height < top - 1e-6:
+                self._lower(ep, float(height))
+                self.start_height = float(height)
         self.episode = ep
-        return self.observation(), {"episode": ep, "start": how, "tester": self.tester}
+        info = {"episode": ep, "start": how, "tester": self.tester}
+        if cur.enabled or self.start_height is not None:
+            info["start_height"] = self.start_height
+        return self.observation(), info
 
     def _start(self, ep: dict) -> None:
         """The robot at the tester's stop in the carry posture facing it, the module in the hand
@@ -491,13 +601,9 @@ class InsertionEnv(gym.Env):
             d.qpos[mach.door_qpos] = open_
         d.qvel[:] = 0.0
         mujoco.mj_kinematics(m, d)
-        hand = m.body("hand").id
         rel_pos, rel_quat = np.asarray(g["rel_pos"]), np.asarray(g["rel_quat"])
-        quat = np.zeros(4)
-        mujoco.mju_mulQuat(quat, d.xquat[hand], rel_quat)
         p = self.part
-        d.qpos[p.qpos:p.qpos + 7] = [*(d.xpos[hand] + d.xmat[hand].reshape(3, 3) @ rel_pos),
-                                     *quat]
+        self._put_part_in_hand(g)
         m.eq_data[self._weld, :3] = 0.0
         m.eq_data[self._weld, 3:6] = rel_pos
         m.eq_data[self._weld, 6:10] = rel_quat
@@ -524,17 +630,83 @@ class InsertionEnv(gym.Env):
         # the believed nest frame: the camera's nest centre on the nest's (programmed) floor
         self.nest_origin = np.array([*self.belief.origin[:2], self.belief.config.nest_floor])
         self.nest_R = _rz(self.belief.yaw)
-        self.t0 = float(d.time)
+        self._begin()
+
+    def _begin(self) -> None:
+        """The episode's clock, counters and watches start here."""
+        self.t0 = float(self.data.time)
         self.steps = 0
         self.released = False
         self.ever_seated = False
         self.stats = {"peak_force": 0.0, "peak_force_ctl": 0.0, "peak_force_total": 0.0,
                       "collision_steps": 0, "lead_clips": 0, "turn_clips": 0}
+        if self.config.action.release_window is not None:
+            self.stats["release_blocked"] = 0
+        if self.config.compliance.enabled:
+            self.stats["comply_steps"] = 0
         self._step_peak = 0.0
         self._last_force = 0.0
         self._damaged = False
         self._attach_hooks()
         self._prev = self._potentials()
+
+    def _put_part_in_hand(self, grasp: dict) -> None:
+        """The module where the grasp holds it in the hand (after kinematics)."""
+        d, p = self.data, self.part
+        hand = self.model.body("hand").id
+        quat = np.zeros(4)
+        mujoco.mju_mulQuat(quat, d.xquat[hand], np.asarray(grasp["rel_quat"], dtype=float))
+        d.qpos[p.qpos:p.qpos + 7] = [
+            *(d.xpos[hand] + d.xmat[hand].reshape(3, 3) @ np.asarray(grasp["rel_pos"])), *quat]
+
+    def rim_height(self) -> float:
+        """The true nest's rim (world z)."""
+        return float(self.nest_frame()[0][2] + self.spots[self.tester].config.pocket_depth)
+
+    def part_height_over_rim(self) -> float:
+        """The held module's lowest point above the nest's rim (m; negative: inside)."""
+        d, p = self.data, self.part
+        R = d.xmat[p.body].reshape(3, 3)
+        return float((d.xpos[p.body] + self._corners @ R.T)[:, 2].min() - self.rim_height())
+
+    def _lower(self, ep: dict, height: float) -> None:
+        """A curriculum start (InsertionCurriculumConfig): from the carry start, the hand moved
+        down (the arm put there by the cell's IK and settled, the module in the hand as before)
+        so the module's bottom is `height` above the rim. Above the rim the hand stays over the
+        believed nest as aimed; below it the module is engaged: on the true nest's axis and its
+        key to the slot (it fits only there), partly inserted."""
+        m, d, ctl, p = self.model, self.data, self.ctl, self.part
+        self._detach_hooks()
+        origin, _ = self.nest_frame()
+        mach = self.line.machines[self.tester]
+        goal, yaw = self.target.copy(), float(self.target_yaw)
+        q = ctl.q_cmd.copy()
+        for _ in range(3):        # the arm's IK pose, corrected on the module's own pose
+            q = ctl._solve(goal, top_down_quat(yaw), q)
+            d.qpos[self.arm.arm_qpos] = q
+            d.qvel[:] = 0.0
+            mujoco.mj_kinematics(m, d)
+            self._put_part_in_hand(ep["grasp"])
+            mujoco.mj_kinematics(m, d)
+            goal[2] -= self.part_height_over_rim() - height
+            if height < 0.0:
+                key = mach.key_error(p)
+                if key is not None:
+                    yaw -= np.radians(key)
+                goal[:2] -= d.xpos[p.body][:2] - origin[:2]
+        q = ctl._solve(goal, top_down_quat(yaw), q)
+        d.qpos[self.arm.arm_qpos] = q
+        d.qvel[:] = 0.0
+        mujoco.mj_kinematics(m, d)
+        self._put_part_in_hand(ep["grasp"])
+        mujoco.mj_forward(m, d)
+        # commanded where the arm rests at this pose under its weight and the module's (the
+        # rest target), so it does not sag from where it was put
+        self.target, self.target_yaw = self.rest_target(), yaw
+        ctl.q_cmd = ctl._solve(self.target, top_down_quat(yaw), q)
+        d.ctrl[self.arm.arm_actuators] = ctl.q_cmd
+        ctl.step(self.config.start.settle_steps)
+        self._begin()
 
     def _attach_hooks(self) -> None:
         self.ctl.physics_hook = self._watch
@@ -773,9 +945,14 @@ class InsertionEnv(gym.Env):
         c, ctl = self.config.action, self.ctl
         a = np.clip(np.asarray(action, dtype=np.float64), -1.0, 1.0)
         if a[4] > c.release_above and not self.released:
-            self.line.detach(self.part)
-            ctl.grip = GRIPPER_OPEN
+            if c.release_window is None or self.seat()["gap"] < c.release_window:
+                self.line.detach(self.part)
+                ctl.grip = GRIPPER_OPEN
+            else:
+                self.stats["release_blocked"] += 1
         target = self.target + self.nest_R @ (c.max_step * a[:3])
+        if self.config.compliance.enabled and not self.released:
+            target = self.comply(target)
         tcp = self.data.site_xpos[self.arm.tcp_site]
         bounded = np.clip(target, tcp - c.max_lead, tcp + c.max_lead)
         self.stats["lead_clips"] += bool(np.any(bounded != target))
@@ -784,6 +961,47 @@ class InsertionEnv(gym.Env):
         self.stats["turn_clips"] += turned != yaw
         self.target, self.target_yaw = bounded, turned
         ctl.q_cmd = ctl._solve(self.target, top_down_quat(self.target_yaw), ctl.q_cmd)
+
+    def rest_target(self) -> np.ndarray:
+        """The hand target that would hold the hand still where it is, in free air (world): the
+        measured TCP plus the arm's static deflection, i.e. its joint servos' (kp) give under the
+        arm's and the held module's weight, J_tcp (tau_hold / kp). A target this far from the
+        hand presses nothing; every mm beyond it into a contact presses with the arm's
+        stiffness."""
+        m, d, arm = self.model, self.data, self.arm
+        dofs = self._arm_dofs
+        tau = d.qfrc_bias[dofs].copy()           # gravity (and the small velocity terms)
+        mujoco.mj_jac(m, d, self._jacp, None, d.xipos[self.part.body], self._hand)
+        tau += self._jacp[2, dofs] * self._part_weight
+        mujoco.mj_jacSite(m, d, self._jacs, None, arm.tcp_site)
+        return d.site_xpos[arm.tcp_site] + self._jacs[:, dofs] @ (tau / self._kp)
+
+    def comply(self, target: np.ndarray) -> np.ndarray:
+        """The compliant action layer (InsertionComplianceConfig) on a new hand target, around
+        the rest target E (`rest_target`):
+        - near the nest (the module's bottom less than `approach_zone` above the rim, or inside)
+          the target stays within `approach_lead` of E on each axis: the hand slows to about
+          10 x approach_lead per second (the servos' kv/kp = 0.1 s) before it can touch;
+        - in contact (the wrist sensor's force F on the held module above `contact_force`,
+          n = F / |F|, the contacts' push) it backs off along n by gain x (|F| - force) above
+          `force`, and may not lead E into the contact (along -n) by more than `lead`."""
+        cc = self.config.compliance
+        out = target.copy()
+        rest = self.rest_target()
+        if self.part_height_over_rim() < cc.approach_zone:
+            out = np.clip(out, rest - cc.approach_lead, rest + cc.approach_lead)
+        F = self.wrench()[:3]
+        f = float(np.linalg.norm(F))
+        if f > cc.contact_force:
+            n = F / f
+            if f > cc.force:
+                out += n * min(cc.gain * (f - cc.force), cc.max_backoff)
+            lead = float((rest - out) @ n)
+            if lead > cc.lead:
+                out += n * (lead - cc.lead)
+        if np.any(out != target):
+            self.stats["comply_steps"] += 1
+        return out
 
     def step(self, action):
         r = self.config.reward
@@ -797,12 +1015,34 @@ class InsertionEnv(gym.Env):
                     "stats": dict(self.stats), "outcome": None}
             return (np.zeros(self.observation_space.shape, np.float32), -r.non_finite, True,
                     False, info)
+        terms, terminated, out, now = self.judge(a, released_before)
+        truncated = not terminated and self.steps >= self.config.horizon
+        if out is None and (terminated or truncated):
+            out = self.outcome()
+        info = {
+            "is_success": bool(out is not None and out["success"]),
+            "failure": None if out is None else out["failure"],
+            "outcome": out, "seated": now["seated"], "released": now["released"],
+            "nest_force": self._step_peak, "stats": dict(self.stats), "reward_terms": terms,
+        }
+        return self.observation(), float(sum(terms.values())), terminated, truncated, info
+
+    def judge(self, a: np.ndarray, released_before: bool) -> tuple[dict, bool, dict | None,
+                                                                    dict]:
+        """The control step just taken, judged: its reward terms, whether it ends the episode,
+        the outcome if decided, the new potentials. (Also scores a script's own run, step by
+        step: scripts/insertion_reward_gate.py.)"""
+        r = self.config.reward
         now, prev = self._potentials(), self._prev
         held = not now["released"] and not prev["released"]
         after = now["released"] and prev["released"]
+        if r.progress == "keypoints":
+            insert = r.keypoint_scale * (now["phi"] - prev["phi"]) if held else 0.0
+        else:
+            insert = (r.insert_z * (prev["gap"] - now["gap"])
+                      + r.insert_xy * (prev["xy"] - now["xy"])) if held else 0.0
         terms = {
-            "insert": (r.insert_z * (prev["gap"] - now["gap"])
-                       + r.insert_xy * (prev["xy"] - now["xy"])) if held else 0.0,
+            "insert": insert,
             "seat": r.seat if now["seated"] and not self.ever_seated else 0.0,
             "release": ((r.release_seated if now["seated"] else -r.release_unseated)
                         if now["released"] and not released_before else 0.0),
@@ -827,24 +1067,35 @@ class InsertionEnv(gym.Env):
             elif out["failure"] == "not_seated":
                 terms["failure"] = -r.failure
                 terminated = True
-        truncated = not terminated and self.steps >= self.config.horizon
-        if out is None and (terminated or truncated):
-            out = self.outcome()
-        info = {
-            "is_success": bool(out is not None and out["success"]),
-            "failure": None if out is None else out["failure"],
-            "outcome": out, "seated": now["seated"], "released": now["released"],
-            "nest_force": self._step_peak, "stats": dict(self.stats), "reward_terms": terms,
-        }
-        return self.observation(), float(sum(terms.values())), terminated, truncated, info
+        return terms, terminated, out, now
+
+    def keypoint_distance(self) -> float:
+        """The mean distance (m) of the module's 4 bottom corners from where they sit when it is
+        seated: on the true nest's floor, centred, its key in the slot."""
+        d, p = self.data, self.part
+        origin, R = self.nest_frame()
+        Rp = R.T @ d.xmat[p.body].reshape(3, 3)
+        now = R.T @ (d.xpos[p.body] - origin) + self._corners @ Rp.T
+        seated = (np.array([0.0, 0.0, p.half_size[2]])
+                  + self._corners @ _rz(self.line.machines[self.tester].cfg.key_yaw).T)
+        return float(np.linalg.norm(now - seated, axis=1).mean())
+
+    def keypoint_potential(self, distance: float) -> float:
+        r = self.config.reward
+        return float(sum(w * (1.0 - np.tanh(distance / s))
+                         for s, w in zip(r.keypoint_scales, r.keypoint_weights, strict=True)))
 
     def _potentials(self) -> dict:
         d, p = self.data, self.part
         origin, R = self.nest_frame()
         rel = R.T @ (d.xpos[p.body] - origin)
         s = self.seat()
-        return {"released": self.released, "seated": s["seated"],
-                "gap": float(np.clip(rel[2] - p.half_size[2], 0.0, 0.3)),
-                "xy": float(min(np.linalg.norm(rel[:2]), 0.01)),
-                "height": float(min(d.site_xpos[self.arm.tcp_site][2],
-                                    self.config.start.carry_height))}
+        out = {"released": self.released, "seated": s["seated"],
+               "gap": float(np.clip(rel[2] - p.half_size[2], 0.0, 0.3)),
+               "xy": float(min(np.linalg.norm(rel[:2]), 0.01)),
+               "height": float(min(d.site_xpos[self.arm.tcp_site][2],
+                                   self.config.start.carry_height))}
+        if self.config.reward.progress == "keypoints":
+            out["keypoints"] = self.keypoint_distance()
+            out["phi"] = self.keypoint_potential(out["keypoints"])
+        return out

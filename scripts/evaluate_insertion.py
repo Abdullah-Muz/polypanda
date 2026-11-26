@@ -34,13 +34,15 @@ def _run_chunk(args) -> list[dict]:
     import torch
     torch.set_num_threads(1)
     from polypanda.environments.insertion import InsertionEnv
-    from polypanda.evaluation.insertion import run_policy, run_script
+    from polypanda.evaluation.insertion import policy_env_config, run_policy, run_script
     env = InsertionEnv()
     act = None
     if policy.startswith("run:"):
         from polypanda.evaluation.policies import load_run_policy
         spec = policy[4:]
         act = load_run_policy(spec if "@" in spec else f"{spec}@final")
+        # the run's own action layer (round 2: interlock, compliance), the targets' task
+        env = InsertionEnv(policy_env_config(spec.partition("@")[0]))
     rows = []
     for i in indices:
         ep = episodes[i]

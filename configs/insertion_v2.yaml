@@ -1,0 +1,99 @@
+# v4.1 learned insertion, round 2's env (docs/v4_1_insertion_r1_rca.md, "Round 2"; docs/
+# insertion_env.md, "Round 2"). The targets' task, unchanged: the same episode distribution,
+# sensing, success definition (the 50 N damage limit checked every physics step), start for
+# evaluation and validation (InsertionConfig.for_evaluation turns the curriculum off), budget and
+# observation; round 1's env is configs/insertion_v1.yaml (every round-2 option off).
+# What round 2 changes, against round 1's root causes:
+# - the release interlock (action.release_window): a release lets go only with the module's
+#   bottom within 3 mm of the nest's floor (well inside the 15 mm pocket); elsewhere it is ignored
+#   and unpenalised (release_unseated 0). Round 1's untrained policy let go after ~12 steps from
+#   25 cm (median 297 N on the nest). The policy still chooses when to let go near the floor.
+# - the compliant action layer (compliance): the learned skill's controller is an admittance on
+#   the hand target, as industrial insertion uses (IndustReal, FORGE). Round 1's stiff arm held
+#   30-50 N wherever its target ran into the rim.
+# - the start-height curriculum (curriculum, training only; IndustReal's sampling-based one).
+# - the reward: potential-based progress on 4 keypoints, force penalty from 15 N, smaller time
+#   penalty (see "reward").
+variation:                    # docs/v4_1_targets.md, "The episode distribution" (unchanged)
+  testers: [TA, TB, TC]
+  clearance: [0.00025, 0.0005]
+  chamfer: [0.0005, 0.001]
+  position: 0.015
+  turn: 10.0
+  camera_xy: 0.0008
+  camera_xy_clip: 0.003
+  camera_yaw: 0.5
+  camera_yaw_clip: 2.0
+  pick_lateral: 0.003
+  pick_yaw: 5.0
+
+action:
+  max_step: 0.01              # m per step per axis (unchanged)
+  max_rot: 0.05
+  max_lead: 0.03
+  max_turn: 0.35
+  release_above: 0.5
+  release_window: 0.003       # m: the interlock (the module's bottom this close to the floor)
+
+compliance:
+  enabled: true
+  contact_force: 2.0          # N: in contact (the sensor's noise is 0.1 N; the module's own
+  #                             weight is carried by the grasp, not felt here)
+  force: 10.0                 # N: above this the target backs off (the search presses 3-15 N)
+  gain: 0.00005               # m per N per step: x ~13 N/mm contact stiffness = 0.65 < 2 (stable)
+  max_backoff: 0.001          # m per step
+  lead: 0.001                 # m: the target's largest lead into a contact (~13 N at ~13 N/mm)
+
+curriculum:
+  enabled: true
+  low: -0.003                 # m: the first lowest start, 3 mm inside the rim (past the 0.5-1 mm
+  #                             chamfer: engaged, still held)
+  low_min: -0.008             # m: never deeper (the rib, 12 mm tall, stays in its slot)
+  step_up: 0.005              # m when the rolling training success > raise_above (IndustReal)
+  step_down: 0.003            # m when it is < lower_below (IndustReal)
+  raise_above: 0.8
+  lower_below: 0.1
+  window: 100                 # training episodes per decision (all 8 envs)
+
+sensing:
+  force_noise: 0.1
+  torque_noise: 0.002
+
+success:                      # the targets' (unchanged)
+  floor_gap: 0.001
+  tilt: 2.0
+  slack: 0.0002
+  force_limit: 50.0
+  carry_margin: 0.01
+
+reward:
+  progress: keypoints         # the held progress term: keypoint_scale x the change of phi(d)
+  keypoint_scale: 1.0
+  keypoint_scales: [0.1, 0.01, 0.001]   # m: gentle over the 25 cm approach, the pocket, the last mm
+  keypoint_weights: [5.0, 1.0, 5.0]
+  insert_z: 10.0              # (unused with progress: keypoints)
+  insert_xy: 100.0            # (unused)
+  seat: 3.0                   # unchanged
+  release_seated: 1.0         # unchanged
+  release_unseated: 0.0       # round 1: 2.0; the interlock makes an early release a no-op
+  retreat: 5.0                # unchanged
+  success: 10.0               # unchanged
+  force: 0.02                 # per N per step above force_soft (round 1: 0.05)
+  force_soft: 15.0            # N (round 1: 20)
+  damage: 10.0                # unchanged; the episode ends
+  failure: 5.0                # unchanged
+  collision: 0.02             # per step the arm touches the tester (round 1: 0.05). The gate:
+  #                             untrained noise started near the nest drifts the hand into the
+  #                             tester's roof and walls for ~240 steps (-12 at 0.05, the valley
+  #                             round 1 had from forces); 0.02 keeps it a cost on the force
+  #                             penalty's scale
+  time: 0.005                 # per step (round 1: 0.01): -3 over the 600-step budget
+  action: 0.001
+  non_finite: 10.0
+
+start:
+  carry_height: 0.32
+  settle_steps: 10
+
+horizon: 600                  # 30 s at 20 Hz
+pick_pool: data/handoff/insertion_picks_train_v1.json

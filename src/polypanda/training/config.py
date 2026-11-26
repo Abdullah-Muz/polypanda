@@ -30,6 +30,9 @@ class PPOParams:
     # Linear learning-rate decay to this value over the run (None: constant learning_rate).
     # Late in d2 rounds 6-7 the constant rate let validation drift down after early peaks.
     learning_rate_final: float | None = None
+    # v4.1 insertion round 2: stop an update's epochs early once the approximate KL to the
+    # rollout's policy exceeds 1.5 x this (SB3's target_kl; None: never)
+    target_kl: float | None = None
 
 
 @dataclass(frozen=True)

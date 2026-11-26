@@ -89,6 +89,27 @@ def run_script(env, script: str) -> dict:
     return out
 
 
+def policy_env_config(run_dir):
+    """The env a trained run's policy is evaluated in: its own env config (its action layer:
+    v4.1 round 2's release interlock and compliant layer are the learned skill's controller),
+    as evaluated (InsertionConfig.for_evaluation: no training curriculum), checked to keep the
+    targets' task: the episode distribution, sensing, success definition, start and budget of
+    the defaults (docs/v4_1_targets.md)."""
+    from pathlib import Path
+
+    import yaml
+
+    from polypanda.config import from_dict
+    from polypanda.environments.insertion import InsertionConfig
+    data = yaml.safe_load((Path(run_dir) / "env_config.yaml").read_text())
+    cfg = from_dict(InsertionConfig, data).for_evaluation()
+    ref = InsertionConfig()
+    for name in ("variation", "sensing", "success", "start", "horizon"):
+        if getattr(cfg, name) != getattr(ref, name):
+            raise ValueError(f"{run_dir}: its env's {name} is not the targets' task")
+    return cfg
+
+
 def run_policy(env, act) -> dict:
     """Step `act` (obs -> action) from the env's current start to the end of the episode."""
     obs = env.observation()
