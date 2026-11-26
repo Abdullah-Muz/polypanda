@@ -141,10 +141,14 @@ def test_door_v3_is_round_5s_env_with_drawers_and_wide_starts():
 
 
 def test_round_1_configs_chain_clone_to_ppo():
-    door_bc = BCRunConfig.from_yaml(ROOT / "configs" / "door_v3_bc_r1.yaml")
+    door_bc = BCRunConfig.from_yaml(ROOT / "configs" / "door_v3_bc_r1_mix.yaml")
     door = TrainConfig.from_yaml(ROOT / door_bc.training_config)
     assert door.task == "door_v2" and door.env_config == "configs/door_v3.yaml"
-    assert door.init_from == "runs/door_v3_bc_r1_seed{seed}" and door.init_checkpoint == "final"
+    assert door.init_from == "runs/door_v3_bc_r1_mix_seed{seed}"
+    assert door.init_checkpoint == "final"
+    assert door_bc.record.teacher == "runs/door_v2_bc_ppo_r5_seed{seed}@final"
+    first = BCRunConfig.from_yaml(ROOT / "configs" / "door_v3_bc_r1.yaml")
+    assert first.record == replace(door_bc.record, teacher=None) and first.clone == door_bc.clone
     r5 = TrainConfig.from_yaml(ROOT / "configs" / "door_v2_bc_ppo_r5.yaml")
     assert door.ppo == r5.ppo and door.total_timesteps == r5.total_timesteps     # round 5's PPO
     assert door_bc.clone.init_from == "runs/door_v2_bc_ppo_r5_seed{seed}"
@@ -165,7 +169,7 @@ def test_round_1_demonstrations_draw_from_training_streams():
     set_seeds = {json.loads(p.read_text())["seed"]
                  for p in (ROOT / "eval_sets").glob("door_*.json")}
     assert {20261130, 20261201} <= set_seeds
-    rec = BCRunConfig.from_yaml(ROOT / "configs" / "door_v3_bc_r1.yaml").record
+    rec = BCRunConfig.from_yaml(ROOT / "configs" / "door_v3_bc_r1_mix.yaml").record
     seeds = set(range(rec.seed * 1000, rec.seed * 1000 + rec.episodes))
     assert not seeds & set_seeds
     ppo = yaml.safe_load((ROOT / "configs" / "door_v3_bc_ppo_r1.yaml").read_text())
@@ -189,6 +193,25 @@ def test_door_v3_recording_records_door_v2_observations_with_kinds():
     for o, a in zip(out["obs"], out["act"], strict=True):
         assert o.shape[1] == OBS_DIM_V2 and a.shape == (len(o), 5)
     assert out["kept"] == sum(r["success"] for r in out["rows"])
+
+
+def test_a_teacher_is_tried_first_and_the_script_records_where_it_fails(tmp_path):
+    """A teacher that never touches the door (a fresh clone of random data) fails every
+    episode: the script's run is recorded instead, as without a teacher."""
+    train_cfg = TrainConfig.from_yaml(ROOT / "configs" / "door_v3_bc_ppo_r1.yaml")
+    env_cfg = DoorConfig.from_yaml(ROOT / train_cfg.env_config)
+    model, venv, _ = clone(_demos("door_v2", seed=4), train_cfg, env_cfg,
+                           CloneConfig(epochs=1, value_epochs=1, val_share=0.0))
+    model.save(tmp_path / "final_model.zip")
+    save_vecnormalize(venv, tmp_path / "final_vecnormalize.pkl")
+    seeds = [20261133 * 1000 + 5]
+    args = (seeds, 0.0, 0.0, "door_v2", "configs/door_v3.yaml", "feel_v2")
+    plain = _record_chunk(args)
+    taught = _record_chunk(args + (f"{tmp_path}@final",))
+    assert taught["rows"][0]["source"] == "script" and plain["rows"][0]["source"] == "script"
+    for k in ("obs", "act", "rew"):
+        for a, b in zip(plain[k], taught[k], strict=True):
+            np.testing.assert_array_equal(a, b)
 
 
 def _demos(task, n_steps=64, seed=0):

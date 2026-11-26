@@ -56,6 +56,10 @@ class RecordConfig:
     task: str = "door"
     env_config: str | None = None
     script: str = "feel"
+    # v4.1: a trained run ("{seed}": the clone's seed) tried first on every episode, clean and
+    # deterministic: its successful episodes are kept as they are, the script runs on the rest
+    # (so a warm-started clone is taught the source's own behaviour where it already works)
+    teacher: str | None = None
 
 
 def _record_env(task: str, env_config: str | None):
@@ -68,35 +72,58 @@ def _record_env(task: str, env_config: str | None):
     return spec.env_cls(cfg.for_evaluation() if hasattr(cfg, "for_evaluation") else cfg)
 
 
+def _play(env, ep: dict, seed: int, act, rng, noise: float | None, on_reset=None) -> tuple:
+    """One episode from `ep` acted by `act` (obs -> action; on_reset() called after the env's
+    reset); with `noise`, Gaussian noise (from rng) on the executed hand actions while the clean
+    action is recorded."""
+    obs, _ = env.reset(seed=seed, options={"episode": ep})
+    if on_reset is not None:
+        on_reset()
+    obs_ep, act_ep, rew_ep = [], [], []
+    done = False
+    while not done:
+        a = np.asarray(act(obs))
+        executed = a.copy()
+        if noise is not None:
+            executed[:4] = np.clip(a[:4] + rng.normal(0.0, noise, 4), -1.0, 1.0)
+        obs_ep.append(obs)
+        act_ep.append(a)
+        obs, r, term, trunc, info = env.step(executed)
+        rew_ep.append(r)
+        done = term or trunc
+    return obs_ep, act_ep, rew_ep, info
+
+
 def _record_chunk(args) -> dict:
     seeds, noise_share, noise, *rest = args
-    task, env_config, mode = rest if rest else ("door", None, "feel")
+    task, env_config, mode, teacher = (list(rest) + [None])[:4] if rest else (
+        "door", None, "feel", None)
     from polypanda.control.door_baselines import BaselineDoor
     env = _record_env(task, env_config)
+    teacher_act = None
+    if teacher is not None:
+        from polypanda.evaluation.policies import load_run_policy
+        teacher_act = load_run_policy(teacher)
     obs_l, act_l, rew_l, ep_l, done_l, rows = [], [], [], [], [], []
     kept, total = 0, 0
     for seed in seeds:
         rng = np.random.default_rng(seed)
         noisy = rng.uniform() < noise_share
         ep = env.draw_episode(rng)
-        script = BaselineDoor(env, mode)
-        obs, _ = env.reset(seed=seed, options={"episode": ep})
-        script.reset()
-        obs_ep, act_ep, rew_ep = [], [], []
-        done = False
-        while not done:
-            a = script.act()
-            executed = a.copy()
-            if noisy:
-                executed[:4] = np.clip(a[:4] + rng.normal(0.0, noise, 4), -1.0, 1.0)
-            obs_ep.append(obs)
-            act_ep.append(a)
-            obs, r, term, trunc, info = env.step(executed)
-            rew_ep.append(r)
-            done = term or trunc
+        source = "script"
+        if teacher_act is not None:
+            # v4.1: the teacher policy first, clean; its successful episodes are kept as they are
+            obs_ep, act_ep, rew_ep, info = _play(env, ep, seed, teacher_act, rng, None)
+            source = "teacher"
+        if teacher_act is None or not info["is_success"]:
+            script = BaselineDoor(env, mode)
+            obs_ep, act_ep, rew_ep, info = _play(env, ep, seed, lambda o, s=script: s.act(),
+                                                 rng, noise if noisy else None, script.reset)
+            source = "script"
         total += 1
         rows.append({"seed": int(seed), "kind": ep.get("kind", "lid"), "command": ep["command"],
-                     "slide": ep["slide"], "noisy": bool(noisy),
+                     "slide": ep["slide"], "noisy": bool(noisy and source == "script"),
+                     "source": source,
                      "success": bool(info["is_success"]), "failure": info["failure"],
                      "steps": len(act_ep)})
         if info["is_success"]:
@@ -117,7 +144,7 @@ def record(cfg: RecordConfig, rows: list | None = None) -> dict:
     `rows` (a list), one row per recorded episode (kept or not) is appended to it."""
     seeds = [cfg.seed * 1000 + k for k in range(cfg.episodes)]
     chunks = [(seeds[j::cfg.jobs], cfg.noise_share, cfg.noise, cfg.task, cfg.env_config,
-               cfg.script) for j in range(cfg.jobs)]
+               cfg.script, cfg.teacher) for j in range(cfg.jobs)]
     with Pool(cfg.jobs) as pool:
         parts = pool.map(_record_chunk, chunks)
     out = {k: np.concatenate([x for p in parts for x in p[k]]) for k in

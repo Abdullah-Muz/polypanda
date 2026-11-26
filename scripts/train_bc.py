@@ -52,7 +52,7 @@ def main() -> None:
     run_dir = args.runs_dir / name
     if run_dir.exists():
         raise SystemExit(f"{run_dir} exists")
-    demo_path = Path(bc.demos)
+    demo_path = Path(bc.demos.format(seed=args.seed))     # (per clone seed with a teacher)
     start = time.perf_counter()
     demos = dict(np.load(demo_path))
     print(f"{demo_path}: {int(demos['kept'])}/{int(demos['total'])} episodes kept, "

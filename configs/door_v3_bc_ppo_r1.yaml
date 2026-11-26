@@ -1,7 +1,9 @@
 # v4.1 door on testers, dev round 1 (docs/v4_1_targets.md, Part II; at most 3 rounds): PPO on
 # task door_v2 with configs/door_v3.yaml (v4.0 round 5's env + lids and drawers + wide hand-over
-# starts), warm-started from the seed's refreshed clone (runs/door_v3_bc_r1_seed{seed}: v4.0's
-# round-5 final policy, cloned on feel_v2's demonstrations; configs/door_v3_bc_r1.yaml).
+# starts), warm-started from the seed's refreshed clone (runs/door_v3_bc_r1_mix_seed{seed}: v4.0's
+# round-5 final policy, cloned on its own successful episodes and feel_v2's demonstrations where
+# it fails; configs/door_v3_bc_r1_mix.yaml, which replaced the feel_v2-only door_v3_bc_r1.yaml
+# before this trained).
 # PPO settings are round 5's, unchanged (configs/door_v2_bc_ppo_r5.yaml): lr 5e-5 -> 1e-5 (the
 # network is already a working door policy: rounds 3-5 refined at this rate without losing
 # it), 2M steps, n_steps 512 x 8 envs, entropy 0.005, the clone's action noise kept (no
@@ -24,7 +26,7 @@ eval_seed: 100000
 eval_fixed_episodes: true
 checkpoint_freq: 250000
 torch_threads: 1
-init_from: runs/door_v3_bc_r1_seed{seed}
+init_from: runs/door_v3_bc_r1_mix_seed{seed}
 init_checkpoint: final
 
 ppo:

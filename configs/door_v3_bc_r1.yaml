@@ -6,6 +6,8 @@
 # (configs/door_v3_bc_ppo_r1.yaml). Clone seed = the run's seed.
 #   uv run python scripts/record_door_demos.py --config configs/door_v3_bc_r1.yaml
 #   uv run python scripts/train_bc.py --config configs/door_v3_bc_r1.yaml --seed 0   (1, 2)
+# Superseded before any PPO trained from it by configs/door_v3_bc_r1_mix.yaml (round 5 as the
+# teacher where it works): this clone scored 63, 22 and 99 of 400 on door_dev_v2 (reported).
 training_config: configs/door_v3_bc_ppo_r1.yaml   # its task (door_v2), env, network, gamma
 demos: runs/door_demos/feel_v2_door_v3_3000_20261133.npz
 record:
