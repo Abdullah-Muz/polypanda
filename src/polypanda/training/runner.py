@@ -77,12 +77,21 @@ def build_model(cfg: TrainConfig, env, tensorboard_log: str | None):
     common = {"seed": cfg.seed, "device": "cpu", "verbose": 0,
               "tensorboard_log": tensorboard_log}
     if cfg.algorithm == "ppo":
+        log_std = params.pop("log_std_init")
+        per_action = isinstance(log_std, tuple | list)      # (v4.1: one value per action)
         policy_kwargs = {"net_arch": {"pi": arch, "vf": arch},
-                         "log_std_init": params.pop("log_std_init")}
+                         "log_std_init": 0.0 if per_action else log_std}
         final = params.pop("learning_rate_final")
         if final is not None:
             params["learning_rate"] = partial(linear_schedule, params["learning_rate"], final)
-        return PPO("MlpPolicy", env, policy_kwargs=policy_kwargs, **common, **params)
+        model = PPO("MlpPolicy", env, policy_kwargs=policy_kwargs, **common, **params)
+        if per_action:
+            if len(log_std) != model.action_space.shape[0]:
+                raise ValueError(f"log_std_init has {len(log_std)} values for "
+                                 f"{model.action_space.shape[0]} actions")
+            with torch.no_grad():
+                model.policy.log_std.copy_(torch.as_tensor(log_std, dtype=torch.float32))
+        return model
     return SAC("MlpPolicy", env, policy_kwargs={"net_arch": {"pi": arch, "qf": arch}},
                **common, **params)
 

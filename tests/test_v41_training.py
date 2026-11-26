@@ -286,6 +286,21 @@ def test_a_warm_clone_starts_as_its_source(tmp_path):
         np.testing.assert_allclose(a_warm(o), a_src(o), atol=1e-4)
 
 
+def test_ppo_takes_a_log_std_per_action():
+    from polypanda.training.runner import build_model
+    env_cfg = replace(InsertionConfig.from_yaml(ROOT / "configs" / "insertion_v1.yaml"), horizon=2)
+    from stable_baselines3.common.vec_env import DummyVecEnv
+    venv = DummyVecEnv([lambda: InsertionEnv(env_cfg)])
+    cfg = TrainConfig(task="insertion", ppo=replace(TrainConfig().ppo,
+                                                    log_std_init=(-2.3, -2.3, -2.3, -2.3, -1.2)))
+    model = build_model(cfg, venv, None)
+    np.testing.assert_allclose(model.policy.log_std.detach().numpy(), [-2.3] * 4 + [-1.2],
+                               rtol=1e-6)
+    with pytest.raises(ValueError):
+        build_model(replace(cfg, ppo=replace(cfg.ppo, log_std_init=(-1.0, -1.0))), venv, None)
+    assert build_model(TrainConfig(task="insertion"), venv, None).policy.log_std.mean() == 0.0
+
+
 def test_door_env_classes_for_recording():
     from polypanda.training.bc import _record_env
     assert type(_record_env("door", None)) is DoorEnv
