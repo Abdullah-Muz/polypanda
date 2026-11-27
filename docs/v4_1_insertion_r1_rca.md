@@ -148,3 +148,46 @@ The first pilot's 250k policy from the same −8 mm starts (seeds 700000–70001
 | Hold still, release asked every step (outside the window) | | | −2.97, all blocked | |
 
 No damage in any row. The search scores highest from the targets' carry start and from near-nest starts; from engaged starts (−8 mm, +2 mm) a direct push-and-release beats it (the search lifts the module back to its own hover height first). Hover stays below down-and-hold (+4.4 carry, +0.8 near). Pilot 2's final policy from −8 mm under the new layer: 1/12 stochastic, 2/12 deterministic (it still rises out: a learned habit, not the layer).
+
+### Pilot 3 and the release fixes before the 3 seeds (2026-11-26; user-approved)
+
+**Pilot 3** (`runs/insertion_ppo_r2_pilot3_seed0`, stopped by plan at ~520k; checkpoints 250k and 500k) **learned the insertion**: the reverse curriculum's high bound climbed from 5 to 300 mm (the carry start); training success in the last quarter 74 % from the carry start, 80–100 % from lower starts, no damage. But deterministic validation (carry start) seated 0, 0, 14, 45 of 60 at 100–400k and **released 0**. The main session's diagnostic (500k, carry start): stochastic 19/20 success (median 10.45 s); deterministic 20/20 seated, 0 released, its release mean while seated about 0.045 (p90 0.25, max 0.46) against the 0.5 threshold. Seated, the potential is flat, so nothing pushed the release's mean over an off-centre threshold (research note `research_rl_release_decision.md`, kept outside the repo: Isaac Lab and robosuite put a gripper's threshold at 0).
+
+**Fixes** (round 1's defaults unchanged):
+
+| What | As built | Why |
+|---|---|---|
+| Release threshold | `action.release_above` **0.0** (round 1: 0.5) | the midpoint of the action; at 0.5 pilot 3's mean release seated was ~0.045 |
+| Waiting seated | `reward.seated_wait` **0.03** per step seated and still held | a gradient toward letting go: 1 s seated costs 0.6 against the release's +1 and the success's +10. It accrues only while seated, so a release before seating gains nothing from it (and forgoes the last millimetres' potential) |
+| Steps | **2M** per seed (`configs/insertion_ppo_r2.yaml`; was 5M) | pilot 3 reached 74 % training success from the carry start by ~450k; the machine is shared by three seeds |
+| Evaluation | `scripts/evaluate_insertion.py`: **deterministic stays binding**; `--stochastic` (seeded per episode, its own file `_stochastic`) reported beside it; `--auto-release` a **side ablation** (`action.auto_release`: the cell releases on seated detection, the industrial PLC way; its own file `_autorelease`), never in training or a binding result | the targets' result is the deterministic policy's, as declared before training |
+
+**DIAGNOSTIC (not a result):** pilot 3's 500k policy, its own env, the carry start, seeds 700000–700019:
+
+| Variant | Success | Seated | Time to success, median | Peak force, median / max |
+|---|---|---|---|---|
+| Deterministic, threshold 0.5 (as trained) | 0/20 (20 not released) | 19 | | 15.9 / 26.4 N |
+| **Deterministic, threshold 0** | **19/20** | 19 | 8.0 s | 15.3 / 26.4 N |
+| Stochastic, threshold 0 | 20/20 | 20 | 9.5 s | 20.3 / 34.1 N |
+| Deterministic, threshold 0.5, auto-release ablation | 19/20 | 19 | 7.95 s | 15.3 / 26.4 N |
+
+The threshold alone closes the gap for this policy (its mean release seated is above 0 on most steps).
+
+**The gate after the fixes** (`da2df0a`; 24 episodes each; the search on its own path; no damage in any row):
+
+| Behaviour | Carry start | Near start | −8 mm | +2 mm |
+|---|---|---|---|---|
+| The frozen search | **+16.71**, 20/24 | **+6.91**, 13/24 | +15.55, 24/24 | −1.17, 6/24 |
+| Hover | −3.00 | −2.97 | −2.97 | −2.97 |
+| Down until touching, hold | +1.39 | −2.88 | | |
+| Straight down, keep pressing (never releases) | +1.17 (5 seated) | −7.61 (14 seated; waiting −9.2) | | |
+| Untrained noise, round 2's | −3.01 | −2.99, 2/24 | +6.76, 15/24 | |
+| Gently down, seated, hold 5 steps, release | | | **+17.20**, 24/24, 4.1 s | **+7.02**, 12/24 |
+| **Seated, hold forever** | | | **−13.91** (waiting −17.9) | **−5.99** |
+| **Release asked from the start, takes effect in the window before seating** | | | +14.17, 24/24 | +6.66, 13/24 |
+| Push down with 2 mm lateral noise, release asked every step | | | +14.13, 24/24 | +11.50, 20/24 |
+| Press, release asked every step | | | +14.17, 24/24 | |
+| Untrained noise around a downward push | | | +14.73, 24/24 | |
+| Release asked outside the window | | | −2.97, all blocked | |
+
+Holding seated forever now loses clearly to releasing (−13.9 against +17.2 from −8 mm; −6.0 against +7.0 from +2 mm); a release in the window before seating still loses to seating first (+14.2 against +17.2; +6.7 against +7.0: it forgoes the last millimetres' potential, and from +2 mm it drops unaligned modules). Down-and-hold stays above hovering (+4.4 at the carry start; +0.1 near the nest, where the waiting cost now charges its occasional seat).
