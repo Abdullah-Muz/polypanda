@@ -1,0 +1,37 @@
+# v4.1 door on testers, dev round 3 (the last; docs/v4_1_targets.md, Part II): PPO on task door_v2
+# with configs/door_v3_r3.yaml (round 2's env, focus on every open), warm-started from each seed's
+# round-2 FINAL checkpoint (runs/door_v3_ppo_r2_seed{seed}). PPO settings unchanged (lr 5e-5 ->
+# 1e-5, 2M steps, 8 envs, entropy 0.005, validation on the same 200 episodes every 100k). The
+# seed's policy = this run's FINAL checkpoint, unless the fallback rule of v4_1_targets.md applies.
+algorithm: ppo
+task: door_v2
+env_config: configs/door_v3_r3.yaml
+seed: 0
+n_envs: 8
+vec_env: subproc
+total_timesteps: 2000000
+normalize_obs: true
+normalize_reward: true
+eval_freq: 100000
+eval_episodes: 200
+eval_seed: 100000
+eval_fixed_episodes: true
+checkpoint_freq: 250000
+torch_threads: 1
+init_from: runs/door_v3_ppo_r2_seed{seed}
+init_checkpoint: final
+
+ppo:
+  learning_rate: 0.00005
+  learning_rate_final: 0.00001
+  n_steps: 512
+  batch_size: 256
+  n_epochs: 10
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_range: 0.2
+  ent_coef: 0.005
+  vf_coef: 0.5
+  max_grad_norm: 0.5
+  net_arch: [256, 256]
+  log_std_init: 0.0

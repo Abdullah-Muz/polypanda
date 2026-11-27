@@ -112,6 +112,28 @@ Round 2 is the last insertion round: round 3 is not used. `insertion_final_v1` a
 - **Round 2 on `insertion_dev_v1`** (`52553cd`, deterministic): 399, 399 and 398 of 400 (pooled 99.67 %), median 6.30 s, median peak nest force 15.3 N, none over 50 N. Dev read: I1, I2 and I3's success bar met; I3's 40 % time bar (27.6 % shorter) and I4's force bar (15.3 against 12.9 N) not met.
 - **The one-shot run, once:** `scripts/evaluate_insertion.py --one-shot` on `insertion_final_v1` for each seed's locked policy, deterministic (binding), then stochastic and with the seated-detection release (both reported beside it, never instead of it), and the two frozen scripts on the same episodes; time until release reported as the secondary measure agreed on 2026-11-26. Every result states the learned skill's own compliant controller beside the search's 20 Hz force regulation. A crashed job only is rerun alone.
 
+### The insertion one-shot, as it came (2026-11-27, run once at `50da97c`, clean)
+
+On `insertion_final_v1` (600 episodes), every job run once, none crashed:
+
+| | Seed 0 | Seed 1 | Seed 2 | Frozen search | Straight-down |
+|---|---|---|---|---|---|
+| **Success (deterministic, binding)** | **596/600** (99.3 %, CI 98.3–99.7) | **600/600** (100 %, CI 99.4–100) | **598/600** (99.7 %, CI 98.8–99.9) | 483/600 (80.5 %) | 292/600 (48.7 %) |
+| Median time to success | 6.30 s | 6.35 s | 6.25 s | 8.70 s | 6.35 s |
+| Median / max peak nest force | 16.1 / 31.3 N | 15.3 / 33.8 N | 14.2 / 35.7 N | 12.7 / 30.0 N | 43.4 / 199.8 N |
+| Over the 50 N limit | 0 | 0 | 0 | 0 | 277 |
+| Stochastic (reported) | 600/600 | 598/600 | 596/600 | | |
+| Seated-detection release (side comparison) | 597/600, 6.2 s | 600/600, 6.15 s | 598/600, 6.15 s | | |
+
+Every learned failure is a module seated but not released.
+
+- **I1 met:** every seed at least 95 % (99.3, 100, 99.7 %; pooled 1794/1800, 99.67 %). The industry-style check (99.5 % at 95 % confidence, about 600 trials without a failure, reported, no bar) is met by seed 1 alone.
+- **I2 met:** exact McNemar against straight-down, p ≤ 1.6×10⁻⁹² for every seed (304–308 episodes only the learned policy completes, 0 the other way).
+- **I3: success met, time not met.** Success not lower than the search's: 99.67 % against 80.5 % (p ≤ 7×10⁻³⁰ per seed). Time: on the 1,444 episode pairs both complete, median 6.30 against 8.70 s, **27.6 % shorter against the 40 % bar**: missed, as forecast once the shared retract (about 3.4 s of every success, at the search's own speed) was fixed on 2026-11-26.
+- **I4 not met:** pooled median peak force 15.3 N against the search's 12.7 N. The learned skill never came near the damage limit (largest 35.7 N); it presses a little harder at the median and does not spike.
+- The time until release (the secondary measure agreed on 2026-11-26) is not in the evaluator's rows; it will be computed from the runs and reported separately.
+- As agreed, every insertion result states that the learned skill runs on its own compliant controller (Part I, round 2), the frozen search on its 20 Hz force regulation of the module's force.
+
 ## Part II: the door on testers
 
 ### Changes from v4.0
@@ -150,6 +172,9 @@ As v4.0's, with at most **3** development rounds on `door_dev_v2`, the policy = 
 
 - **Round 1's recipe (decided by the user on 2026-11-25, before any v4.1 door PPO trained): demonstrations from a mixed teacher, behaviour cloning, then PPO.** For each seed, the teacher is first that seed's v4.0 round-5 final policy (itself trained by PPO); on the training episodes it fails (most drawers, awkward hand-overs) `feel_v2` is recorded instead. Each seed is cloned from its own mixed demonstrations, warm-started from its round-5 policy, then trained with PPO.
 - **Why, and what came first:** the recipe written at approval cloned `feel_v2` alone (configs at `5788def`). Those clones scored 63, 22 and 99 of 400 on `door_dev_v2`, below round 5's 140, 174 and 122 (`8af832a`). Diagnosis: no fault in the plumbing; the clone copies the script's actions closely but, as v4.0's first clone did, never lets go of the bar (the script times its release by internal counters the policy cannot see), and it overwrites what round 5 had learned. The user weighed pure PPO from round 5 and chose the mixed teacher. Both sets of clone results are reported.
+- **Round 1 on `door_dev_v2`** (`a376891`): 377, 379, 392 of 400; drawers learned (96–100 %), lid opens the weak cell (90, 86, 94 %); seed 1 slammed 14 times, 13 of them opening left-sliding lids; seed 0 failed most from low, wrist-turned hand-overs.
+- **Round 2** (approved by the user on 2026-11-27; `configs/door_v3_r2.yaml`, `door_v3_ppo_r2.yaml`, `50da97c`): continued each seed's round-1 final with 30 % of training episodes on left-lid opens (and round 5's open/out/spring) and the slam margin raised 0.05 → 0.07. On `door_dev_v2`: **381, 396, 393 of 400**; kind × command worst cells 91, 98, 94 %; slams 1, 2, 3; pooled 97.5 % against `feel_v2`'s 99.5 %; 58 % fewer steps; median peak force 21.9 against 21.2 N. Dev read: D1 met by every seed (seed 0 only just, 95.25 %), D2 and D3 met, D4's slam bar met and its force bar missed by 0.7 N.
+- **Round 3, the last door round** (approved by the user on 2026-11-27; `configs/door_v3_r3.yaml`, `door_v3_ppo_r3.yaml`): each seed's round-2 final continued with 35 % of training episodes on every open (left and out lids, springy and plain, and drawer opens), nothing else changed. **Fallback rule, fixed before round 3 trains:** if any seed's round-3 final checkpoint does worse on D1 on `door_dev_v2` than its round-2 final did (below 95 % where round 2 was at or above, or a kind × command cell below 90 % where round 2's were all at or above), every seed's policy is its **round-2** final checkpoint; otherwise every seed's policy is its round-3 final checkpoint. `door_final_v2` is still untouched.
 
 ## Part III: the cell
 
