@@ -1,0 +1,72 @@
+# v4.1 learned insertion, dev round 2 of 3 (docs/v4_1_targets.md, Part I; why: docs/
+# v4_1_insertion_r1_rca.md): still PURE PPO from scratch (the user's decision of 2026-11-25: no
+# demonstrations, no cloning), on round 2's env (configs/insertion_v2.yaml: release interlock,
+# compliant action layer, start-height curriculum for training, keypoint progress reward). The
+# targets, the evaluation sets, their start and the success definition are unchanged; validation
+# starts every episode at the carry height (InsertionConfig.for_evaluation turns the curriculum
+# off), so it measures the real task.
+# What changes from round 1 (configs/insertion_ppo_r1.yaml), and why:
+# - Steps: 2M per seed (user, 2026-11-26, after pilot 3; first written as 5M). Pilot 3 (this
+#   config's env before the release fixes) reached 74 % training success from the carry start
+#   by ~450k (the reverse curriculum's high bound at the carry start), so 2M leaves room for the
+#   release to be learned and the policy to settle; the machine is shared by three seeds.
+# - Release (env, after pilot 3): the threshold at the action's midpoint (release_above 0) and a
+#   small cost per step seated and still held (reward.seated_wait); see configs/insertion_v2.yaml.
+# - lr 1e-4, constant (round 1: 3e-4 -> 3e-5): round 1's updates ran at approx KL 0.03-0.06 and
+#   clip fraction ~0.37, about twice the healthy range, and locked onto hovering within ~100k
+#   steps. Constant so the pilot is exactly the first 1M steps of the full run.
+# - n_epochs 5 (round 1: 10) and target_kl 0.02 (round 1: none): fewer passes over each rollout,
+#   and an update's epochs stop once its KL passes 1.5 x 0.02 (SB3), the brake round 1 lacked.
+# - ent_coef 0.001 (round 1: 0): a small bonus that slows the noise's collapse (round 1's release
+#   noise shrank while nothing was being learned). Small, because the hand's noise is bounded
+#   by the compliant layer, not by the bonus: Isaac Lab uses 0, v4.0's door reference 0.005.
+# - gamma 0.995 (round 1: 0.99): the horizon (~200 steps) spans a whole insertion (~100-200
+#   steps), so the seat and success bonuses reach back to the approach (Isaac Lab's value).
+# - Exploration, one log std per action [dx, dy, dz, dyaw, release]:
+#   * the hand's moves and turn: -1.6 (std 0.2 of full scale: 2 mm and 0.01 rad per step; round
+#     1: -2.3, 1 mm). Safe now that contact is compliant (the gate: Gaussian noise and
+#     straight-down pressing peak at ~10-20 N, never 50 N) and the curriculum starts some
+#     episodes in or over the nest; 2 mm per step random-walks across the 0.5-1 mm chamfer's
+#     capture window in a few steps.
+#   * the release: -1.0 (std 0.37). With the interlock a release far from the floor is ignored
+#     and unpenalised, so the noise can stay large; with the threshold at 0 an untrained mean
+#     near 0 asks for a release on about half the steps, which takes effect only within 3 mm
+#     of the floor (then the built-in retract ends the episode).
+# - n_steps 512 x 8 envs (4,096 per update), batch 256, network 256x256, gae 0.95, clip 0.2:
+#   round 1's, unchanged (one change at a time where the root causes did not point).
+# - Validation: as round 1 (the same 60 fixed training-stream episodes every 100k, eval_seed
+#   100000, per tester, damage episodes, success by clearance and camera error), at the carry
+#   start, deterministic. The reverse curriculum's high bound and success per start-height bin
+#   are logged to TensorBoard (curriculum/*) and to the run's curriculum.jsonl.
+# The seed's policy = this run's FINAL checkpoint (if it is the last round).
+algorithm: ppo
+task: insertion
+env_config: configs/insertion_v2.yaml
+seed: 0
+n_envs: 8
+vec_env: subproc
+total_timesteps: 2000000
+normalize_obs: true
+normalize_reward: true
+eval_freq: 100000
+eval_episodes: 60
+eval_seed: 100000
+eval_fixed_episodes: true
+checkpoint_freq: 250000
+torch_threads: 1
+
+ppo:
+  learning_rate: 0.0001
+  learning_rate_final: null
+  n_steps: 512
+  batch_size: 256
+  n_epochs: 5
+  gamma: 0.995
+  gae_lambda: 0.95
+  clip_range: 0.2
+  ent_coef: 0.001
+  vf_coef: 0.5
+  max_grad_norm: 0.5
+  target_kl: 0.02
+  net_arch: [256, 256]
+  log_std_init: [-1.6, -1.6, -1.6, -1.6, -1.0]

@@ -89,7 +89,8 @@ def insertion_row(ep: dict, info: dict) -> tuple[dict, dict]:
            "clearance_mm": round(ep["clearance"] * 1000, 4),
            "camera_error_mm": round(float(np.hypot(*ep["camera_xy"])) * 1000, 4)}
     res = {"success": bool(info.get("is_success", False)), "failure": info.get("failure"),
-           "time_s": out.get("time_s"), "peak_force": float(st.get("peak_force", 0.0))}
+           "time_s": out.get("time_s"), "peak_force": float(st.get("peak_force", 0.0)),
+           "seated": bool(out.get("seated", False))}
     return row, res
 
 
@@ -110,6 +111,10 @@ def summarize_insertion(rows: list[dict], damage_limit: float = 50.0) -> dict:
         "steps_to_success_median": float(np.median(ok)) if ok else None,
         "peak_force_median": float(np.median([r["peak_force"] for r in rows])) if rows else None,
         "damage_episodes": sum(r["peak_force"] > damage_limit for r in rows),
+        # (v4.1 round 2: how far the policy gets: it touched the nest; the module was seated at
+        # the episode's end, released or not)
+        "contact_episodes": sum(r["peak_force"] > 0.5 for r in rows),
+        "seated_episodes": sum(bool(r.get("seated", False)) for r in rows),
         "failures": dict(sorted(failures.items())),
         "by_clearance_mm": rates(lambda r: _bin(r["clearance_mm"], CLEARANCE_BINS_MM)),
         "by_camera_error_mm": rates(lambda r: _bin(r["camera_error_mm"], CAMERA_BINS_MM)),
@@ -128,7 +133,9 @@ class TaskCells:
 
 
 DOOR = TaskCells(door_row, summarize_cells, ("worst_cell_rate", "slam_episodes"))
-INSERTION = TaskCells(insertion_row, summarize_insertion, ("worst_cell_rate", "damage_episodes"))
+INSERTION = TaskCells(insertion_row, summarize_insertion,
+                      ("worst_cell_rate", "damage_episodes", "contact_episodes",
+                       "seated_episodes"))
 
 
 def cells_for(env: gym.Env) -> TaskCells:

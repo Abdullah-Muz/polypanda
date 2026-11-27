@@ -9,8 +9,10 @@ from pathlib import Path
 import numpy as np
 
 
-def load_run_policy(spec: str):
-    """`spec` is a run directory, optionally with "@best" (default) or "@final"."""
+def load_run_policy(spec: str, deterministic: bool = True):
+    """`spec` is a run directory, optionally with "@best" (default) or "@final". Deterministic
+    (the action's mean) by default; with deterministic=False the policy samples its actions
+    (torch's random stream: seed it for a repeatable run)."""
     from stable_baselines3 import PPO
 
     path, _, which = spec.partition("@")
@@ -24,7 +26,7 @@ def load_run_policy(spec: str):
 
     def act(obs: np.ndarray) -> np.ndarray:
         x = np.clip((obs - mean) / np.sqrt(var + eps), -clip, clip).astype(np.float32)
-        return model.predict(x, deterministic=True)[0]
+        return model.predict(x, deterministic=deterministic)[0]
 
     return act
 

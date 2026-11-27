@@ -29,7 +29,12 @@ from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecNorm
 from polypanda.control.action_adapter import action_schema
 from polypanda.environments.tasks import task_spec
 from polypanda.simulation.assets import MENAGERIE_COMMIT
-from polypanda.training.callbacks import RewardTermsCallback, SaveVecNormalizeCallback
+from polypanda.training.callbacks import (
+    ReverseCurriculumCallback,
+    RewardTermsCallback,
+    SaveVecNormalizeCallback,
+    StartCurriculumCallback,
+)
 from polypanda.training.config import TrainConfig
 from polypanda.training.fixed_eval import FixedEpisodes, FixedEpisodesEvalCallback
 
@@ -234,7 +239,14 @@ def train(cfg: TrainConfig, env_config, run_dir: Path) -> Path:
     git = _git_state()  # recorded before training, so later edits cannot mislabel the run
 
     per_env = lambda steps: max(1, steps // cfg.n_envs)  # noqa: E731  callbacks count env.step calls
+    extra = []
+    curriculum = getattr(env_config, "curriculum", None)
+    if getattr(curriculum, "enabled", False):    # (v4.1 insertion round 2: training starts)
+        cb = (ReverseCurriculumCallback if getattr(curriculum, "mode", "") == "reverse"
+              else StartCurriculumCallback)
+        extra.append(cb(curriculum, log_path=run_dir / "curriculum.jsonl"))
     callbacks = CallbackList([
+        *extra,
         RewardTermsCallback(),
         eval_cls(eval_env, n_eval_episodes=cfg.eval_episodes,
                      eval_freq=per_env(cfg.eval_freq), deterministic=True,
