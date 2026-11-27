@@ -103,6 +103,15 @@ The development grid above used fixed levels up to 3 mm and 2°; this distributi
 - **The policy used for a seed:** the **final checkpoint of its last round** (v4.0's rule after round 2: best-validation checkpoints proved a lottery).
 - **The one-shot run** on `insertion_final_v1` happens once, after a lock commit names the policy, the seeds and the scripts' versions.
 
+### The insertion lock (2026-11-27, approved by the user)
+
+Round 2 is the last insertion round: round 3 is not used. `insertion_final_v1` and `insertion_stretch_v1` are untouched.
+
+- **The policy, per seed:** the final checkpoint of round 2, `runs/insertion_ppo_r2_seed{0,1,2}/final_model.zip` with `final_vecnormalize.pkl`, trained at `947bc4c` from `configs/insertion_ppo_r2.yaml` on `configs/insertion_v2.yaml` (sha256 prefixes: seed 0 `d9fec7fab3dbe8dc` / `8d3c7d4f41e80a47`, seed 1 `e60a447db03a532f` / `f0011da9541876cd`, seed 2 `ec6f929cfd0ff9e5` / `88ffc2b963f55c03`; `env_config.yaml` `0927ed7673849699` for all three). Evaluated in its own environment as evaluation defines it (`policy_env_config`: no curriculum, the targets' start, distribution, sensing, success and budget).
+- **The baselines:** the frozen search (revision `8e884b2`) and straight-down, `control/scripted_insertion.py` unchanged since.
+- **Round 2 on `insertion_dev_v1`** (`52553cd`, deterministic): 399, 399 and 398 of 400 (pooled 99.67 %), median 6.30 s, median peak nest force 15.3 N, none over 50 N. Dev read: I1, I2 and I3's success bar met; I3's 40 % time bar (27.6 % shorter) and I4's force bar (15.3 against 12.9 N) not met.
+- **The one-shot run, once:** `scripts/evaluate_insertion.py --one-shot` on `insertion_final_v1` for each seed's locked policy, deterministic (binding), then stochastic and with the seated-detection release (both reported beside it, never instead of it), and the two frozen scripts on the same episodes; time until release reported as the secondary measure agreed on 2026-11-26. Every result states the learned skill's own compliant controller beside the search's 20 Hz force regulation. A crashed job only is rerun alone.
+
 ## Part II: the door on testers
 
 ### Changes from v4.0
