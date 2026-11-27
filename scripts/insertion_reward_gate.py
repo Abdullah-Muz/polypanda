@@ -18,7 +18,8 @@ Behaviours (round 1's root-cause measurements, repeated):
   step (outside the interlock's window: blocked); noisy_press_release: round 2's untrained noise
   around a downward push (dz mean -0.5), release noise included; lateral_push_release (pilot 2's
   failure): straight down at full push with lateral noise of the policy's std (2 mm per step),
-  a release asked every step.
+  a release asked every step; release_before_seated: gently down (0.3) with a release asked
+  every step, so it lets go as soon as the interlock allows, before the module is seated.
 
 Starts: "carry" (the targets' start), "near" (a start height drawn per episode uniformly from
 --near-low..--near-high m above the nest's rim; InsertionEnv reset option "start_height") or
@@ -214,6 +215,9 @@ def job(spec) -> tuple:
                                 args, k))
         elif behaviour == "noisy_press_release":
             rows.append(rollout(env, noisy_press_release(7 + k), args, k))
+        elif behaviour == "release_before_seated":
+            rows.append(rollout(env, lambda o, t, e: np.array([0.0, 0.0, -0.3, 0.0, 1.0]),
+                                args, k))
         elif behaviour == "lateral_push_release":
             rows.append(rollout(env, lateral_push_release(7 + k), args, k))
         elif behaviour == "search":

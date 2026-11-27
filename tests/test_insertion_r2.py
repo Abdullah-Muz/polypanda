@@ -262,6 +262,33 @@ def test_round_1_lets_the_policy_move_the_open_hand(v1):
     assert info["released"] and not term and v1.steps == 1
 
 
+def test_the_release_threshold_is_the_midpoint_in_round_2_only(v1, v2):
+    assert InsertionConfig().action.release_above == 0.5 and v2.config.action.release_above == 0.0
+    for env in (v1, v2):
+        env.reset(seed=1, options={"episode": _episode(env, "TA"), "start_height": -0.013})
+        _, _, _, _, info = env.step([0, 0, 0, 0, 0.1])
+        assert info["released"] == (env is v2)
+
+
+def test_waiting_seated_costs_and_the_release_ends_it(v2):
+    v2.reset(seed=1, options={"episode": _episode(v2, "TC"), "start_height": -0.0145})
+    _, _, _, _, info = v2.step([0, 0, 0, 0, -1.0])
+    assert info["seated"] and info["reward_terms"]["seated_wait"] == -0.03
+    _, _, term, _, info = v2.step([0, 0, 0, 0, 0.2])
+    assert term and info["is_success"] and "seated_wait" not in info["reward_terms"]
+    assert InsertionConfig().reward.seated_wait == 0.0           # (round 1: none)
+
+
+def test_the_auto_release_ablation_lets_go_on_seated_detection():
+    cfg = InsertionConfig.from_yaml(V2)
+    assert not cfg.action.auto_release and not InsertionConfig().action.auto_release
+    env = InsertionEnv(replace(cfg, action=replace(cfg.action, auto_release=True),
+                               curriculum=replace(cfg.curriculum, enabled=False)))
+    env.reset(seed=1, options={"episode": _episode(env, "TC"), "start_height": -0.0145})
+    _, _, term, _, info = env.step([0, 0, 0, 0, -1.0])           # the policy never asks
+    assert term and info["is_success"]
+
+
 # --- the compliant action layer -------------------------------------------------------------------
 @pytest.mark.parametrize("tester", ["TA", "TB"])
 def test_pressing_down_on_the_rim_is_compliant(v1, v2, tester):

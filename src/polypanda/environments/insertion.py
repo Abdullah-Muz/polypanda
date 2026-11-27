@@ -159,6 +159,9 @@ class InsertionActionConfig:
     # control steps count in the episode's time and the nest-force watch runs through it. False
     # (round 1): after a release the policy moves the open hand itself.
     release_retract: bool = False
+    # A SIDE ABLATION only (never in training or a binding result): the release triggered by the
+    # cell on seated detection (the industrial PLC way), whatever the policy's release action.
+    auto_release: bool = False
 
 
 @dataclass(frozen=True)
@@ -278,6 +281,10 @@ class InsertionRewardConfig:
     time: float = 0.01              # per step
     action: float = 0.001           # x |hand action|^2
     non_finite: float = 10.0
+    # (after pilot 3) per control step the module is seated and still held (0: none). Seated,
+    # the potential is flat, so nothing pushed the release's mean over its threshold: pilot 3's
+    # deterministic policy seated 20/20 from the carry start and released 0.
+    seated_wait: float = 0.0
     # The held progress term ("insert"). "gap" (round 1): insert_z per m of gap closed and
     # insert_xy per m of centring. "keypoints" (round 2): scale x the change of a potential on the
     # module's 4 bottom corners' mean distance d (m) to where they sit when seated (true nest, key
@@ -1072,7 +1079,8 @@ class InsertionEnv(gym.Env):
         """Apply one action to the hand target and the grip (no physics)."""
         c, ctl = self.config.action, self.ctl
         a = np.clip(np.asarray(action, dtype=np.float64), -1.0, 1.0)
-        if a[4] > c.release_above and not self.released:
+        auto = c.auto_release and not self.released and self.seat()["seated"]
+        if (a[4] > c.release_above or auto) and not self.released:
             if c.release_window is None or self.seat()["gap"] < c.release_window:
                 self.line.detach(self.part)
                 ctl.grip = GRIPPER_OPEN
@@ -1296,6 +1304,8 @@ class InsertionEnv(gym.Env):
             "time": -r.time,
             "action": -r.action * float(a[:4] @ a[:4]),
         }
+        if r.seated_wait and now["seated"] and not now["released"]:
+            terms["seated_wait"] = -r.seated_wait
         self.ever_seated |= now["seated"]
         self._prev = now
         out = None

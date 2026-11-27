@@ -7,6 +7,10 @@ for the best one), run on InsertionEnv.
 
 Usage:
   uv run python scripts/evaluate_insertion.py --policy search --set eval_sets/insertion_dev_v1.json
+  uv run python scripts/evaluate_insertion.py --policy run:runs/<run> --set ... [--stochastic]
+A trained policy is evaluated DETERMINISTIC (its action's mean): the binding result. --stochastic
+samples its actions (seeded per episode), reported beside it in its own file; --auto-release is a
+side ablation (the cell releases on seated detection), never a binding result.
 Writes results/v4/insertion/<policy>_<set>.json: the git commit (and whether the tree was dirty),
 one row per episode (the episode's factors, success or why not, time to the hand clear, peak nest
 force at every physics step and at the control steps, the script's own record) and a summary
@@ -30,7 +34,7 @@ from polypanda.evaluation.insertion import NOISE_SEED, SCRIPTS, episode_row, sum
 
 
 def _run_chunk(args) -> list[dict]:
-    policy, episodes, indices = args
+    policy, episodes, indices, stochastic, auto_release = args
     import torch
     torch.set_num_threads(1)
     from polypanda.environments.insertion import InsertionEnv
@@ -38,15 +42,23 @@ def _run_chunk(args) -> list[dict]:
     env = InsertionEnv()
     act = None
     if policy.startswith("run:"):
+        from dataclasses import replace
+
         from polypanda.evaluation.policies import load_run_policy
         spec = policy[4:]
-        act = load_run_policy(spec if "@" in spec else f"{spec}@final")
+        act = load_run_policy(spec if "@" in spec else f"{spec}@final",
+                              deterministic=not stochastic)
         # the run's own action layer (round 2: interlock, compliance), the targets' task
-        env = InsertionEnv(policy_env_config(spec.partition("@")[0]))
+        cfg = policy_env_config(spec.partition("@")[0])
+        if auto_release:      # the side ablation: the cell releases on seated detection
+            cfg = replace(cfg, action=replace(cfg.action, auto_release=True))
+        env = InsertionEnv(cfg)
     rows = []
     for i in indices:
         ep = episodes[i]
         env.reset(seed=NOISE_SEED + i, options={"episode": ep})
+        if stochastic:
+            torch.manual_seed(NOISE_SEED + i)        # each episode's samples, repeatable
         out = run_script(env, policy) if act is None else run_policy(env, act)
         rows.append(episode_row(i, ep, out))
     return rows
@@ -73,17 +85,25 @@ def main() -> None:
     p.add_argument("--out", type=Path)
     p.add_argument("--one-shot", action="store_true",
                    help="allow a one-shot set (final, stretch): only after the lock commit")
+    p.add_argument("--stochastic", action="store_true",
+                   help="a run's policy samples its actions (reported beside the binding, "
+                        "deterministic result; its own output file, suffix _stochastic)")
+    p.add_argument("--auto-release", action="store_true",
+                   help="SIDE ABLATION: the cell releases on seated detection (never binding; "
+                        "its own output file, suffix _autorelease)")
     args = p.parse_args()
     if args.policy not in SCRIPTS and not args.policy.startswith("run:"):
         raise SystemExit(f"unknown policy {args.policy!r}")
+    if (args.stochastic or args.auto_release) and not args.policy.startswith("run:"):
+        raise SystemExit("--stochastic and --auto-release are for a trained run's policy")
     git = git_state()          # recorded before running, so later commits cannot mislabel it
     data = json.loads(args.set.read_text())
     if one_shot(data["name"]) and not args.one_shot:
         raise SystemExit(f"{data['name']} is a one-shot set: run it only after the lock commit "
                          "(--one-shot)")
     episodes = data["episodes"][: args.n] if args.n else data["episodes"]
-    jobs = [(args.policy, episodes, list(range(j, len(episodes), args.jobs)))
-            for j in range(args.jobs)]
+    jobs = [(args.policy, episodes, list(range(j, len(episodes), args.jobs)), args.stochastic,
+             args.auto_release) for j in range(args.jobs)]
     start = time.perf_counter()
     with Pool(args.jobs) as pool:
         rows = sorted((r for rs in pool.map(_run_chunk, jobs) for r in rs),
@@ -91,17 +111,23 @@ def main() -> None:
     wall = time.perf_counter() - start
     summary = summarize(rows)
     name = args.policy.replace("run:", "").replace("/", "_").replace("@", "_")
-    suffix = f"_n{args.n}" if args.n else ""
+    mode = ("stochastic" if args.stochastic else "deterministic") if args.policy.startswith(
+        "run:") else "script"
+    suffix = ((f"_n{args.n}" if args.n else "") + ("_stochastic" if args.stochastic else "")
+              + ("_autorelease" if args.auto_release else ""))
     out = args.out or Path("results/v4/insertion") / f"{name}_{data['name']}{suffix}.json"
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps({"policy": args.policy, "set": data["name"],
+    out.write_text(json.dumps({"policy": args.policy, "set": data["name"], "mode": mode,
+                               "auto_release_ablation": bool(args.auto_release),
                                "set_digest": data["digest"], "n": len(rows), "git": git,
                                "wall_s": round(wall, 1), "summary": summary, "rows": rows},
                               indent=1))
     s = summary
     lo, hi = s["wilson95"]
     t, f = s["time_to_success_s"] or {}, s["peak_force_n"] or {}
-    print(f"{args.policy} on {data['name']}: {s['success']}/{s['n']} ({100 * s['rate']:.1f} %, "
+    tag = f" [{mode}{', auto-release ablation' if args.auto_release else ''}]"
+    print(f"{args.policy}{tag} on {data['name']}: {s['success']}/{s['n']} "
+          f"({100 * s['rate']:.1f} %, "
           f"95 % CI {100 * lo:.1f}-{100 * hi:.1f}); within 30 s {s['success_within_budget']}; "
           f"time to success median {t.get('median')} s; peak nest force median "
           f"{f.get('median')} N, max {f.get('max')} N; over 50 N {s['over_damage_limit']}")

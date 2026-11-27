@@ -6,10 +6,12 @@
 # starts every episode at the carry height (InsertionConfig.for_evaluation turns the curriculum
 # off), so it measures the real task.
 # What changes from round 1 (configs/insertion_ppo_r1.yaml), and why:
-# - Steps: 5M (round 1: 3M, stopped at ~250k). The working pure-RL recipes train for millions of
-#   steps from a few cm (Isaac Lab PegInsert ~3.3M from 4.7 cm; SPARR 25M); ours starts 20-25 cm
-#   up and also learns the release. A one-seed 1M pilot (--timesteps 1000000) comes first, with a
-#   go/no-go on contact, seats and the success trend; the pilot also measures the step rate.
+# - Steps: 2M per seed (user, 2026-11-26, after pilot 3; first written as 5M). Pilot 3 (this
+#   config's env before the release fixes) reached 74 % training success from the carry start
+#   by ~450k (the reverse curriculum's high bound at the carry start), so 2M leaves room for the
+#   release to be learned and the policy to settle; the machine is shared by three seeds.
+# - Release (env, after pilot 3): the threshold at the action's midpoint (release_above 0) and a
+#   small cost per step seated and still held (reward.seated_wait); see configs/insertion_v2.yaml.
 # - lr 1e-4, constant (round 1: 3e-4 -> 3e-5): round 1's updates ran at approx KL 0.03-0.06 and
 #   clip fraction ~0.37, about twice the healthy range, and locked onto hovering within ~100k
 #   steps. Constant so the pilot is exactly the first 1M steps of the full run.
@@ -27,14 +29,15 @@
 #     episodes in or over the nest; 2 mm per step random-walks across the 0.5-1 mm chamfer's
 #     capture window in a few steps.
 #   * the release: -1.0 (std 0.37). With the interlock a release far from the floor is ignored
-#     and unpenalised, so the noise can stay large enough that a module held at the floor is let
-#     go in some episodes (from a mean of -0.5 a release is a 2.7-sigma draw, ~0.4 % of steps).
+#     and unpenalised, so the noise can stay large; with the threshold at 0 an untrained mean
+#     near 0 asks for a release on about half the steps, which takes effect only within 3 mm
+#     of the floor (then the built-in retract ends the episode).
 # - n_steps 512 x 8 envs (4,096 per update), batch 256, network 256x256, gae 0.95, clip 0.2:
 #   round 1's, unchanged (one change at a time where the root causes did not point).
 # - Validation: as round 1 (the same 60 fixed training-stream episodes every 100k, eval_seed
 #   100000, per tester, damage episodes, success by clearance and camera error), at the carry
-#   start. The curriculum's lowest start is logged to TensorBoard (curriculum/low_mm,
-#   curriculum/success_rate) and to the run's curriculum.jsonl.
+#   start, deterministic. The reverse curriculum's high bound and success per start-height bin
+#   are logged to TensorBoard (curriculum/*) and to the run's curriculum.jsonl.
 # The seed's policy = this run's FINAL checkpoint (if it is the last round).
 algorithm: ppo
 task: insertion
@@ -42,7 +45,7 @@ env_config: configs/insertion_v2.yaml
 seed: 0
 n_envs: 8
 vec_env: subproc
-total_timesteps: 5000000
+total_timesteps: 2000000
 normalize_obs: true
 normalize_reward: true
 eval_freq: 100000
