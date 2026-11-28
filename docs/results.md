@@ -358,3 +358,87 @@ The skill opens or closes the sliding lid of a benchtop machine it has never see
 - **T5 found a weakness the bare door test could not:** the line handed the door over with the hand about 31 cm above the handle, where every training episode started about 8 cm above. The policy reached the handle but let go of lids short of open enough (mostly left-sliding and springy ones), behind the feel script (p = 4e-12).
 - **T5b, the hand-over fixed (motivated by T5, so post hoc, on machines no line run had used):** the line lowers the hand to the door's trained start first, for every door actor. The learned door is then **level with the feel script (95.3 against 94.0 %, p = 0.29) and about 13 s faster per machine cycle**, and far ahead of the camera scripts. Its doors opened and closed on 298 of 300 tries; four machines failed for every actor because the scripted load did not seat the part.
 - **Candidates for v4.1:** train the door from a wide range of start poses so it does not depend on the hand-over; slow down just before contact and before the stop (the force gap); seed 2's springy right-sliding lids; the scripted load on left-sliding lids. Measured on a fresh one-shot set.
+
+## v4.1: an electronics test cell, a learned insertion and the door on testers
+
+A rail-mounted Panda tends three electronics testers ([v4_1_plan.md](v4_1_plan.md)): A has a sliding lid, B a drawer that slides toward the robot, C is pneumatic. Keyed 40 × 40 × 60 mm sensor modules arrive on a conveyor; the cell scans each barcode, inspects it on the fly, puts it in a tester's nest, runs a 45 s test and sorts it to PASS, FAIL or REWORK (not tested). Two skills are learned, everything else is scripted:
+
+- **Precision insertion** of the keyed module into a tight test nest (new in v4.1), by **reinforcement learning alone** (PPO, no demonstrations; the user's choice).
+- **The door**, extended from v4.0's sliding lids to tester lids and drawers, from any hand-over (a clone of a mixed teacher, then PPO).
+
+Targets, sets and every rule change were committed before the work they measure ([v4_1_targets.md](v4_1_targets.md), approved at `cecda1c`); at most 3 development rounds per skill, fixed in advance; 3 training seeds; each one-shot set run once after a lock commit.
+
+### Precision insertion (pure PPO)
+
+Every episode draws a nest the policy has not seen (clearance, chamfer, position and turn error left by the camera, friction), with the module already carried above it by the cell. The robot feels its wrist force and torque and sees a camera estimate of the nest (with its error). Success: the module seated on the floor of the nest and released, the nest never pushed past 50 N (the damage limit), within 30 s. The baselines are two frozen scripts on the same episodes: **straight-down** (aim and push) and the **search** (a force-guided spiral search with a compliant press and a small yaw wiggle, the way industrial cells do it).
+
+**Development.** Round 1 (PPO from scratch) was stopped at about 200–250k steps: every seed had learned to hover above the nest and never touch it. The root-cause analysis and the industry research behind round 2 are in [v4_1_insertion_r1_rca.md](v4_1_insertion_r1_rca.md). Round 2, still pure PPO, changed what the policy can do and how it is rewarded, not the task:
+
+- a **reverse start-height curriculum** (training only): episodes start low, just above the nest, and move up to the carry height as the policy succeeds;
+- a **release interlock**: opening the hand counts as a release only within 3 mm of the nest floor;
+- the **release-and-retract** built in, at the cell's own speed, the same as the search's retreat;
+- an **axis-split compliant action layer**, the learned skill's controller: the policy commands motions, and the layer stops pushing down at 15 N, backs off above 30 N and reacts to contact at 500 Hz;
+- a **potential-based progress reward** toward keypoints on the nest, a small cost per step seated without releasing, and calmer PPO settings; 2M steps per seed.
+
+| Development, `insertion_dev_v1` (400 episodes) | Seated and released | Median time to success | Median peak nest force |
+|---|---|---|---|
+| Round 1: PPO from scratch | stopped before any dev evaluation (hovering) | | |
+| **Round 2, final checkpoints, seeds 0 / 1 / 2** | **399 / 399 / 398** (99.67 % pooled) | 6.30 s | 15.3 N |
+| Search script | 330 (82.5 %) | 8.70 s | 12.9 N |
+| Straight-down script | 197 (49.2 %; 184 failures over 50 N) | | |
+
+The search seated less than 85 % on development, so the pre-committed rule changed I3's success bar from "no more than 2 points lower" to "not lower". Round 2 was locked as the last round; round 3 was not used.
+
+| One-shot `insertion_final_v1` (600 episodes), run once at `50da97c` | **Learned, seeds 0 / 1 / 2** | Search | Straight-down | Target |
+|---|---|---|---|---|
+| Success (deterministic, binding) | **596 / 600 / 598** (pooled 99.67 %) | 483 (80.5 %) | 292 (48.7 %) | I1: ≥ 95 % per seed: **met** |
+| Against straight-down | 304–308 episodes only the learned skill completes, 0 the other way (p ≤ 1.6×10⁻⁹² per seed) | | | I2: significantly better: **met** |
+| Against the search: success | 99.67 against 80.5 % (p ≤ 7×10⁻³⁰ per seed) | | | I3: not lower: **met** |
+| Against the search: time | median **6.30 against 8.70 s** on the 1,444 pairs both complete (27.6 % shorter) | | | I3: ≥ 40 % shorter: **missed** |
+| Median / max peak nest force | 15.3 N pooled / 35.7 N | 12.7 / 30.0 N | 43.4 / 199.8 N | I4: median no higher than the search's: **missed** |
+| Over the 50 N limit | 0 | 0 | 277 | (part of I1) |
+| Stochastic policy (reported) | 600 / 598 / 596 | | | |
+| Release on seated detection (side comparison) | 597 / 600 / 598 | | | |
+
+- **Pure RL learned a tight insertion that a force-guided search script does not match:** 99.7 % of 1,800 insertions into unseen nests, against 80.5 % for the search and 48.7 % for straight-down. Every learned failure is a module seated but not released; none damaged a nest.
+- **It is 27.6 % faster than the search, short of the 40 % bar.** About 3.4 s of every success is the shared release-and-retract at the cell's speed, which both actors pay; the miss was forecast when that was fixed with the user (2026-11-26), and the targets were not changed. The time until release, without the retract, is reported below as the agreed secondary measure.
+- **It presses a little harder at the median** (15.3 against 12.7 N, I4 missed) but never spikes: its largest peak in 1,800 episodes is 35.7 N, under the 50 N limit.
+- The learned skill runs on its own compliant controller (above); the search on its 20 Hz force regulation of the module's force. The fingers have no give (a rigid grasp assist, kept from v4.0). Clearances below 0.25 mm are not claimed.
+
+*Time until release (`insertion_dev_v1`) and the stretch set (`insertion_stretch_v1`, run once, no bar): pending; added when they have run.*
+
+### The door on testers
+
+The door skill now meets tester lids and **drawers** (which slide toward the robot), handed over from anywhere between a few centimetres and about 35 cm above the handle, with the wrist turned up to ±90° (v4.0's line showed the hand-over mattered: 67 % from the line's hand-over, 95 % from the trained start). Which kind of door it faces is not observed. Baselines: `feel_v2` (camera plus feel plus the door-open switch, the fair one), `camera`, `nominal`, and a privileged expert for reference.
+
+| Development, `door_dev_v2` (400 episodes; seeds 0 / 1 / 2) | Success | Worst kind × command | Median steps | Median peak force | Slams |
+|---|---|---|---|---|---|
+| v4.0's round-5 policies, unchanged | 140 / 174 / 122 | 0 % (drawers) | 66–69 | 88–113 N | |
+| Clone of `feel_v2` alone | 63 / 22 / 99 | 0 % | 214–232 | 9–11 N | |
+| Clone of the mixed teacher | 144 / 176 / 139 | 1–2 % | 78–87 | 26–28 N | |
+| Round 1: PPO from the mixed clone | 377 / 379 / 392 | 71 / 72 / 83 % | 65–68 | 18–29 N | seed 1: 14 |
+| Round 2: 30 % of training on left-lid opens, slam margin 0.07 | 381 / 396 / 393 | 82 / 93 / 82 % | 59–63 | 19–26 N | 1 / 2 / 3 |
+| **Round 3: 35 % of training on every open** | **390 / 397 / 393** | 76 / 89 / 88 % | 58–61 | 19–23 N | 4 / 7 / 2 |
+| `feel_v2` / `camera` / `nominal` / expert | 398 / 242 / 149 / 400 | 87 / 0 / 0 / 100 % | 146 / 144 / 148 / 119 | 21 / 7 / 17 / 9 N | |
+
+*Worst cell here is the finest split (command × slide × spring); the target's D1 counts kind × command, where every round-3 seed is at 94 % or more.*
+
+- **Why a mixed teacher.** Cloning the `feel_v2` script alone gave a policy that copies its moves but never lets go of the handle (the script times its release by internal counters the policy cannot see), and it overwrote what v4.0's PPO had learned. The mixed teacher keeps each seed's own v4.0 policy as the teacher wherever it succeeds and uses `feel_v2` only where it fails (most drawers, awkward hand-overs). The clone itself is weak (35–44 %); PPO from it reaches 94–98 % in one round.
+- **Round 3 against its fallback rule:** fixed before round 3 trained: if any seed did worse on D1 than in round 2, every seed would use round 2. None did, so each seed's policy is its round-3 final checkpoint.
+
+| One-shot `door_final_v2` (400 episodes), run once at `00fec20` | **Learned, seeds 0 / 1 / 2** | `feel_v2` | `camera` | `nominal` | Target |
+|---|---|---|---|---|---|
+| Success | **389 / 397 / 394** (pooled 98.33 %) | 394 (98.5 %) | 247 (61.8 %) | 133 (33.2 %) | D1: ≥ 95 % per seed: **met** |
+| Worst kind × command | 95 / 98 / 97 % | 95 % | 39 % | | D1: ≥ 90 % every cell: **met** |
+| Against `camera` | p ≤ 2×10⁻³⁴ per seed | | | | D2: significantly better: **met** |
+| Against `feel_v2` | −0.17 points (p = 0.33, 0.51, 1.0 per seed); median **59 against 146 steps** on the 1,162 pairs both complete (59.6 % fewer) | | | | D3: ≥ −2 points and ≥ 20 % fewer: **met** |
+| Median peak force, pooled | **17.5 N** | 21.6 N | 6.2 N | 14 N | D4: no higher than `feel_v2`: **met** |
+| Slams | 1 / 4 / 0 | 0 | 0 | 3 | D4: ≤ 1 % per seed: **met** |
+
+- **All four door targets are met**, including the force bar v4.0 missed (v4.0: 30.9 against 25.6 N; v4.1: 17.5 against 21.6 N).
+- **As reliable as the feel script on lids and drawers from any hand-over, and 2.5× faster.**
+- Seed 1's 4 slams sit exactly at the 1 % bar.
+
+### The cell (Part III)
+
+*Pending: the learned cell (learned door on A and B, learned insertion on A, B and C) against the scripted cell (`feel_v2` and the search) on final shifts 1001–1006, run once after the cell is locked (C1 throughput, C2 modules not tested, C3 quality, reported).*
