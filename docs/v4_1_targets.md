@@ -183,6 +183,22 @@ As v4.0's, with at most **3** development rounds on `door_dev_v2`, the policy = 
 - **The baselines on the same episodes:** `feel_v2` and `camera` (and `nominal` and the expert for reference), as they ran on `door_dev_v2`.
 - **The one-shot run, once:** `scripts/evaluate_door.py` on `door_final_v2` for each seed's locked policy and each script; reported per kind × command, steps, peak force and slams. A crashed job only is rerun alone.
 
+### The door one-shot, as it came (2026-11-27, run once at `00fec20`, clean)
+
+| `door_final_v2` | Seed 0 | Seed 1 | Seed 2 | `feel_v2` | `camera` | `nominal` | Expert (reference) |
+|---|---|---|---|---|---|---|---|
+| Success | 389 (97.25 %) | 397 (99.25 %) | 394 (98.5 %) | 394 (98.5 %) | 247 (61.8 %) | 133 (33.2 %) | 400 |
+| Worst kind × command | 95 % | 98 % | 97 % | 95 % | 39 % | | 100 % |
+| Median steps to success | 60 | 60 | 57 | 145.5 | 144 | 148 | |
+| Median peak force | 17 N | 20 N | 16 N | 21.6 N | 6.2 N | 14 N | 8.5 N |
+| Slams | 1 | 4 | 0 | 0 | 0 | 3 | 0 |
+
+- **D1 met:** every seed above 95 % and every kind × command cell at 95 % or more.
+- **D2 met:** exact McNemar against `camera`, p ≤ 2×10⁻³⁴ for every seed.
+- **D3 met:** pooled 98.33 % against `feel_v2`'s 98.50 % (0.17 points); on the 1,162 episode pairs both complete, median 59 against 146 steps, **59.6 % shorter**. Paired against `feel_v2` per seed: p = 0.33, 0.51, 1.0 (no significant difference in success).
+- **D4 met:** pooled median peak force 17.5 against 21.6 N; slams 1, 4 and 0 of 400 (seed 1 at the 1 % bar).
+- All four door targets are met; v4.0's door missed its force bar (T4).
+
 ## Part III: the cell
 
 **Compared on the same shifts:** the **learned cell** (learned door on A and B, learned insertion on all three testers) against the **scripted cell** (`feel_v2` door, search insertion), both with the real tester kinds (lid, drawer, pneumatic), inspection on the fly, 45 s tests. **Final shifts:** seeds 1001–1006, 30 modules each (180 modules; truths drawn per seed), run once, after both skills are locked. Development shifts use seeds 1–99.
