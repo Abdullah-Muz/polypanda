@@ -125,7 +125,7 @@ On `insertion_final_v1` (600 episodes), every job run once, none crashed:
 | Stochastic (reported) | 600/600 | 598/600 | 596/600 | | |
 | Seated-detection release (side comparison) | 597/600, 6.2 s | 600/600, 6.15 s | 598/600, 6.15 s | | |
 
-Every learned failure is a module seated but not released.
+~~Every learned failure is a module seated but not released.~~ *Corrected 2026-11-27: the evaluator's `not_released` label means the hand never let go, seated or not, and it had been misread. None of the 6 learned failures was seated. In each, the policy did not find the hole and lifted the module back up (it ended 21–28 cm above the nest, 4–8 mm off to the side), holding it until the 30 s budget ran out. Their camera errors were 1.5–2.7 mm (the set's median is 0.97 mm). No result or verdict changes.*
 
 - **I1 met:** every seed at least 95 % (99.3, 100, 99.7 %; pooled 1794/1800, 99.67 %). The industry-style check (99.5 % at 95 % confidence, about 600 trials without a failure, reported, no bar) is met by seed 1 alone.
 - **I2 met:** exact McNemar against straight-down, p ≤ 1.6×10⁻⁹² for every seed (304–308 episodes only the learned policy completes, 0 the other way).
