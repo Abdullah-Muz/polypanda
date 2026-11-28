@@ -2,6 +2,10 @@
 
 Reinforcement learned manipulation skills for a simulated Franka Panda in MuJoCo: from picking and placing one cube, to building towers to work orders in a small production cell, to noticing when a tower is knocked over and rebuilding it, to tending machines on a rail line with a learned door for machines it has never seen. Every learned skill is measured on held-out sets, next to a scripted baseline on the same cases, every target is committed before the work it measures, and every result is reproducible from a clean commit.
 
+![v4.1: one tight insertion three ways, straight-down, a force-guided search and the learned policy](docs/figures/v41_short.gif)
+
+*v4.1 (`scripts/record_v41_short.py`): the same keyed sensor module and the same tester nest (0.38 mm clearance, the camera's estimate of the nest 0.37 mm off), three ways. Straight-down pushes until it damages the nest (89 N against a 50 N limit); the force-guided search script seats it in 8.4 s; the policy learned by PPO alone seats it in 6.3 s. Then the learned door opens a tester drawer. The episodes come from the development sets, chosen by a rule written into the script (a typical damage force and typical times for each actor), not picked by eye. The learned insertion runs on its own compliant controller; the search on 20 Hz force regulation. [Full video](https://github.com/Abdullah-Muz/polypanda/releases/tag/v4.1).*
+
 ![v4.0: the learned door and a feel-based script tend the same unseen machine](docs/figures/line_door_v40.gif)
 
 *v4.0 (`scripts/record_line_door.py`): the robot drives along its rail to a machine it has never seen (here its lid slides left, against a closing spring), opens the lid, loads the raw part and closes it; the machine starts. Left: the learned door (PPO, seed 0). Right: a well-written feel-based script. Only the door differs; driving, picking and loading are the same scripted code. [Full video](https://github.com/Abdullah-Muz/polypanda/releases/tag/v4.0).*
