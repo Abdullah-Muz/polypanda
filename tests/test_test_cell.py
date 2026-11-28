@@ -278,6 +278,17 @@ def _vision_image(cell, truth):
         pytest.skip(f"no offscreen renderer: {exc}")
 
 
+def _shift(*args, **kwargs):
+    """run_shift, skipped where MuJoCo cannot render offscreen (no OpenGL context, as on CI's
+    headless runners): a shift images every module at the scanner and the vision camera."""
+    try:
+        return run_shift(*args, **kwargs)
+    except Exception as exc:  # noqa: BLE001
+        if "renderer" in repr(exc).lower() or "gl" in repr(exc).lower():
+            pytest.skip(f"no offscreen renderer: {exc}")
+        raise
+
+
 @pytest.mark.parametrize("dressing,theme", [(True, "electronics"), (True, "factory"),
                                             (False, "electronics")])
 def test_the_scan_and_the_vision_rule_see_what_is_drawn(dressing, theme):
@@ -505,13 +516,8 @@ def test_a_short_shift_tests_and_sorts_every_module():
               ModuleTruth("mark", True, "red_mark"), ModuleTruth("nolabel", True,
                                                                  "missing_label")]
     door, insertion = _Counting(EnvDoor("feel_v2")), _Counting(StraightDown())
-    try:
-        out = run_shift(4, seed=0, truths=truths, cycle_s=5.0, nest_belief="true",
-                        dressing=False, door=door, insertion=insertion)
-    except Exception as exc:  # noqa: BLE001
-        if "renderer" in repr(exc).lower() or "gl" in repr(exc).lower():
-            pytest.skip(f"no offscreen renderer: {exc}")
-        raise
+    out = _shift(4, seed=0, truths=truths, cycle_s=5.0, nest_belief="true", dressing=False,
+                 door=door, insertion=insertion)
     k = out["kpis"]
     rows = {r["serial"]: r for r in out["modules"]}
     assert k["sorted"] == 4 and k["sort_correct"] == 4, out["modules"]
@@ -575,9 +581,9 @@ def test_a_pose_insertion_goes_into_the_slot_through_nest_insertion():
     in the slot through NestInsertion, aimed at the believed nest (here the truth), and the
     module is seated and tested; the line's own door move fills the door slot."""
     inner = _Descend()
-    out = run_shift(1, seed=0, truths=[ModuleTruth("one", True)], cycle_s=2.0,
-                    nest_belief="true", dressing=False, door="line_camera",
-                    insertion=NestInsertion(inner))
+    out = _shift(1, seed=0, truths=[ModuleTruth("one", True)], cycle_s=2.0,
+                 nest_belief="true", dressing=False, door="line_camera",
+                 insertion=NestInsertion(inner))
     rec = out["modules"][0]
     assert out["config"]["insertion"] == "descend" and out["config"]["door"] == "line_camera"
     assert rec["sorted_to"] == "pass_tray" and rec["test_result"] == "pass", rec
@@ -735,8 +741,8 @@ def test_a_short_shift_on_the_planned_testers_serves_every_kind():
     truths = [ModuleTruth(f"m{k}", True) for k in range(3)]
     # (tests of 12 s: a shorter one can end, and unlatch the lid, before the door actor has
     # handed back after closing it, and the controller then sees it unlatched)
-    out = run_shift(3, seed=0, truths=truths, cycle_s=12.0, nest_belief="true", dressing=False,
-                    door="feel_v2", insertion=insertion, testers=planned_testers(12.0))
+    out = _shift(3, seed=0, truths=truths, cycle_s=12.0, nest_belief="true", dressing=False,
+                 door="feel_v2", insertion=insertion, testers=planned_testers(12.0))
     k = out["kpis"]
     rows = out["modules"]
     assert {r["tester"] for r in rows} == {"TA", "TB", "TC"}, rows

@@ -18,12 +18,18 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import sys
 from pathlib import Path
 
 import mujoco
 import numpy as np
 import pytest
+
+# The digests (and the dev set's redraw) are this machine's floating point: on GitHub's runners
+# (CI=true) some CPUs give other bits, so they are checked on the project's WSL only.
+pytestmark = pytest.mark.skipif(os.environ.get("CI") == "true",
+                                reason="exact floating point of the project's WSL machine")
 
 ROOT = Path(__file__).resolve().parents[1]
 DEV_SET = ROOT / "eval_sets" / "door_dev_v1.json"

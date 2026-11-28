@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 from dataclasses import replace
 from pathlib import Path
 
@@ -89,9 +90,9 @@ def test_a_set_with_both_kinds_takes_them_in_turn():
 
 
 @pytest.mark.skipif(not DEV_V2.exists(), reason="door_dev_v2 not generated yet")
-def test_door_dev_v2_is_as_targeted_and_drawn_again_exactly():
+def test_door_dev_v2_is_as_targeted():
     """docs/v4_1_targets.md, Part II: 400 episodes, 100 per kind x command, wide starts,
-    seed 20261130, and make_door_sets.py draws it again to the byte."""
+    seed 20261130, and the stored digest."""
     import hashlib
     stored = json.loads(DEV_V2.read_text())
     assert stored["seed"] == 20261130 and stored["n"] == 400 and stored["start"]["wide"]
@@ -102,9 +103,19 @@ def test_door_dev_v2_is_as_targeted_and_drawn_again_exactly():
     assert cells == {(k, c): 100 for k in ("lid", "drawer") for c in ("open", "close")}
     body = json.dumps(stored["episodes"], sort_keys=True)
     assert hashlib.sha256(body.encode()).hexdigest()[:12] == stored["digest"]
+
+
+@pytest.mark.skipif(not DEV_V2.exists(), reason="door_dev_v2 not generated yet")
+@pytest.mark.skipif(os.environ.get("CI") == "true",
+                    reason="exact floating point of the project's WSL machine")
+def test_door_dev_v2_is_drawn_again_exactly():
+    """make_door_sets.py draws door_dev_v2 again to the byte. The draw runs the door env, so the
+    bytes are this machine's floating point (as tests/test_lid_identity.py's redraw of
+    door_dev_v1, which differs on some of GitHub's runners): checked on the project's WSL only."""
+    stored = json.loads(DEV_V2.read_text())
     episodes, variation = load_sets().make_set(400, 20261130, False, ("lid", "drawer"),
                                                wide=True)
-    assert json.dumps(episodes, sort_keys=True) == body
+    assert json.dumps(episodes, sort_keys=True) == json.dumps(stored["episodes"], sort_keys=True)
     assert json.loads(json.dumps(variation)) == stored["variation"]
 
 
