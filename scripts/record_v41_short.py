@@ -19,17 +19,27 @@ Segments (30 fps):
 Episodes: development sets only (the final sets are refused), chosen by a rule fixed in this
 script before any frame was looked at, from the committed development results:
 - insertion: among the episodes where straight-down fails with damage, the search succeeds and
-  the learned policy succeeds, the one whose search and learned times are closest to their dev
-  medians (the sum of the two absolute differences, to the millisecond); ties to the lower index;
+  the learned policy succeeds, the most typical one, by the smallest score
+      |F - F~| / F~ + |t_search - t_search~| / t_search~ + |t_learned - t_learned~| / t_learned~
+  (F: straight-down's peak nest force, F~ its median over straight-down's damage episodes, so
+  its failure is typical of its failures, not a near miss; t~: the medians of the search's and
+  the learned policy's times to success); ties to the lower index;
 - door: among the drawer-open episodes the learned door opens without a slam, the one whose
   steps are closest to its median steps on them, then whose peak force is closest to its median
   peak force; ties to the lower index.
 Every actor runs exactly as its evaluator runs it (the same env, config and reset seed); each
 outcome is printed and checked against its committed row.
 
-Render-only changes, made after the simulations and rendered from a separate MjData: the tester
-box's walls and roof nearest the camera hidden (geom group 5, not drawn), the nest's near wall
-semi-transparent, floor reflections off. The physics never sees them.
+The look (render only): every episode is simulated in its evaluator's own (unthemed) scene; the
+recorded states are drawn in a separately compiled TWIN of that scene with v4.1's electronics
+theme (simulation/electronics.py: the ESD hall, lighting, the testers as RF shield boxes) and the
+test cell's sensor-module look on the held part (test_cell.add_module_look: dark housing, green
+board edge, label and barcode), all visual geoms. The twin gets the episode's layout (body
+placements, joint axes and ranges, the re-cut nest or the door's handle, copied by name) and the
+states joint by joint, by name. The door scene's twin is the door env's scene with the theme's
+tester restyle and lights, and a light ESD-grey floor. Also render only: the tester box's walls
+and roof nearest the insertion camera hidden (geom group 5), the nest's near walls drawn
+semi-transparent, no shadows or reflections. The physics never sees any of it.
 Deterministic given its arguments (MuJoCo, the deterministic policies, fixed seeds).
 """
 
@@ -97,6 +107,8 @@ def choose_insertion(results: Path, learned_name: str, set_name: str) -> tuple[i
     sd = _rows(results / f"straight_down_{set_name}.json")
     se = _rows(results / f"search_{set_name}.json")
     le = _rows(results / f"{learned_name}_{set_name}.json")
+    damaged = [r["peak_force"] for r in sd if r["failure"] == "damage"]
+    med_f = float(np.median(damaged))
     med_s = float(np.median([r["time_s"] for r in se if r["success"]]))
     med_l = float(np.median([r["time_s"] for r in le if r["success"]]))
     cands = []
@@ -104,17 +116,21 @@ def choose_insertion(results: Path, learned_name: str, set_name: str) -> tuple[i
         if not a["index"] == b["index"] == c["index"]:
             raise ValueError("the result files' rows are not aligned")
         if a["failure"] == "damage" and b["success"] and c["success"]:
-            score = round(abs(b["time_s"] - med_s) + abs(c["time_s"] - med_l), 3)
+            score = round(abs(a["peak_force"] - med_f) / med_f + abs(b["time_s"] - med_s) / med_s
+                          + abs(c["time_s"] - med_l) / med_l, 4)
             cands.append((score, a["index"]))
     if not cands:
         raise ValueError("no episode meets the rule")
     score, index = min(cands)
     rows = {"straight_down": sd[index], "search": se[index], "learned": le[index]}
     print(f"insertion: rule over {len(cands)} candidates (straight-down damaged, search and "
-          f"learned seated); dev medians: search {med_s:.3f} s, learned {med_l:.3f} s; chosen "
-          f"#{index}: search {rows['search']['time_s']} s, learned {rows['learned']['time_s']} s "
-          f"(sum of differences {score:.3f} s; next best: "
-          f"{', '.join(f'#{i} {s:.3f}' for s, i in sorted(cands)[1:4])})", flush=True)
+          f"learned seated). Dev medians: straight-down's peak force over its {len(damaged)} "
+          f"damage episodes F~ = {med_f:.3f} N; search time {med_s:.3f} s; learned time "
+          f"{med_l:.3f} s. Score = |F - F~|/F~ + |t_search - {med_s:.3f}|/{med_s:.3f} + "
+          f"|t_learned - {med_l:.3f}|/{med_l:.3f}. Chosen #{index}: straight-down "
+          f"{rows['straight_down']['peak_force']} N, search {rows['search']['time_s']} s, "
+          f"learned {rows['learned']['time_s']} s, score {score:.4f} (next: "
+          f"{', '.join(f'#{i} {s:.4f}' for s, i in sorted(cands)[1:4])})", flush=True)
     return index, rows
 
 
@@ -296,16 +312,134 @@ def prepare_render(model: mujoco.MjModel, width: int, height: int,
     model.vis.global_.offheight = max(model.vis.global_.offheight, height)
 
 
-def cutaway(env: InsertionEnv, toward: np.ndarray) -> None:
-    """Render-only, after the simulation: the tester's box walls, roof and dressing on the
-    camera's side of the nest are not drawn (group 5), and the nest's walls on that side are
-    drawn semi-transparent. `toward`: the horizontal unit vector from the nest to the camera."""
-    m, d = env.model, env.data
-    name = env.tester
-    root = m.body(name).id
-    origin, _ = env.nest_frame()
-    pockets = {m.body(f"{name}_pocket{k}").id for k in range(4)}
-    mujoco.mj_kinematics(m, d)
+def _id(model: mujoco.MjModel, kind, name: str) -> int:
+    return mujoco.mj_name2id(model, kind, name) if name else -1
+
+
+def insertion_twin(env: InsertionEnv) -> mujoco.MjModel:
+    """The insertion scene as InsertionEnv builds it (environments/insertion.scene_config), with
+    the hall dressing and the electronics theme on and the held part drawn as a sensor module:
+    visual geoms only, compiled apart from the simulated model (render only)."""
+    from polypanda.environments.insertion import scene_config
+    from polypanda.simulation.line import build_line_spec
+    from polypanda.simulation.test_cell import HOUSING_RGBA, add_module_look
+    cfg = scene_config()
+    cfg = replace(cfg, cell=replace(cfg.cell, dressing=True), theme="electronics")
+    spec = build_line_spec(cfg)
+    part = env.model.body(env.part.body).name
+    add_module_look(spec, part)
+    model = spec.compile()
+    model.geom_rgba[model.geom(part).id] = HOUSING_RGBA      # (the test cell sets it at reset)
+    return model
+
+
+def door_twin(env) -> mujoco.MjModel:
+    """The door env's scene (environments/door.build_door_scene) with the electronics theme's
+    tester restyle and lights (simulation/electronics.py) and a light ESD-grey floor and sky
+    (render only)."""
+    from polypanda.environments import door as dm
+    from polypanda.simulation import electronics
+    cfg, kinds = env.config.scene, env.config.variation.kinds
+    spec = dm.panda_spec()
+    dm.set_finger_stiffness(spec, cfg.finger_stiffness)
+    a = np.radians(cfg.station_angle)
+    names = []
+    for kind in dm.DOOR_KINDS:
+        if kind in kinds:
+            xy = (cfg.radius * np.cos(a), cfg.radius * np.sin(a))
+            dm.add_machine(spec, dm.MACHINES[kind], xy, cfg.station_angle,
+                           dm.MachineConfig(kind=kind))
+            names.append(dm.MACHINES[kind])
+    electronics._testers(spec, names)
+    electronics._lights(spec)
+    for tex in spec.textures:
+        if tex.type == mujoco.mjtTexture.mjTEXTURE_SKYBOX:
+            tex.rgb1, tex.rgb2 = [0.9, 0.92, 0.95], [0.7, 0.73, 0.78]
+        elif tex.builtin == mujoco.mjtBuiltin.mjBUILTIN_CHECKER:
+            tex.rgb1, tex.rgb2 = [0.8, 0.81, 0.82], [0.75, 0.76, 0.78]
+            tex.markrgb = [0.62, 0.64, 0.67]
+    return spec.compile()
+
+
+def mirror_layout(src: mujoco.MjModel, dst: mujoco.MjModel, geoms) -> None:
+    """Give the twin `dst` the simulated model's episode layout, by name: every body's placement,
+    every joint's axis and range, and the geoms `geoms` (a re-cut nest, a door's handle)."""
+    for b in range(1, src.nbody):
+        k = _id(dst, mujoco.mjtObj.mjOBJ_BODY, src.body(b).name)
+        if k >= 0:
+            dst.body_pos[k], dst.body_quat[k] = src.body_pos[b], src.body_quat[b]
+    for j in range(src.njnt):
+        k = _id(dst, mujoco.mjtObj.mjOBJ_JOINT, src.joint(j).name)
+        if k >= 0:
+            dst.jnt_axis[k], dst.jnt_range[k] = src.jnt_axis[j], src.jnt_range[j]
+    for name in geoms:
+        g, k = src.geom(name).id, dst.geom(name).id
+        for f in ("geom_pos", "geom_quat", "geom_size", "geom_rbound", "geom_aabb"):
+            getattr(dst, f)[k] = getattr(src, f)[g]
+
+
+_QSIZE = {mujoco.mjtJoint.mjJNT_FREE: 7, mujoco.mjtJoint.mjJNT_BALL: 4,
+          mujoco.mjtJoint.mjJNT_SLIDE: 1, mujoco.mjtJoint.mjJNT_HINGE: 1}
+
+
+def state_map(src: mujoco.MjModel, dst: mujoco.MjModel) -> tuple:
+    """Index arrays carrying a simulated qpos (and mocap positions) onto the twin, joint by joint
+    and body by body, by name; every simulated joint must be in the twin."""
+    si, di = [], []
+    for j in range(src.njnt):
+        k = _id(dst, mujoco.mjtObj.mjOBJ_JOINT, src.joint(j).name)
+        if k < 0:
+            raise ValueError(f"joint {j} ({src.joint(j).name!r}) is not in the twin")
+        n = _QSIZE[mujoco.mjtJoint(src.jnt_type[j])]
+        si += range(src.jnt_qposadr[j], src.jnt_qposadr[j] + n)
+        di += range(dst.jnt_qposadr[k], dst.jnt_qposadr[k] + n)
+    if dst.njnt != src.njnt:
+        raise ValueError(f"the twin has {dst.njnt} joints, the simulation {src.njnt}")
+    ms, md = [], []
+    for b in range(src.nbody):
+        if src.body_mocapid[b] >= 0:
+            k = _id(dst, mujoco.mjtObj.mjOBJ_BODY, src.body(b).name)
+            if k >= 0 and dst.body_mocapid[k] >= 0:
+                ms.append(src.body_mocapid[b])
+                md.append(dst.body_mocapid[k])
+    return np.array(si), np.array(di), np.array(ms, int), np.array(md, int)
+
+
+class View:
+    """A renderer on a (twin) model, drawing recorded states of `src` from its own MjData."""
+
+    def __init__(self, model: mujoco.MjModel, src: mujoco.MjModel, width: int,
+                 height: int) -> None:
+        self.model, self.data = model, mujoco.MjData(model)
+        self.map = state_map(src, model)
+        self.renderer = mujoco.Renderer(model, height, width)
+        self.option = mujoco.MjvOption()
+        self.option.geomgroup[HIDDEN_GROUP] = 0
+
+    def set(self, track: Track, i: int) -> None:
+        m, d = self.model, self.data
+        si, di, ms, md = self.map
+        d.qpos[di] = track.qpos[i][si]
+        if len(ms):
+            d.mocap_pos[md] = track.mocap[i][ms]
+        mujoco.mj_kinematics(m, d)
+        mujoco.mj_camlight(m, d)
+
+    def frame(self, track: Track, i: int, cam: mujoco.MjvCamera) -> np.ndarray:
+        self.set(track, i)
+        self.renderer.update_scene(self.data, cam, scene_option=self.option)
+        return self.renderer.render().copy()
+
+
+def cutaway(model: mujoco.MjModel, data: mujoco.MjData, tester: str, origin: np.ndarray,
+            toward: np.ndarray) -> None:
+    """Render only: the tester's box walls, roof and dressing on the camera's side of the nest
+    are not drawn (group 5), and the nest's walls on that side are drawn semi-transparent.
+    `toward`: the horizontal unit vector from the nest to the camera; `data` posed."""
+    m, d = model, data
+    root = m.body(tester).id
+    pockets = {m.body(f"{tester}_pocket{k}").id for k in range(4)}
+    door = _id(m, mujoco.mjtObj.mjOBJ_BODY, f"{tester}_lid")
     for g in range(m.ngeom):
         b = int(m.geom_bodyid[g])
         if m.body_rootid[b] != root:
@@ -315,28 +449,8 @@ def cutaway(env: InsertionEnv, toward: np.ndarray) -> None:
             if s > 0.006:
                 m.geom_matid[g] = -1
                 m.geom_rgba[g, 3] = 0.3
-        elif b != env.line.machines[name].door_body and s > 0.03:
+        elif b != door and s > 0.03:
             m.geom_group[g] = HIDDEN_GROUP
-
-
-class View:
-    """A renderer on a model, drawing recorded states from its own MjData."""
-
-    def __init__(self, model: mujoco.MjModel, width: int, height: int) -> None:
-        self.model, self.data = model, mujoco.MjData(model)
-        self.renderer = mujoco.Renderer(model, height, width)
-        self.option = mujoco.MjvOption()
-        self.option.geomgroup[HIDDEN_GROUP] = 0
-
-    def frame(self, track: Track, i: int, cam: mujoco.MjvCamera) -> np.ndarray:
-        m, d = self.model, self.data
-        d.qpos[:] = track.qpos[i]
-        if m.nmocap:
-            d.mocap_pos[:] = track.mocap[i]
-        mujoco.mj_kinematics(m, d)
-        mujoco.mj_camlight(m, d)
-        self.renderer.update_scene(d, cam, scene_option=self.option)
-        return self.renderer.render().copy()
 
 
 def camera(lookat, azimuth: float, elevation: float, distance: float) -> mujoco.MjvCamera:
@@ -587,14 +701,14 @@ def main() -> None:
                         "default plays the descent at 2x, the contacts at 0.5x, the search's "
                         "push at 1x and the retracts at 3x, and the header states each")
     p.add_argument("--door-speed", type=float, default=0.5)
-    p.add_argument("--pane-camera", type=float, nargs=4, default=[-30.0, -20.0, 0.55, 0.06],
+    p.add_argument("--pane-camera", type=float, nargs=4, default=[40.0, -22.0, 0.55, 0.05],
                    metavar=("AZ_REL", "ELEVATION", "DISTANCE", "LOOKAT_Z"),
                    help="azimuth relative to the tester's side, degrees; lookat height over "
                         "the nest's floor, m")
     p.add_argument("--pane-fovy", type=float, default=25.0,
                    help="the insertion views' vertical field of view (deg)")
     p.add_argument("--door-camera", type=float, nargs=5,
-                   default=[70.0, -22.0, 0.8, 1.25, 0.15],
+                   default=[-65.0, -20.0, 0.5, 0.75, 0.13],
                    metavar=("AZIMUTH", "ELEVATION", "DIST_START", "DIST_END", "LOOKAT_Z"))
     p.add_argument("--out", type=Path, default=Path("media/v41_short"))
     p.add_argument("--gif", action="store_true", help="also write <out>.gif")
@@ -647,15 +761,25 @@ def main() -> None:
     azimuth = float(np.degrees(np.arctan2(-toward[1], -toward[0])))
     look = origin + [0.0, 0.0, look_z]
     pane_cam = camera(look, azimuth, elev, dist)
-    views = {}
-    for actor in actors:
-        env = envs[actor]
-        prepare_render(env.model, W, H, args.pane_fovy)
-        cutaway(env, toward)
-        views[actor] = View(env.model, pw, ph)
-    title_view = View(env0.model, W, H)
-    prepare_render(door_env.model, W, H)
-    door_view = View(door_env.model, W, H)
+    # one themed twin for the three panes and the title (the same episode's layout), posed at
+    # the episode's start to cut away
+    twin = insertion_twin(env0)
+    nest = [env0.model.geom(g).name for g in range(env0.model.ngeom)
+            if f"{env0.tester}_pocket" in env0.model.body(env0.model.geom_bodyid[g]).name]
+    mirror_layout(env0.model, twin, nest)
+    prepare_render(twin, W, H, args.pane_fovy)
+    title_view = View(twin, env0.model, W, H)
+    title_view.set(tracks["learned"], 0)
+    cutaway(twin, title_view.data, env0.tester, origin, toward)
+    views = {a: View(twin, envs[a].model, pw, ph) for a in actors}
+    dtwin = door_twin(door_env)
+    handles = [door_env.model.geom(g).name for g in range(door_env.model.ngeom)
+               if "handle" in door_env.model.geom(g).name]
+    mirror_layout(door_env.model, dtwin, handles)
+    prepare_render(dtwin, W, H)
+    door_view = View(dtwin, door_env.model, W, H)
+    print(f"render twins: insertion {twin.ngeom} geoms (simulated {env0.model.ngeom}), door "
+          f"{dtwin.ngeom} ({door_env.model.ngeom})", flush=True)
     info = tracks["learned"].info
     split_left = (f"The same insertion three ways: insertion_dev_v1 #{index}, "
                   f"{info['kind']} tester, {info['clearance_mm']:.2f} mm clearance, camera off "
@@ -690,7 +814,7 @@ def main() -> None:
         """The drawer opening in slow motion, the camera pulling back."""
         t = k * args.door_speed / fps
         u = min(1.0, k / max(1, n - 1))
-        cam = camera([handle[0] - 0.08, handle[1], look_dz], az_d, el_d,
+        cam = camera([handle[0] - 0.02, handle[1], look_dz], az_d, el_d,
                      dist0 + (dist1 - dist0) * u)
         img = door_view.frame(door_track, door_track.at(t), cam)
         img = door_overlay(img[:H - header_h], door_track, t, feel, s)
