@@ -14,7 +14,7 @@ Reinforcement learned manipulation skills for a simulated Franka Panda in MuJoCo
 
 *v3 (`scripts/record_recovery.py`): tower B is knocked flat the moment it is complete. The cell notices, moves the fallen cubes clear of the other towers, stands the lying ones upright and rebuilds the tower. Grasping, standing up and stacking are PPO policies; the recovery decisions shown in the robot's log, the swings between stations and the drop into the reject bin are scripted. The knock was chosen for the demo; everything after it is the cell's own. One cube landed leaning, which the grasp is not trusted with, so it is left alone and a blue cube from the belt takes its place. [Full video](https://github.com/Abdullah-Muz/polypanda/releases/tag/v3.0) · the v2 cell: [workcell.gif](docs/figures/workcell.gif).*
 
-> **Status:** v4.1 in progress (both learned skills locked and tested once on held-out sets; the cell comparison is running). v4.1 turns the rail line into an electronics test cell: a tight-fit insertion of keyed sensor modules, learned by **reinforcement learning alone**, seats **99.7 %** of 1,800 modules in nests it has not seen, against **80.5 %** for a force-guided search script, 28 % faster and without damaging a nest. The door, retrained for tester lids and drawers from any hand-over, meets every target, including the force bar v4.0 missed.
+> **Status:** v4.1 in progress (both learned skills locked and tested once on held-out sets; the cell comparison is running). v4.1 turns the rail line into an electronics test cell: a tight-fit insertion of keyed sensor modules, learned by **reinforcement learning alone**, seats **99.7 %** of 1,800 modules in nests it has not seen, against **80.5 %** for a force-guided search script, in 27.6 % less time and without damaging a nest. The door, retrained for tester lids and drawers from any hand-over, meets every target, including the force bar v4.0 missed.
 >
 > v4.0: milestones 1–11 and v4.0 complete. v3 adds recovery from knocked-over towers; v3.1 and v3.2 retrain its skills. v4.0 moves the robot onto a rail serving benchtop machines: its learned door opens and closes **99.6 %** of 400 machines it has never seen, as reliably as a well-written feel script and **3.6× faster**, though less gently; in the line's full tending cycle it is level with that script and about 13 s faster per machine. Simulation only: nothing here has been run on a real robot.
 
@@ -26,7 +26,7 @@ Held-out sets that training never touched, 95 % Wilson intervals, learned polici
 
 | v4.1, held-out one-shot sets | Learned (3 seeds) | Best script | Naive script | Targets |
 |---|---|---|---|---|
-| **Insertion** into unseen nests, 600 per seed (`insertion_final_v1`); pure PPO, no demonstrations | **99.7 %** (596 / 600 / 598); 0 nests over the 50 N limit | Force-guided search **80.5 %** | Straight-down 48.7 % (277 nests damaged) | I1 ≥ 95 % per seed, I2 beat straight-down, I3 success not below the search: **met**; I3 ≥ 40 % faster: **missed** (6.3 against 8.7 s, 28 % faster); I4 median force no higher: **missed** (15.3 against 12.7 N) |
+| **Insertion** into unseen nests, 600 per seed (`insertion_final_v1`); pure PPO, no demonstrations | **99.7 %** (596 / 600 / 598); 0 nests over the 50 N limit | Force-guided search **80.5 %** | Straight-down 48.7 % (277 nests damaged) | I1 ≥ 95 % per seed, I2 beat straight-down, I3 success not below the search: **met**; I3 ≥ 40 % less time: **missed** (6.3 against 8.7 s, 27.6 % less); I4 median force no higher: **missed** (15.3 against 12.7 N) |
 | **Door** on tester lids and drawers from any hand-over, 400 (`door_final_v2`); clone of a mixed teacher, then PPO | **98.3 %** (389 / 397 / 394); 59 steps; 17.5 N | `feel_v2` 98.5 %; 146 steps; 21.6 N | Camera 61.8 % | D1–D4 (per seed and per cell, beat camera, within 2 points of `feel_v2` and ≥ 20 % faster, no more force, slams ≤ 1 %): **all met** |
 | The cell, learned against scripted, on 6 held-out shifts | *running* | | | C1 throughput, C2 modules not tested |
 
@@ -148,29 +148,34 @@ The learned grasp was trained once, on a plain table in front of the robot. It r
 
 Blue boxes are learned (reinforcement learning); grey boxes are scripted.
 
-**The v4.1 test cell.** One module's path through the cell; the robot serves the three testers in turn while each test runs.
+**The v4.1 test cell.** One visit to a tester. The robot opens doors with an empty hand, so each visit unloads the tested module first, then brings the next; it serves the testers in turn, the one waiting longest first, while each test runs.
 
 ```mermaid
 flowchart TD
-    A([module arrives on the conveyor]) --> S[pick it and scan its barcode]
-    S --> D[drive along the rail to a free tester]
-    D --> O[open the lid or drawer<br/>learned door · tester C opens itself]
-    O --> I[seat the module in the tight nest<br/>learned insertion · pure PPO]
-    I -- "would not seat after its retries" --> RW([REWORK tray, not tested])
-    I --> C[close the tester<br/>learned door]
-    C --> T[45 s electrical test<br/>meanwhile the robot serves the other testers]
-    T --> U[open and unload<br/>learned door]
-    U --> V[inspect on the fly<br/>module turned to the vision camera]
+    N[pick the tester that has waited longest] --> D[drive along the rail to it]
+    D --> O[open the lid or drawer, hand empty<br/>learned door · tester C opens itself]
+    O --> Q{a tested module inside?}
+    Q -- yes --> U[unload it]
+    U --> V[inspect on the fly<br/>its front turned to the vision camera]
     V --> SO{sort}
     SO -- "passed, no visible defect" --> P([PASS tray])
     SO -- "failed, or a visible defect" --> F([FAIL bin])
+    P --> FE
+    F --> FE
+    Q -- "no, it is empty" --> FE[fetch the next module from the conveyor<br/>scan its barcode, pick it]
+    FE --> DB[drive back to the tester]
+    DB --> I[seat it in the tight nest<br/>learned insertion · pure PPO]
+    I -- "would not seat after its retries" --> RW([REWORK tray, not tested])
+    I --> C[close the tester<br/>learned door]
+    C --> T[45 s electrical test runs<br/>while the robot serves the next tester]
+    T --> N
     classDef learned fill:#2563eb,stroke:#1e40af,color:#ffffff
     classDef scripted fill:#e5e7eb,stroke:#6b7280,color:#111827
-    class O,I,C,U learned
-    class S,D,T,V,SO scripted
+    class O,I,C learned
+    class N,D,U,V,SO,FE,DB,T scripted
 ```
 
-**How each learned skill is made.** The same discipline for every skill since v1: the bar is set before training, and the held-out result is run once.
+**How each learned skill is made.** The discipline every release follows: the bar is set before training, and the held-out result is run once. The round limit is fixed per release (3 in v4.1).
 
 ```mermaid
 flowchart TD
@@ -178,9 +183,9 @@ flowchart TD
     E --> B[scripted baselines measured on the same episodes]
     B --> TR[train 3 seeds<br/>insertion: PPO alone · door: clone a mixed teacher, then PPO]
     TR --> DV[evaluate on the development set]
-    DV -- "a target missed, rounds left (at most 3)" --> RC[diagnose; change the recipe;<br/>commit the new config before it trains]
+    DV -- "a target missed, rounds left" --> RC[diagnose; change the recipe;<br/>commit the new config before it trains]
     RC --> TR
-    DV -- "targets met, or rounds used up" --> L[lock: policy files hashed and committed]
+    DV -- "targets met, rounds used up,<br/>or the user ends the rounds" --> L[lock: policy files hashed and committed]
     L --> OS[one-shot run on the held-out set, once<br/>reported as it came, misses included]
     classDef learned fill:#2563eb,stroke:#1e40af,color:#ffffff
     class TR learned
@@ -190,8 +195,8 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    OBS[what the policy senses: its arm, wrist force and torque,<br/>a camera estimate of the nest about 1 mm off] --> POL[PPO policy, 20 Hz<br/>hand motion and grip]
-    POL --> CL[compliant action layer<br/>stops pushing down at 15 N, backs off above 30 N,<br/>contact reflex at 500 Hz, slow zone near the rim]
+    OBS[what the policy senses: its arm, wrist force and torque,<br/>a camera estimate of the nest about 1 mm off] --> POL[PPO policy, 20 Hz<br/>hand motion, wrist turn, when to let go]
+    POL --> CL[compliant action layer<br/>stops advancing down at 15 N, backs off above 30 N,<br/>a 500 Hz reflex holds the arm above 35 N,<br/>slow zone near the rim]
     POL -- "opens the hand" --> RI{within 3 mm of the nest floor?}
     RI -- "no: keeps holding" --> CL
     RI -- yes --> RR[release and retract at the cell's speed]
@@ -210,7 +215,7 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    R[drive along the rail to the machine] --> H[lower the hand to the door's start]
+    R[drive along the rail to the machine] --> H[lower the hand to the door's start<br/>from the T5b run on]
     H --> O[open the lid<br/>learned door]
     O --> PK[pick the raw part]
     PK --> LD[load it into the machine]
@@ -365,7 +370,7 @@ Every result file in [`results/`](results/) records the git commit (and whether 
 | 10 | Recovery from knocks: closed loop, lying-cube grasp, stand-up, learned recovery, symbolic cell, learned recovery planner | Done (v3.0); recovery targets met, two skill targets and the planner target missed ([recovery](docs/recovery.md)) |
 | 11 | v3.1: another round for the two new skills (fresh one-shot sets, randomized cube size, real hand-off starts); a clutter-aware symbolic cell and a clearing rule | Done (v3.1); both skill targets met, the recovery target and the D0 bar missed ([recovery](docs/recovery.md#v31-milestone-11-new-skills-and-clearing-clutter)) |
 | v3.2 | A grasp round aimed at the cell's knock-overs, with cell-like pick checks per seed; a final cell run on a new suite of 200 orders | Done (v3.2). Grasp target not met; `grasp_anypose9` adopted for the cell post hoc. Cell target met (91.5 against 85.7 %); the no-knock bar missed without spares by one order ([v3.2 targets](docs/v3_2_targets.md)) |
-| v4.0 (Milestone 13) | Machine tending on a rail line: a learned door-and-load skill for machines it has not seen (v4.0), two operations with a flip (v4.1), a quality station (v4.2) | v4.0 done: the rail line, the machine and the learned door. One-shot: 99.6 % on 400 unseen machines, 3.6× faster than the feel script; T1–T3 met, T4 missed on force. In the line's cycle (T5b) level with the feel script, 13 s faster per machine ([results](docs/results.md#v40-a-learned-door-for-machines-it-has-not-seen), [v4 targets](docs/v4_targets.md)). Next: the door's start-pose and force weaknesses; then the second machine and flip, and the quality station ([v4 plan](docs/v4_plan.md)) |
+| v4.0 (Milestone 13) | Machine tending on a rail line: a learned door-and-load skill for machines it has not seen (v4.0), a second operation with a flip and a quality station were planned next, then set aside for the v4.1 test cell | v4.0 done: the rail line, the machine and the learned door. One-shot: 99.6 % on 400 unseen machines, 3.6× faster than the feel script; T1–T3 met, T4 missed on force. In the line's cycle (T5b) level with the feel script, 13 s faster per machine ([results](docs/results.md#v40-a-learned-door-for-machines-it-has-not-seen), [v4 targets](docs/v4_targets.md)). Next: the door's start-pose and force weaknesses; then the second machine and flip, and the quality station ([v4 plan](docs/v4_plan.md)) |
 | v4.1 | An electronics test cell: three testers (lid, drawer, pneumatic), barcode scan, inspection on the fly, sorting; a learned precision insertion (pure RL) and the door on lids and drawers from any hand-over | In progress. Insertion one-shot 99.7 % against the search's 80.5 % (I1, I2, I3 success met; I3 time and I4 force missed); door one-shot 98.3 % against `feel_v2`'s 98.5 %, 2.5× faster, gentler (D1–D4 met). The learned-against-scripted cell run is next ([v4.1 targets](docs/v4_1_targets.md)) |
 | Later | A symbolic cell where a failed skill costs time; cube positions from a camera | Proposed ([v3.2 candidates](docs/v3_2_candidates.md)) |
 
