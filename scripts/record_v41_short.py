@@ -85,7 +85,7 @@ ACTOR_LABEL = {"straight_down": "Straight down (scripted)",
                "search": "Force-guided search (scripted)",
                "learned": "Learned (pure RL)"}
 
-TITLE = "0.25 mm clearance. Camera off by 1 mm. Find the hole by feel."
+TITLE = "Clearances down to 0.25 mm. Camera off by up to 1 mm. Find the hole by feel."
 CARD = [    # each skill's own one-shot results (the user asked for the comparisons removed)
     ("Insertion (pure RL)",
      "99.7 % on 1,800 unseen insertions; never over the 50 N damage limit."),
