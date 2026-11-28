@@ -86,12 +86,11 @@ ACTOR_LABEL = {"straight_down": "Straight down (scripted)",
                "learned": "Learned (pure RL)"}
 
 TITLE = "0.25 mm clearance. Camera off by 1 mm. Find the hole by feel."
-CARD = [
+CARD = [    # each skill's own one-shot results (the user asked for the comparisons removed)
     ("Insertion (pure RL)",
-     "99.7 % on 1,800 unseen insertions vs 80.5 % for the industrial force-guided search; "
-     "28 % faster; never over the 50 N damage limit."),
+     "99.7 % on 1,800 unseen insertions; never over the 50 N damage limit."),
     ("Door",
-     "98.3 % on unseen lids and drawers, as reliable as the best script, 2.5x faster."),
+     "98.3 % on unseen lids and drawers."),
 ]
 SMALL_PRINT = ("Simulation (MuJoCo). Learned insertion runs on its own compliant controller; "
                "the search on 20 Hz force regulation.")
