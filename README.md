@@ -383,6 +383,21 @@ Every result file in [`results/`](results/) records the git commit (and whether 
 - J. Schulman et al. *Proximal Policy Optimization Algorithms.* arXiv:1707.06347, 2017.
 - T. Haarnoja et al. *Soft Actor-Critic Algorithms and Applications.* arXiv:1812.05905, 2018.
 
+The v4.1 insertion's training design follows NVIDIA's simulated-assembly work, adapted (start-height curriculum, compliant control, keypoint reward, the release as a policy decision; [v4_1_insertion_r1_rca.md](docs/v4_1_insertion_r1_rca.md)):
+
+- Y. Narang, K. Storey, I. Akinola et al. *Factory: Fast Contact for Robotic Assembly.* RSS 2022. arXiv:2205.03532.
+- B. Tang, M. A. Lin, I. Akinola, A. Handa, G. S. Sukhatme, F. Ramos, D. Fox, Y. Narang. *IndustReal: Transferring Contact-Rich Assembly Tasks from Simulation to Reality.* RSS 2023. arXiv:2305.17110.
+- B. Tang, I. Akinola, J. Xu et al. *AutoMate: Specialist and Generalist Assembly Policies over Diverse Geometries.* RSS 2024. arXiv:2407.08028.
+- M. Noseworthy et al. *FORGE: Force-Guided Exploration for Robust Contact-Rich Manipulation under Uncertainty.* IEEE RA-L, 2025. arXiv:2408.04587.
+- C. Florensa, D. Held, M. Wulfmeier, M. Zhang, P. Abbeel. *Reverse Curriculum Generation for Reinforcement Learning.* CoRL 2017 (PMLR 78). arXiv:1707.05300.
+- A. Y. Ng, D. Harada, S. Russell. *Policy Invariance under Reward Transformations: Theory and Application to Reward Shaping.* ICML 1999.
+- J. Luo, C. Xu, J. Wu, S. Levine. *Precise and Dexterous Robotic Manipulation via Human-in-the-Loop Reinforcement Learning* (HIL-SERL). arXiv:2410.21845, 2024. Cited for contrast: industrial-grade results with demonstrations and human corrections, where v4.1's insertion uses neither.
+
+The statistics used in every comparison:
+
+- E. B. Wilson. *Probable Inference, the Law of Succession, and Statistical Inference.* Journal of the American Statistical Association 22(158), 1927 (the confidence intervals).
+- Q. McNemar. *Note on the Sampling Error of the Difference between Correlated Proportions or Percentages.* Psychometrika 12(2), 1947 (the paired tests, computed exactly).
+
 ## License
 
 MIT, see [LICENSE](LICENSE).
