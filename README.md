@@ -142,28 +142,111 @@ The learned grasp was trained once, on a plain table in front of the robot. It r
 
 ## How it works
 
+Blue boxes are learned (reinforcement learning); grey boxes are scripted.
+
+**The v4.1 test cell.** One module's path through the cell; the robot serves the three testers in turn while each test runs.
+
 ```mermaid
-flowchart LR
-    I([conveyor]) --> G[GRASP<br/>PPO policy]
-    G --> P{planner<br/>scripted}
-    P -- "a tower needs it next" --> T[PLACE on tower<br/>PPO policy]
-    P -- "needed later, slot free" --> B[PLACE in buffer<br/>PPO policy]
-    P -- "surplus or buffer full" --> R[reject bin<br/>scripted]
+flowchart TD
+    A([module arrives on the conveyor]) --> S[pick it and scan its barcode]
+    S --> D[drive along the rail to a free tester]
+    D --> O[open the lid or drawer<br/>learned door · tester C opens itself]
+    O --> I[seat the module in the tight nest<br/>learned insertion · pure PPO]
+    I -- "would not seat after its retries" --> RW([REWORK tray, not tested])
+    I --> C[close the tester<br/>learned door]
+    C --> T[45 s electrical test<br/>meanwhile the robot serves the other testers]
+    T --> U[open and unload<br/>learned door]
+    U --> V[inspect on the fly<br/>module turned to the vision camera]
+    V --> SO{sort}
+    SO -- "passed, no visible defect" --> P([PASS tray])
+    SO -- "failed, or a visible defect" --> F([FAIL bin])
+    classDef learned fill:#2563eb,stroke:#1e40af,color:#ffffff
+    classDef scripted fill:#e5e7eb,stroke:#6b7280,color:#111827
+    class O,I,C,U learned
+    class S,D,T,V,SO scripted
+```
+
+**How each learned skill is made.** The same discipline for every skill since v1: the bar is set before training, and the held-out result is run once.
+
+```mermaid
+flowchart TD
+    G[targets and rules committed before any training] --> E[environment and held-out sets generated and hashed<br/>training never sees the sets]
+    E --> B[scripted baselines measured on the same episodes]
+    B --> TR[train 3 seeds<br/>insertion: PPO alone · door: clone a mixed teacher, then PPO]
+    TR --> DV[evaluate on the development set]
+    DV -- "a target missed, rounds left (at most 3)" --> RC[diagnose; change the recipe;<br/>commit the new config before it trains]
+    RC --> TR
+    DV -- "targets met, or rounds used up" --> L[lock: policy files hashed and committed]
+    L --> OS[one-shot run on the held-out set, once<br/>reported as it came, misses included]
+    classDef learned fill:#2563eb,stroke:#1e40af,color:#ffffff
+    class TR learned
+```
+
+**Inside the learned insertion.** The policy decides how to move and when to let go; a compliant layer under it keeps contact forces in check, as a real cell's force control would.
+
+```mermaid
+flowchart TD
+    OBS[what the policy senses: its arm, wrist force and torque,<br/>a camera estimate of the nest about 1 mm off] --> POL[PPO policy, 20 Hz<br/>hand motion and grip]
+    POL --> CL[compliant action layer<br/>stops pushing down at 15 N, backs off above 30 N,<br/>contact reflex at 500 Hz, slow zone near the rim]
+    POL -- "opens the hand" --> RI{within 3 mm of the nest floor?}
+    RI -- "no: keeps holding" --> CL
+    RI -- yes --> RR[release and retract at the cell's speed]
+    CL --> SIM[MuJoCo simulation of the Franka Panda]
+    SIM --> OBS
+    classDef learned fill:#2563eb,stroke:#1e40af,color:#ffffff
+    classDef scripted fill:#e5e7eb,stroke:#6b7280,color:#111827
+    class POL learned
+    class CL,RI,RR scripted
+```
+
+<details>
+<summary><b>Earlier systems:</b> the v4.0 machine-tending line and the v3 work-order cell</summary>
+
+**v4.0: machine tending on a rail line.** The learned door opens and closes benchtop machines it has never seen; everything else in the cycle is the line's scripted code.
+
+```mermaid
+flowchart TD
+    R[drive along the rail to the machine] --> H[lower the hand to the door's start]
+    H --> O[open the lid<br/>learned door]
+    O --> PK[pick the raw part]
+    PK --> LD[load it into the machine]
+    LD --> C[close the lid<br/>learned door]
+    C --> M([machine running])
+    classDef learned fill:#2563eb,stroke:#1e40af,color:#ffffff
+    classDef scripted fill:#e5e7eb,stroke:#6b7280,color:#111827
+    class O,C learned
+    class R,H,PK,LD scripted
+```
+
+**v3: the work-order cell, with recovery from knocked-over towers.**
+
+```mermaid
+flowchart TD
+    I([conveyor]) --> G[GRASP<br/>learned]
+    G --> P{planner}
+    P -- "a tower needs it next" --> T[PLACE on its tower<br/>learned]
+    P -- "needed later, slot free" --> B[PLACE in the buffer<br/>learned]
+    P -- "surplus or buffer full" --> R[reject bin]
     B -. "when its tower is ready" .-> G
-    T --> C{tower check<br/>after a knock and<br/>at the end of the order}
+    T --> C{tower check after a knock<br/>and at the end of the order}
     C -- "every tower stands" --> D([order done])
-    C -- "a tower collapsed:<br/>cubes have fallen" --> Q{rescue, spare or clear?<br/>recovery rule<br/>v3.1: clear rule}
-    Q -- "rescue: lying, or near a tower" --> S[clear the towers, stand lying cubes up<br/>GRASP + STAND-UP<br/>PPO policies]
+    C -- "a tower collapsed" --> Q{rescue, spare or clear?<br/>recovery rule}
+    Q -- "rescue: lying, or near a tower" --> S[clear the towers, stand lying cubes up<br/>GRASP + STAND-UP, learned]
     Q -- "rescue: upright, clear of towers" --> RB
-    S --> RB[REBUILD the collapsed tower<br/>its missing cubes are needed again:<br/>each is re-grasped and re-stacked]
+    S --> RB[REBUILD: each missing cube is<br/>grasped and stacked again]
     RB --> G
-    Q -- "clear: left for a spare, but within<br/>6 cm of a tower that needs cubes" --> X[take it to the reject bin<br/>GRASP: PPO policy<br/>drop: scripted]
+    Q -- "clear: within 6 cm of a tower" --> X[to the reject bin<br/>GRASP learned, drop scripted]
     X --> R
-    X -. "then its spare" .-> I
-    Q -. "spare: called up the belt<br/>also for cubes out of reach or leaning" .-> I
+    Q -. "spare: called up the belt" .-> I
+    classDef learned fill:#2563eb,stroke:#1e40af,color:#ffffff
+    classDef scripted fill:#e5e7eb,stroke:#6b7280,color:#111827
+    class G,T,B,S learned
+    class P,C,Q,R,X scripted
 ```
 
 *When a tower is knocked over, the cell rebuilds it. The knocked tower's missing cubes count as needed again, and each rescued cube (or its spare) goes back through the grasp and the planner like a new arrival, so the tower is stacked again in recipe order. The recovery rule is asked only when the order has spares left. Without spares, the cell rescues every cube it can, and an order with a cube it cannot rescue fails. v3.1's rule is v3.0's best rule with one change: a cube it would leave for a spare is first taken to the reject bin when it lies within 6 cm of a tower that still needs cubes, because cubes left there made later placements on that tower fail about 1 time in 5. It removed that clutter, but did not complete more orders (see Results).*
+
+</details>
 
 - **One environment per skill**, each with its own observations, success checks and gates. Skills trained in front of the robot run at any station through **station frames**: the scene is rotated into the frame the skill was trained in, and its hand motions are rotated back. [workcell.md](docs/workcell.md)
 - **Transitions are verified predicates, never timers.** A grasp counts only with both fingers in contact and the cube lifted and not slipping. In pick-and-place, switching on timers instead costs 18 points. [pick_and_place.md](docs/pick_and_place.md)
